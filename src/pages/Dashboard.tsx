@@ -1,6 +1,13 @@
+
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag } from "lucide-react";
+import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store } from "lucide-react";
+import { 
+  ChartContainer, 
+  ChartTooltip, 
+  ChartTooltipContent 
+} from "@/components/ui/chart";
+import { CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
 
 const StatCard = ({ 
   title, 
@@ -76,6 +83,17 @@ const PopularItems = () => (
 );
 
 const Dashboard = () => {
+  // Sample data for daily orders chart
+  const orderData = [
+    { day: 'Mon', orders: 85 },
+    { day: 'Tue', orders: 92 },
+    { day: 'Wed', orders: 120 },
+    { day: 'Thu', orders: 105 },
+    { day: 'Fri', orders: 145 },
+    { day: 'Sat', orders: 168 },
+    { day: 'Sun', orders: 132 },
+  ];
+
   return (
     <AdminLayout>
       <div className="mb-8">
@@ -83,7 +101,7 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Welcome to your TastyTouch Admin Dashboard</p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard 
           title="Total Revenue" 
           value="$15,231.89" 
@@ -104,6 +122,13 @@ const Dashboard = () => {
           description="Orders processed this month"
           icon={ShoppingBag}
           trend={{ value: "5.2%", positive: true }}
+        />
+        <StatCard 
+          title="Daily Orders" 
+          value="178" 
+          description="Orders processed today"
+          icon={Store}
+          trend={{ value: "15.3%", positive: true }}
         />
       </div>
       
