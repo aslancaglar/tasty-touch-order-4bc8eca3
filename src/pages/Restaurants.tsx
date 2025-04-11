@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Edit, MoreHorizontal, Plus, Trash2, Settings } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -171,9 +172,17 @@ const RestaurantCard = ({ restaurant }: { restaurant: Restaurant }) => {
             <p className="font-medium">${restaurant.revenue.toLocaleString()}</p>
           </div>
         </div>
-        <div className="mt-4">
-          <Button variant="outline" className="w-full">
-            View Kiosk
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button variant="outline" asChild>
+            <Link to={`/r/${restaurant.slug}`}>
+              View Kiosk
+            </Link>
+          </Button>
+          <Button variant="default" className="bg-kiosk-primary" asChild>
+            <Link to={`/restaurant/${restaurant.id}`}>
+              <Settings className="mr-2 h-4 w-4" />
+              Manage
+            </Link>
           </Button>
         </div>
       </CardContent>

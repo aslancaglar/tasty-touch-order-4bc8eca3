@@ -8,10 +8,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 // Pages
 import Dashboard from "./pages/Dashboard";
 import Restaurants from "./pages/Restaurants";
+import RestaurantManage from "./pages/RestaurantManage";
 import Menu from "./pages/Menu";
 import Orders from "./pages/Orders";
 import KioskView from "./pages/KioskView";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -23,8 +25,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           {/* Admin Routes */}
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Index />} />
           <Route path="/restaurants" element={<Restaurants />} />
+          <Route path="/restaurant/:id" element={<RestaurantManage />} />
           <Route path="/menu" element={<Menu />} />
           <Route path="/orders" element={<Orders />} />
           
