@@ -1,4 +1,3 @@
-
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +17,7 @@ import {
 import { Restaurant } from "@/types/database-types";
 import { getRestaurants, createRestaurant } from "@/services/kiosk-service";
 import { useAuth } from "@/contexts/AuthContext";
+import ImageUpload from "@/components/ImageUpload";
 
 const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => void }) => {
   const [open, setOpen] = useState(false);
@@ -63,16 +63,13 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
         description: "Restaurant created successfully",
       });
       
-      // Reset form
       setName("");
       setSlug("");
       setLocation("");
       setImageUrl("");
       
-      // Close dialog
       setOpen(false);
       
-      // Refresh restaurants list
       onRestaurantAdded();
     } catch (error) {
       console.error("Error creating restaurant:", error);
@@ -86,7 +83,6 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
     }
   };
 
-  // Auto-generate slug from name
   const handleNameChange = (value: string) => {
     setName(value);
     setSlug(value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""));
@@ -100,7 +96,7 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
           Add Restaurant
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Add New Restaurant</DialogTitle>
@@ -147,16 +143,11 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
                 onChange={(e) => setLocation(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="image" className="text-right">
-                Image URL
-              </Label>
-              <Input
-                id="image"
-                placeholder="https://example.com/image.jpg"
-                className="col-span-3"
+            <div className="col-span-4">
+              <ImageUpload
                 value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
+                onChange={setImageUrl}
+                label="Cover Photo"
               />
             </div>
           </div>
@@ -179,7 +170,6 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
 };
 
 const RestaurantCard = ({ restaurant }: { restaurant: Restaurant }) => {
-  // Calculate orders and revenue (mock data for now)
   const totalOrders = Math.floor(Math.random() * 1500);
   const revenue = parseFloat((Math.random() * 10000).toFixed(2));
 

@@ -23,6 +23,7 @@ import {
 import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
 import { getIconComponent } from "@/utils/icon-mapping";
+import ImageUpload from "@/components/ImageUpload";
 
 type OrderStatus = "pending" | "preparing" | "completed" | "cancelled";
 
@@ -148,6 +149,13 @@ const RestaurantManage = () => {
 
     fetchMenuItems();
   }, [categories]);
+
+  const handleSaveRestaurantInfo = () => {
+    toast({
+      title: "Not Implemented",
+      description: "This feature will be implemented in a future update",
+    });
+  };
 
   if (loading && !restaurant) {
     return (
@@ -421,12 +429,17 @@ const RestaurantManage = () => {
                       <Label htmlFor="location">Location</Label>
                       <Input id="location" defaultValue={restaurant.location || ''} />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="image">Image URL</Label>
-                      <Input id="image" defaultValue={restaurant.image_url || ''} />
+                    <div className="md:col-span-2">
+                      <ImageUpload
+                        value={restaurant.image_url || ''}
+                        onChange={(url) => {
+                          console.log("New image URL:", url);
+                        }}
+                        label="Cover Photo"
+                      />
                     </div>
                   </div>
-                  <Button className="mt-4 bg-kiosk-primary">Save Changes</Button>
+                  <Button className="mt-4 bg-kiosk-primary" onClick={handleSaveRestaurantInfo}>Save Changes</Button>
                 </div>
                 
                 <div className="border-t pt-6">

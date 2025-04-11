@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -41,6 +40,22 @@ export const createRestaurant = async (restaurant: Omit<Restaurant, 'id' | 'crea
   return data;
 };
 
+export const updateRestaurant = async (id: string, updates: Partial<Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>>): Promise<Restaurant> => {
+  const { data, error } = await supabase
+    .from("restaurants")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating restaurant:", error);
+    throw error;
+  }
+
+  return data;
+};
+
 export const getRestaurantBySlug = async (slug: string): Promise<Restaurant | null> => {
   const { data, error } = await supabase
     .from("restaurants")
@@ -50,7 +65,6 @@ export const getRestaurantBySlug = async (slug: string): Promise<Restaurant | nu
 
   if (error) {
     if (error.code === 'PGRST116') {
-      // PGRST116 is the error code for "no rows returned by the query"
       return null;
     }
     console.error("Error fetching restaurant by slug:", error);
