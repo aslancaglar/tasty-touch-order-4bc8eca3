@@ -50,10 +50,12 @@ export type OptionChoice = {
   updated_at: string;
 };
 
+export type OrderStatus = 'pending' | 'preparing' | 'completed' | 'cancelled';
+
 export type Order = {
   id: string;
   restaurant_id: string;
-  status: 'pending' | 'preparing' | 'completed' | 'cancelled';
+  status: OrderStatus;
   total: number;
   customer_name: string | null;
   created_at: string;

@@ -8,7 +8,8 @@ import {
   OptionChoice, 
   Order, 
   OrderItem, 
-  OrderItemOption 
+  OrderItemOption,
+  OrderStatus
 } from "@/types/database-types";
 
 // Restaurant services
@@ -135,7 +136,11 @@ export const createOrder = async (order: Omit<Order, 'id' | 'created_at' | 'upda
     throw error;
   }
 
-  return data;
+  // Ensure that status is properly typed
+  return {
+    ...data,
+    status: data.status as OrderStatus
+  };
 };
 
 export const getOrderById = async (id: string): Promise<Order | null> => {
@@ -153,7 +158,11 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
     throw error;
   }
 
-  return data;
+  // Ensure that status is properly typed
+  return data ? {
+    ...data,
+    status: data.status as OrderStatus
+  } : null;
 };
 
 // Order Item services
