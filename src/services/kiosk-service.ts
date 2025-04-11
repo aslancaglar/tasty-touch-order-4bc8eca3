@@ -26,6 +26,21 @@ export const getRestaurants = async (): Promise<Restaurant[]> => {
   return data;
 };
 
+export const createRestaurant = async (restaurant: Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>): Promise<Restaurant> => {
+  const { data, error } = await supabase
+    .from("restaurants")
+    .insert(restaurant)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating restaurant:", error);
+    throw error;
+  }
+
+  return data;
+};
+
 export const getRestaurantBySlug = async (slug: string): Promise<Restaurant | null> => {
   const { data, error } = await supabase
     .from("restaurants")
