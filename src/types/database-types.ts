@@ -15,7 +15,9 @@ export type MenuCategory = {
   id: string;
   name: string;
   restaurant_id: string;
+  description: string | null;
   icon: string | null;
+  image_url: string | null;
   created_at: string;
   updated_at: string;
 };
