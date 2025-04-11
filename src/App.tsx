@@ -1,9 +1,16 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+
+// Pages
+import Dashboard from "./pages/Dashboard";
+import Restaurants from "./pages/Restaurants";
+import Menu from "./pages/Menu";
+import Orders from "./pages/Orders";
+import KioskView from "./pages/KioskView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -15,8 +22,16 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* Admin Routes */}
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/restaurants" element={<Restaurants />} />
+          <Route path="/menu" element={<Menu />} />
+          <Route path="/orders" element={<Orders />} />
+          
+          {/* Public Kiosk Routes */}
+          <Route path="/r/:restaurantSlug" element={<KioskView />} />
+          
+          {/* Catch-all Route */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
