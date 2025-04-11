@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Restaurant } from "@/types/database-types";
 import { getRestaurants, createRestaurant } from "@/services/kiosk-service";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => void }) => {
   const [open, setOpen] = useState(false);
@@ -26,6 +27,7 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
   const [imageUrl, setImageUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +35,15 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
       toast({
         title: "Validation Error",
         description: "Name and slug are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to create a restaurant",
         variant: "destructive"
       });
       return;
@@ -67,7 +78,7 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
       console.error("Error creating restaurant:", error);
       toast({
         title: "Error",
-        description: "Failed to create restaurant. Please try again.",
+        description: "Failed to create restaurant. Please ensure you're logged in and try again.",
         variant: "destructive"
       });
     } finally {
@@ -235,6 +246,7 @@ const Restaurants = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchRestaurants = async () => {
     try {
@@ -254,8 +266,12 @@ const Restaurants = () => {
   };
 
   useEffect(() => {
-    fetchRestaurants();
-  }, []);
+    if (user) {
+      fetchRestaurants();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   return (
     <AdminLayout>
@@ -269,7 +285,14 @@ const Restaurants = () => {
         <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} />
       </div>
 
-      {loading ? (
+      {!user ? (
+        <div className="text-center py-10">
+          <p className="text-lg mb-3">You need to be logged in to view and manage restaurants</p>
+          <Button asChild>
+            <Link to="/auth">Sign In</Link>
+          </Button>
+        </div>
+      ) : loading ? (
         <div className="flex justify-center items-center h-60">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
