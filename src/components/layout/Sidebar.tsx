@@ -1,12 +1,16 @@
+
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
   Store,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LogOut
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 type SidebarItem = {
   title: string;
@@ -30,6 +34,24 @@ const sidebarItems: SidebarItem[] = [
 export function Sidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const { signOut, user } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of your account",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was a problem signing out",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className={cn(
@@ -75,16 +97,35 @@ export function Sidebar() {
       </nav>
       
       <div className="p-4 border-t border-gray-200">
-        {!collapsed && (
-          <div className="flex items-center">
-            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-              <span className="text-xs font-medium">AT</span>
+        {!collapsed ? (
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="text-xs font-medium">
+                  {user?.email?.charAt(0).toUpperCase() || "U"}
+                </span>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium truncate max-w-[120px]">{user?.email || "Admin User"}</p>
+                <p className="text-xs text-gray-500">Admin</p>
+              </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium">Admin User</p>
-              <p className="text-xs text-gray-500">admin@example.com</p>
-            </div>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-primary hover:bg-primary/5 rounded-lg"
+            >
+              <LogOut size={18} className="mr-2" />
+              Sign Out
+            </button>
           </div>
+        ) : (
+          <button
+            onClick={handleSignOut}
+            className="w-full flex justify-center p-2 text-gray-600 hover:text-primary hover:bg-primary/5 rounded-lg"
+            title="Sign Out"
+          >
+            <LogOut size={20} />
+          </button>
         )}
       </div>
     </div>
