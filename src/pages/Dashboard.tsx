@@ -1,6 +1,6 @@
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Users } from "lucide-react";
+import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag } from "lucide-react";
 
 const StatCard = ({ 
   title, 
@@ -83,7 +83,7 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Welcome to your TastyTouch Admin Dashboard</p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard 
           title="Total Revenue" 
           value="$15,231.89" 
@@ -104,13 +104,6 @@ const Dashboard = () => {
           description="Orders processed this month"
           icon={ShoppingBag}
           trend={{ value: "5.2%", positive: true }}
-        />
-        <StatCard 
-          title="Active Users" 
-          value="423" 
-          description="Daily active users"
-          icon={Users}
-          trend={{ value: "1.5%", positive: false }}
         />
       </div>
       
