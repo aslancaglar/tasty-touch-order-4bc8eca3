@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -23,8 +22,8 @@ import {
 } from "lucide-react";
 import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
+import { getIconComponent } from "@/utils/icon-mapping";
 
-// Mock orders data types for now
 type OrderStatus = "pending" | "preparing" | "completed" | "cancelled";
 
 type OrderItem = {
@@ -75,7 +74,6 @@ const RestaurantManage = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  // Fetch restaurant data
   useEffect(() => {
     const fetchRestaurant = async () => {
       if (!id) return;
@@ -109,7 +107,6 @@ const RestaurantManage = () => {
     fetchRestaurant();
   }, [id, toast]);
 
-  // Fetch categories when restaurant is loaded
   useEffect(() => {
     const fetchCategories = async () => {
       if (!restaurant?.id) return;
@@ -128,7 +125,6 @@ const RestaurantManage = () => {
     fetchCategories();
   }, [restaurant]);
 
-  // Fetch menu items when categories are loaded
   useEffect(() => {
     const fetchMenuItems = async () => {
       if (categories.length === 0) return;
