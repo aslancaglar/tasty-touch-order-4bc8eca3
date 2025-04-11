@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -18,7 +19,9 @@ import {
   Edit, 
   Trash2, 
   Receipt, 
-  Settings
+  Settings,
+  Cherry,
+  Spoon
 } from "lucide-react";
 import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
@@ -43,6 +46,38 @@ type Order = {
   date: Date;
   customerName?: string;
 };
+
+type ToppingCategory = {
+  id: string;
+  name: string;
+  icon?: string;
+};
+
+type Topping = {
+  id: string;
+  name: string;
+  price: number;
+  categoryId: string;
+};
+
+// Mock topping categories for demonstration
+const mockToppingCategories: ToppingCategory[] = [
+  { id: "1", name: "Cheese", icon: "cheese" },
+  { id: "2", name: "Vegetables", icon: "leaf" },
+  { id: "3", name: "Sauces", icon: "cherry" },
+];
+
+// Mock toppings for demonstration
+const mockToppings: Topping[] = [
+  { id: "1", name: "Cheddar Cheese", price: 1.50, categoryId: "1" },
+  { id: "2", name: "Mozzarella", price: 1.75, categoryId: "1" },
+  { id: "3", name: "Onions", price: 0.75, categoryId: "2" },
+  { id: "4", name: "Tomatoes", price: 0.75, categoryId: "2" },
+  { id: "5", name: "Lettuce", price: 0.50, categoryId: "2" },
+  { id: "6", name: "Ketchup", price: 0.25, categoryId: "3" },
+  { id: "7", name: "Mayo", price: 0.25, categoryId: "3" },
+  { id: "8", name: "BBQ Sauce", price: 0.50, categoryId: "3" },
+];
 
 const mockOrders: Order[] = [
   {
@@ -208,10 +243,14 @@ const RestaurantManage = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-3 mb-8">
+            <TabsList className="grid grid-cols-4 mb-8">
               <TabsTrigger value="menu" className="flex items-center">
                 <UtensilsCrossed className="mr-2 h-4 w-4" />
                 Menu
+              </TabsTrigger>
+              <TabsTrigger value="toppings" className="flex items-center">
+                <Cherry className="mr-2 h-4 w-4" />
+                Toppings
               </TabsTrigger>
               <TabsTrigger value="orders" className="flex items-center">
                 <Receipt className="mr-2 h-4 w-4" />
@@ -350,6 +389,109 @@ const RestaurantManage = () => {
                     )}
                   </>
                 )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="toppings">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Topping Categories</h3>
+                  <Button className="bg-kiosk-primary">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Category
+                  </Button>
+                </div>
+                
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {mockToppingCategories.map((category) => (
+                    <div 
+                      key={category.id} 
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-primary/10 rounded-md">
+                          {category.icon && getIconComponent(category.icon)}
+                        </div>
+                        <span className="font-medium">{category.name}</span>
+                      </div>
+                      <div className="flex space-x-1">
+                        <Button variant="ghost" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
+                    <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Category
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-8">
+                  <h3 className="text-lg font-medium">Toppings</h3>
+                  <Button className="bg-kiosk-primary">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Topping
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  {mockToppingCategories.map((category) => {
+                    const toppings = mockToppings.filter(t => t.categoryId === category.id);
+                    
+                    if (toppings.length === 0) {
+                      return (
+                        <div key={category.id} className="text-center py-4 border rounded-lg">
+                          <p className="text-muted-foreground mb-4">No toppings in {category.name}</p>
+                          <Button variant="outline">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Topping to {category.name}
+                          </Button>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div key={category.id} className="space-y-2">
+                        <h4 className="font-medium text-sm text-muted-foreground">{category.name}</h4>
+                        {toppings.map(topping => (
+                          <div 
+                            key={topping.id} 
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
+                            <div className="flex items-center space-x-4">
+                              <div>
+                                <h3 className="font-medium">{topping.name}</h3>
+                                <p className="text-sm font-medium mt-1">${topping.price.toFixed(2)}</p>
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button variant="outline" size="sm">
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </Button>
+                              <Button variant="outline" size="sm" className="text-red-500">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                  <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
+                    <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add New Topping
+                    </Button>
+                  </div>
+                </div>
               </div>
             </TabsContent>
             
