@@ -1,6 +1,19 @@
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag } from "lucide-react";
+import { 
+  ChartContainer, 
+  ChartTooltip, 
+  ChartTooltipContent 
+} from "@/components/ui/chart";
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  ResponsiveContainer 
+} from "recharts";
 
 const StatCard = ({ 
   title, 
@@ -75,6 +88,80 @@ const PopularItems = () => (
   </Card>
 );
 
+const dailyOrdersData = [
+  { day: "Mon", orders: 45 },
+  { day: "Tue", orders: 52 },
+  { day: "Wed", orders: 49 },
+  { day: "Thu", orders: 63 },
+  { day: "Fri", orders: 87 },
+  { day: "Sat", orders: 66 },
+  { day: "Sun", orders: 52 }
+];
+
+const DailyOrdersChart = () => (
+  <Card className="col-span-3">
+    <CardHeader>
+      <CardTitle>Daily Orders</CardTitle>
+      <CardDescription>Order volume over the last 7 days</CardDescription>
+    </CardHeader>
+    <CardContent className="h-80">
+      <ChartContainer
+        config={{
+          orders: {
+            label: "Orders",
+            theme: {
+              light: "#8b5cf6",
+              dark: "#a78bfa",
+            },
+          },
+        }}
+      >
+        <AreaChart
+          data={dailyOrdersData}
+          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+        >
+          <defs>
+            <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
+              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis 
+            dataKey="day" 
+            stroke="#9ca3af" 
+            fontSize={12} 
+            tickLine={false}
+            axisLine={{ stroke: "#e5e7eb" }}
+          />
+          <YAxis 
+            stroke="#9ca3af" 
+            fontSize={12} 
+            tickLine={false}
+            axisLine={{ stroke: "#e5e7eb" }}
+            tickFormatter={(value) => `${value}`}
+          />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                labelFormatter={(label) => `${label}`}
+                formatter={(value) => [`${value}`, "Orders"]}
+              />
+            }
+          />
+          <Area
+            type="monotone"
+            dataKey="orders"
+            stroke="#8b5cf6"
+            fillOpacity={1}
+            fill="url(#ordersGradient)"
+          />
+        </AreaChart>
+      </ChartContainer>
+    </CardContent>
+  </Card>
+);
+
 const Dashboard = () => {
   return (
     <AdminLayout>
@@ -105,6 +192,10 @@ const Dashboard = () => {
           icon={ShoppingBag}
           trend={{ value: "5.2%", positive: true }}
         />
+      </div>
+      
+      <div className="mt-6 grid gap-6 md:grid-cols-1 lg:grid-cols-1">
+        <DailyOrdersChart />
       </div>
       
       <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
