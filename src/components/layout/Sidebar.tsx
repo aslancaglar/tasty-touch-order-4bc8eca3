@@ -1,10 +1,8 @@
-
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
-  Store, 
-  Settings,
+  Store,
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
@@ -26,11 +24,6 @@ const sidebarItems: SidebarItem[] = [
     title: "Restaurants",
     icon: Store,
     href: "/restaurants",
-  },
-  {
-    title: "Settings",
-    icon: Settings,
-    href: "/settings",
   },
 ];
 
