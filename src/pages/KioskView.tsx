@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -10,7 +9,7 @@ import {
   PlusCircle,
   ShoppingCart,
   UtensilsCrossed,
-  WineBottle,
+  Wine,
   Loader2,
   ChevronLeft,
   Trash2,
@@ -77,7 +76,7 @@ const mockCategories: Category[] = [
   { id: "1", name: "Burgers", icon: <UtensilsCrossed size={16} /> },
   { id: "2", name: "Sides", icon: <UtensilsCrossed size={16} /> },
   { id: "3", name: "Drinks", icon: <Coffee size={16} /> },
-  { id: "4", name: "Desserts", icon: <WineBottle size={16} /> },
+  { id: "4", name: "Desserts", icon: <Wine size={16} /> },
 ];
 
 const mockMenuItems: MenuItem[] = [
@@ -244,7 +243,6 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const { toast } = useToast();
 
-  // Find restaurant by slug
   const restaurant = mockRestaurant;
 
   const handleSelectItem = (item: MenuItem) => {
@@ -252,10 +250,8 @@ const KioskView = () => {
     setQuantity(1);
     setSpecialInstructions("");
     
-    // Initialize selected options
     if (item.options && item.options.length > 0) {
       const initialOptions = item.options.map(option => {
-        // For required single-select options, pre-select the first choice
         if (option.required && !option.multiple) {
           return {
             optionId: option.id,
@@ -284,14 +280,12 @@ const KioskView = () => {
       let newChoiceIds: string[];
 
       if (multiple) {
-        // For multi-select, toggle the choice
         if (option.choiceIds.includes(choiceId)) {
           newChoiceIds = option.choiceIds.filter(id => id !== choiceId);
         } else {
           newChoiceIds = [...option.choiceIds, choiceId];
         }
       } else {
-        // For single-select, replace the choice
         newChoiceIds = [choiceId];
       }
 
@@ -341,7 +335,6 @@ const KioskView = () => {
   const handleAddToCart = () => {
     if (!selectedItem) return;
     
-    // Validate that all required options have been selected
     const isValid = selectedItem.options?.every(option => {
       if (!option.required) return true;
       
@@ -400,12 +393,10 @@ const KioskView = () => {
   const handlePlaceOrder = () => {
     setPlacingOrder(true);
     
-    // Simulate order processing
     setTimeout(() => {
       setPlacingOrder(false);
       setOrderPlaced(true);
       
-      // Reset after 5 seconds
       setTimeout(() => {
         setOrderPlaced(false);
         setCart([]);
@@ -431,7 +422,6 @@ const KioskView = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Restaurant header */}
       <div 
         className="h-48 bg-cover bg-center relative"
         style={{ backgroundImage: `url(${restaurant.cover})` }}
@@ -468,7 +458,6 @@ const KioskView = () => {
         </div>
       </div>
 
-      {/* Menu */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Tabs defaultValue={mockCategories[0].id}>
           <TabsList className="mb-6 bg-white p-1 rounded-lg border">
@@ -519,7 +508,6 @@ const KioskView = () => {
         </Tabs>
       </div>
 
-      {/* Item customization dialog */}
       {selectedItem && (
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">
@@ -620,7 +608,6 @@ const KioskView = () => {
         </Dialog>
       )}
 
-      {/* Cart slide-over panel */}
       {showCart && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex">
           <div className="ml-auto h-full w-full max-w-md bg-white flex flex-col">
@@ -634,7 +621,7 @@ const KioskView = () => {
                 Back to Menu
               </Button>
               <h2 className="font-bold text-lg">Your Order</h2>
-              <div className="w-8"></div> {/* Empty div for flexbox alignment */}
+              <div className="w-8"></div>
             </div>
             
             <div className="flex-1 overflow-auto p-4">

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, Burger, Coffee, Edit, PizzaIcon, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Beef, Coffee, Edit, Pizza, Plus, Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { 
   Select,
@@ -31,8 +31,8 @@ type MenuCategory = {
 };
 
 const mockCategories: MenuCategory[] = [
-  { id: "1", name: "Burgers", restaurantId: "1", icon: <Burger className="h-4 w-4" /> },
-  { id: "2", name: "Pizzas", restaurantId: "1", icon: <PizzaIcon className="h-4 w-4" /> },
+  { id: "1", name: "Burgers", restaurantId: "1", icon: <Beef className="h-4 w-4" /> },
+  { id: "2", name: "Pizzas", restaurantId: "1", icon: <Pizza className="h-4 w-4" /> },
   { id: "3", name: "Drinks", restaurantId: "1", icon: <Coffee className="h-4 w-4" /> },
 ];
 
