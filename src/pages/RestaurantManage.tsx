@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 import { 
   ArrowLeft, 
   UtensilsCrossed, 
@@ -19,93 +21,10 @@ import {
   Receipt, 
   Settings
 } from "lucide-react";
+import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
+import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
 
-// Mock data (should be fetched from API in a real application)
-type Restaurant = {
-  id: string;
-  name: string;
-  slug: string;
-  imageUrl: string;
-  location: string;
-  totalOrders: number;
-  revenue: number;
-};
-
-const mockRestaurants = [
-  {
-    id: "1",
-    name: "Burger House",
-    slug: "burger-house",
-    imageUrl: "https://images.unsplash.com/photo-1586816001966-79b736744398?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    location: "New York, NY",
-    totalOrders: 1245,
-    revenue: 8765.43
-  },
-  {
-    id: "2",
-    name: "Pizza Palace",
-    slug: "pizza-palace",
-    imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    location: "Chicago, IL",
-    totalOrders: 982,
-    revenue: 6543.21
-  },
-  {
-    id: "3",
-    name: "Sushi Squad",
-    slug: "sushi-squad",
-    imageUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    location: "Los Angeles, CA",
-    totalOrders: 786,
-    revenue: 5432.10
-  },
-  {
-    id: "4",
-    name: "Taco Time",
-    slug: "taco-time",
-    imageUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    location: "Austin, TX",
-    totalOrders: 654,
-    revenue: 4321.98
-  },
-];
-
-// Menu section types
-type MenuCategory = {
-  id: string;
-  name: string;
-  restaurantId: string;
-  icon: React.ReactNode;
-};
-
-type MenuItem = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image?: string;
-  category: string;
-};
-
-const mockCategories: MenuCategory[] = [
-  { id: "1", name: "Burgers", restaurantId: "1", icon: <Beef className="h-4 w-4" /> },
-  { id: "2", name: "Pizzas", restaurantId: "1", icon: <Pizza className="h-4 w-4" /> },
-  { id: "3", name: "Drinks", restaurantId: "1", icon: <Coffee className="h-4 w-4" /> },
-];
-
-const mockMenuItems: MenuItem[] = [
-  {
-    id: "1",
-    name: "Classic Burger",
-    description: "Beef patty, lettuce, tomato, pickles, and our special sauce.",
-    price: 8.99,
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    category: "1"
-  },
-  // ... add more mock menu items as needed
-];
-
-// Orders data types
+// Mock orders data types for now
 type OrderStatus = "pending" | "preparing" | "completed" | "cancelled";
 
 type OrderItem = {
@@ -150,10 +69,100 @@ const statusColors = {
 const RestaurantManage = () => {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("menu");
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   
-  // Find restaurant by ID
-  const restaurant = mockRestaurants.find(r => r.id === id);
-  
+  // Fetch restaurant data
+  useEffect(() => {
+    const fetchRestaurant = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const restaurants = await getRestaurants();
+        const foundRestaurant = restaurants.find(r => r.id === id);
+        
+        if (foundRestaurant) {
+          setRestaurant(foundRestaurant);
+        } else {
+          toast({
+            title: "Error",
+            description: "Restaurant not found",
+            variant: "destructive"
+          });
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching restaurant:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load restaurant data",
+          variant: "destructive"
+        });
+        setLoading(false);
+      }
+    };
+
+    fetchRestaurant();
+  }, [id, toast]);
+
+  // Fetch categories when restaurant is loaded
+  useEffect(() => {
+    const fetchCategories = async () => {
+      if (!restaurant?.id) return;
+      
+      try {
+        setLoading(true);
+        const data = await getCategoriesByRestaurantId(restaurant.id);
+        setCategories(data);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, [restaurant]);
+
+  // Fetch menu items when categories are loaded
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      if (categories.length === 0) return;
+      
+      try {
+        setLoading(true);
+        const itemsByCategory: Record<string, MenuItem[]> = {};
+        
+        for (const category of categories) {
+          const items = await getMenuItemsByCategory(category.id);
+          itemsByCategory[category.id] = items;
+        }
+        
+        setMenuItems(itemsByCategory);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching menu items:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchMenuItems();
+  }, [categories]);
+
+  if (loading && !restaurant) {
+    return (
+      <AdminLayout>
+        <div className="flex justify-center items-center h-[80vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
   if (!restaurant) {
     return (
       <AdminLayout>
@@ -178,7 +187,7 @@ const RestaurantManage = () => {
         </Button>
         <div>
           <h1 className="text-3xl font-bold">{restaurant.name}</h1>
-          <p className="text-muted-foreground">{restaurant.location}</p>
+          <p className="text-muted-foreground">{restaurant.location || "No location set"}</p>
         </div>
       </div>
       
@@ -220,78 +229,123 @@ const RestaurantManage = () => {
                   </Button>
                 </div>
                 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {mockCategories
-                    .filter(category => category.restaurantId === restaurant.id)
-                    .map((category) => (
-                    <div 
-                      key={category.id} 
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-primary/10 rounded-md">
-                          {category.icon}
-                        </div>
-                        <span className="font-medium">{category.name}</span>
-                      </div>
-                      <div className="flex space-x-1">
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between mt-8">
-                  <h3 className="text-lg font-medium">Menu Items</h3>
-                  <Button className="bg-kiosk-primary">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Item
-                  </Button>
-                </div>
-                
-                <div className="space-y-4">
-                  {mockMenuItems
-                    .filter(item => {
-                      const category = mockCategories.find(c => c.id === item.category);
-                      return category && category.restaurantId === restaurant.id;
-                    })
-                    .map(item => (
+                {loading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : categories.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {categories.map((category) => (
                       <div 
-                        key={item.id} 
-                        className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
+                        key={category.id} 
+                        className="flex items-center justify-between p-4 border rounded-lg"
                       >
-                        <div className="flex items-center space-x-4">
-                          {item.image && (
-                            <img 
-                              src={item.image} 
-                              alt={item.name} 
-                              className="h-16 w-16 object-cover rounded-md"
-                            />
-                          )}
-                          <div>
-                            <h3 className="font-medium">{item.name}</h3>
-                            <p className="text-sm text-muted-foreground">{item.description}</p>
-                            <p className="text-sm font-medium mt-1">${item.price.toFixed(2)}</p>
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-primary/10 rounded-md">
+                            {category.icon && getIconComponent(category.icon)}
                           </div>
+                          <span className="font-medium">{category.name}</span>
                         </div>
-                        <div className="flex space-x-2 mt-4 md:mt-0">
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
+                        <div className="flex space-x-1">
+                          <Button variant="ghost" size="sm">
+                            <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm" className="text-red-500">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
                         </div>
                       </div>
                     ))}
-                </div>
+                    <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
+                      <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Category
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">No categories found for this restaurant</p>
+                    <Button className="bg-kiosk-primary">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add First Category
+                    </Button>
+                  </div>
+                )}
+
+                {categories.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between mt-8">
+                      <h3 className="text-lg font-medium">Menu Items</h3>
+                      <Button className="bg-kiosk-primary">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Item
+                      </Button>
+                    </div>
+                    
+                    {loading ? (
+                      <div className="flex justify-center items-center h-40">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {categories.map((category) => {
+                          const items = menuItems[category.id] || [];
+                          
+                          if (items.length === 0) {
+                            return (
+                              <div key={category.id} className="text-center py-4 border rounded-lg">
+                                <p className="text-muted-foreground mb-4">No items in {category.name}</p>
+                                <Button variant="outline">
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Add Item to {category.name}
+                                </Button>
+                              </div>
+                            );
+                          }
+                          
+                          return items.map(item => (
+                            <div 
+                              key={item.id} 
+                              className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
+                            >
+                              <div className="flex items-center space-x-4">
+                                {item.image && (
+                                  <img 
+                                    src={item.image} 
+                                    alt={item.name} 
+                                    className="h-16 w-16 object-cover rounded-md"
+                                  />
+                                )}
+                                <div>
+                                  <h3 className="font-medium">{item.name}</h3>
+                                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                                  <p className="text-sm font-medium mt-1">${parseFloat(item.price.toString()).toFixed(2)}</p>
+                                </div>
+                              </div>
+                              <div className="flex space-x-2 mt-4 md:mt-0">
+                                <Button variant="outline" size="sm">
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </Button>
+                                <Button variant="outline" size="sm" className="text-red-500">
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                          ));
+                        })}
+                        <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
+                          <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add New Item
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </TabsContent>
             
@@ -345,6 +399,12 @@ const RestaurantManage = () => {
                       </div>
                     </div>
                   ))}
+                
+                {mockOrders.filter(order => order.restaurantId === restaurant.id).length === 0 && (
+                  <div className="text-center py-8 border rounded-lg">
+                    <p className="text-muted-foreground">No orders yet for this restaurant</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
             
@@ -363,11 +423,11 @@ const RestaurantManage = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="location">Location</Label>
-                      <Input id="location" defaultValue={restaurant.location} />
+                      <Input id="location" defaultValue={restaurant.location || ''} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="image">Image URL</Label>
-                      <Input id="image" defaultValue={restaurant.imageUrl} />
+                      <Input id="image" defaultValue={restaurant.image_url || ''} />
                     </div>
                   </div>
                   <Button className="mt-4 bg-kiosk-primary">Save Changes</Button>
