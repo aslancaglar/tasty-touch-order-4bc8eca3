@@ -1,19 +1,17 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ChevronRight,
   Clock,
-  Coffee,
   MinusCircle,
   PlusCircle,
   ShoppingCart,
-  UtensilsCrossed,
-  Wine,
-  Loader2,
-  ChevronLeft,
   Trash2,
-  Check
+  Check,
+  Loader2,
+  ChevronLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,39 +28,39 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { getIconComponent } from "@/utils/icon-mapping";
+import { 
+  getRestaurantBySlug, 
+  getMenuForRestaurant, 
+  getMenuItemWithOptions,
+  createOrder,
+  createOrderItems,
+  createOrderItemOptions
+} from "@/services/kiosk-service";
+import { Restaurant, MenuCategory, MenuItem, OrderItem } from "@/types/database-types";
 
-// Types
-type Category = {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
+// Types with more specific structure for the UI
+type CategoryWithItems = MenuCategory & {
+  items: MenuItem[];
 };
 
-type MenuItem = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-  categoryId: string;
-  options?: MenuItemOption[];
-};
-
-type MenuItemOption = {
-  id: string;
-  name: string;
-  choices: {
+type MenuItemWithOptions = MenuItem & {
+  options?: {
     id: string;
     name: string;
-    price: number;
+    required: boolean | null;
+    multiple: boolean | null;
+    choices: {
+      id: string;
+      name: string;
+      price: number | null;
+    }[];
   }[];
-  required: boolean;
-  multiple: boolean;
 };
 
 type CartItem = {
   id: string;
-  menuItem: MenuItem;
+  menuItem: MenuItemWithOptions;
   quantity: number;
   selectedOptions: {
     optionId: string;
@@ -71,201 +69,110 @@ type CartItem = {
   specialInstructions?: string;
 };
 
-// Mock data
-const mockCategories: Category[] = [
-  { id: "1", name: "Burgers", icon: <UtensilsCrossed size={16} /> },
-  { id: "2", name: "Sides", icon: <UtensilsCrossed size={16} /> },
-  { id: "3", name: "Drinks", icon: <Coffee size={16} /> },
-  { id: "4", name: "Desserts", icon: <Wine size={16} /> },
-];
-
-const mockMenuItems: MenuItem[] = [
-  {
-    id: "1",
-    name: "Classic Burger",
-    description: "Beef patty with lettuce, tomato, and our special sauce",
-    price: 8.99,
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    categoryId: "1",
-    options: [
-      {
-        id: "size",
-        name: "Size",
-        choices: [
-          { id: "s", name: "Regular", price: 0 },
-          { id: "l", name: "Large", price: 2 },
-        ],
-        required: true,
-        multiple: false,
-      },
-      {
-        id: "cheese",
-        name: "Extra Cheese",
-        choices: [
-          { id: "c1", name: "Add American Cheese", price: 1 },
-          { id: "c2", name: "Add Swiss Cheese", price: 1.5 },
-        ],
-        required: false,
-        multiple: true,
-      },
-    ],
-  },
-  {
-    id: "2",
-    name: "Cheese Burger",
-    description: "Beef patty with American cheese, lettuce, tomato, and mayo",
-    price: 9.99,
-    image: "https://images.unsplash.com/photo-1550317138-10000687a72b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    categoryId: "1",
-  },
-  {
-    id: "3",
-    name: "French Fries",
-    description: "Crispy golden fries seasoned with salt",
-    price: 3.99,
-    image: "https://images.unsplash.com/photo-1576107232684-1279f390859f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    categoryId: "2",
-    options: [
-      {
-        id: "size",
-        name: "Size",
-        choices: [
-          { id: "s", name: "Small", price: 0 },
-          { id: "m", name: "Medium", price: 1 },
-          { id: "l", name: "Large", price: 2 },
-        ],
-        required: true,
-        multiple: false,
-      },
-    ],
-  },
-  {
-    id: "4",
-    name: "Onion Rings",
-    description: "Crispy battered onion rings",
-    price: 4.99,
-    image: "https://images.unsplash.com/photo-1639024471283-03518883512d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    categoryId: "2",
-  },
-  {
-    id: "5",
-    name: "Soft Drink",
-    description: "Choose from Coke, Diet Coke, Sprite, or Fanta",
-    price: 1.99,
-    image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    categoryId: "3",
-    options: [
-      {
-        id: "type",
-        name: "Type",
-        choices: [
-          { id: "coke", name: "Coca-Cola", price: 0 },
-          { id: "diet", name: "Diet Coke", price: 0 },
-          { id: "sprite", name: "Sprite", price: 0 },
-          { id: "fanta", name: "Fanta", price: 0 },
-        ],
-        required: true,
-        multiple: false,
-      },
-      {
-        id: "size",
-        name: "Size",
-        choices: [
-          { id: "s", name: "Small", price: 0 },
-          { id: "m", name: "Medium", price: 0.5 },
-          { id: "l", name: "Large", price: 1 },
-        ],
-        required: true,
-        multiple: false,
-      },
-    ],
-  },
-  {
-    id: "6",
-    name: "Chocolate Shake",
-    description: "Rich and creamy chocolate milkshake",
-    price: 4.99,
-    image: "https://images.unsplash.com/photo-1579954115545-a95591f28bfc?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    categoryId: "3",
-  },
-  {
-    id: "7",
-    name: "Ice Cream",
-    description: "Vanilla ice cream with your choice of toppings",
-    price: 3.99,
-    image: "https://images.unsplash.com/photo-1633933358116-a27b902fad35?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    categoryId: "4",
-    options: [
-      {
-        id: "toppings",
-        name: "Toppings",
-        choices: [
-          { id: "t1", name: "Chocolate Syrup", price: 0.5 },
-          { id: "t2", name: "Caramel", price: 0.5 },
-          { id: "t3", name: "Sprinkles", price: 0.5 },
-          { id: "t4", name: "Nuts", price: 0.5 },
-        ],
-        required: false,
-        multiple: true,
-      },
-    ],
-  },
-  {
-    id: "8",
-    name: "Chocolate Cake",
-    description: "Moist chocolate cake with chocolate frosting",
-    price: 5.99,
-    image: "https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    categoryId: "4",
-  },
-];
-
-const mockRestaurant = {
-  id: "1",
-  name: "Burger House",
-  logo: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&h=100&q=80",
-  cover: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80",
-  address: "123 Main St, Anytown, USA",
-  phone: "(555) 123-4567",
-  hours: "9:00 AM - 10:00 PM",
-  slug: "burger-house",
-};
-
 const KioskView = () => {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
+  const navigate = useNavigate();
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{ optionId: string; choiceIds: string[] }[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const restaurant = mockRestaurant;
-
-  const handleSelectItem = (item: MenuItem) => {
-    setSelectedItem(item);
-    setQuantity(1);
-    setSpecialInstructions("");
+  useEffect(() => {
+    const fetchRestaurantAndMenu = async () => {
+      if (!restaurantSlug) {
+        navigate('/');
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        
+        // Fetch restaurant
+        const restaurantData = await getRestaurantBySlug(restaurantSlug);
+        if (!restaurantData) {
+          toast({
+            title: "Restaurant not found",
+            description: "Sorry, we couldn't find that restaurant.",
+            variant: "destructive",
+          });
+          navigate('/');
+          return;
+        }
+        
+        setRestaurant(restaurantData);
+        
+        // Fetch menu categories with items
+        const menuData = await getMenuForRestaurant(restaurantData.id);
+        setCategories(menuData);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching restaurant and menu:", error);
+        toast({
+          title: "Error",
+          description: "There was a problem loading the menu. Please try again.",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
+    };
     
-    if (item.options && item.options.length > 0) {
-      const initialOptions = item.options.map(option => {
-        if (option.required && !option.multiple) {
+    fetchRestaurantAndMenu();
+  }, [restaurantSlug, navigate, toast]);
+
+  const handleSelectItem = async (item: MenuItem) => {
+    try {
+      setLoading(true);
+      const itemWithOptions = await getMenuItemWithOptions(item.id);
+      
+      if (!itemWithOptions) {
+        toast({
+          title: "Error",
+          description: "Could not load item details. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setSelectedItem(itemWithOptions as MenuItemWithOptions);
+      setQuantity(1);
+      setSpecialInstructions("");
+      
+      if (itemWithOptions.options && itemWithOptions.options.length > 0) {
+        const initialOptions = itemWithOptions.options.map(option => {
+          if (option.required && !option.multiple) {
+            return {
+              optionId: option.id,
+              choiceIds: option.choices.length > 0 ? [option.choices[0].id] : []
+            };
+          }
           return {
             optionId: option.id,
-            choiceIds: [option.choices[0].id]
+            choiceIds: []
           };
-        }
-        return {
-          optionId: option.id,
-          choiceIds: []
-        };
+        });
+        setSelectedOptions(initialOptions);
+      } else {
+        setSelectedOptions([]);
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching item details:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem loading the item details. Please try again.",
+        variant: "destructive",
       });
-      setSelectedOptions(initialOptions);
-    } else {
-      setSelectedOptions([]);
+      setLoading(false);
     }
   };
 
@@ -295,8 +202,8 @@ const KioskView = () => {
     });
   };
 
-  const calculateItemPrice = (item: MenuItem, options: { optionId: string; choiceIds: string[] }[]): number => {
-    let price = item.price;
+  const calculateItemPrice = (item: MenuItemWithOptions, options: { optionId: string; choiceIds: string[] }[]): number => {
+    let price = parseFloat(item.price.toString());
     
     if (item.options) {
       item.options.forEach(option => {
@@ -304,8 +211,8 @@ const KioskView = () => {
         if (selectedOption) {
           selectedOption.choiceIds.forEach(choiceId => {
             const choice = option.choices.find(c => c.id === choiceId);
-            if (choice) {
-              price += choice.price;
+            if (choice && choice.price) {
+              price += parseFloat(choice.price.toString());
             }
           });
         }
@@ -390,20 +297,87 @@ const KioskView = () => {
     }, 0);
   };
 
-  const handlePlaceOrder = () => {
-    setPlacingOrder(true);
+  const handlePlaceOrder = async () => {
+    if (!restaurant || cart.length === 0) return;
     
-    setTimeout(() => {
-      setPlacingOrder(false);
+    try {
+      setPlacingOrder(true);
+      
+      // Create the order
+      const order = await createOrder({
+        restaurant_id: restaurant.id,
+        status: 'pending',
+        total: calculateCartTotal(),
+        customer_name: null
+      });
+      
+      // Create order items
+      const orderItems = await createOrderItems(
+        cart.map(item => ({
+          order_id: order.id,
+          menu_item_id: item.menuItem.id,
+          quantity: item.quantity,
+          price: calculateItemPrice(item.menuItem, item.selectedOptions),
+          special_instructions: item.specialInstructions || null
+        }))
+      );
+      
+      // Create order item options
+      const orderItemOptionsToCreate = [];
+      
+      for (let i = 0; i < cart.length; i++) {
+        const cartItem = cart[i];
+        const orderItem = orderItems[i];
+        
+        for (const selectedOption of cartItem.selectedOptions) {
+          for (const choiceId of selectedOption.choiceIds) {
+            orderItemOptionsToCreate.push({
+              order_item_id: orderItem.id,
+              option_id: selectedOption.optionId,
+              choice_id: choiceId
+            });
+          }
+        }
+      }
+      
+      if (orderItemOptionsToCreate.length > 0) {
+        await createOrderItemOptions(orderItemOptionsToCreate);
+      }
+      
       setOrderPlaced(true);
+      
+      toast({
+        title: "Order placed",
+        description: "Your order has been placed successfully!",
+      });
       
       setTimeout(() => {
         setOrderPlaced(false);
         setCart([]);
         setShowCart(false);
-      }, 5000);
-    }, 2000);
+        setPlacingOrder(false);
+      }, 3000);
+      
+    } catch (error) {
+      console.error("Error placing order:", error);
+      
+      toast({
+        title: "Error",
+        description: "There was a problem placing your order. Please try again.",
+        variant: "destructive",
+      });
+      
+      setPlacingOrder(false);
+    }
   };
+
+  if (loading && !restaurant) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!restaurant) {
     return (
@@ -411,7 +385,7 @@ const KioskView = () => {
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Restaurant Not Found</h1>
           <p className="text-gray-500 mb-4">The restaurant you're looking for doesn't exist.</p>
-          <Button>
+          <Button onClick={() => navigate('/')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Home
           </Button>
@@ -424,13 +398,13 @@ const KioskView = () => {
     <div className="min-h-screen bg-gray-50">
       <div 
         className="h-48 bg-cover bg-center relative"
-        style={{ backgroundImage: `url(${restaurant.cover})` }}
+        style={{ backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})` }}
       >
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         <div className="absolute inset-0 flex items-center justify-between p-6">
           <div className="flex items-center">
             <img 
-              src={restaurant.logo} 
+              src={restaurant.image_url || 'https://via.placeholder.com/100'} 
               alt={restaurant.name} 
               className="h-16 w-16 rounded-full border-2 border-white mr-4"
             />
@@ -438,7 +412,7 @@ const KioskView = () => {
               <h1 className="text-white text-2xl font-bold">{restaurant.name}</h1>
               <div className="flex items-center text-white text-sm">
                 <Clock className="h-4 w-4 mr-1" />
-                <span>{restaurant.hours}</span>
+                <span>{restaurant.location || 'Open now'}</span>
               </div>
             </div>
           </div>
@@ -459,37 +433,36 @@ const KioskView = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <Tabs defaultValue={mockCategories[0].id}>
-          <TabsList className="mb-6 bg-white p-1 rounded-lg border">
-            {mockCategories.map((category) => (
-              <TabsTrigger 
-                key={category.id} 
-                value={category.id}
-                className="data-[state=active]:bg-kiosk-primary data-[state=active]:text-white"
-              >
-                <span className="flex items-center">
-                  {category.icon}
-                  <span className="ml-2">{category.name}</span>
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          
-          {mockCategories.map((category) => (
-            <TabsContent key={category.id} value={category.id}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {mockMenuItems
-                  .filter(item => item.categoryId === category.id)
-                  .map(item => (
+        {categories.length > 0 ? (
+          <Tabs defaultValue={categories[0].id}>
+            <TabsList className="mb-6 bg-white p-1 rounded-lg border">
+              {categories.map((category) => (
+                <TabsTrigger 
+                  key={category.id} 
+                  value={category.id}
+                  className="data-[state=active]:bg-kiosk-primary data-[state=active]:text-white"
+                >
+                  <span className="flex items-center">
+                    {getIconComponent(category.icon)}
+                    <span className="ml-2">{category.name}</span>
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
+            {categories.map((category) => (
+              <TabsContent key={category.id} value={category.id}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {category.items.map(item => (
                     <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
                       <div 
                         className="h-40 bg-cover bg-center" 
-                        style={{ backgroundImage: `url(${item.image})` }}
+                        style={{ backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})` }}
                       ></div>
                       <div className="p-4">
                         <div className="flex justify-between">
                           <h3 className="font-bold text-lg">{item.name}</h3>
-                          <p className="font-bold">${item.price.toFixed(2)}</p>
+                          <p className="font-bold">${parseFloat(item.price.toString()).toFixed(2)}</p>
                         </div>
                         <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                         <Button 
@@ -502,10 +475,15 @@ const KioskView = () => {
                       </div>
                     </Card>
                   ))}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No menu items available.</p>
+          </div>
+        )}
       </div>
 
       {selectedItem && (
@@ -539,7 +517,7 @@ const KioskView = () => {
                               : 'border-gray-200 hover:border-gray-300'
                             }
                           `}
-                          onClick={() => handleToggleChoice(option.id, choice.id, option.multiple)}
+                          onClick={() => handleToggleChoice(option.id, choice.id, !!option.multiple)}
                         >
                           <div className="flex items-center">
                             <div className={`
@@ -553,7 +531,7 @@ const KioskView = () => {
                             </div>
                             <span>{choice.name}</span>
                           </div>
-                          {choice.price > 0 && <span>+${choice.price.toFixed(2)}</span>}
+                          {choice.price && choice.price > 0 && <span>+${parseFloat(choice.price.toString()).toFixed(2)}</span>}
                         </div>
                       );
                     })}
