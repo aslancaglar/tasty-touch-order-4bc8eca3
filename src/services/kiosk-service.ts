@@ -86,16 +86,28 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
     throw error;
   }
 
-  return data.map(category => ({
-    id: category.id,
-    name: category.name,
-    restaurant_id: category.restaurant_id,
-    description: category.description || null,
-    icon: category.icon || null,
-    image_url: category.image_url || null,
-    created_at: category.created_at,
-    updated_at: category.updated_at
-  }));
+  return data.map(category => {
+    const result: MenuCategory = {
+      id: category.id,
+      name: category.name,
+      restaurant_id: category.restaurant_id,
+      description: null,
+      icon: category.icon || null,
+      image_url: null,
+      created_at: category.created_at,
+      updated_at: category.updated_at
+    };
+    
+    if ('description' in category) {
+      result.description = (category as any).description;
+    }
+    
+    if ('image_url' in category) {
+      result.image_url = (category as any).image_url;
+    }
+    
+    return result;
+  });
 };
 
 // Menu Item services
@@ -174,7 +186,6 @@ export const createOrder = async (order: Omit<Order, 'id' | 'created_at' | 'upda
     throw error;
   }
 
-  // Ensure that status is properly typed
   return {
     ...data,
     status: data.status as OrderStatus
@@ -196,7 +207,6 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
     throw error;
   }
 
-  // Ensure that status is properly typed
   return data ? {
     ...data,
     status: data.status as OrderStatus
