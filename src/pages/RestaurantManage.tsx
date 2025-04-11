@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { 
@@ -26,6 +27,7 @@ import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } f
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
 import { getIconComponent } from "@/utils/icon-mapping";
 import ImageUpload from "@/components/ImageUpload";
+import CategoryForm from "@/components/forms/CategoryForm";
 
 type OrderStatus = "pending" | "preparing" | "completed" | "cancelled";
 
@@ -104,6 +106,8 @@ const RestaurantManage = () => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
   const [loading, setLoading] = useState(true);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -188,6 +192,43 @@ const RestaurantManage = () => {
     });
   };
 
+  const handleAddCategory = async (values: any) => {
+    try {
+      setSavingCategory(true);
+      
+      console.log("Adding new category:", values);
+      
+      const newCategory = {
+        id: `temp-${Date.now()}`,
+        name: values.name,
+        description: values.description || null,
+        image_url: values.image_url || null,
+        icon: "utensils",
+        restaurant_id: restaurant?.id || "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      setCategories([...categories, newCategory as MenuCategory]);
+      
+      toast({
+        title: "Category Added",
+        description: `${values.name} has been added to your menu categories.`,
+      });
+      
+      setIsAddingCategory(false);
+    } catch (error) {
+      console.error("Error adding category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add the category. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
   if (loading && !restaurant) {
     return (
       <AdminLayout>
@@ -262,10 +303,23 @@ const RestaurantManage = () => {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Menu Categories</h3>
-                  <Button className="bg-kiosk-primary">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Category
-                  </Button>
+                  <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-kiosk-primary">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Category
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Add Menu Category</DialogTitle>
+                      </DialogHeader>
+                      <CategoryForm 
+                        onSubmit={handleAddCategory}
+                        isLoading={savingCategory}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </div>
                 
                 {loading ? (
@@ -283,7 +337,12 @@ const RestaurantManage = () => {
                           <div className="p-2 bg-primary/10 rounded-md">
                             {category.icon && getIconComponent(category.icon)}
                           </div>
-                          <span className="font-medium">{category.name}</span>
+                          <div>
+                            <span className="font-medium">{category.name}</span>
+                            {category.description && (
+                              <p className="text-xs text-muted-foreground">{category.description}</p>
+                            )}
+                          </div>
                         </div>
                         <div className="flex space-x-1">
                           <Button variant="ghost" size="sm">
@@ -295,20 +354,46 @@ const RestaurantManage = () => {
                         </div>
                       </div>
                     ))}
-                    <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
-                      <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Category
-                      </Button>
-                    </div>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                          <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Category
+                          </Button>
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Add Menu Category</DialogTitle>
+                        </DialogHeader>
+                        <CategoryForm 
+                          onSubmit={handleAddCategory}
+                          isLoading={savingCategory}
+                        />
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">No categories found for this restaurant</p>
-                    <Button className="bg-kiosk-primary">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add First Category
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button className="bg-kiosk-primary">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add First Category
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Add Your First Menu Category</DialogTitle>
+                        </DialogHeader>
+                        <CategoryForm 
+                          onSubmit={handleAddCategory}
+                          isLoading={savingCategory}
+                        />
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 )}
 

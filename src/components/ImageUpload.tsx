@@ -10,9 +10,15 @@ interface ImageUploadProps {
   value: string;
   onChange: (url: string) => void;
   label?: string;
+  uploadFolder?: string;
 }
 
-const ImageUpload = ({ value, onChange, label = "Image" }: ImageUploadProps) => {
+const ImageUpload = ({ 
+  value, 
+  onChange, 
+  label = "Image", 
+  uploadFolder = "restaurant-covers"
+}: ImageUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   
@@ -27,7 +33,7 @@ const ImageUpload = ({ value, onChange, label = "Image" }: ImageUploadProps) => 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExt}`;
-      const filePath = `restaurant-covers/${fileName}`;
+      const filePath = `${uploadFolder}/${fileName}`;
       
       // Check if file is an image
       if (!file.type.startsWith('image/')) {
@@ -100,7 +106,7 @@ const ImageUpload = ({ value, onChange, label = "Image" }: ImageUploadProps) => 
         <div className="relative aspect-video w-full overflow-hidden rounded-md border">
           <img
             src={value}
-            alt="Restaurant cover"
+            alt={label}
             className="h-full w-full object-cover"
           />
         </div>
