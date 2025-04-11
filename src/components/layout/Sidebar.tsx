@@ -4,8 +4,6 @@ import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
   Store, 
-  Receipt, 
-  UtensilsCrossed, 
   Settings,
   ChevronLeft,
   ChevronRight
@@ -28,16 +26,6 @@ const sidebarItems: SidebarItem[] = [
     title: "Restaurants",
     icon: Store,
     href: "/restaurants",
-  },
-  {
-    title: "Menu",
-    icon: UtensilsCrossed,
-    href: "/menu",
-  },
-  {
-    title: "Orders",
-    icon: Receipt,
-    href: "/orders",
   },
   {
     title: "Settings",
