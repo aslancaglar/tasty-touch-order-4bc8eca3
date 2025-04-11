@@ -1,4 +1,3 @@
-
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -185,23 +184,6 @@ const RestaurantCard = ({ restaurant }: { restaurant: Restaurant }) => {
       </div>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">{restaurant.name}</CardTitle>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem className="cursor-not-allowed opacity-50">
-              <Edit className="mr-2 h-4 w-4" />
-              <span>Edit (Disabled)</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-not-allowed opacity-50">
-              <Trash2 className="mr-2 h-4 w-4" />
-              <span>Delete (Disabled)</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </CardHeader>
       <CardContent>
         <div className="text-sm text-muted-foreground mb-4">{restaurant.location}</div>
