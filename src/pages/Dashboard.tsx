@@ -1,7 +1,6 @@
-
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, BadgeDollarSign, ChefHat, ShoppingBag, Users } from "lucide-react";
+import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Users } from "lucide-react";
 
 const StatCard = ({ 
   title, 
@@ -64,6 +63,42 @@ const RecentOrders = () => (
               <p className="text-sm text-muted-foreground">
                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const PopularItems = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Popular Items</CardTitle>
+      <CardDescription>Most ordered menu items</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        {[
+          { name: "Classic Cheeseburger", restaurant: "Burger House", price: "$12.99", orders: 234 },
+          { name: "Pepperoni Pizza", restaurant: "Pizza Palace", price: "$15.50", orders: 189 },
+          { name: "California Roll", restaurant: "Sushi Squad", price: "$8.75", orders: 156 },
+          { name: "Beef Tacos", restaurant: "Taco Time", price: "$9.25", orders: 142 },
+          { name: "Fettuccine Alfredo", restaurant: "Pasta Place", price: "$13.50", orders: 128 }
+        ].map((item, index) => (
+          <div key={index} className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Pizza className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">{item.name}</p>
+                <p className="text-sm text-muted-foreground">{item.restaurant}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-medium">{item.price}</p>
+              <p className="text-sm text-muted-foreground">{item.orders} orders</p>
             </div>
           </div>
         ))}
@@ -135,6 +170,8 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+        
+        <PopularItems />
       </div>
     </AdminLayout>
   );
