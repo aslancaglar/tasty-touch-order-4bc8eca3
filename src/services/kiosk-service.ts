@@ -110,6 +110,57 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
   });
 };
 
+export const createCategory = async (category: Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>): Promise<MenuCategory> => {
+  const { data, error } = await supabase
+    .from("menu_categories")
+    .insert(category)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating category:", error);
+    throw error;
+  }
+
+  return {
+    ...data,
+    description: data.description || null,
+    image_url: data.image_url || null
+  };
+};
+
+export const updateCategory = async (id: string, updates: Partial<Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuCategory> => {
+  const { data, error } = await supabase
+    .from("menu_categories")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating category:", error);
+    throw error;
+  }
+
+  return {
+    ...data,
+    description: data.description || null,
+    image_url: data.image_url || null
+  };
+};
+
+export const deleteCategory = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from("menu_categories")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting category:", error);
+    throw error;
+  }
+};
+
 // Menu Item services
 export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuItem[]> => {
   const { data, error } = await supabase
@@ -141,6 +192,49 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
   }
 
   return data;
+};
+
+export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
+  const { data, error } = await supabase
+    .from("menu_items")
+    .insert(item)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating menu item:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
+  const { data, error } = await supabase
+    .from("menu_items")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating menu item:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteMenuItem = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from("menu_items")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting menu item:", error);
+    throw error;
+  }
 };
 
 // Menu Item Options services

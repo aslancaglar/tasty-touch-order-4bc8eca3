@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { 
@@ -21,13 +22,24 @@ import {
   Receipt, 
   Settings,
   Cherry,
-  Utensils
+  Utensils,
+  TagIcon
 } from "lucide-react";
-import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
+import { 
+  getRestaurants, 
+  getCategoriesByRestaurantId, 
+  getMenuItemsByCategory,
+  updateCategory,
+  deleteCategory,
+  createMenuItem,
+  updateMenuItem,
+  deleteMenuItem
+} from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
 import { getIconComponent } from "@/utils/icon-mapping";
 import ImageUpload from "@/components/ImageUpload";
 import CategoryForm from "@/components/forms/CategoryForm";
+import MenuItemForm from "@/components/forms/MenuItemForm";
 
 type OrderStatus = "pending" | "preparing" | "completed" | "cancelled";
 
@@ -107,7 +119,16 @@ const RestaurantManage = () => {
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
   const [loading, setLoading] = useState(true);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [isEditingCategory, setIsEditingCategory] = useState(false);
+  const [isAddingMenuItem, setIsAddingMenuItem] = useState(false);
+  const [isEditingMenuItem, setIsEditingMenuItem] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [savingMenuItem, setSavingMenuItem] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
+  const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
+  const [selectedCategoryForItem, setSelectedCategoryForItem] = useState<string | null>(null);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+  const [deletingMenuItemId, setDeletingMenuItemId] = useState<string | null>(null);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -229,6 +250,553 @@ const RestaurantManage = () => {
     }
   };
 
+  const handleEditCategory = async (values: any) => {
+    if (!selectedCategory) return;
+    
+    try {
+      setSavingCategory(true);
+      
+      const updatedCategory = await updateCategory(selectedCategory.id, {
+        name: values.name,
+        description: values.description,
+        image_url: values.image_url,
+        icon: values.icon || selectedCategory.icon
+      });
+      
+      setCategories(categories.map(cat => 
+        cat.id === updatedCategory.id ? updatedCategory : cat
+      ));
+      
+      toast({
+        title: "Category Updated",
+        description: `${values.name} has been updated successfully.`,
+      });
+      
+      setIsEditingCategory(false);
+      setSelectedCategory(null);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update the category. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deletingCategoryId) return;
+    
+    try {
+      setLoading(true);
+      
+      await deleteCategory(deletingCategoryId);
+      
+      setCategories(categories.filter(cat => cat.id !== deletingCategoryId));
+      
+      const updatedMenuItems = { ...menuItems };
+      delete updatedMenuItems[deletingCategoryId];
+      setMenuItems(updatedMenuItems);
+      
+      toast({
+        title: "Category Deleted",
+        description: "The category and its items have been deleted successfully.",
+      });
+      
+      setDeletingCategoryId(null);
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the category. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddMenuItem = async (values: any) => {
+    try {
+      setSavingMenuItem(true);
+      
+      const newMenuItem = await createMenuItem({
+        name: values.name,
+        description: values.description || null,
+        price: values.price,
+        promotion_price: values.promotion_price || null,
+        image: values.image || null,
+        category_id: values.category_id
+      });
+      
+      setMenuItems(prev => {
+        const categoryItems = prev[newMenuItem.category_id] || [];
+        return {
+          ...prev,
+          [newMenuItem.category_id]: [...categoryItems, newMenuItem]
+        };
+      });
+      
+      toast({
+        title: "Menu Item Added",
+        description: `${values.name} has been added to your menu.`,
+      });
+      
+      setIsAddingMenuItem(false);
+      setSelectedCategoryForItem(null);
+    } catch (error) {
+      console.error("Error adding menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add the menu item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingMenuItem(false);
+    }
+  };
+
+  const handleEditMenuItem = async (values: any) => {
+    if (!selectedMenuItem) return;
+    
+    try {
+      setSavingMenuItem(true);
+      
+      const updatedMenuItem = await updateMenuItem(selectedMenuItem.id, {
+        name: values.name,
+        description: values.description,
+        price: values.price,
+        promotion_price: values.promotion_price,
+        image: values.image,
+        category_id: values.category_id
+      });
+      
+      if (selectedMenuItem.category_id !== updatedMenuItem.category_id) {
+        setMenuItems(prev => {
+          const oldCategoryItems = prev[selectedMenuItem.category_id] || [];
+          const newOldCategoryItems = oldCategoryItems.filter(item => item.id !== selectedMenuItem.id);
+          
+          const newCategoryItems = prev[updatedMenuItem.category_id] || [];
+          
+          return {
+            ...prev,
+            [selectedMenuItem.category_id]: newOldCategoryItems,
+            [updatedMenuItem.category_id]: [...newCategoryItems, updatedMenuItem]
+          };
+        });
+      } else {
+        setMenuItems(prev => {
+          const categoryItems = prev[updatedMenuItem.category_id] || [];
+          return {
+            ...prev,
+            [updatedMenuItem.category_id]: categoryItems.map(item => 
+              item.id === updatedMenuItem.id ? updatedMenuItem : item
+            )
+          };
+        });
+      }
+      
+      toast({
+        title: "Menu Item Updated",
+        description: `${values.name} has been updated successfully.`,
+      });
+      
+      setIsEditingMenuItem(false);
+      setSelectedMenuItem(null);
+    } catch (error) {
+      console.error("Error updating menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update the menu item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingMenuItem(false);
+    }
+  };
+
+  const handleDeleteMenuItem = async () => {
+    if (!deletingMenuItemId) return;
+    
+    try {
+      setLoading(true);
+      
+      let categoryId = "";
+      for (const [catId, items] of Object.entries(menuItems)) {
+        const item = items.find(item => item.id === deletingMenuItemId);
+        if (item) {
+          categoryId = catId;
+          break;
+        }
+      }
+      
+      await deleteMenuItem(deletingMenuItemId);
+      
+      if (categoryId) {
+        setMenuItems(prev => {
+          const categoryItems = prev[categoryId] || [];
+          return {
+            ...prev,
+            [categoryId]: categoryItems.filter(item => item.id !== deletingMenuItemId)
+          };
+        });
+      }
+      
+      toast({
+        title: "Menu Item Deleted",
+        description: "The menu item has been deleted successfully.",
+      });
+      
+      setDeletingMenuItemId(null);
+    } catch (error) {
+      console.error("Error deleting menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the menu item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderMenuTabContent = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium">Menu Categories</h3>
+        <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+          <DialogTrigger asChild>
+            <Button className="bg-kiosk-primary">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Category
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add Menu Category</DialogTitle>
+            </DialogHeader>
+            <CategoryForm 
+              onSubmit={handleAddCategory}
+              isLoading={savingCategory}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+      
+      {loading ? (
+        <div className="flex justify-center items-center h-40">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : categories.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {categories.map((category) => (
+            <div 
+              key={category.id} 
+              className="flex items-center justify-between p-4 border rounded-lg"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary/10 rounded-md">
+                  {category.icon && getIconComponent(category.icon)}
+                </div>
+                <div>
+                  <span className="font-medium">{category.name}</span>
+                  {category.description && (
+                    <p className="text-xs text-muted-foreground">{category.description}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex space-x-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedCategory(category);
+                    setIsEditingCategory(true);
+                  }}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setDeletingCategoryId(category.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              </div>
+            </div>
+          ))}
+          <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+            <DialogTrigger asChild>
+              <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Category
+                </Button>
+              </div>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add Menu Category</DialogTitle>
+              </DialogHeader>
+              <CategoryForm 
+                onSubmit={handleAddCategory}
+                isLoading={savingCategory}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground mb-4">No categories found for this restaurant</p>
+          <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+            <DialogTrigger asChild>
+              <Button className="bg-kiosk-primary">
+                <Plus className="mr-2 h-4 w-4" />
+                Add First Category
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add Your First Menu Category</DialogTitle>
+              </DialogHeader>
+              <CategoryForm 
+                onSubmit={handleAddCategory}
+                isLoading={savingCategory}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+
+      <Dialog open={isEditingCategory} onOpenChange={setIsEditingCategory}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+          </DialogHeader>
+          {selectedCategory && (
+            <CategoryForm 
+              onSubmit={handleEditCategory}
+              initialValues={selectedCategory}
+              isLoading={savingCategory}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingCategoryId} onOpenChange={(open) => !open && setDeletingCategoryId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this category and all menu items in it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteCategory}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {categories.length > 0 && (
+        <>
+          <div className="flex items-center justify-between mt-8">
+            <h3 className="text-lg font-medium">Menu Items</h3>
+            <Button 
+              className="bg-kiosk-primary"
+              onClick={() => {
+                setSelectedCategoryForItem(categories[0]?.id || null);
+                setIsAddingMenuItem(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+          </div>
+          
+          {loading ? (
+            <div className="flex justify-center items-center h-40">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {categories.map((category) => {
+                const items = menuItems[category.id] || [];
+                
+                if (items.length === 0) {
+                  return (
+                    <div key={category.id} className="text-center py-4 border rounded-lg">
+                      <p className="text-muted-foreground mb-4">No items in {category.name}</p>
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedCategoryForItem(category.id);
+                          setIsAddingMenuItem(true);
+                        }}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Item to {category.name}
+                      </Button>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div key={category.id} className="space-y-2">
+                    <h4 className="font-medium text-sm text-muted-foreground">{category.name}</h4>
+                    {items.map(item => (
+                      <div 
+                        key={item.id} 
+                        className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex items-center space-x-4">
+                          {item.image && (
+                            <img 
+                              src={item.image} 
+                              alt={item.name} 
+                              className="h-16 w-16 object-cover rounded-md"
+                            />
+                          )}
+                          <div>
+                            <h3 className="font-medium">{item.name}</h3>
+                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              {item.promotion_price ? (
+                                <>
+                                  <p className="text-sm line-through text-gray-400">${parseFloat(item.price.toString()).toFixed(2)}</p>
+                                  <p className="text-sm font-medium text-green-600">${parseFloat(item.promotion_price.toString()).toFixed(2)}</p>
+                                </>
+                              ) : (
+                                <p className="text-sm font-medium">${parseFloat(item.price.toString()).toFixed(2)}</p>
+                              )}
+                              {item.promotion_price && (
+                                <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded flex items-center">
+                                  <TagIcon className="h-3 w-3 mr-1" />
+                                  Promo
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2 mt-4 md:mt-0">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedMenuItem(item);
+                              setIsEditingMenuItem(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-500"
+                            onClick={() => setDeletingMenuItemId(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+              <div 
+                className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50"
+                onClick={() => {
+                  setSelectedCategoryForItem(categories[0]?.id || null);
+                  setIsAddingMenuItem(true);
+                }}
+              >
+                <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add New Item
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <Dialog 
+        open={isAddingMenuItem} 
+        onOpenChange={(open) => {
+          setIsAddingMenuItem(open);
+          if (!open) setSelectedCategoryForItem(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Menu Item</DialogTitle>
+          </DialogHeader>
+          <MenuItemForm 
+            onSubmit={handleAddMenuItem}
+            isLoading={savingMenuItem}
+            categories={categories}
+            initialValues={selectedCategoryForItem ? { category_id: selectedCategoryForItem } : undefined}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog 
+        open={isEditingMenuItem} 
+        onOpenChange={(open) => {
+          setIsEditingMenuItem(open);
+          if (!open) setSelectedMenuItem(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Menu Item</DialogTitle>
+          </DialogHeader>
+          {selectedMenuItem && (
+            <MenuItemForm 
+              onSubmit={handleEditMenuItem}
+              initialValues={selectedMenuItem}
+              isLoading={savingMenuItem}
+              categories={categories}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog 
+        open={!!deletingMenuItemId} 
+        onOpenChange={(open) => !open && setDeletingMenuItemId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this menu item. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteMenuItem}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+
   if (loading && !restaurant) {
     return (
       <AdminLayout>
@@ -300,177 +868,7 @@ const RestaurantManage = () => {
             </TabsList>
             
             <TabsContent value="menu">
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">Menu Categories</h3>
-                  <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-kiosk-primary">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Category
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Add Menu Category</DialogTitle>
-                      </DialogHeader>
-                      <CategoryForm 
-                        onSubmit={handleAddCategory}
-                        isLoading={savingCategory}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                
-                {loading ? (
-                  <div className="flex justify-center items-center h-40">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : categories.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {categories.map((category) => (
-                      <div 
-                        key={category.id} 
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-primary/10 rounded-md">
-                            {category.icon && getIconComponent(category.icon)}
-                          </div>
-                          <div>
-                            <span className="font-medium">{category.name}</span>
-                            {category.description && (
-                              <p className="text-xs text-muted-foreground">{category.description}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex space-x-1">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                          <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Category
-                          </Button>
-                        </div>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                          <DialogTitle>Add Menu Category</DialogTitle>
-                        </DialogHeader>
-                        <CategoryForm 
-                          onSubmit={handleAddCategory}
-                          isLoading={savingCategory}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">No categories found for this restaurant</p>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button className="bg-kiosk-primary">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Add First Category
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                          <DialogTitle>Add Your First Menu Category</DialogTitle>
-                        </DialogHeader>
-                        <CategoryForm 
-                          onSubmit={handleAddCategory}
-                          isLoading={savingCategory}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                )}
-
-                {categories.length > 0 && (
-                  <>
-                    <div className="flex items-center justify-between mt-8">
-                      <h3 className="text-lg font-medium">Menu Items</h3>
-                      <Button className="bg-kiosk-primary">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Item
-                      </Button>
-                    </div>
-                    
-                    {loading ? (
-                      <div className="flex justify-center items-center h-40">
-                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {categories.map((category) => {
-                          const items = menuItems[category.id] || [];
-                          
-                          if (items.length === 0) {
-                            return (
-                              <div key={category.id} className="text-center py-4 border rounded-lg">
-                                <p className="text-muted-foreground mb-4">No items in {category.name}</p>
-                                <Button variant="outline">
-                                  <Plus className="mr-2 h-4 w-4" />
-                                  Add Item to {category.name}
-                                </Button>
-                              </div>
-                            );
-                          }
-                          
-                          return items.map(item => (
-                            <div 
-                              key={item.id} 
-                              className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
-                            >
-                              <div className="flex items-center space-x-4">
-                                {item.image && (
-                                  <img 
-                                    src={item.image} 
-                                    alt={item.name} 
-                                    className="h-16 w-16 object-cover rounded-md"
-                                  />
-                                )}
-                                <div>
-                                  <h3 className="font-medium">{item.name}</h3>
-                                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                                  <p className="text-sm font-medium mt-1">${parseFloat(item.price.toString()).toFixed(2)}</p>
-                                </div>
-                              </div>
-                              <div className="flex space-x-2 mt-4 md:mt-0">
-                                <Button variant="outline" size="sm">
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </Button>
-                                <Button variant="outline" size="sm" className="text-red-500">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </Button>
-                              </div>
-                            </div>
-                          ));
-                        })}
-                        <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
-                          <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add New Item
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              {renderMenuTabContent()}
             </TabsContent>
             
             <TabsContent value="toppings">
