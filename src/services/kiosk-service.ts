@@ -86,7 +86,16 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
     throw error;
   }
 
-  return data;
+  return data.map(category => ({
+    id: category.id,
+    name: category.name,
+    restaurant_id: category.restaurant_id,
+    description: category.description || null,
+    icon: category.icon || null,
+    image_url: category.image_url || null,
+    created_at: category.created_at,
+    updated_at: category.updated_at
+  }));
 };
 
 // Menu Item services
