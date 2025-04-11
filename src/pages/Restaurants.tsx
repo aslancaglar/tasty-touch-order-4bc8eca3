@@ -1,3 +1,4 @@
+
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -191,13 +192,13 @@ const RestaurantCard = ({ restaurant }: { restaurant: Restaurant }) => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>
+            <DropdownMenuItem className="cursor-not-allowed opacity-50">
               <Edit className="mr-2 h-4 w-4" />
-              <span>Edit</span>
+              <span>Edit (Disabled)</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
+            <DropdownMenuItem className="cursor-not-allowed opacity-50">
               <Trash2 className="mr-2 h-4 w-4" />
-              <span>Delete</span>
+              <span>Delete (Disabled)</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
