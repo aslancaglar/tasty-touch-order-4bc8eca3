@@ -39,40 +39,8 @@ const StatCard = ({
   </Card>
 );
 
-const RecentOrders = () => (
-  <Card className="col-span-2">
-    <CardHeader>
-      <CardTitle>Recent Orders</CardTitle>
-      <CardDescription>Latest orders across all restaurants</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        {[1, 2, 3, 4, 5].map((item) => (
-          <div key={item} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-            <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                <ShoppingBag className="h-5 w-5 text-gray-500" />
-              </div>
-              <div>
-                <p className="font-medium">Order #{10000 + item}</p>
-                <p className="text-sm text-muted-foreground">Burger House</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="font-medium">${(Math.random() * 50 + 10).toFixed(2)}</p>
-              <p className="text-sm text-muted-foreground">
-                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </CardContent>
-  </Card>
-);
-
 const PopularItems = () => (
-  <Card>
+  <Card className="col-span-2">
     <CardHeader>
       <CardTitle>Popular Items</CardTitle>
       <CardDescription>Most ordered menu items</CardDescription>
@@ -86,7 +54,7 @@ const PopularItems = () => (
           { name: "Beef Tacos", restaurant: "Taco Time", price: "$9.25", orders: 142 },
           { name: "Fettuccine Alfredo", restaurant: "Pasta Place", price: "$13.50", orders: 128 }
         ].map((item, index) => (
-          <div key={index} className="flex items-center justify-between">
+          <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
             <div className="flex items-center space-x-3">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <Pizza className="h-4 w-4 text-primary" />
@@ -147,7 +115,7 @@ const Dashboard = () => {
       </div>
       
       <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <RecentOrders />
+        <PopularItems />
         
         <Card>
           <CardHeader>
@@ -170,8 +138,6 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
-        
-        <PopularItems />
       </div>
     </AdminLayout>
   );
