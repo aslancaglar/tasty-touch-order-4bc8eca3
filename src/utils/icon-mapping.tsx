@@ -10,12 +10,11 @@ import {
   Soup, 
   Dessert, 
   Salad, 
-  Cheese, 
-  Cherry, 
-  Leaf,
   Utensils,
   UtensilsCrossed,
-  Soup as Spoon
+  Cherry,
+  Leaf,
+  Apple
 } from "lucide-react";
 
 export const getIconComponent = (iconName: string): React.ReactNode => {
@@ -44,13 +43,13 @@ export const getIconComponent = (iconName: string): React.ReactNode => {
     case 'utensils-crossed':
       return <UtensilsCrossed className="h-4 w-4" />;
     case 'cheese':
-      return <Cheese className="h-4 w-4" />;
+      return <Apple className="h-4 w-4" />; // Replaced Cheese with Apple
     case 'cherry':
       return <Cherry className="h-4 w-4" />;
     case 'leaf':
       return <Leaf className="h-4 w-4" />;
     case 'spoon':
-      return <Spoon className="h-4 w-4" />;
+      return <Utensils className="h-4 w-4" />; // Replaced Spoon with Utensils
     default:
       return <UtensilsCrossed className="h-4 w-4" />;
   }

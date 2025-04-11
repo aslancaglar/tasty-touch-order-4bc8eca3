@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -21,7 +20,7 @@ import {
   Receipt, 
   Settings,
   Cherry,
-  Spoon
+  Utensils
 } from "lucide-react";
 import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
@@ -60,14 +59,12 @@ type Topping = {
   categoryId: string;
 };
 
-// Mock topping categories for demonstration
 const mockToppingCategories: ToppingCategory[] = [
   { id: "1", name: "Cheese", icon: "cheese" },
   { id: "2", name: "Vegetables", icon: "leaf" },
   { id: "3", name: "Sauces", icon: "cherry" },
 ];
 
-// Mock toppings for demonstration
 const mockToppings: Topping[] = [
   { id: "1", name: "Cheddar Cheese", price: 1.50, categoryId: "1" },
   { id: "2", name: "Mozzarella", price: 1.75, categoryId: "1" },
@@ -91,7 +88,6 @@ const mockOrders: Order[] = [
     total: 21.97,
     date: new Date(Date.now() - 1000 * 60 * 5) // 5 minutes ago
   },
-  // ... add more mock orders as needed
 ];
 
 const statusColors = {
@@ -586,7 +582,6 @@ const RestaurantManage = () => {
                 
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-medium mb-4">Business Hours</h3>
-                  {/* Business hours form would go here */}
                   <Button className="mt-4 bg-kiosk-primary">Save Hours</Button>
                 </div>
                 
