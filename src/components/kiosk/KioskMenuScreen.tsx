@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
 import { CartItem, MenuItemWithOptions, SelectedOption, SelectedTopping } from "@/types/kiosk-types";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { KioskItemCustomizationScreen } from "@/components/kiosk/KioskItemCustomizationScreen";
 
+// Updated to include passing the selectedItem as prop
 type KioskMenuScreenProps = {
   restaurant: Restaurant;
   categories: MenuCategory[];
@@ -18,7 +18,7 @@ type KioskMenuScreenProps = {
   onViewCart: () => void;
   onGoBack: () => void;
   calculateCartTotal: () => number;
-  onAddToCart: (item: CartItem) => void; // Add this prop for adding items to cart
+  onAddToCart: (item: CartItem) => void;
 };
 
 export const KioskMenuScreen = ({ 
@@ -29,7 +29,7 @@ export const KioskMenuScreen = ({
   onViewCart,
   onGoBack,
   calculateCartTotal,
-  onAddToCart, // Destructure the new prop
+  onAddToCart,
 }: KioskMenuScreenProps) => {
   const [activeCategory, setActiveCategory] = useState<string>(
     categories.length > 0 ? categories[0].id : ""
@@ -48,7 +48,17 @@ export const KioskMenuScreen = ({
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
 
   const handleSelectItem = async (item: MenuItem) => {
+    // First set basic item details that we have immediately
+    setSelectedItem({
+      ...item,
+      options: [],
+      toppingCategories: []
+    } as MenuItemWithOptions);
+    
+    // Then open the dialog
     setDialogOpen(true);
+    
+    // Finally call parent to fetch full details
     onSelectItem(item);
   };
 
@@ -59,6 +69,45 @@ export const KioskMenuScreen = ({
     setSelectedOptions([]);
     setSelectedToppings([]);
     setSpecialInstructions("");
+  };
+
+  // Calculate the price of the current selected item with its options and toppings
+  const calculateItemPrice = () => {
+    if (!selectedItem) return 0;
+    
+    let price = parseFloat(selectedItem.price.toString());
+    
+    // Add option prices
+    if (selectedItem.options) {
+      selectedItem.options.forEach(option => {
+        const selectedOption = selectedOptions.find(o => o.optionId === option.id);
+        if (selectedOption) {
+          selectedOption.choiceIds.forEach(choiceId => {
+            const choice = option.choices.find(c => c.id === choiceId);
+            if (choice && choice.price) {
+              price += parseFloat(choice.price.toString());
+            }
+          });
+        }
+      });
+    }
+    
+    // Add topping prices
+    if (selectedItem.toppingCategories) {
+      selectedItem.toppingCategories.forEach(category => {
+        const selectedToppingCategory = selectedToppings.find(t => t.categoryId === category.id);
+        if (selectedToppingCategory) {
+          selectedToppingCategory.toppingIds.forEach(toppingId => {
+            const topping = category.toppings.find(t => t.id === toppingId);
+            if (topping && topping.price) {
+              price += parseFloat(topping.price.toString());
+            }
+          });
+        }
+      });
+    }
+    
+    return price;
   };
 
   return (
@@ -233,7 +282,7 @@ export const KioskMenuScreen = ({
                   handleDialogClose();
                 }}
                 onCancel={handleDialogClose}
-                calculateItemPrice={() => 0} // This will be replaced with actual calculation
+                calculateItemPrice={calculateItemPrice} // Pass our local calculation function
               />
             </div>
           )}
