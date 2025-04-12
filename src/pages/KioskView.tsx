@@ -119,7 +119,6 @@ const KioskView = () => {
       try {
         setLoading(true);
         
-        // Fetch restaurant
         const restaurantData = await getRestaurantBySlug(restaurantSlug);
         if (!restaurantData) {
           toast({
@@ -133,11 +132,9 @@ const KioskView = () => {
         
         setRestaurant(restaurantData);
         
-        // Fetch menu categories with items
         const menuData = await getMenuForRestaurant(restaurantData.id);
         setCategories(menuData);
         
-        // Set initial active category
         if (menuData.length > 0) {
           setActiveCategory(menuData[0].id);
         }
@@ -159,7 +156,6 @@ const KioskView = () => {
 
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
-      // Get the topping category IDs assigned to this menu item
       const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
         .from('menu_item_topping_categories')
         .select('topping_category_id')
@@ -176,7 +172,6 @@ const KioskView = () => {
 
       const toppingCategoryIds = menuItemToppingCategories.map(mtc => mtc.topping_category_id);
       
-      // Fetch the actual topping categories
       const { data: toppingCategories, error: categoriesError } = await supabase
         .from('topping_categories')
         .select('*')
@@ -187,7 +182,6 @@ const KioskView = () => {
         return [];
       }
 
-      // Fetch toppings for each category
       const toppingCategoriesWithToppings: ToppingCategory[] = await Promise.all(
         toppingCategories.map(async (category) => {
           const { data: toppings, error: toppingsError } = await supabase
@@ -233,7 +227,6 @@ const KioskView = () => {
         return;
       }
       
-      // Fetch topping categories for this menu item
       const toppingCategories = await fetchToppingCategories(item.id);
       
       const itemWithToppings: MenuItemWithOptions = {
@@ -263,7 +256,6 @@ const KioskView = () => {
         setSelectedOptions([]);
       }
       
-      // Initialize selected toppings
       if (toppingCategories.length > 0) {
         const initialToppings = toppingCategories.map(category => ({
           categoryId: category.id,
@@ -322,21 +314,13 @@ const KioskView = () => {
       const category = prev[categoryIndex];
       let newToppingIds: string[];
 
-      // Check if the topping is already selected
       if (category.toppingIds.includes(toppingId)) {
-        // If it is, remove it
         newToppingIds = category.toppingIds.filter(id => id !== toppingId);
       } else {
-        // If the selected item has topping categories
         if (selectedItem?.toppingCategories) {
-          // Find the current topping category
           const toppingCategory = selectedItem.toppingCategories.find(c => c.id === categoryId);
-          
-          // If we found it and it has a max_selections limit
           if (toppingCategory && toppingCategory.max_selections > 0) {
-            // Check if we're at the max selections
             if (category.toppingIds.length >= toppingCategory.max_selections) {
-              // If at max selections, show a toast and don't add
               toast({
                 title: "Maximum selections reached",
                 description: `You can only select ${toppingCategory.max_selections} items from this category.`,
@@ -345,8 +329,6 @@ const KioskView = () => {
             }
           }
         }
-        
-        // Otherwise, add it
         newToppingIds = [...category.toppingIds, toppingId];
       }
 
@@ -359,7 +341,6 @@ const KioskView = () => {
   const calculateItemPrice = (item: MenuItemWithOptions, options: { optionId: string; choiceIds: string[] }[], toppings: { categoryId: string; toppingIds: string[] }[]): number => {
     let price = parseFloat(item.price.toString());
     
-    // Calculate price from options
     if (item.options) {
       item.options.forEach(option => {
         const selectedOption = options.find(o => o.optionId === option.id);
@@ -374,7 +355,6 @@ const KioskView = () => {
       });
     }
     
-    // Calculate price from toppings
     if (item.toppingCategories) {
       item.toppingCategories.forEach(category => {
         const selectedToppingCategory = toppings.find(t => t.categoryId === category.id);
@@ -429,7 +409,6 @@ const KioskView = () => {
   const handleAddToCart = () => {
     if (!selectedItem) return;
     
-    // Validate required options
     const isOptionsValid = selectedItem.options?.every(option => {
       if (!option.required) return true;
       
@@ -437,7 +416,6 @@ const KioskView = () => {
       return selected && selected.choiceIds.length > 0;
     }) ?? true;
     
-    // Validate required topping categories
     const isToppingsValid = selectedItem.toppingCategories?.every(category => {
       if (category.min_selections <= 0) return true;
       
@@ -512,7 +490,6 @@ const KioskView = () => {
     try {
       setPlacingOrder(true);
       
-      // Create the order
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
@@ -520,7 +497,6 @@ const KioskView = () => {
         customer_name: null
       });
       
-      // Create order items
       const orderItems = await createOrderItems(
         cart.map(item => ({
           order_id: order.id,
@@ -531,17 +507,14 @@ const KioskView = () => {
         }))
       );
       
-      // Create order item options
       const orderItemOptionsToCreate = [];
       
-      // Create order item toppings
       const orderItemToppingsToCreate = [];
       
       for (let i = 0; i < cart.length; i++) {
         const cartItem = cart[i];
         const orderItem = orderItems[i];
         
-        // Process options
         for (const selectedOption of cartItem.selectedOptions) {
           for (const choiceId of selectedOption.choiceIds) {
             orderItemOptionsToCreate.push({
@@ -552,7 +525,6 @@ const KioskView = () => {
           }
         }
         
-        // Process toppings
         for (const selectedCategory of cartItem.selectedToppings) {
           for (const toppingId of selectedCategory.toppingIds) {
             orderItemToppingsToCreate.push({
@@ -563,12 +535,10 @@ const KioskView = () => {
         }
       }
       
-      // Save order item options if any
       if (orderItemOptionsToCreate.length > 0) {
         await createOrderItemOptions(orderItemOptionsToCreate);
       }
       
-      // Save order item toppings if any
       if (orderItemToppingsToCreate.length > 0) {
         await createOrderItemToppings(orderItemToppingsToCreate);
       }
@@ -628,7 +598,6 @@ const KioskView = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header with logo and cover photo */}
       <div 
         className="h-48 bg-cover bg-center relative"
         style={{ backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})` }}
@@ -652,9 +621,7 @@ const KioskView = () => {
         </div>
       </div>
 
-      {/* Main content area with left sidebar and menu items */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar for categories */}
         <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-4">
             <h2 className="font-bold text-lg mb-4">Menu Categories</h2>
@@ -682,7 +649,6 @@ const KioskView = () => {
           </div>
         </div>
 
-        {/* Main content area with menu items */}
         <div className="flex-1 overflow-y-auto pb-32">
           <div className="p-6">
             <h2 className="text-xl font-bold mb-4">
@@ -717,7 +683,6 @@ const KioskView = () => {
         </div>
       </div>
 
-      {/* Cart section at the bottom - Updated to match the design in the image */}
       {cart.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
           <div className="container mx-auto px-4">
@@ -738,7 +703,6 @@ const KioskView = () => {
                   </Button>
                 </div>
                 
-                {/* Cart items */}
                 <div className="space-y-4 max-h-60 overflow-y-auto">
                   {cart.map((item) => (
                     <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4">
@@ -793,7 +757,6 @@ const KioskView = () => {
                   ))}
                 </div>
                 
-                {/* Cart totals */}
                 <div className="space-y-2 mt-4 px-4">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Sous-total:</span>
@@ -809,7 +772,6 @@ const KioskView = () => {
                   </div>
                 </div>
                 
-                {/* Buttons */}
                 <div className="flex mt-6 gap-4">
                   <Button 
                     variant="destructive"
@@ -856,7 +818,6 @@ const KioskView = () => {
         </div>
       )}
 
-      {/* Item customization dialog */}
       {selectedItem && (
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">
