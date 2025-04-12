@@ -1,4 +1,3 @@
-
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -20,6 +19,7 @@ export type MenuCategory = {
   image_url: string | null;
   created_at: string;
   updated_at: string;
+  items?: MenuItem[];
 };
 
 export type MenuItem = {
@@ -32,7 +32,7 @@ export type MenuItem = {
   category_id: string;
   created_at: string;
   updated_at: string;
-  topping_categories?: string[]; // Added this property to fix the TypeScript error
+  topping_categories?: string[];
 };
 
 export type MenuItemOption = {

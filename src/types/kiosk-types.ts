@@ -1,5 +1,5 @@
 
-import { MenuItemWithOptions as BaseMenuItemWithOptions, MenuItem } from "@/types/database-types";
+import { MenuItem, MenuItemOption } from "@/types/database-types";
 
 export type ToppingCategory = {
   id: string;
@@ -17,9 +17,16 @@ export type Topping = {
   tax_percentage: number;
 };
 
-export type MenuItemWithOptions = BaseMenuItemWithOptions & {
+export interface MenuItemWithOptions extends MenuItem {
+  options?: Array<MenuItemOption & {
+    choices: Array<{
+      id: string;
+      name: string;
+      price: number | null;
+    }>;
+  }>;
   toppingCategories?: ToppingCategory[];
-};
+}
 
 export type SelectedOption = {
   optionId: string;
