@@ -1,3 +1,4 @@
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -108,3 +109,46 @@ export type OrderItemOption = {
   created_at: string;
   updated_at: string;
 };
+
+export interface MenuItemWithOptions extends MenuItem {
+  options?: {
+    id: string;
+    name: string;
+    required: boolean | null;
+    multiple: boolean | null;
+    choices: {
+      id: string;
+      name: string;
+      price: number | null;
+    }[];
+  }[];
+  toppingCategories?: {
+    id: string;
+    name: string;
+    min_selections: number;
+    max_selections: number;
+    required: boolean;
+    toppings: {
+      id: string;
+      name: string;
+      price: number;
+      tax_percentage: number;
+    }[];
+  }[];
+}
+
+export interface CartItem {
+  id: string;
+  menuItem: MenuItemWithOptions;
+  quantity: number;
+  selectedOptions: {
+    optionId: string;
+    choiceIds: string[];
+  }[];
+  selectedToppings: {
+    categoryId: string;
+    toppingIds: string[];
+  }[];
+  specialInstructions?: string;
+  itemPrice: number;
+}
