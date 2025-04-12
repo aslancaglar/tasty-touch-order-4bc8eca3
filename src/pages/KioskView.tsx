@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -11,7 +10,8 @@ import {
   Trash2,
   Check,
   Loader2,
-  ChevronLeft
+  ChevronLeft,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { getIconComponent } from "@/utils/icon-mapping";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   getRestaurantBySlug, 
   getMenuForRestaurant, 
@@ -39,9 +40,24 @@ import {
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, OrderItem } from "@/types/database-types";
 
-// Types with more specific structure for the UI
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
+};
+
+type ToppingCategory = {
+  id: string;
+  name: string;
+  min_selections: number;
+  max_selections: number;
+  required: boolean;
+  toppings: Topping[];
+};
+
+type Topping = {
+  id: string;
+  name: string;
+  price: number;
+  tax_percentage: number;
 };
 
 type MenuItemWithOptions = MenuItem & {
@@ -56,6 +72,7 @@ type MenuItemWithOptions = MenuItem & {
       price: number | null;
     }[];
   }[];
+  toppingCategories?: ToppingCategory[];
 };
 
 type CartItem = {
@@ -65,6 +82,10 @@ type CartItem = {
   selectedOptions: {
     optionId: string;
     choiceIds: string[];
+  }[];
+  selectedToppings: {
+    categoryId: string;
+    toppingIds: string[];
   }[];
   specialInstructions?: string;
 };
@@ -77,6 +98,7 @@ const KioskView = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{ optionId: string; choiceIds: string[] }[]>([]);
+  const [selectedToppings, setSelectedToppings] = useState<{ categoryId: string; toppingIds: string[] }[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [showCart, setShowCart] = useState(false);
@@ -128,6 +150,68 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
+  const fetchToppingCategories = async (menuItemId: string) => {
+    try {
+      // Get the topping category IDs assigned to this menu item
+      const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
+        .from('menu_item_topping_categories')
+        .select('topping_category_id')
+        .eq('menu_item_id', menuItemId);
+
+      if (toppingCategoriesError) {
+        console.error("Error fetching topping categories:", toppingCategoriesError);
+        return [];
+      }
+
+      if (!menuItemToppingCategories.length) {
+        return [];
+      }
+
+      const toppingCategoryIds = menuItemToppingCategories.map(mtc => mtc.topping_category_id);
+      
+      // Fetch the actual topping categories
+      const { data: toppingCategories, error: categoriesError } = await supabase
+        .from('topping_categories')
+        .select('*')
+        .in('id', toppingCategoryIds);
+
+      if (categoriesError) {
+        console.error("Error fetching topping category details:", categoriesError);
+        return [];
+      }
+
+      // Fetch toppings for each category
+      const toppingCategoriesWithToppings: ToppingCategory[] = await Promise.all(
+        toppingCategories.map(async (category) => {
+          const { data: toppings, error: toppingsError } = await supabase
+            .from('toppings')
+            .select('*')
+            .eq('category_id', category.id);
+
+          if (toppingsError) {
+            console.error(`Error fetching toppings for category ${category.id}:`, toppingsError);
+            return {
+              ...category,
+              required: category.min_selections > 0,
+              toppings: []
+            };
+          }
+
+          return {
+            ...category,
+            required: category.min_selections > 0,
+            toppings: toppings
+          };
+        })
+      );
+
+      return toppingCategoriesWithToppings;
+    } catch (error) {
+      console.error("Error in fetchToppingCategories:", error);
+      return [];
+    }
+  };
+
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
@@ -142,7 +226,15 @@ const KioskView = () => {
         return;
       }
       
-      setSelectedItem(itemWithOptions as MenuItemWithOptions);
+      // Fetch topping categories for this menu item
+      const toppingCategories = await fetchToppingCategories(item.id);
+      
+      const itemWithToppings: MenuItemWithOptions = {
+        ...itemWithOptions as MenuItemWithOptions,
+        toppingCategories
+      };
+      
+      setSelectedItem(itemWithToppings);
       setQuantity(1);
       setSpecialInstructions("");
       
@@ -162,6 +254,17 @@ const KioskView = () => {
         setSelectedOptions(initialOptions);
       } else {
         setSelectedOptions([]);
+      }
+      
+      // Initialize selected toppings
+      if (toppingCategories.length > 0) {
+        const initialToppings = toppingCategories.map(category => ({
+          categoryId: category.id,
+          toppingIds: []
+        }));
+        setSelectedToppings(initialToppings);
+      } else {
+        setSelectedToppings([]);
       }
       
       setLoading(false);
@@ -202,9 +305,44 @@ const KioskView = () => {
     });
   };
 
-  const calculateItemPrice = (item: MenuItemWithOptions, options: { optionId: string; choiceIds: string[] }[]): number => {
+  const handleToggleTopping = (categoryId: string, toppingId: string, maxSelections: number) => {
+    setSelectedToppings(prev => {
+      const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
+      if (categoryIndex === -1) {
+        return [...prev, { categoryId, toppingIds: [toppingId] }];
+      }
+
+      const category = prev[categoryIndex];
+      let newToppingIds: string[];
+
+      // Check if the topping is already selected
+      if (category.toppingIds.includes(toppingId)) {
+        // If it is, remove it
+        newToppingIds = category.toppingIds.filter(id => id !== toppingId);
+      } else {
+        // If it's not, check if we're at the max selections
+        if (maxSelections > 0 && category.toppingIds.length >= maxSelections) {
+          // If at max selections, show a toast and don't add
+          toast({
+            title: "Maximum selections reached",
+            description: `You can only select ${maxSelections} items from this category.`,
+          });
+          return prev;
+        }
+        // Otherwise, add it
+        newToppingIds = [...category.toppingIds, toppingId];
+      }
+
+      const newToppings = [...prev];
+      newToppings[categoryIndex] = { ...category, toppingIds: newToppingIds };
+      return newToppings;
+    });
+  };
+
+  const calculateItemPrice = (item: MenuItemWithOptions, options: { optionId: string; choiceIds: string[] }[], toppings: { categoryId: string; toppingIds: string[] }[]): number => {
     let price = parseFloat(item.price.toString());
     
+    // Calculate price from options
     if (item.options) {
       item.options.forEach(option => {
         const selectedOption = options.find(o => o.optionId === option.id);
@@ -213,6 +351,21 @@ const KioskView = () => {
             const choice = option.choices.find(c => c.id === choiceId);
             if (choice && choice.price) {
               price += parseFloat(choice.price.toString());
+            }
+          });
+        }
+      });
+    }
+    
+    // Calculate price from toppings
+    if (item.toppingCategories) {
+      item.toppingCategories.forEach(category => {
+        const selectedToppingCategory = toppings.find(t => t.categoryId === category.id);
+        if (selectedToppingCategory) {
+          selectedToppingCategory.toppingIds.forEach(toppingId => {
+            const topping = category.toppings.find(t => t.id === toppingId);
+            if (topping && topping.price) {
+              price += parseFloat(topping.price.toString());
             }
           });
         }
@@ -239,20 +392,46 @@ const KioskView = () => {
       .join(", ");
   };
 
+  const getFormattedToppings = (item: CartItem): string => {
+    if (!item.menuItem.toppingCategories) return "";
+    
+    return item.selectedToppings
+      .flatMap(selectedCategory => {
+        const category = item.menuItem.toppingCategories?.find(c => c.id === selectedCategory.categoryId);
+        if (!category) return [];
+        
+        return selectedCategory.toppingIds.map(toppingId => {
+          const topping = category.toppings.find(t => t.id === toppingId);
+          return topping ? topping.name : "";
+        });
+      })
+      .filter(Boolean)
+      .join(", ");
+  };
+
   const handleAddToCart = () => {
     if (!selectedItem) return;
     
-    const isValid = selectedItem.options?.every(option => {
+    // Validate required options
+    const isOptionsValid = selectedItem.options?.every(option => {
       if (!option.required) return true;
       
       const selected = selectedOptions.find(o => o.optionId === option.id);
       return selected && selected.choiceIds.length > 0;
     }) ?? true;
     
-    if (!isValid) {
+    // Validate required topping categories
+    const isToppingsValid = selectedItem.toppingCategories?.every(category => {
+      if (category.min_selections <= 0) return true;
+      
+      const selected = selectedToppings.find(t => t.categoryId === category.id);
+      return selected && selected.toppingIds.length >= category.min_selections;
+    }) ?? true;
+    
+    if (!isOptionsValid || !isToppingsValid) {
       toast({
-        title: "Required options",
-        description: "Please select all required options before adding to cart",
+        title: "Required selections",
+        description: "Please make all required selections before adding to cart",
         variant: "destructive",
       });
       return;
@@ -263,6 +442,7 @@ const KioskView = () => {
       menuItem: selectedItem,
       quantity,
       selectedOptions,
+      selectedToppings,
       specialInstructions: specialInstructions.trim() || undefined,
     };
     
@@ -292,7 +472,11 @@ const KioskView = () => {
 
   const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
-      const itemPrice = calculateItemPrice(item.menuItem, item.selectedOptions);
+      const itemPrice = calculateItemPrice(
+        item.menuItem, 
+        item.selectedOptions,
+        item.selectedToppings
+      );
       return total + (itemPrice * item.quantity);
     }, 0);
   };
@@ -317,7 +501,7 @@ const KioskView = () => {
           order_id: order.id,
           menu_item_id: item.menuItem.id,
           quantity: item.quantity,
-          price: calculateItemPrice(item.menuItem, item.selectedOptions),
+          price: calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings),
           special_instructions: item.specialInstructions || null
         }))
       );
@@ -494,7 +678,7 @@ const KioskView = () => {
               <DialogDescription>{selectedItem.description}</DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
               {selectedItem.options && selectedItem.options.map((option) => (
                 <div key={option.id} className="space-y-2">
                   <Label className="font-medium">
@@ -532,6 +716,46 @@ const KioskView = () => {
                             <span>{choice.name}</span>
                           </div>
                           {choice.price && choice.price > 0 && <span>+${parseFloat(choice.price.toString()).toFixed(2)}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              
+              {selectedItem.toppingCategories && selectedItem.toppingCategories.map((category) => (
+                <div key={category.id} className="space-y-3">
+                  <div className="font-medium flex items-center">
+                    {category.name} 
+                    {category.required && <span className="text-red-500 ml-1">*</span>}
+                    <span className="text-sm text-gray-500 ml-2">
+                      {category.max_selections > 0 
+                        ? `(Select up to ${category.max_selections})` 
+                        : "(Select multiple)"}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {category.toppings.map((topping) => {
+                      const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
+                      const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
+                      
+                      return (
+                        <div key={topping.id} className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300">
+                          <span>{topping.name}</span>
+                          <div className="flex items-center gap-2">
+                            {topping.price > 0 && (
+                              <span className="text-sm">+${parseFloat(topping.price.toString()).toFixed(2)}</span>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className={`h-8 w-8 rounded-full ${isSelected ? 'bg-kiosk-primary text-white border-kiosk-primary' : ''}`}
+                              onClick={() => handleToggleTopping(category.id, topping.id, category.max_selections)}
+                            >
+                              {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -578,7 +802,7 @@ const KioskView = () => {
                   className="w-full bg-kiosk-primary"
                   onClick={handleAddToCart}
                 >
-                  Add to Order - ${(calculateItemPrice(selectedItem, selectedOptions) * quantity).toFixed(2)}
+                  Add to Order - ${(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)}
                 </Button>
               </div>
             </DialogFooter>
@@ -618,21 +842,36 @@ const KioskView = () => {
               ) : (
                 <div className="space-y-4">
                   {cart.map((item) => {
-                    const itemTotal = calculateItemPrice(item.menuItem, item.selectedOptions) * item.quantity;
+                    const itemTotal = calculateItemPrice(
+                      item.menuItem, 
+                      item.selectedOptions,
+                      item.selectedToppings
+                    ) * item.quantity;
+                    
+                    const formattedOptions = getFormattedOptions(item);
+                    const formattedToppings = getFormattedToppings(item);
                     
                     return (
                       <div key={item.id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-medium">{item.menuItem.name}</h3>
-                            <p className="text-sm text-gray-500">${calculateItemPrice(item.menuItem, item.selectedOptions).toFixed(2)}</p>
+                            <p className="text-sm text-gray-500">
+                              ${calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings).toFixed(2)}
+                            </p>
                           </div>
                           <p className="font-medium">${itemTotal.toFixed(2)}</p>
                         </div>
                         
-                        {getFormattedOptions(item) && (
+                        {formattedOptions && (
                           <p className="text-sm text-gray-500 mt-1">
-                            {getFormattedOptions(item)}
+                            Options: {formattedOptions}
+                          </p>
+                        )}
+                        
+                        {formattedToppings && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            Toppings: {formattedToppings}
                           </p>
                         )}
                         
