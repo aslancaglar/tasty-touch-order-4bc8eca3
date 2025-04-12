@@ -14,43 +14,57 @@ import {
   UtensilsCrossed,
   Cherry,
   Leaf,
-  Apple
+  Apple,
+  TouchIcon
 } from "lucide-react";
 
-export const getIconComponent = (iconName: string): React.ReactNode => {
+type IconProps = {
+  size?: number;
+  className?: string;
+};
+
+export const getIconComponent = (iconName: string, props: IconProps = {}): React.ReactNode => {
+  const { size = 16, className = "" } = props;
+  
   switch (iconName.toLowerCase()) {
     case 'beef':
-      return <Beef className="h-4 w-4" />;
+      return <Beef className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'coffee':
-      return <Coffee className="h-4 w-4" />;
+      return <Coffee className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'pizza':
-      return <Pizza className="h-4 w-4" />;
+      return <Pizza className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'sandwich':
-      return <Sandwich className="h-4 w-4" />;
+      return <Sandwich className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'fish':
-      return <Fish className="h-4 w-4" />;
+      return <Fish className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'ice-cream':
     case 'icecream':
-      return <IceCream className="h-4 w-4" />;
+      return <IceCream className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'soup':
-      return <Soup className="h-4 w-4" />;
+      return <Soup className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'dessert':
-      return <Dessert className="h-4 w-4" />;
+      return <Dessert className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'salad':
-      return <Salad className="h-4 w-4" />;
+      return <Salad className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'utensils':
-      return <Utensils className="h-4 w-4" />;
+      return <Utensils className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'utensils-crossed':
-      return <UtensilsCrossed className="h-4 w-4" />;
+      return <UtensilsCrossed className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'cheese':
-      return <Apple className="h-4 w-4" />; // Replaced Cheese with Apple
+      return <Apple className={`h-${size/4} w-${size/4} ${className}`} />; // Replaced Cheese with Apple
     case 'cherry':
-      return <Cherry className="h-4 w-4" />;
+      return <Cherry className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'leaf':
-      return <Leaf className="h-4 w-4" />;
+      return <Leaf className={`h-${size/4} w-${size/4} ${className}`} />;
     case 'spoon':
-      return <Utensils className="h-4 w-4" />; // Replaced Spoon with Utensils
+      return <Utensils className={`h-${size/4} w-${size/4} ${className}`} />; // Replaced Spoon with Utensils
+    case 'touch':
+      return <TouchIcon className={`h-${size/4} w-${size/4} ${className}`} />;
     default:
-      return <UtensilsCrossed className="h-4 w-4" />;
+      return <UtensilsCrossed className={`h-${size/4} w-${size/4} ${className}`} />;
   }
+};
+
+export const TouchToOrderIcon = () => {
+  return <UtensilsCrossed className="h-6 w-6" />;
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronUp } from "lucide-react";
+import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -12,6 +12,8 @@ import { getIconComponent } from "@/utils/icon-mapping";
 import { supabase } from "@/integrations/supabase/client";
 import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, OrderItem } from "@/types/database-types";
+import WelcomePage from "@/components/kiosk/WelcomePage";
+import OrderTypeSelection, { OrderType } from "@/components/kiosk/OrderTypeSelection";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -64,12 +66,14 @@ type CartItem = {
 };
 
 const KioskView = () => {
-  const {
-    restaurantSlug
-  } = useParams<{
-    restaurantSlug: string;
-  }>();
+  const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
   const navigate = useNavigate();
+  
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
+  const [orderType, setOrderType] = useState<OrderType>(null);
+  const [tableNumber, setTableNumber] = useState<string | null>(null);
+  
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -89,9 +93,8 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const {
-    toast
-  } = useToast();
+  
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
@@ -138,6 +141,19 @@ const KioskView = () => {
       setIsCartOpen(false);
     }
   }, [cart]);
+
+  const handleStartOrder = () => {
+    setShowWelcome(false);
+    setShowOrderTypeSelection(true);
+  };
+
+  const handleOrderTypeSelected = (type: OrderType, table?: string) => {
+    setOrderType(type);
+    if (table) {
+      setTableNumber(table);
+    }
+    setShowOrderTypeSelection(false);
+  };
 
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
@@ -317,7 +333,7 @@ const KioskView = () => {
   }[], toppings: {
     categoryId: string;
     toppingIds: string[];
-  }[]): number => {
+  }): number => {
     let price = parseFloat(item.price.toString());
     if (item.options) {
       item.options.forEach(option => {
@@ -452,8 +468,11 @@ const KioskView = () => {
         restaurant_id: restaurant.id,
         status: 'pending',
         total: calculateCartTotal(),
-        customer_name: null
+        customer_name: null,
+        order_type: orderType || undefined,
+        table_number: tableNumber || undefined
       });
+      
       const orderItems = await createOrderItems(cart.map(item => ({
         order_id: order.id,
         menu_item_id: item.menuItem.id,
@@ -501,6 +520,7 @@ const KioskView = () => {
         setCart([]);
         setIsCartOpen(false);
         setPlacingOrder(false);
+        setShowWelcome(true);
       }, 3000);
     } catch (error) {
       console.error("Error placing order:", error);
@@ -514,13 +534,16 @@ const KioskView = () => {
   };
 
   if (loading && !restaurant) {
-    return <div className="flex items-center justify-center h-screen">
+    return (
+      <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>;
+      </div>
+    );
   }
 
   if (!restaurant) {
-    return <div className="flex items-center justify-center h-screen">
+    return (
+      <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Restaurant Not Found</h1>
           <p className="text-gray-500 mb-4">The restaurant you're looking for doesn't exist.</p>
@@ -529,16 +552,43 @@ const KioskView = () => {
             Back to Home
           </Button>
         </div>
-      </div>;
+      </div>
+    );
+  }
+
+  if (showWelcome) {
+    return <WelcomePage restaurant={restaurant} onStart={handleStartOrder} />;
+  }
+
+  if (showOrderTypeSelection) {
+    return (
+      <>
+        <div 
+          className="fixed inset-0 bg-cover bg-center bg-black/50"
+          style={{ 
+            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})` 
+          }}
+        />
+        <OrderTypeSelection 
+          isOpen={showOrderTypeSelection}
+          onClose={() => {
+            setShowOrderTypeSelection(false);
+            setShowWelcome(true);
+          }}
+          onSelectOrderType={handleOrderTypeSelected}
+        />
+      </>
+    );
   }
 
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
-  return <div className="min-h-screen bg-gray-50 flex flex-col">
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="h-48 bg-cover bg-center relative" style={{
-      backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
-    }}>
+        backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+      }}>
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         <div className="absolute inset-0 flex items-center p-6">
           <div className="flex items-center">
@@ -549,6 +599,18 @@ const KioskView = () => {
                 <Clock className="h-4 w-4 mr-1" />
                 <span>{restaurant.location || 'Open now'}</span>
               </div>
+              {orderType && (
+                <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center">
+                  {orderType === 'dine-in' ? (
+                    <>
+                      <span className="mr-1">Dine-in</span>
+                      {tableNumber && <span>- Table {tableNumber}</span>}
+                    </>
+                  ) : (
+                    <span>Takeaway</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -778,7 +840,8 @@ const KioskView = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>}
-    </div>;
+    </div>
+  );
 };
 
 export default KioskView;

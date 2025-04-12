@@ -1,4 +1,3 @@
-
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -76,17 +75,19 @@ export type Topping = {
   updated_at: string;
 };
 
-export type OrderStatus = 'pending' | 'preparing' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
-export type Order = {
+export interface Order {
   id: string;
   restaurant_id: string;
-  status: OrderStatus;
-  total: number;
-  customer_name: string | null;
+  customer_id?: string;
+  customer_name?: string;
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at: string;
-  updated_at: string;
-};
+  total: number;
+  order_type?: 'dine-in' | 'takeaway';
+  table_number?: string;
+}
 
 export type OrderItem = {
   id: string;

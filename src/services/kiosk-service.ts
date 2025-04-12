@@ -336,22 +336,36 @@ export const getOptionChoices = async (optionId: string): Promise<OptionChoice[]
 };
 
 // Order services
-export const createOrder = async (order: Omit<Order, 'id' | 'created_at' | 'updated_at'>): Promise<Order> => {
-  const { data, error } = await supabase
-    .from("orders")
-    .insert(order)
-    .select()
-    .single();
+interface CreateOrderParams {
+  restaurant_id: string;
+  customer_name: string | null;
+  status: string;
+  total: number;
+  order_type?: string;
+  table_number?: string;
+}
 
-  if (error) {
-    console.error("Error creating order:", error);
+export const createOrder = async (params: CreateOrderParams): Promise<any> => {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        restaurant_id: params.restaurant_id,
+        customer_name: params.customer_name,
+        status: params.status,
+        total: params.total,
+        order_type: params.order_type,
+        table_number: params.table_number
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error creating order:', error);
     throw error;
   }
-
-  return {
-    ...data,
-    status: data.status as OrderStatus
-  };
 };
 
 export const getOrderById = async (id: string): Promise<Order | null> => {
