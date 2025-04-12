@@ -13,6 +13,7 @@ const DrawerTrigger = DrawerPrimitive.Trigger;
 const DrawerPortal = DrawerPrimitive.Portal;
 const DrawerClose = DrawerPrimitive.Close;
 
+// Define the overlay but we won't use it in DrawerContent
 const DrawerOverlay = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Overlay>, React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>>(({
   className,
   ...props
@@ -24,8 +25,9 @@ const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.C
   children,
   ...props
 }, ref) => <DrawerPortal>
-    {/* Remove the overlay completely to allow interactions with the page behind the drawer */}
+    {/* No overlay here, allowing interaction with the page behind the drawer */}
     <DrawerPrimitive.Content ref={ref} className={cn("fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background", className)} {...props}>
+      <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted my-2" />
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>);
