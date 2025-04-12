@@ -56,6 +56,7 @@ type MenuItemWithOptions = MenuItem & {
       price: number | null;
     }[];
   }[];
+  topping_categories?: string[];
 };
 
 type CartItem = {
@@ -83,6 +84,7 @@ const KioskView = () => {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [toppingCategoryNames, setToppingCategoryNames] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -113,6 +115,42 @@ const KioskView = () => {
         const menuData = await getMenuForRestaurant(restaurantData.id);
         setCategories(menuData);
         
+        // Create a mapping of topping category IDs to names
+        const toppingMap: Record<string, string> = {};
+        
+        // Extract all topping category IDs from menu items
+        const toppingCategoryIds = new Set<string>();
+        menuData.forEach(category => {
+          category.items.forEach(item => {
+            if (item.topping_categories) {
+              item.topping_categories.forEach(id => toppingCategoryIds.add(id));
+            }
+          });
+        });
+        
+        // Fetch topping category names if there are any IDs
+        if (toppingCategoryIds.size > 0) {
+          try {
+            // Make API call to get topping category names
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/topping_categories?id=in.(${Array.from(toppingCategoryIds).join(',')})&select=id,name`, {
+              headers: {
+                'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (response.ok) {
+              const toppingCategories = await response.json();
+              toppingCategories.forEach((cat: { id: string; name: string }) => {
+                toppingMap[cat.id] = cat.name;
+              });
+            }
+          } catch (error) {
+            console.error("Error fetching topping categories:", error);
+          }
+        }
+        
+        setToppingCategoryNames(toppingMap);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching restaurant and menu:", error);
@@ -495,6 +533,23 @@ const KioskView = () => {
             </DialogHeader>
             
             <div className="space-y-4">
+              {selectedItem.topping_categories && selectedItem.topping_categories.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="font-medium">Included Toppings</Label>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedItem.topping_categories.map((categoryId) => (
+                      <Badge 
+                        key={categoryId}
+                        variant="purple"
+                        className="px-3 py-1 text-sm"
+                      >
+                        {toppingCategoryNames[categoryId] || 'Topping Category'}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               {selectedItem.options && selectedItem.options.map((option) => (
                 <div key={option.id} className="space-y-2">
                   <Label className="font-medium">
