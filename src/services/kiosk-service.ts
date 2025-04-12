@@ -8,7 +8,9 @@ import {
   Order, 
   OrderItem, 
   OrderItemOption,
-  OrderStatus
+  OrderStatus,
+  ToppingCategory,
+  Topping
 } from "@/types/database-types";
 
 // Restaurant services
@@ -353,4 +355,144 @@ export const getMenuForRestaurant = async (restaurantId: string) => {
   );
 
   return categoriesWithItems;
+};
+
+// Topping Category services
+export const getToppingCategoriesByRestaurantId = async (restaurantId: string): Promise<ToppingCategory[]> => {
+  console.log("Fetching topping categories for restaurant:", restaurantId);
+  const { data, error } = await supabase
+    .from("topping_categories")
+    .select("*")
+    .eq("restaurant_id", restaurantId);
+
+  if (error) {
+    console.error("Error fetching topping categories:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const createToppingCategory = async (category: Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>): Promise<ToppingCategory> => {
+  console.log("Creating topping category with data:", category);
+  const { data, error } = await supabase
+    .from("topping_categories")
+    .insert(category)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating topping category:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const updateToppingCategory = async (id: string, updates: Partial<Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<ToppingCategory> => {
+  console.log("Updating topping category:", id, "with data:", updates);
+  const { data, error } = await supabase
+    .from("topping_categories")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating topping category:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteToppingCategory = async (id: string): Promise<void> => {
+  console.log("Deleting topping category:", id);
+  const { error } = await supabase
+    .from("topping_categories")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting topping category:", error);
+    throw error;
+  }
+};
+
+// Topping services
+export const getToppingsByCategory = async (categoryId: string): Promise<Topping[]> => {
+  const { data, error } = await supabase
+    .from("toppings")
+    .select("*")
+    .eq("category_id", categoryId);
+
+  if (error) {
+    console.error("Error fetching toppings:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const createTopping = async (topping: Omit<Topping, 'id' | 'created_at' | 'updated_at'>): Promise<Topping> => {
+  console.log("Creating topping with data:", topping);
+  const { data, error } = await supabase
+    .from("toppings")
+    .insert(topping)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating topping:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const updateTopping = async (id: string, updates: Partial<Omit<Topping, 'id' | 'created_at' | 'updated_at'>>): Promise<Topping> => {
+  console.log("Updating topping:", id, "with data:", updates);
+  const { data, error } = await supabase
+    .from("toppings")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating topping:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteTopping = async (id: string): Promise<void> => {
+  console.log("Deleting topping:", id);
+  const { error } = await supabase
+    .from("toppings")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting topping:", error);
+    throw error;
+  }
+};
+
+// Helper function to get all toppings for a restaurant with their categories
+export const getToppingsForRestaurant = async (restaurantId: string) => {
+  const categories = await getToppingCategoriesByRestaurantId(restaurantId);
+  
+  const categoriesWithToppings = await Promise.all(
+    categories.map(async (category) => {
+      const toppings = await getToppingsByCategory(category.id);
+      return {
+        ...category,
+        toppings
+      };
+    })
+  );
+
+  return categoriesWithToppings;
 };

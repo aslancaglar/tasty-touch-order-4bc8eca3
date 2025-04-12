@@ -1,4 +1,3 @@
-
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -49,6 +48,28 @@ export type OptionChoice = {
   option_id: string;
   name: string;
   price: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ToppingCategory = {
+  id: string;
+  name: string;
+  restaurant_id: string;
+  description: string | null;
+  icon: string | null;
+  min_selections: number | null;
+  max_selections: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Topping = {
+  id: string;
+  name: string;
+  price: number;
+  category_id: string;
+  tax_percentage: number | null;
   created_at: string;
   updated_at: string;
 };
