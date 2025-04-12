@@ -29,15 +29,17 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { getIconComponent } from "@/utils/icon-mapping";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   getRestaurantBySlug, 
   getMenuForRestaurant, 
   getMenuItemWithOptions,
   createOrder,
   createOrderItems,
-  createOrderItemOptions
+  createOrderItemOptions,
+  getToppingsByCategory
 } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, OrderItem } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, OrderItem, ToppingCategory, Topping } from "@/types/database-types";
 
 // Types with more specific structure for the UI
 type CategoryWithItems = MenuCategory & {
@@ -70,15 +72,11 @@ type CartItem = {
   specialInstructions?: string;
 };
 
-// New type for toppings data
-type ToppingCategory = {
+// Type for toppings data
+type ToppingCategoryWithToppings = {
   id: string;
   name: string;
-  toppings: {
-    id: string;
-    name: string;
-    price: number;
-  }[];
+  toppings: Topping[];
 };
 
 const KioskView = () => {
@@ -95,7 +93,7 @@ const KioskView = () => {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [toppingCategories, setToppingCategories] = useState<Record<string, ToppingCategory>>({});
+  const [toppingCategoriesWithToppings, setToppingCategoriesWithToppings] = useState<Record<string, ToppingCategoryWithToppings>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -136,46 +134,36 @@ const KioskView = () => {
           });
         });
         
-        // Fetch topping categories and their toppings if there are any IDs
+        // Fetch topping categories with their toppings
         if (toppingCategoryIds.size > 0) {
           try {
-            // Make API call to get topping categories with toppings
-            const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/topping_categories?id=in.(${Array.from(toppingCategoryIds).join(',')})&select=id,name`, {
-              headers: {
-                'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-                'Content-Type': 'application/json'
-              }
-            });
+            // Fetch topping categories
+            const { data: toppingCategoriesData, error: categoriesError } = await supabase
+              .from("topping_categories")
+              .select("*")
+              .in("id", Array.from(toppingCategoryIds));
             
-            if (response.ok) {
-              const toppingCategoriesData = await response.json();
-              const toppingCategoriesMap: Record<string, ToppingCategory> = {};
-              
-              // For each topping category, fetch its toppings
-              await Promise.all(toppingCategoriesData.map(async (category: { id: string; name: string }) => {
-                const toppingsResponse = await fetch(
-                  `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/toppings?category_id=eq.${category.id}&select=id,name,price`, {
-                  headers: {
-                    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-                    'Content-Type': 'application/json'
-                  }
-                });
-                
-                if (toppingsResponse.ok) {
-                  const toppings = await toppingsResponse.json();
-                  toppingCategoriesMap[category.id] = {
-                    id: category.id,
-                    name: category.name,
-                    toppings: toppings
-                  };
-                }
-              }));
-              
-              setToppingCategories(toppingCategoriesMap);
+            if (categoriesError) {
+              console.error("Error fetching topping categories:", categoriesError);
+              throw categoriesError;
             }
+            
+            // For each topping category, fetch its toppings
+            const toppingCategoriesWithToppingsMap: Record<string, ToppingCategoryWithToppings> = {};
+            
+            await Promise.all(toppingCategoriesData.map(async (category) => {
+              const toppings = await getToppingsByCategory(category.id);
+              
+              toppingCategoriesWithToppingsMap[category.id] = {
+                id: category.id,
+                name: category.name,
+                toppings: toppings
+              };
+            }));
+            
+            setToppingCategoriesWithToppings(toppingCategoriesWithToppingsMap);
           } catch (error) {
-            console.error("Error fetching topping categories:", error);
+            console.error("Error fetching topping categories and toppings:", error);
           }
         }
         
@@ -566,7 +554,7 @@ const KioskView = () => {
                   <Label className="font-medium text-lg">Included Toppings</Label>
                   <div className="space-y-4">
                     {selectedItem.topping_categories.map((categoryId) => {
-                      const category = toppingCategories[categoryId];
+                      const category = toppingCategoriesWithToppings[categoryId];
                       
                       if (!category) return null;
                       
