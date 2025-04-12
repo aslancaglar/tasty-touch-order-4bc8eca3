@@ -36,7 +36,8 @@ import {
   getMenuItemWithOptions,
   createOrder,
   createOrderItems,
-  createOrderItemOptions
+  createOrderItemOptions,
+  createOrderItemToppings
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, OrderItem } from "@/types/database-types";
 
@@ -509,10 +510,14 @@ const KioskView = () => {
       // Create order item options
       const orderItemOptionsToCreate = [];
       
+      // Create order item toppings
+      const orderItemToppingsToCreate = [];
+      
       for (let i = 0; i < cart.length; i++) {
         const cartItem = cart[i];
         const orderItem = orderItems[i];
         
+        // Process options
         for (const selectedOption of cartItem.selectedOptions) {
           for (const choiceId of selectedOption.choiceIds) {
             orderItemOptionsToCreate.push({
@@ -522,10 +527,26 @@ const KioskView = () => {
             });
           }
         }
+        
+        // Process toppings
+        for (const selectedCategory of cartItem.selectedToppings) {
+          for (const toppingId of selectedCategory.toppingIds) {
+            orderItemToppingsToCreate.push({
+              order_item_id: orderItem.id,
+              topping_id: toppingId
+            });
+          }
+        }
       }
       
+      // Save order item options if any
       if (orderItemOptionsToCreate.length > 0) {
         await createOrderItemOptions(orderItemOptionsToCreate);
+      }
+      
+      // Save order item toppings if any
+      if (orderItemToppingsToCreate.length > 0) {
+        await createOrderItemToppings(orderItemToppingsToCreate);
       }
       
       setOrderPlaced(true);

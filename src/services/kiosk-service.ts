@@ -442,6 +442,21 @@ export const createOrderItemOptions = async (options: Omit<OrderItemOption, 'id'
   return data;
 };
 
+// Order Item Toppings services
+export const createOrderItemToppings = async (toppings: Array<{order_item_id: string, topping_id: string}>): Promise<any> => {
+  const { data, error } = await supabase
+    .from("order_item_toppings")
+    .insert(toppings)
+    .select();
+
+  if (error) {
+    console.error("Error creating order item toppings:", error);
+    throw error;
+  }
+
+  return data;
+};
+
 // Helper function to get a complete menu item with its options and choices
 export const getMenuItemWithOptions = async (menuItemId: string) => {
   const menuItem = await getMenuItemById(menuItemId);
