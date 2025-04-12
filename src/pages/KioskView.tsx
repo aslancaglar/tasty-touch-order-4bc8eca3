@@ -12,9 +12,11 @@ import { getIconComponent } from "@/utils/icon-mapping";
 import { supabase } from "@/integrations/supabase/client";
 import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, OrderItem } from "@/types/database-types";
+
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
+
 type ToppingCategory = {
   id: string;
   name: string;
@@ -23,12 +25,14 @@ type ToppingCategory = {
   required: boolean;
   toppings: Topping[];
 };
+
 type Topping = {
   id: string;
   name: string;
   price: number;
   tax_percentage: number;
 };
+
 type MenuItemWithOptions = MenuItem & {
   options?: {
     id: string;
@@ -43,6 +47,7 @@ type MenuItemWithOptions = MenuItem & {
   }[];
   toppingCategories?: ToppingCategory[];
 };
+
 type CartItem = {
   id: string;
   menuItem: MenuItemWithOptions;
@@ -57,6 +62,7 @@ type CartItem = {
   }[];
   specialInstructions?: string;
 };
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -86,6 +92,7 @@ const KioskView = () => {
   const {
     toast
   } = useToast();
+
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -123,6 +130,7 @@ const KioskView = () => {
     };
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
+
   useEffect(() => {
     if (cart.length > 0) {
       setIsCartOpen(true);
@@ -130,6 +138,7 @@ const KioskView = () => {
       setIsCartOpen(false);
     }
   }, [cart]);
+
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
       const {
@@ -177,6 +186,7 @@ const KioskView = () => {
       return [];
     }
   };
+
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
@@ -234,6 +244,7 @@ const KioskView = () => {
       setLoading(false);
     }
   };
+
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
       const optionIndex = prev.findIndex(o => o.optionId === optionId);
@@ -262,6 +273,7 @@ const KioskView = () => {
       return newOptions;
     });
   };
+
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -298,6 +310,7 @@ const KioskView = () => {
       return newToppings;
     });
   };
+
   const calculateItemPrice = (item: MenuItemWithOptions, options: {
     optionId: string;
     choiceIds: string[];
@@ -334,6 +347,7 @@ const KioskView = () => {
     }
     return price;
   };
+
   const getFormattedOptions = (item: CartItem): string => {
     if (!item.menuItem.options) return "";
     return item.selectedOptions.flatMap(selectedOption => {
@@ -345,6 +359,7 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
+
   const getFormattedToppings = (item: CartItem): string => {
     if (!item.menuItem.toppingCategories) return "";
     return item.selectedToppings.flatMap(selectedCategory => {
@@ -356,6 +371,7 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
+
   const handleAddToCart = () => {
     if (!selectedItem) return;
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -391,6 +407,7 @@ const KioskView = () => {
       description: `${quantity}x ${selectedItem.name} added to your order`
     });
   };
+
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       handleRemoveCartItem(itemId);
@@ -401,6 +418,7 @@ const KioskView = () => {
       quantity: newQuantity
     } : item));
   };
+
   const handleRemoveCartItem = (itemId: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.id !== itemId);
@@ -410,18 +428,22 @@ const KioskView = () => {
       return newCart;
     });
   };
+
   const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
       const itemPrice = calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings);
       return total + itemPrice * item.quantity;
     }, 0);
   };
+
   const calculateSubtotal = () => {
     return calculateCartTotal();
   };
+
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
   };
+
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
     try {
@@ -489,11 +511,13 @@ const KioskView = () => {
       setPlacingOrder(false);
     }
   };
+
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>;
   }
+
   if (!restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -506,8 +530,10 @@ const KioskView = () => {
         </div>
       </div>;
   }
+
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+
   return <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="h-48 bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
@@ -580,9 +606,9 @@ const KioskView = () => {
         setIsCartOpen(open);
       }
     }}>
-        <DrawerContent className="max-h-[85vh]">
-          <div className="w-full">
-            <DrawerHeader className="pt-4 pb-0 px-4">
+        <DrawerContent className="max-h-[85vh] overflow-auto">
+          <div className="w-full px-4">
+            <DrawerHeader className="pt-4 pb-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <ShoppingCart className="text-red-500 mr-2" />
@@ -594,7 +620,7 @@ const KioskView = () => {
               </div>
             </DrawerHeader>
             
-            <div className="p-4 overflow-auto max-h-[50vh]">
+            <div className="overflow-auto max-h-[50vh] px-4">
               {cart.map(item => <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
                   <div className="flex items-start">
                     <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded mr-4" />
@@ -753,4 +779,5 @@ const KioskView = () => {
         </Dialog>}
     </div>;
 };
+
 export default KioskView;
