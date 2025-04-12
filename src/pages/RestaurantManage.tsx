@@ -1,4 +1,4 @@
-// Fix the imports at the top of the file
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { AdminLayout } from "@/components/layout/AdminLayout";
@@ -50,7 +50,7 @@ import {
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, ToppingCategory, Topping } from "@/types/database-types";
 import { getIconComponent } from "@/utils/icon-mapping";
-import ImageUpload from "@/components/ImageUpload";
+import ImageUpload from "@/components/ui/image-upload";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
@@ -67,7 +67,7 @@ type CategoryModalType = {
 type MenuItemModalType = {
   open: boolean;
   menuItem?: MenuItem;
-  categoryId: number | null;
+  categoryId: string | null;
 };
 
 type ToppingCategoryModalType = {
@@ -78,7 +78,7 @@ type ToppingCategoryModalType = {
 type ToppingModalType = {
   open: boolean;
   topping?: Topping;
-  toppingCategoryId: number | null;
+  toppingCategoryId: string | null;
 };
 
 const RestaurantManage = () => {
@@ -107,9 +107,19 @@ const RestaurantManage = () => {
     }
 
     try {
-      const restaurantData = await getRestaurants({ id: parseInt(restaurantId) });
+      const restaurantData = await getRestaurants();
       if (restaurantData && restaurantData.length > 0) {
-        setRestaurant(restaurantData[0]);
+        const foundRestaurant = restaurantData.find(r => r.id === restaurantId);
+        if (foundRestaurant) {
+          setRestaurant(foundRestaurant);
+        } else {
+          toast({
+            title: "Error",
+            description: "Restaurant not found",
+            variant: "destructive",
+          });
+          return;
+        }
       } else {
         toast({
           title: "Error",
@@ -119,10 +129,10 @@ const RestaurantManage = () => {
         return;
       }
 
-      const categoriesData = await getCategoriesByRestaurantId(parseInt(restaurantId));
+      const categoriesData = await getCategoriesByRestaurantId(restaurantId);
       setCategories(categoriesData);
 
-      const toppingCategoriesData = await getToppingCategoriesByRestaurantId(parseInt(restaurantId));
+      const toppingCategoriesData = await getToppingCategoriesByRestaurantId(restaurantId);
       setToppingCategories(toppingCategoriesData);
 
       // Fetch all menu items for all categories
@@ -157,10 +167,10 @@ const RestaurantManage = () => {
   }, [restaurantId]);
 
   // Category Handlers
-  const handleCreateCategory = async (categoryData: Omit<MenuCategory, 'id' | 'restaurant_id'>) => {
+  const handleCreateCategory = async (categoryData: Omit<MenuCategory, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>) => {
     if (!restaurantId) return;
     try {
-      await createCategory({ ...categoryData, restaurant_id: parseInt(restaurantId) });
+      await createCategory({ ...categoryData, restaurant_id: restaurantId });
       toast({
         title: "Success",
         description: "Category created successfully",
@@ -176,9 +186,9 @@ const RestaurantManage = () => {
     }
   };
 
-  const handleUpdateCategory = async (categoryData: MenuCategory) => {
+  const handleUpdateCategory = async (categoryId: string, updates: Partial<Omit<MenuCategory, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>>) => {
     try {
-      await updateCategory(categoryData);
+      await updateCategory(categoryId, updates);
       toast({
         title: "Success",
         description: "Category updated successfully",
@@ -194,7 +204,7 @@ const RestaurantManage = () => {
     }
   };
 
-  const handleDeleteCategory = async (categoryId: number) => {
+  const handleDeleteCategory = async (categoryId: string) => {
     try {
       await deleteCategory(categoryId);
       toast({
@@ -212,9 +222,13 @@ const RestaurantManage = () => {
   };
 
   // Menu Item Handlers
-  const handleCreateMenuItem = async (menuItemData: Omit<MenuItem, 'id' | 'category_id'>, categoryId: number) => {
+  const handleCreateMenuItem = async (menuItemData: Omit<MenuItem, 'id' | 'category_id' | 'created_at' | 'updated_at'>, categoryId: string) => {
     try {
-      await createMenuItem({ ...menuItemData, category_id: categoryId });
+      await createMenuItem({ 
+        ...menuItemData, 
+        category_id: categoryId,
+        promotion_price: null // Add required field
+      });
       toast({
         title: "Success",
         description: "Menu item created successfully",
@@ -230,9 +244,9 @@ const RestaurantManage = () => {
     }
   };
 
-  const handleUpdateMenuItem = async (menuItemData: MenuItem) => {
+  const handleUpdateMenuItem = async (menuItemId: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>) => {
     try {
-      await updateMenuItem(menuItemData);
+      await updateMenuItem(menuItemId, updates);
       toast({
         title: "Success",
         description: "Menu item updated successfully",
@@ -248,7 +262,7 @@ const RestaurantManage = () => {
     }
   };
 
-  const handleDeleteMenuItem = async (menuItemId: number) => {
+  const handleDeleteMenuItem = async (menuItemId: string) => {
     try {
       await deleteMenuItem(menuItemId);
       toast({
@@ -266,10 +280,10 @@ const RestaurantManage = () => {
   };
 
   // Topping Category Handlers
-  const handleCreateToppingCategory = async (toppingCategoryData: Omit<ToppingCategory, 'id' | 'restaurant_id'>) => {
+  const handleCreateToppingCategory = async (toppingCategoryData: Omit<ToppingCategory, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>) => {
     if (!restaurantId) return;
     try {
-      await createToppingCategory({ ...toppingCategoryData, restaurant_id: parseInt(restaurantId) });
+      await createToppingCategory({ ...toppingCategoryData, restaurant_id: restaurantId });
       toast({
         title: "Success",
         description: "Topping category created successfully",
@@ -285,9 +299,9 @@ const RestaurantManage = () => {
     }
   };
 
-  const handleUpdateToppingCategory = async (toppingCategoryData: ToppingCategory) => {
+  const handleUpdateToppingCategory = async (categoryId: string, updates: Partial<Omit<ToppingCategory, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>>) => {
     try {
-      await updateToppingCategory(toppingCategoryData);
+      await updateToppingCategory(categoryId, updates);
       toast({
         title: "Success",
         description: "Topping category updated successfully",
@@ -303,9 +317,9 @@ const RestaurantManage = () => {
     }
   };
 
-  const handleDeleteToppingCategory = async (toppingCategoryId: number) => {
+  const handleDeleteToppingCategory = async (categoryId: string) => {
     try {
-      await deleteToppingCategory(toppingCategoryId);
+      await deleteToppingCategory(categoryId);
       toast({
         title: "Success",
         description: "Topping category deleted successfully",
@@ -321,9 +335,12 @@ const RestaurantManage = () => {
   };
 
   // Topping Handlers
-  const handleCreateTopping = async (toppingData: Omit<Topping, 'id' | 'topping_category_id'>, toppingCategoryId: number) => {
+  const handleCreateTopping = async (toppingData: Omit<Topping, 'id' | 'category_id' | 'created_at' | 'updated_at'>, categoryId: string) => {
     try {
-      await createTopping({ ...toppingData, topping_category_id: toppingCategoryId });
+      await createTopping({ 
+        ...toppingData, 
+        category_id: categoryId 
+      });
       toast({
         title: "Success",
         description: "Topping created successfully",
@@ -339,9 +356,9 @@ const RestaurantManage = () => {
     }
   };
 
-  const handleUpdateTopping = async (toppingData: Topping) => {
+  const handleUpdateTopping = async (toppingId: string, updates: Partial<Omit<Topping, 'id' | 'created_at' | 'updated_at'>>) => {
     try {
-      await updateTopping(toppingData);
+      await updateTopping(toppingId, updates);
       toast({
         title: "Success",
         description: "Topping updated successfully",
@@ -357,7 +374,7 @@ const RestaurantManage = () => {
     }
   };
 
-  const handleDeleteTopping = async (toppingId: number) => {
+  const handleDeleteTopping = async (toppingId: string) => {
     try {
       await deleteTopping(toppingId);
       toast({
@@ -452,8 +469,8 @@ const RestaurantManage = () => {
                                 <DialogTitle>Edit Category</DialogTitle>
                               </DialogHeader>
                               <CategoryForm 
-                                onSubmit={handleUpdateCategory} 
-                                category={category} 
+                                onSubmit={(values) => handleUpdateCategory(category.id, values)} 
+                                initialValues={category}
                               />
                             </DialogContent>
                           </Dialog>
@@ -481,8 +498,8 @@ const RestaurantManage = () => {
                                         <DialogTitle>Edit Menu Item</DialogTitle>
                                       </DialogHeader>
                                       <MenuItemForm 
-                                        onSubmit={handleUpdateMenuItem} 
-                                        menuItem={item} 
+                                        onSubmit={(values) => handleUpdateMenuItem(item.id, values)} 
+                                        initialValues={item}
                                         categories={categories}
                                       />
                                     </DialogContent>
@@ -506,7 +523,7 @@ const RestaurantManage = () => {
                               <DialogTitle>Create Menu Item</DialogTitle>
                             </DialogHeader>
                             <MenuItemForm 
-                              onSubmit={(menuItemData) => handleCreateMenuItem(menuItemData, category.id)} 
+                              onSubmit={(values) => handleCreateMenuItem(values, category.id)} 
                               categories={categories}
                             />
                           </DialogContent>
@@ -536,7 +553,10 @@ const RestaurantManage = () => {
                       <DialogHeader>
                         <DialogTitle>Create Topping Category</DialogTitle>
                       </DialogHeader>
-                      <ToppingCategoryForm onSubmit={handleCreateToppingCategory} />
+                      <ToppingCategoryForm 
+                        onSubmit={handleCreateToppingCategory}
+                        isLoading={false}
+                      />
                     </DialogContent>
                   </Dialog>
                 </div>
@@ -557,8 +577,9 @@ const RestaurantManage = () => {
                                 <DialogTitle>Edit Topping Category</DialogTitle>
                               </DialogHeader>
                               <ToppingCategoryForm
-                                onSubmit={handleUpdateToppingCategory}
-                                toppingCategory={toppingCategory}
+                                onSubmit={(values) => handleUpdateToppingCategory(toppingCategory.id, values)}
+                                initialValues={toppingCategory}
+                                isLoading={false}
                               />
                             </DialogContent>
                           </Dialog>
@@ -570,7 +591,7 @@ const RestaurantManage = () => {
                       <CardContent>
                         <ul className="space-y-2">
                           {toppings
-                            .filter((topping) => topping.topping_category_id === toppingCategory.id)
+                            .filter((topping) => topping.category_id === toppingCategory.id)
                             .map((topping) => (
                               <li key={topping.id} className="flex items-center justify-between">
                                 <span>{topping.name}</span>
@@ -586,8 +607,10 @@ const RestaurantManage = () => {
                                         <DialogTitle>Edit Topping</DialogTitle>
                                       </DialogHeader>
                                       <ToppingForm
-                                        onSubmit={handleUpdateTopping}
-                                        topping={topping}
+                                        onSubmit={(values) => handleUpdateTopping(topping.id, values)}
+                                        initialValues={topping}
+                                        categories={toppingCategories}
+                                        isLoading={false}
                                       />
                                     </DialogContent>
                                   </Dialog>
@@ -610,7 +633,9 @@ const RestaurantManage = () => {
                               <DialogTitle>Create Topping</DialogTitle>
                             </DialogHeader>
                             <ToppingForm
-                              onSubmit={(toppingData) => handleCreateTopping(toppingData, toppingCategory.id)}
+                              onSubmit={(values) => handleCreateTopping(values, toppingCategory.id)}
+                              categories={toppingCategories}
+                              isLoading={false}
                             />
                           </DialogContent>
                         </Dialog>
@@ -637,10 +662,10 @@ const RestaurantManage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="location">Location</Label>
                   <Input
-                    id="description"
-                    defaultValue={restaurant.description}
+                    id="location"
+                    defaultValue={restaurant.location || ""}
                     disabled
                   />
                 </div>
@@ -648,9 +673,9 @@ const RestaurantManage = () => {
               <div className="space-y-2">
                 <Label htmlFor="coverImage">Cover Image</Label>
                 <ImageUpload
-                  value={restaurant.cover_image_url}
+                  value={restaurant.image_url || ""}
                   onChange={(url) => {
-                    setRestaurant({ ...restaurant, cover_image_url: url });
+                    setRestaurant({ ...restaurant, image_url: url });
                   }}
                 />
               </div>
