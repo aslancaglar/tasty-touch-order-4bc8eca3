@@ -17,40 +17,42 @@ import {
   Apple
 } from "lucide-react";
 
-export const getIconComponent = (iconName: string): React.ReactNode => {
+export const getIconComponent = (iconName: string, size: number = 4): React.ReactNode => {
+  const iconSize = `h-${size} w-${size}`;
+  
   switch (iconName.toLowerCase()) {
     case 'beef':
-      return <Beef className="h-4 w-4" />;
+      return <Beef className={iconSize} />;
     case 'coffee':
-      return <Coffee className="h-4 w-4" />;
+      return <Coffee className={iconSize} />;
     case 'pizza':
-      return <Pizza className="h-4 w-4" />;
+      return <Pizza className={iconSize} />;
     case 'sandwich':
-      return <Sandwich className="h-4 w-4" />;
+      return <Sandwich className={iconSize} />;
     case 'fish':
-      return <Fish className="h-4 w-4" />;
+      return <Fish className={iconSize} />;
     case 'ice-cream':
     case 'icecream':
-      return <IceCream className="h-4 w-4" />;
+      return <IceCream className={iconSize} />;
     case 'soup':
-      return <Soup className="h-4 w-4" />;
+      return <Soup className={iconSize} />;
     case 'dessert':
-      return <Dessert className="h-4 w-4" />;
+      return <Dessert className={iconSize} />;
     case 'salad':
-      return <Salad className="h-4 w-4" />;
+      return <Salad className={iconSize} />;
     case 'utensils':
-      return <Utensils className="h-4 w-4" />;
+      return <Utensils className={iconSize} />;
     case 'utensils-crossed':
-      return <UtensilsCrossed className="h-4 w-4" />;
+      return <UtensilsCrossed className={iconSize} />;
     case 'cheese':
-      return <Apple className="h-4 w-4" />; // Replaced Cheese with Apple
+      return <Apple className={iconSize} />; // Replaced Cheese with Apple
     case 'cherry':
-      return <Cherry className="h-4 w-4" />;
+      return <Cherry className={iconSize} />;
     case 'leaf':
-      return <Leaf className="h-4 w-4" />;
+      return <Leaf className={iconSize} />;
     case 'spoon':
-      return <Utensils className="h-4 w-4" />; // Replaced Spoon with Utensils
+      return <Utensils className={iconSize} />; // Replaced Spoon with Utensils
     default:
-      return <UtensilsCrossed className="h-4 w-4" />;
+      return <UtensilsCrossed className={iconSize} />;
   }
 };
