@@ -149,7 +149,10 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
     throw error;
   }
 
-  return data;
+  return data.map(item => ({
+    ...item,
+    tax_percentage: item.tax_percentage !== null ? item.tax_percentage : 10
+  }));
 };
 
 export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
@@ -167,7 +170,13 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     throw error;
   }
 
-  return data;
+  if (data) {
+    return {
+      ...data,
+      tax_percentage: data.tax_percentage !== null ? data.tax_percentage : 10
+    };
+  }
+  return null;
 };
 
 export const createMenuItem = async (menuItem: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
@@ -183,7 +192,10 @@ export const createMenuItem = async (menuItem: Omit<MenuItem, 'id' | 'created_at
     throw error;
   }
 
-  return data;
+  return {
+    ...data,
+    tax_percentage: data.tax_percentage !== null ? data.tax_percentage : 10
+  };
 };
 
 export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
@@ -200,7 +212,10 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
     throw error;
   }
 
-  return data;
+  return {
+    ...data,
+    tax_percentage: data.tax_percentage !== null ? data.tax_percentage : 10
+  };
 };
 
 export const deleteMenuItem = async (id: string): Promise<void> => {
