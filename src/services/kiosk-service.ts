@@ -183,13 +183,37 @@ export const deleteCategory = async (id: string): Promise<void> => {
     throw new Error("Cannot delete a temporary category. It exists only in the UI.");
   }
 
-  const { error } = await supabase
-    .from("menu_categories")
-    .delete()
-    .eq("id", id);
+  console.log(`Attempting to delete category with ID: ${id}`);
 
-  if (error) {
-    console.error("Error deleting category:", error);
+  // First, delete all menu items associated with this category
+  try {
+    const { data: menuItems } = await supabase
+      .from("menu_items")
+      .select("id")
+      .eq("category_id", id);
+    
+    if (menuItems && menuItems.length > 0) {
+      console.log(`Deleting ${menuItems.length} menu items in category ${id}`);
+      
+      for (const item of menuItems) {
+        await deleteMenuItem(item.id);
+      }
+    }
+
+    // Now delete the category itself
+    const { error } = await supabase
+      .from("menu_categories")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error deleting category:", error);
+      throw error;
+    }
+    
+    console.log(`Successfully deleted category with ID: ${id}`);
+  } catch (error) {
+    console.error("Error in category deletion process:", error);
     throw error;
   }
 };

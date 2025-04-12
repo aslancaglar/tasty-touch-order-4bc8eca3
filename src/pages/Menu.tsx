@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -15,8 +14,9 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { getIconComponent } from "@/utils/icon-mapping";
-import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
+import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory, deleteCategory } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
+import { toast } from "@/components/ui/toast";
 
 const MenuPage = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -89,6 +89,37 @@ const MenuPage = () => {
     setSelectedRestaurant(value);
   };
 
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      setLoading(true);
+      
+      console.log(`Starting deletion process for category: ${categoryId}`);
+      await deleteCategory(categoryId);
+      
+      // Update local state to reflect the deletion
+      setCategories(prevCategories => prevCategories.filter(cat => cat.id !== categoryId));
+      
+      // Also update menuItems state
+      const updatedMenuItems = { ...menuItems };
+      delete updatedMenuItems[categoryId];
+      setMenuItems(updatedMenuItems);
+      
+      toast({
+        title: "Category Deleted",
+        description: "The category and its items have been deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the category. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading && restaurants.length === 0) {
     return (
       <AdminLayout>
@@ -155,7 +186,11 @@ const MenuPage = () => {
                       <Button variant="ghost" size="sm">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteCategory(category.id)}
+                      >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
