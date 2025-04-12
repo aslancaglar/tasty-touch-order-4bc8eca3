@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
+import ImageUpload from "@/components/ImageUpload";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,7 +40,6 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
   });
 
   const handleSubmit = (values: CategoryFormValues) => {
-    console.log("Form submitted with values:", values);
     onSubmit(values);
   };
 
@@ -71,7 +71,6 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
                   placeholder="Describe this category..." 
                   className="resize-none" 
                   {...field} 
-                  value={field.value || ""}
                 />
               </FormControl>
               <FormMessage />
@@ -81,14 +80,15 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
         
         <FormField
           control={form.control}
-          name="icon"
+          name="image_url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Icon Name (Optional)</FormLabel>
+              <FormLabel>Category Image</FormLabel>
               <FormControl>
-                <Input
-                  placeholder="e.g., UtensilsCrossed, Coffee, Pizza"
-                  {...field}
+                <ImageUpload
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  label="Category Image"
                 />
               </FormControl>
               <FormMessage />

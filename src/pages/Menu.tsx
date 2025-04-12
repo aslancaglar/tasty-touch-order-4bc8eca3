@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,8 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { getIconComponent } from "@/utils/icon-mapping";
-import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory, deleteCategory } from "@/services/kiosk-service";
+import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
-import { useToast } from "@/hooks/use-toast";
 
 const MenuPage = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -24,7 +24,6 @@ const MenuPage = () => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -88,45 +87,6 @@ const MenuPage = () => {
 
   const handleRestaurantChange = (value: string) => {
     setSelectedRestaurant(value);
-  };
-
-  const handleDeleteCategory = async (categoryId: string) => {
-    try {
-      setLoading(true);
-      
-      console.log(`Starting deletion process for category: ${categoryId}`);
-      await deleteCategory(categoryId);
-      console.log(`Category successfully deleted: ${categoryId}`);
-      
-      // Update local state to reflect the deletion
-      setCategories(prevCategories => {
-        const updatedCategories = prevCategories.filter(cat => cat.id !== categoryId);
-        console.log("Updated categories after deletion:", updatedCategories);
-        return updatedCategories;
-      });
-      
-      // Also update menuItems state to remove items from deleted category
-      setMenuItems(prev => {
-        const updatedItems = { ...prev };
-        delete updatedItems[categoryId];
-        console.log("Updated menu items after category deletion:", updatedItems);
-        return updatedItems;
-      });
-      
-      toast({
-        title: "Category Deleted",
-        description: "The category and its items have been deleted successfully.",
-      });
-    } catch (error) {
-      console.error("Error deleting category:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete the category. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   if (loading && restaurants.length === 0) {
@@ -195,11 +155,7 @@ const MenuPage = () => {
                       <Button variant="ghost" size="sm">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleDeleteCategory(category.id)}
-                      >
+                      <Button variant="ghost" size="sm">
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>

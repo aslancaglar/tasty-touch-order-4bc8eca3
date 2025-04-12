@@ -86,155 +86,32 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
     throw error;
   }
 
-  console.log("Raw categories data from DB:", data);
-  
   return data.map(category => {
-    // Create a base result with required fields
     const result: MenuCategory = {
       id: category.id,
       name: category.name,
       restaurant_id: category.restaurant_id,
-      description: category.description || null,
+      description: null,
       icon: category.icon || null,
-      image_url: category.image_url || null,
+      image_url: null,
       created_at: category.created_at,
       updated_at: category.updated_at
     };
+    
+    if ('description' in category) {
+      result.description = (category as any).description;
+    }
+    
+    if ('image_url' in category) {
+      result.image_url = (category as any).image_url;
+    }
     
     return result;
   });
 };
 
-export const createCategory = async (category: Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>): Promise<MenuCategory> => {
-  // Include all the fields that exist in the database table
-  const categoryData = {
-    name: category.name,
-    restaurant_id: category.restaurant_id,
-    description: category.description || null,
-    icon: category.icon || null,
-    image_url: category.image_url || null
-  };
-
-  console.log("Creating category with data:", categoryData);
-
-  const { data, error } = await supabase
-    .from("menu_categories")
-    .insert(categoryData)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error creating category:", error);
-    throw error;
-  }
-
-  console.log("Category created successfully:", data);
-  
-  // Return the category with the correct type
-  return {
-    id: data.id,
-    name: data.name,
-    restaurant_id: data.restaurant_id,
-    description: data.description || null,
-    icon: data.icon || null,
-    image_url: data.image_url || null,
-    created_at: data.created_at,
-    updated_at: data.updated_at
-  };
-};
-
-export const updateCategory = async (id: string, updates: Partial<Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuCategory> => {
-  // Check if id is a temporary id (starts with "temp-")
-  if (id.startsWith("temp-")) {
-    throw new Error("Cannot update a temporary category. Please create it first.");
-  }
-
-  // Include all valid fields from the updates
-  const validUpdates = {
-    name: updates.name,
-    description: updates.description,
-    icon: updates.icon,
-    image_url: updates.image_url
-  };
-  
-  console.log("Sending updates to database:", validUpdates);
-
-  const { data, error } = await supabase
-    .from("menu_categories")
-    .update(validUpdates)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error updating category:", error);
-    throw error;
-  }
-
-  console.log("Category updated successfully:", data);
-
-  // Return the updated category with the correct type
-  return {
-    id: data.id,
-    name: data.name,
-    restaurant_id: data.restaurant_id,
-    description: data.description || null,
-    icon: data.icon || null,
-    image_url: data.image_url || null,
-    created_at: data.created_at,
-    updated_at: data.updated_at
-  };
-};
-
-export const deleteCategory = async (id: string): Promise<void> => {
-  // Check if id is a temporary id (starts with "temp-")
-  if (id.startsWith("temp-")) {
-    throw new Error("Cannot delete a temporary category. It exists only in the UI.");
-  }
-
-  console.log(`Attempting to delete category with ID: ${id}`);
-
-  // First, delete all menu items associated with this category
-  try {
-    const { data: menuItems } = await supabase
-      .from("menu_items")
-      .select("id")
-      .eq("category_id", id);
-    
-    if (menuItems && menuItems.length > 0) {
-      console.log(`Deleting ${menuItems.length} menu items in category ${id}`);
-      
-      for (const item of menuItems) {
-        await deleteMenuItem(item.id);
-      }
-    }
-
-    // Now delete the category itself
-    const { error } = await supabase
-      .from("menu_categories")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error("Error deleting category:", error);
-      throw error;
-    }
-    
-    console.log(`Successfully deleted category with ID: ${id}`);
-  } catch (error) {
-    console.error("Error in category deletion process:", error);
-    throw error;
-  }
-};
-
 // Menu Item services
 export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuItem[]> => {
-  // Check if categoryId is a temporary id (starts with "temp-")
-  if (categoryId.startsWith("temp-")) {
-    // Return empty array for temporary categories
-    return [];
-  }
-
   const { data, error } = await supabase
     .from("menu_items")
     .select("*")
@@ -245,20 +122,7 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
     throw error;
   }
 
-  // Transform the data to ensure it matches our MenuItem type
-  return data.map(item => ({
-    id: item.id,
-    name: item.name,
-    description: item.description || null,
-    price: item.price,
-    promotion_price: 'promotion_price' in item && item.promotion_price !== undefined 
-      ? (typeof item.promotion_price === 'number' ? item.promotion_price : null) 
-      : null,
-    image: item.image || null,
-    category_id: item.category_id,
-    created_at: item.created_at,
-    updated_at: item.updated_at
-  }));
+  return data;
 };
 
 export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
@@ -276,96 +140,7 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     throw error;
   }
 
-  // Transform to ensure it matches our MenuItem type
-  return {
-    id: data.id,
-    name: data.name,
-    description: data.description || null,
-    price: data.price,
-    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined 
-      ? (typeof data.promotion_price === 'number' ? data.promotion_price : null) 
-      : null,
-    image: data.image || null,
-    category_id: data.category_id,
-    created_at: data.created_at,
-    updated_at: data.updated_at
-  };
-};
-
-export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
-  const { data, error } = await supabase
-    .from("menu_items")
-    .insert({
-      name: item.name,
-      description: item.description || null,
-      price: item.price,
-      promotion_price: item.promotion_price || null,
-      image: item.image || null,
-      category_id: item.category_id
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error creating menu item:", error);
-    throw error;
-  }
-
-  // Transform to ensure it matches our MenuItem type
-  return {
-    id: data.id,
-    name: data.name,
-    description: data.description || null,
-    price: data.price,
-    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined 
-      ? (typeof data.promotion_price === 'number' ? data.promotion_price : null) 
-      : null,
-    image: data.image || null,
-    category_id: data.category_id,
-    created_at: data.created_at,
-    updated_at: data.updated_at
-  };
-};
-
-export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
-  const { data, error } = await supabase
-    .from("menu_items")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error updating menu item:", error);
-    throw error;
-  }
-
-  // Transform to ensure it matches our MenuItem type
-  return {
-    id: data.id,
-    name: data.name,
-    description: data.description || null,
-    price: data.price,
-    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined 
-      ? (typeof data.promotion_price === 'number' ? data.promotion_price : null) 
-      : null,
-    image: data.image || null,
-    category_id: data.category_id,
-    created_at: data.created_at,
-    updated_at: data.updated_at
-  };
-};
-
-export const deleteMenuItem = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from("menu_items")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    console.error("Error deleting menu item:", error);
-    throw error;
-  }
+  return data;
 };
 
 // Menu Item Options services
