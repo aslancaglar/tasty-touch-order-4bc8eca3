@@ -24,7 +24,7 @@ const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.C
   children,
   ...props
 }, ref) => <DrawerPortal>
-    <DrawerOverlay className="bg-transparent pointer-events-none" />
+    <DrawerOverlay className="pointer-events-none bg-transparent" />
     <DrawerPrimitive.Content ref={ref} className={cn("fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background", className)} {...props}>
       {children}
     </DrawerPrimitive.Content>
