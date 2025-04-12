@@ -14,7 +14,8 @@ import {
   UtensilsCrossed,
   Cherry,
   Leaf,
-  Apple
+  Apple,
+  Wine
 } from "lucide-react";
 
 export const getIconComponent = (iconName: string): React.ReactNode => {
@@ -52,6 +53,8 @@ export const getIconComponent = (iconName: string): React.ReactNode => {
       return <Utensils className="h-4 w-4" />; // Replaced Spoon with Utensils since Spoon icon is not available
     case 'egg':
       return <Utensils className="h-4 w-4" />; // Replaced Egg with Utensils since Egg icon is not available
+    case 'wine':
+      return <Wine className="h-4 w-4" />;
     default:
       return <UtensilsCrossed className="h-4 w-4" />;
   }

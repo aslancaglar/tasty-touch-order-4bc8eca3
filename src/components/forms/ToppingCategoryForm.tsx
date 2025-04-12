@@ -124,11 +124,14 @@ const ToppingCategoryForm = ({
             <SelectValue placeholder="Select an icon" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="cherry">Sauces</SelectItem>
-            <SelectItem value="leaf">Vegetables</SelectItem>
-            <SelectItem value="beef">Meats</SelectItem>
+            <SelectItem value="cherry">Cherry</SelectItem>
+            <SelectItem value="leaf">Leaf</SelectItem>
+            <SelectItem value="beef">Beef</SelectItem>
             <SelectItem value="pizza">Pizza</SelectItem>
             <SelectItem value="utensils">Utensils</SelectItem>
+            <SelectItem value="coffee">Coffee</SelectItem>
+            <SelectItem value="fish">Fish</SelectItem>
+            <SelectItem value="ice-cream">Ice Cream</SelectItem>
           </SelectContent>
         </Select>
       </div>

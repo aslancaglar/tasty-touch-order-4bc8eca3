@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -872,7 +873,6 @@ const RestaurantManage = () => {
               </TabsTrigger>
             </TabsList>
             
-            
             <TabsContent value="menu">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -996,3 +996,386 @@ const RestaurantManage = () => {
                           onSubmit={handleAddCategory}
                           isLoading={savingCategory}
                         />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">No categories yet. Add your first menu category to get started.</p>
+                    <Button
+                      onClick={() => setIsAddingCategory(true)}
+                      className="bg-kiosk-primary"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add First Category
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="toppings">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Topping Categories</h3>
+                  <Dialog open={isAddingToppingCategory} onOpenChange={setIsAddingToppingCategory}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-kiosk-primary">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Topping Category
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Add Topping Category</DialogTitle>
+                      </DialogHeader>
+                      <ToppingCategoryForm 
+                        onSubmit={handleAddToppingCategory}
+                        isLoading={savingToppingCategory}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                
+                {loading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : toppingCategories.length > 0 ? (
+                  <div className="space-y-8">
+                    {toppingCategories.map((category) => (
+                      <div key={category.id} className="border rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 p-4 flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-2 bg-primary/10 rounded-md">
+                              {category.icon && getIconComponent(category.icon)}
+                            </div>
+                            <div>
+                              <span className="font-medium">{category.name}</span>
+                              {category.description && (
+                                <p className="text-xs text-muted-foreground">{category.description}</p>
+                              )}
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {category.min_selections > 0 && (
+                                  <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 mr-1">
+                                    Min: {category.min_selections}
+                                  </span>
+                                )}
+                                {category.max_selections > 0 && (
+                                  <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5">
+                                    Max: {category.max_selections}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex space-x-1">
+                            <Dialog 
+                              open={isEditingToppingCategory === category.id} 
+                              onOpenChange={(open) => setIsEditingToppingCategory(open ? category.id : null)}
+                            >
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                  <DialogTitle>Edit Topping Category</DialogTitle>
+                                </DialogHeader>
+                                <ToppingCategoryForm 
+                                  onSubmit={(values) => handleEditToppingCategory(category.id, values)}
+                                  initialValues={{
+                                    name: category.name,
+                                    description: category.description || "",
+                                    icon: category.icon || "",
+                                    min_selections: category.min_selections,
+                                    max_selections: category.max_selections
+                                  }}
+                                  isLoading={savingToppingCategory}
+                                />
+                              </DialogContent>
+                            </Dialog>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedToppingCategory(category.id);
+                                setIsAddingTopping(true);
+                              }}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                            <Dialog 
+                              open={toppingCategoryToDelete === category.id} 
+                              onOpenChange={(open) => setToppingCategoryToDelete(open ? category.id : null)}
+                            >
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                  <DialogTitle>Delete Topping Category</DialogTitle>
+                                </DialogHeader>
+                                <div className="py-4">
+                                  <p>Are you sure you want to delete the category <strong>{category.name}</strong>?</p>
+                                  <p className="text-sm text-muted-foreground mt-2">This will also delete all toppings in this category.</p>
+                                </div>
+                                <div className="flex justify-end space-x-2">
+                                  <Button variant="outline" onClick={() => setToppingCategoryToDelete(null)}>
+                                    Cancel
+                                  </Button>
+                                  <Button 
+                                    variant="destructive" 
+                                    onClick={() => handleDeleteToppingCategory(category.id)}
+                                    disabled={isDeletingToppingCategory}
+                                  >
+                                    {isDeletingToppingCategory ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Deleting...
+                                      </>
+                                    ) : (
+                                      "Delete"
+                                    )}
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          {toppings[category.id]?.length > 0 ? (
+                            <div className="grid gap-2">
+                              {toppings[category.id].map((topping) => (
+                                <div 
+                                  key={topping.id} 
+                                  className="flex items-center justify-between py-2 border-b last:border-0"
+                                >
+                                  <div>
+                                    <span className="font-medium">{topping.name}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-4">
+                                    <div className="flex items-center">
+                                      <DollarSign className="h-4 w-4 text-muted-foreground mr-1" />
+                                      <span>{topping.price.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex space-x-1">
+                                      <Dialog 
+                                        open={isEditingTopping === topping.id} 
+                                        onOpenChange={(open) => setIsEditingTopping(open ? topping.id : null)}
+                                      >
+                                        <DialogTrigger asChild>
+                                          <Button variant="ghost" size="sm">
+                                            <Edit className="h-4 w-4" />
+                                          </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-[425px]">
+                                          <DialogHeader>
+                                            <DialogTitle>Edit Topping</DialogTitle>
+                                          </DialogHeader>
+                                          <ToppingForm 
+                                            onSubmit={(values) => handleEditTopping(topping.id, values)}
+                                            initialValues={{
+                                              name: topping.name,
+                                              price: topping.price,
+                                              tax_percentage: topping.tax_percentage,
+                                              category_id: topping.category_id
+                                            }}
+                                            categories={toppingCategories}
+                                            isLoading={savingTopping}
+                                          />
+                                        </DialogContent>
+                                      </Dialog>
+                                      <Dialog 
+                                        open={toppingToDelete === topping.id} 
+                                        onOpenChange={(open) => setToppingToDelete(open ? topping.id : null)}
+                                      >
+                                        <DialogTrigger asChild>
+                                          <Button variant="ghost" size="sm">
+                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                          </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-[425px]">
+                                          <DialogHeader>
+                                            <DialogTitle>Delete Topping</DialogTitle>
+                                          </DialogHeader>
+                                          <div className="py-4">
+                                            <p>Are you sure you want to delete the topping <strong>{topping.name}</strong>?</p>
+                                          </div>
+                                          <div className="flex justify-end space-x-2">
+                                            <Button variant="outline" onClick={() => setToppingToDelete(null)}>
+                                              Cancel
+                                            </Button>
+                                            <Button 
+                                              variant="destructive" 
+                                              onClick={() => handleDeleteTopping(topping.id)}
+                                              disabled={isDeletingTopping}
+                                            >
+                                              {isDeletingTopping ? (
+                                                <>
+                                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                  Deleting...
+                                                </>
+                                              ) : (
+                                                "Delete"
+                                              )}
+                                            </Button>
+                                          </div>
+                                        </DialogContent>
+                                      </Dialog>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <p className="text-muted-foreground mb-2">No toppings in this category yet.</p>
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedToppingCategory(category.id);
+                                  setIsAddingTopping(true);
+                                }}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Topping
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">No topping categories yet. Add your first topping category.</p>
+                    <Button
+                      onClick={() => setIsAddingToppingCategory(true)}
+                      className="bg-kiosk-primary"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add First Topping Category
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              <Dialog open={isAddingTopping} onOpenChange={setIsAddingTopping}>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Add Topping</DialogTitle>
+                  </DialogHeader>
+                  <ToppingForm 
+                    onSubmit={handleAddTopping}
+                    initialValues={{
+                      name: "",
+                      price: 0,
+                      tax_percentage: 10,
+                      category_id: selectedToppingCategory || ""
+                    }}
+                    categories={toppingCategories}
+                    isLoading={savingTopping}
+                  />
+                </DialogContent>
+              </Dialog>
+            </TabsContent>
+            
+            <TabsContent value="orders">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Recent Orders</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  {mockOrders.map((order) => (
+                    <div key={order.id} className="border rounded-lg overflow-hidden">
+                      <div className="p-4 bg-gray-50 flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">Order #{order.id}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[order.status]}`}>
+                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(order.date).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="font-medium">${order.total.toFixed(2)}</div>
+                      </div>
+                      <div className="p-4">
+                        <div className="space-y-2">
+                          {order.items.map((item, index) => (
+                            <div key={index} className="flex justify-between">
+                              <div>
+                                <span className="font-medium">{item.quantity}x</span> {item.name}
+                              </div>
+                              <div>${(item.price * item.quantity).toFixed(2)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="settings">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Restaurant Settings</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Restaurant Name</Label>
+                      <Input 
+                        id="name" 
+                        defaultValue={restaurant.name} 
+                        placeholder="Restaurant name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <Input 
+                        id="location" 
+                        defaultValue={restaurant.location || ""} 
+                        placeholder="Restaurant location"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="logo">Restaurant Logo</Label>
+                    <ImageUpload
+                      value={restaurant.logo_url || ""}
+                      onChange={() => {}}
+                      label="Upload Logo"
+                    />
+                  </div>
+                  
+                  <div className="pt-4">
+                    <Button 
+                      onClick={handleSaveRestaurantInfo}
+                      className="bg-kiosk-primary"
+                    >
+                      Save Settings
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </AdminLayout>
+  );
+};
+
+export default RestaurantManage;
