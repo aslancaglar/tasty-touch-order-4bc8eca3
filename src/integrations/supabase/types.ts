@@ -88,6 +88,45 @@ export type Database = {
           },
         ]
       }
+      menu_item_topping_categories: {
+        Row: {
+          created_at: string
+          id: string
+          menu_item_id: string
+          topping_category_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          menu_item_id: string
+          topping_category_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          menu_item_id?: string
+          topping_category_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_topping_categories_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_topping_categories_topping_category_id_fkey"
+            columns: ["topping_category_id"]
+            isOneToOne: false
+            referencedRelation: "topping_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           category_id: string

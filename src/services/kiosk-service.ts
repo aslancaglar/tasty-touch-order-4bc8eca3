@@ -152,19 +152,19 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
 
   const menuItemsWithToppingCategories = await Promise.all(
     menuItems.map(async (item) => {
-      const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
+      const { data: toppingCategoryRelations, error: relationsError } = await supabase
         .from("menu_item_topping_categories")
         .select("topping_category_id")
         .eq("menu_item_id", item.id);
 
-      if (toppingCategoriesError) {
-        console.error("Error fetching menu item topping categories:", toppingCategoriesError);
-        return item;
+      if (relationsError) {
+        console.error("Error fetching menu item topping category relations:", relationsError);
+        return { ...item, topping_categories: [] };
       }
 
       return {
         ...item,
-        topping_categories: menuItemToppingCategories.map(tc => tc.topping_category_id)
+        topping_categories: toppingCategoryRelations.map(tc => tc.topping_category_id)
       };
     })
   );
@@ -187,19 +187,22 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     throw error;
   }
 
-  const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
+  const { data: toppingCategoryRelations, error: relationsError } = await supabase
     .from("menu_item_topping_categories")
     .select("topping_category_id")
     .eq("menu_item_id", id);
 
-  if (toppingCategoriesError) {
-    console.error("Error fetching menu item topping categories:", toppingCategoriesError);
-    return data;
+  if (relationsError) {
+    console.error("Error fetching menu item topping category relations:", relationsError);
+    return {
+      ...data,
+      topping_categories: []
+    };
   }
 
   return {
     ...data,
-    topping_categories: menuItemToppingCategories.map(tc => tc.topping_category_id)
+    topping_categories: toppingCategoryRelations.map(tc => tc.topping_category_id)
   };
 };
 
@@ -220,7 +223,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
   }
 
   if (topping_categories && topping_categories.length > 0) {
-    const toppingCategoryRelations = topping_categories.map(categoryId => ({
+    const toppingCategoryRelations = topping_categories.map((categoryId: string) => ({
       menu_item_id: data.id,
       topping_category_id: categoryId
     }));
@@ -268,7 +271,7 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
     }
 
     if (topping_categories && topping_categories.length > 0) {
-      const toppingCategoryRelations = topping_categories.map(categoryId => ({
+      const toppingCategoryRelations = topping_categories.map((categoryId: string) => ({
         menu_item_id: id,
         topping_category_id: categoryId
       }));
