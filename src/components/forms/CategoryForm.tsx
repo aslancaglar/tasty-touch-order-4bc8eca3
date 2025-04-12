@@ -14,6 +14,7 @@ const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
   description: z.string().optional(),
   icon: z.string().optional(),
+  image_url: z.string().optional(),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -33,13 +34,12 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
       name: initialValues?.name || "",
       description: initialValues?.description || "",
       icon: initialValues?.icon || "",
+      image_url: initialValues?.image_url || "",
     },
   });
 
   const handleSubmit = (values: CategoryFormValues) => {
     console.log("Form submitted with values:", values);
-    console.log("Note: description field and image_url are not stored in database");
-    
     onSubmit(values);
   };
 
@@ -65,12 +65,13 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description (Optional) - Note: Currently not stored in database</FormLabel>
+              <FormLabel>Description (Optional)</FormLabel>
               <FormControl>
                 <Textarea 
                   placeholder="Describe this category..." 
                   className="resize-none" 
                   {...field} 
+                  value={field.value || ""}
                 />
               </FormControl>
               <FormMessage />

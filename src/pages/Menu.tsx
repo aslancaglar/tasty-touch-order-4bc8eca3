@@ -109,6 +109,7 @@ const MenuPage = () => {
       setMenuItems(prev => {
         const updatedItems = { ...prev };
         delete updatedItems[categoryId];
+        console.log("Updated menu items after category deletion:", updatedItems);
         return updatedItems;
       });
       

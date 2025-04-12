@@ -86,34 +86,33 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
     throw error;
   }
 
+  console.log("Raw categories data from DB:", data);
+  
   return data.map(category => {
     // Create a base result with required fields
     const result: MenuCategory = {
       id: category.id,
       name: category.name,
       restaurant_id: category.restaurant_id,
-      description: null,
+      description: category.description || null,
       icon: category.icon || null,
-      image_url: null,
+      image_url: category.image_url || null,
       created_at: category.created_at,
       updated_at: category.updated_at
     };
-    
-    // Conditionally add optional fields if they exist in the response
-    if ('description' in category && category.description !== null && category.description !== undefined) {
-      result.description = String(category.description);
-    }
     
     return result;
   });
 };
 
 export const createCategory = async (category: Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>): Promise<MenuCategory> => {
-  // Ensure we're sending valid data to Supabase - remove fields that don't exist in database
+  // Include all the fields that exist in the database table
   const categoryData = {
     name: category.name,
     restaurant_id: category.restaurant_id,
-    icon: category.icon || null
+    description: category.description || null,
+    icon: category.icon || null,
+    image_url: category.image_url || null
   };
 
   console.log("Creating category with data:", categoryData);
@@ -129,14 +128,16 @@ export const createCategory = async (category: Omit<MenuCategory, 'id' | 'create
     throw error;
   }
 
-  // Ensure the returned data matches our MenuCategory type
+  console.log("Category created successfully:", data);
+  
+  // Return the category with the correct type
   return {
     id: data.id,
     name: data.name,
     restaurant_id: data.restaurant_id,
-    description: null,
+    description: data.description || null,
     icon: data.icon || null,
-    image_url: null,
+    image_url: data.image_url || null,
     created_at: data.created_at,
     updated_at: data.updated_at
   };
@@ -148,10 +149,12 @@ export const updateCategory = async (id: string, updates: Partial<Omit<MenuCateg
     throw new Error("Cannot update a temporary category. Please create it first.");
   }
 
-  // Only include fields that exist in the database
+  // Include all valid fields from the updates
   const validUpdates = {
     name: updates.name,
-    icon: updates.icon
+    description: updates.description,
+    icon: updates.icon,
+    image_url: updates.image_url
   };
   
   console.log("Sending updates to database:", validUpdates);
@@ -168,14 +171,16 @@ export const updateCategory = async (id: string, updates: Partial<Omit<MenuCateg
     throw error;
   }
 
-  // Ensure the returned data matches our MenuCategory type
+  console.log("Category updated successfully:", data);
+
+  // Return the updated category with the correct type
   return {
     id: data.id,
     name: data.name,
     restaurant_id: data.restaurant_id,
-    description: null,
+    description: data.description || null,
     icon: data.icon || null,
-    image_url: null,
+    image_url: data.image_url || null,
     created_at: data.created_at,
     updated_at: data.updated_at
   };

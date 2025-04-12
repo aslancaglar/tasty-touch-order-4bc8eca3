@@ -218,7 +218,7 @@ const RestaurantManage = () => {
     try {
       setSavingCategory(true);
       
-      console.log("Adding new category:", values);
+      console.log("Adding new category with values:", values);
       
       const newCategory = {
         name: values.name,
@@ -228,9 +228,11 @@ const RestaurantManage = () => {
         restaurant_id: restaurant?.id || "",
       };
       
+      console.log("Prepared category data for creation:", newCategory);
       const savedCategory = await createCategory(newCategory);
+      console.log("Category created successfully:", savedCategory);
       
-      setCategories([...categories, savedCategory]);
+      setCategories(prev => [...prev, savedCategory]);
       
       toast({
         title: "Category Added",
@@ -259,7 +261,9 @@ const RestaurantManage = () => {
       
       const updatedCategory = await updateCategory(selectedCategory.id, {
         name: values.name,
-        icon: values.icon || selectedCategory.icon
+        description: values.description,
+        icon: values.icon,
+        image_url: values.image_url
       });
       
       console.log("Successfully updated category:", updatedCategory);
@@ -308,6 +312,7 @@ const RestaurantManage = () => {
       setMenuItems(prev => {
         const updatedItems = { ...prev };
         delete updatedItems[deletingCategoryId];
+        console.log("Updated menu items after category deletion:", updatedItems);
         return updatedItems;
       });
       
