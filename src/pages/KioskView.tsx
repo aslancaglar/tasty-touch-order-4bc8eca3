@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -12,11 +13,11 @@ import {
   Loader2,
   ChevronLeft,
   Plus,
-  ArrowRight
+  ArrowRight,
+  Minus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { 
   Dialog, 
   DialogContent, 
@@ -25,6 +26,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -106,7 +113,7 @@ const KioskView = () => {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showCartDetails, setShowCartDetails] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -153,6 +160,13 @@ const KioskView = () => {
     
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
+
+  // When an item is added to the cart, open the cart sheet
+  useEffect(() => {
+    if (cart.length > 0) {
+      setIsCartOpen(true);
+    }
+  }, [cart]);
 
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
@@ -304,6 +318,7 @@ const KioskView = () => {
     });
   };
 
+  // Fix the function to properly handle two arguments
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -462,7 +477,13 @@ const KioskView = () => {
   };
 
   const handleRemoveCartItem = (itemId: string) => {
-    setCart(prev => prev.filter(item => item.id !== itemId));
+    setCart(prev => {
+      const newCart = prev.filter(item => item.id !== itemId);
+      if (newCart.length === 0) {
+        setIsCartOpen(false);
+      }
+      return newCart;
+    });
   };
 
   const calculateCartTotal = (): number => {
@@ -553,7 +574,7 @@ const KioskView = () => {
       setTimeout(() => {
         setOrderPlaced(false);
         setCart([]);
-        setShowCartDetails(false);
+        setIsCartOpen(false);
         setPlacingOrder(false);
       }, 3000);
       
@@ -649,7 +670,7 @@ const KioskView = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pb-32">
+        <div className="flex-1 overflow-y-auto">
           <div className="p-6">
             <h2 className="text-xl font-bold mb-4">
               {categories.find(c => c.id === activeCategory)?.name || 'Menu Items'}
@@ -683,141 +704,120 @@ const KioskView = () => {
         </div>
       </div>
 
-      {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-          <div className="container mx-auto px-4">
-            {showCartDetails ? (
-              <div className="pb-6">
-                <div className="flex items-center justify-between py-4">
-                  <div className="flex items-center">
-                    <ShoppingCart className="text-red-500 mr-2" />
-                    <h2 className="font-bold text-lg">VOTRE COMMANDE ({cartItemCount})</h2>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setShowCartDetails(false)}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Collapse Cart
-                  </Button>
-                </div>
-                
-                <div className="space-y-4 max-h-60 overflow-y-auto">
-                  {cart.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4">
-                      <div className="flex items-start">
-                        <img 
-                          src={item.menuItem.image || '/placeholder.svg'} 
-                          alt={item.menuItem.name} 
-                          className="w-16 h-16 object-cover rounded mr-4" 
-                        />
-                        <div>
-                          <h3 className="font-bold">{item.menuItem.name}</h3>
-                          <div className="text-sm text-gray-500">
-                            {getFormattedOptions(item)}
-                            {getFormattedOptions(item) && getFormattedToppings(item) && ", "}
-                            {getFormattedToppings(item)}
-                          </div>
-                          <p className="text-gray-700 font-medium mt-1">
-                            {calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings).toFixed(2)} €
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="flex items-center border rounded-md">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="h-8 w-8 text-gray-500"
-                            onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity - 1)}
-                          >
-                            <MinusCircle className="h-4 w-4" />
-                          </Button>
-                          <span className="w-8 text-center font-medium">{item.quantity}</span>
-                          <Button 
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-gray-500"
-                            onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity + 1)}
-                          >
-                            <PlusCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="ml-2 text-red-500"
-                          onClick={() => handleRemoveCartItem(item.id)}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
+      {/* New Cart UI as a slide-in sheet */}
+      <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
+        <SheetContent className="w-full sm:max-w-md flex flex-col overflow-hidden">
+          <SheetHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center">
+              <ShoppingCart className="text-red-500 mr-2" />
+              <SheetTitle>VOTRE COMMANDE ({cartItemCount})</SheetTitle>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setIsCartOpen(false)}
+              className="gap-2"
+            >
+              <ChevronRight className="h-4 w-4" />
+              Collapse Cart
+            </Button>
+          </SheetHeader>
+          
+          <div className="flex-1 overflow-y-auto mt-6">
+            {cart.map((item) => (
+              <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+                <div className="flex items-start">
+                  <img 
+                    src={item.menuItem.image || '/placeholder.svg'} 
+                    alt={item.menuItem.name} 
+                    className="w-16 h-16 object-cover rounded mr-4" 
+                  />
+                  <div>
+                    <h3 className="font-bold">{item.menuItem.name}</h3>
+                    <div className="text-sm text-gray-500">
+                      {getFormattedOptions(item)}
+                      {getFormattedOptions(item) && getFormattedToppings(item) && ", "}
+                      {getFormattedToppings(item)}
                     </div>
-                  ))}
-                </div>
-                
-                <div className="space-y-2 mt-4 px-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Sous-total:</span>
-                    <span className="font-medium">{calculateSubtotal().toFixed(2)} €</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">TVA (10%):</span>
-                    <span className="font-medium">{calculateTax().toFixed(2)} €</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold mt-2">
-                    <span>TOTAL:</span>
-                    <span>{(calculateSubtotal() + calculateTax()).toFixed(2)} €</span>
+                    <p className="text-gray-700 font-medium mt-1">
+                      {calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings).toFixed(2)} €
+                    </p>
                   </div>
                 </div>
-                
-                <div className="flex mt-6 gap-4">
-                  <Button 
-                    variant="destructive"
-                    className="flex-1 h-14 text-white bg-red-500 hover:bg-red-600"
-                    onClick={() => setCart([])}
-                  >
-                    ANNULER
-                  </Button>
-                  <Button 
-                    className="flex-1 h-14 bg-green-800 text-white hover:bg-green-900"
-                    onClick={handlePlaceOrder}
-                    disabled={placingOrder || orderPlaced}
-                  >
-                    {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    {orderPlaced && <Check className="h-4 w-4 mr-2" />}
-                    {orderPlaced ? "Order Placed!" : placingOrder ? "Processing..." : "VOIR MA COMMANDE"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="h-16 flex items-center justify-between">
-                <Button 
-                  variant="ghost"
-                  className="flex items-center text-red-500"
-                  onClick={() => setShowCartDetails(true)}
-                >
-                  <ShoppingCart className="h-5 w-5 mr-2" />
-                  <span className="font-medium">VOTRE COMMANDE ({cartItemCount})</span>
-                </Button>
                 <div className="flex items-center">
-                  <p className="font-bold mr-4">Total: {calculateCartTotal().toFixed(2)} €</p>
-                  <Button 
-                    className="bg-green-800 text-white hover:bg-green-900"
-                    onClick={() => setShowCartDetails(true)}
-                  >
-                    VOIR MA COMMANDE
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8 rounded-full"
+                      onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity - 1)}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span className="w-8 text-center font-medium">{item.quantity}</span>
+                    <Button 
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full"
+                      onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity + 1)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="ml-2 text-red-500"
+                      onClick={() => handleRemoveCartItem(item.id)}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            )}
+            ))}
           </div>
-        </div>
-      )}
+          
+          <div className="mt-auto">
+            <div className="space-y-2 mt-4">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Sous-total:</span>
+                <span className="font-medium">{calculateSubtotal().toFixed(2)} €</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">TVA (10%):</span>
+                <span className="font-medium">{calculateTax().toFixed(2)} €</span>
+              </div>
+              <Separator className="my-2" />
+              <div className="flex justify-between text-lg font-bold">
+                <span>TOTAL:</span>
+                <span>{(calculateSubtotal() + calculateTax()).toFixed(2)} €</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <Button 
+                variant="destructive"
+                className="py-6"
+                onClick={() => setCart([])}
+              >
+                ANNULER
+              </Button>
+              <Button 
+                className="bg-green-800 hover:bg-green-900 text-white py-6"
+                onClick={handlePlaceOrder}
+                disabled={placingOrder || orderPlaced}
+              >
+                {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {orderPlaced && <Check className="h-4 w-4 mr-2" />}
+                {orderPlaced ? "CONFIRMÉ" : placingOrder ? "EN COURS..." : "VOIR MA COMMANDE"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
+      {/* Item customization dialog */}
       {selectedItem && (
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">
