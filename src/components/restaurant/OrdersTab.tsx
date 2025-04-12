@@ -13,6 +13,7 @@ type OrderItem = {
   quantity: number;
   price: number;
   options?: string[];
+  specialInstructions?: string;
 };
 
 type Order = {
