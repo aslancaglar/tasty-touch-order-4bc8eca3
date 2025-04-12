@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   Plus,
   ArrowRight,
-  Minus
+  Minus,
+  ChevronUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,11 +28,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -161,10 +166,12 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
-  // When an item is added to the cart, open the cart sheet
+  // When an item is added to the cart, open the cart drawer
   useEffect(() => {
     if (cart.length > 0) {
       setIsCartOpen(true);
+    } else {
+      setIsCartOpen(false);
     }
   }, [cart]);
 
@@ -318,7 +325,7 @@ const KioskView = () => {
     });
   };
 
-  // Fix the function to properly handle two arguments
+  // Fix the function to properly handle topping toggling
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -670,7 +677,7 @@ const KioskView = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-24">
           <div className="p-6">
             <h2 className="text-xl font-bold mb-4">
               {categories.find(c => c.id === activeCategory)?.name || 'Menu Items'}
@@ -704,118 +711,119 @@ const KioskView = () => {
         </div>
       </div>
 
-      {/* New Cart UI as a slide-in sheet */}
-      <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
-        <SheetContent className="w-full sm:max-w-md flex flex-col overflow-hidden">
-          <SheetHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center">
-              <ShoppingCart className="text-red-500 mr-2" />
-              <SheetTitle>VOTRE COMMANDE ({cartItemCount})</SheetTitle>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setIsCartOpen(false)}
-              className="gap-2"
-            >
-              <ChevronRight className="h-4 w-4" />
-              Collapse Cart
-            </Button>
-          </SheetHeader>
-          
-          <div className="flex-1 overflow-y-auto mt-6">
-            {cart.map((item) => (
-              <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-                <div className="flex items-start">
-                  <img 
-                    src={item.menuItem.image || '/placeholder.svg'} 
-                    alt={item.menuItem.name} 
-                    className="w-16 h-16 object-cover rounded mr-4" 
-                  />
-                  <div>
-                    <h3 className="font-bold">{item.menuItem.name}</h3>
-                    <div className="text-sm text-gray-500">
-                      {getFormattedOptions(item)}
-                      {getFormattedOptions(item) && getFormattedToppings(item) && ", "}
-                      {getFormattedToppings(item)}
-                    </div>
-                    <p className="text-gray-700 font-medium mt-1">
-                      {calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings).toFixed(2)} €
-                    </p>
-                  </div>
-                </div>
+      {/* New Cart UI as a bottom drawer */}
+      <Drawer open={isCartOpen && cart.length > 0} onOpenChange={setIsCartOpen}>
+        <DrawerContent className="max-h-[85vh]">
+          <div className="mx-auto w-full max-w-4xl">
+            <DrawerHeader className="px-4 sm:px-6 pt-4 pb-0">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center">
+                  <ShoppingCart className="text-red-500 mr-2" />
+                  <DrawerTitle className="text-xl">VOTRE COMMANDE ({cartItemCount})</DrawerTitle>
+                </div>
+                <DrawerClose asChild>
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <ChevronUp className="h-4 w-4" />
+                    Collapse Cart
+                  </Button>
+                </DrawerClose>
+              </div>
+            </DrawerHeader>
+            
+            <div className="p-4 sm:p-6 overflow-auto max-h-[50vh]">
+              {cart.map((item) => (
+                <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+                  <div className="flex items-start">
+                    <img 
+                      src={item.menuItem.image || '/placeholder.svg'} 
+                      alt={item.menuItem.name} 
+                      className="w-16 h-16 object-cover rounded mr-4" 
+                    />
+                    <div>
+                      <h3 className="font-bold">{item.menuItem.name}</h3>
+                      <div className="text-sm text-gray-500">
+                        {getFormattedOptions(item)}
+                        {getFormattedOptions(item) && getFormattedToppings(item) && ", "}
+                        {getFormattedToppings(item)}
+                      </div>
+                      <p className="text-gray-700 font-medium mt-1">
+                        {calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings).toFixed(2)} €
+                      </p>
+                    </div>
+                  </div>
                   <div className="flex items-center">
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity - 1)}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <span className="w-8 text-center font-medium">{item.quantity}</span>
-                    <Button 
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity + 1)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="ml-2 text-red-500"
-                      onClick={() => handleRemoveCartItem(item.id)}
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
+                    <div className="flex items-center">
+                      <Button 
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity - 1)}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <span className="w-8 text-center font-medium">{item.quantity}</span>
+                      <Button 
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity + 1)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="ml-2 text-red-500"
+                        onClick={() => handleRemoveCartItem(item.id)}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-auto">
-            <div className="space-y-2 mt-4">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Sous-total:</span>
-                <span className="font-medium">{calculateSubtotal().toFixed(2)} €</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">TVA (10%):</span>
-                <span className="font-medium">{calculateTax().toFixed(2)} €</span>
-              </div>
-              <Separator className="my-2" />
-              <div className="flex justify-between text-lg font-bold">
-                <span>TOTAL:</span>
-                <span>{(calculateSubtotal() + calculateTax()).toFixed(2)} €</span>
-              </div>
+              ))}
             </div>
             
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <Button 
-                variant="destructive"
-                className="py-6"
-                onClick={() => setCart([])}
-              >
-                ANNULER
-              </Button>
-              <Button 
-                className="bg-green-800 hover:bg-green-900 text-white py-6"
-                onClick={handlePlaceOrder}
-                disabled={placingOrder || orderPlaced}
-              >
-                {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {orderPlaced && <Check className="h-4 w-4 mr-2" />}
-                {orderPlaced ? "CONFIRMÉ" : placingOrder ? "EN COURS..." : "VOIR MA COMMANDE"}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+            <div className="px-4 sm:px-6 pb-4">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Sous-total:</span>
+                  <span className="font-medium">{calculateSubtotal().toFixed(2)} €</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">TVA (10%):</span>
+                  <span className="font-medium">{calculateTax().toFixed(2)} €</span>
+                </div>
+                <Separator className="my-2" />
+                <div className="flex justify-between text-lg font-bold">
+                  <span>TOTAL:</span>
+                  <span>{(calculateSubtotal() + calculateTax()).toFixed(2)} €</span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mt-6">
+                <Button 
+                  variant="destructive"
+                  className="py-6"
+                  onClick={() => setCart([])}
+                >
+                  ANNULER
+                </Button>
+                <Button 
+                  className="bg-green-800 hover:bg-green-900 text-white py-6"
+                  onClick={handlePlaceOrder}
+                  disabled={placingOrder || orderPlaced}
+                >
+                  {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {orderPlaced && <Check className="h-4 w-4 mr-2" />}
+                  {orderPlaced ? "CONFIRMÉ" : placingOrder ? "EN COURS..." : "VOIR MA COMMANDE"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
 
       {/* Item customization dialog */}
       {selectedItem && (
