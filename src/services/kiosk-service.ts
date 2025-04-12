@@ -152,9 +152,13 @@ export const updateCategory = async (id: string, updates: Partial<Omit<MenuCateg
     throw new Error("Cannot update a temporary category. Please create it first.");
   }
 
+  // Remove the description field from updates as it doesn't exist in the database
+  const { description, ...validUpdates } = updates;
+  console.log("Sending updates to database:", validUpdates);
+
   const { data, error } = await supabase
     .from("menu_categories")
-    .update(updates)
+    .update(validUpdates)
     .eq("id", id)
     .select()
     .single();

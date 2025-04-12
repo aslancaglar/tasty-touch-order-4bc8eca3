@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -40,6 +39,9 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
   });
 
   const handleSubmit = (values: CategoryFormValues) => {
+    console.log("Form submitted with values:", values);
+    console.log("Note: description field will be ignored by the server");
+    
     onSubmit(values);
   };
 
@@ -65,7 +67,7 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description (Optional)</FormLabel>
+              <FormLabel>Description (Optional) - Note: Currently not stored in database</FormLabel>
               <FormControl>
                 <Textarea 
                   placeholder="Describe this category..." 

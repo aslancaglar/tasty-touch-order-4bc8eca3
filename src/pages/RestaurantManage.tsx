@@ -295,7 +295,9 @@ const RestaurantManage = () => {
       console.log(`Starting deletion process for category: ${deletingCategoryId}`);
       await deleteCategory(deletingCategoryId);
       
-      setCategories(prevCategories => prevCategories.filter(cat => cat.id !== deletingCategoryId));
+      setCategories(prevCategories => 
+        prevCategories.filter(cat => cat.id !== deletingCategoryId)
+      );
       
       const updatedMenuItems = { ...menuItems };
       delete updatedMenuItems[deletingCategoryId];

@@ -98,9 +98,11 @@ const MenuPage = () => {
       await deleteCategory(categoryId);
       
       // Update local state to reflect the deletion
-      setCategories(prevCategories => prevCategories.filter(cat => cat.id !== categoryId));
+      setCategories(prevCategories => 
+        prevCategories.filter(cat => cat.id !== categoryId)
+      );
       
-      // Also update menuItems state
+      // Also update menuItems state to remove items from deleted category
       const updatedMenuItems = { ...menuItems };
       delete updatedMenuItems[categoryId];
       setMenuItems(updatedMenuItems);
