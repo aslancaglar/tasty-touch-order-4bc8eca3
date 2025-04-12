@@ -106,17 +106,13 @@ export function Sidebar() {
                 </span>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium truncate max-w-[120px]">
-                  {user?.email || "User"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {user?.email || "No email"}
-                </p>
+                <p className="text-sm font-medium truncate max-w-[120px]">{user?.email || "Admin User"}</p>
+                <p className="text-xs text-gray-500">Admin</p>
               </div>
             </div>
             <button
               onClick={handleSignOut}
-              className="flex items-center px-3 py-2 text-sm text-red-500 rounded-lg hover:bg-red-50"
+              className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-primary hover:bg-primary/5 rounded-lg"
             >
               <LogOut size={18} className="mr-2" />
               Sign Out
@@ -125,7 +121,7 @@ export function Sidebar() {
         ) : (
           <button
             onClick={handleSignOut}
-            className="w-full flex justify-center p-2 text-red-500 rounded-lg hover:bg-red-50"
+            className="w-full flex justify-center p-2 text-gray-600 hover:text-primary hover:bg-primary/5 rounded-lg"
             title="Sign Out"
           >
             <LogOut size={20} />

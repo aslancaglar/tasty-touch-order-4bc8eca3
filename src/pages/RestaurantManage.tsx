@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -27,7 +26,7 @@ import {
   DollarSign,
   Percent,
   Leaf,
-  Apple
+  Cheese
 } from "lucide-react";
 import { 
   getRestaurants, 
@@ -1001,15 +1000,243 @@ const RestaurantManage = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">No categories yet. Add your first menu category to get started.</p>
-                    <Button
-                      onClick={() => setIsAddingCategory(true)}
-                      className="bg-kiosk-primary"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add First Category
-                    </Button>
+                    <p className="text-muted-foreground mb-4">No categories found for this restaurant</p>
+                    <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+                      <DialogTrigger asChild>
+                        <Button className="bg-kiosk-primary">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add First Category
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Add Your First Menu Category</DialogTitle>
+                        </DialogHeader>
+                        <CategoryForm 
+                          onSubmit={handleAddCategory}
+                          isLoading={savingCategory}
+                        />
+                      </DialogContent>
+                    </Dialog>
                   </div>
+                )}
+
+                {categories.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between mt-8">
+                      <h3 className="text-lg font-medium">Menu Items</h3>
+                      <Dialog 
+                        open={isAddingMenuItem} 
+                        onOpenChange={(open) => {
+                          setIsAddingMenuItem(open);
+                          if (!open) setSelectedCategory(null);
+                        }}
+                      >
+                        <DialogTrigger asChild>
+                          <Button className="bg-kiosk-primary">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Item
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[600px]">
+                          <DialogHeader>
+                            <DialogTitle>Add Menu Item</DialogTitle>
+                          </DialogHeader>
+                          <MenuItemForm 
+                            onSubmit={handleAddMenuItem}
+                            categories={categories}
+                            isLoading={savingMenuItem}
+                            initialValues={
+                              selectedCategory ? { category_id: selectedCategory } : undefined
+                            }
+                          />
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    
+                    {loading ? (
+                      <div className="flex justify-center items-center h-40">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {categories.map((category) => {
+                          const items = menuItems[category.id] || [];
+                          
+                          if (items.length === 0) {
+                            return (
+                              <div key={category.id} className="text-center py-4 border rounded-lg">
+                                <p className="text-muted-foreground mb-4">No items in {category.name}</p>
+                                <Dialog 
+                                  open={isAddingMenuItem && selectedCategory === category.id} 
+                                  onOpenChange={(open) => {
+                                    setIsAddingMenuItem(open);
+                                    setSelectedCategory(open ? category.id : null);
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline">
+                                      <Plus className="mr-2 h-4 w-4" />
+                                      Add Item to {category.name}
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-[600px]">
+                                    <DialogHeader>
+                                      <DialogTitle>Add Menu Item to {category.name}</DialogTitle>
+                                    </DialogHeader>
+                                    <MenuItemForm 
+                                      onSubmit={handleAddMenuItem}
+                                      categories={categories}
+                                      isLoading={savingMenuItem}
+                                      initialValues={{ category_id: category.id }}
+                                    />
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div key={category.id} className="space-y-2">
+                              <h4 className="font-medium text-sm text-muted-foreground">{category.name}</h4>
+                              {items.map(item => (
+                                <div 
+                                  key={item.id} 
+                                  className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
+                                >
+                                  <div className="flex items-center space-x-4">
+                                    {item.image ? (
+                                      <img 
+                                        src={item.image} 
+                                        alt={item.name} 
+                                        className="h-16 w-16 object-cover rounded-md"
+                                      />
+                                    ) : (
+                                      <div className="h-16 w-16 bg-gray-200 flex items-center justify-center rounded-md">
+                                        <Image className="h-6 w-6 text-gray-400" />
+                                      </div>
+                                    )}
+                                    <div>
+                                      <h3 className="font-medium">{item.name}</h3>
+                                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                                      <div className="flex items-center mt-1 space-x-2">
+                                        <span className="flex items-center text-sm font-medium">
+                                          <DollarSign className="h-3 w-3 mr-1" />
+                                          {parseFloat(item.price.toString()).toFixed(2)}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">|</span>
+                                        <span className="flex items-center text-sm text-muted-foreground">
+                                          <Percent className="h-3 w-3 mr-1" />
+                                          {item.tax_percentage !== null ? item.tax_percentage : 10}%
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex space-x-2 mt-4 md:mt-0">
+                                    <Dialog 
+                                      open={isEditingMenuItem === item.id} 
+                                      onOpenChange={(open) => setIsEditingMenuItem(open ? item.id : null)}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <Edit className="h-4 w-4 mr-2" />
+                                          Edit
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-[600px]">
+                                        <DialogHeader>
+                                          <DialogTitle>Edit Menu Item</DialogTitle>
+                                        </DialogHeader>
+                                        <MenuItemForm 
+                                          onSubmit={(values) => handleEditMenuItem(item.id, values)}
+                                          categories={categories}
+                                          isLoading={savingMenuItem}
+                                          initialValues={{
+                                            name: item.name,
+                                            description: item.description || "",
+                                            price: item.price,
+                                            tax_percentage: item.tax_percentage !== null ? item.tax_percentage : 10,
+                                            image: item.image || "",
+                                            category_id: item.category_id
+                                          }}
+                                        />
+                                      </DialogContent>
+                                    </Dialog>
+                                    
+                                    <Dialog 
+                                      open={menuItemToDelete === item.id} 
+                                      onOpenChange={(open) => setMenuItemToDelete(open ? item.id : null)}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="text-red-500">
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Delete
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                          <DialogTitle>Delete Menu Item</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="py-4">
+                                          <p>Are you sure you want to delete <strong>{item.name}</strong>?</p>
+                                          <p className="text-sm text-muted-foreground mt-2">This action cannot be undone.</p>
+                                        </div>
+                                        <div className="flex justify-end space-x-2">
+                                          <Button 
+                                            variant="outline" 
+                                            onClick={() => setMenuItemToDelete(null)}
+                                          >
+                                            Cancel
+                                          </Button>
+                                          <Button 
+                                            variant="destructive" 
+                                            onClick={() => handleDeleteMenuItem(item.id)}
+                                            disabled={isDeletingMenuItem}
+                                          >
+                                            {isDeletingMenuItem ? (
+                                              <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Deleting...
+                                              </>
+                                            ) : (
+                                              "Delete"
+                                            )}
+                                          </Button>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
+                        <Dialog 
+                          open={isAddingMenuItem && !selectedCategory} 
+                          onOpenChange={setIsAddingMenuItem}
+                        >
+                          <DialogTrigger asChild>
+                            <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                              <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add New Item
+                              </Button>
+                            </div>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[600px]">
+                            <DialogHeader>
+                              <DialogTitle>Add Menu Item</DialogTitle>
+                            </DialogHeader>
+                            <MenuItemForm 
+                              onSubmit={handleAddMenuItem}
+                              categories={categories}
+                              isLoading={savingMenuItem}
+                            />
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </TabsContent>
@@ -1022,7 +1249,7 @@ const RestaurantManage = () => {
                     <DialogTrigger asChild>
                       <Button className="bg-kiosk-primary">
                         <Plus className="mr-2 h-4 w-4" />
-                        Add Topping Category
+                        Add Category
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
@@ -1042,332 +1269,457 @@ const RestaurantManage = () => {
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
                 ) : toppingCategories.length > 0 ? (
-                  <div className="space-y-8">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {toppingCategories.map((category) => (
-                      <div key={category.id} className="border rounded-lg overflow-hidden">
-                        <div className="bg-gray-50 p-4 flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="p-2 bg-primary/10 rounded-md">
-                              {category.icon && getIconComponent(category.icon)}
-                            </div>
-                            <div>
-                              <span className="font-medium">{category.name}</span>
-                              {category.description && (
-                                <p className="text-xs text-muted-foreground">{category.description}</p>
-                              )}
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {category.min_selections > 0 && (
-                                  <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 mr-1">
-                                    Min: {category.min_selections}
-                                  </span>
-                                )}
-                                {category.max_selections > 0 && (
-                                  <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5">
-                                    Max: {category.max_selections}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                      <div 
+                        key={category.id} 
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-primary/10 rounded-md">
+                            {category.icon && getIconComponent(category.icon)}
                           </div>
-                          <div className="flex space-x-1">
-                            <Dialog 
-                              open={isEditingToppingCategory === category.id} 
-                              onOpenChange={(open) => setIsEditingToppingCategory(open ? category.id : null)}
-                            >
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="sm:max-w-[425px]">
-                                <DialogHeader>
-                                  <DialogTitle>Edit Topping Category</DialogTitle>
-                                </DialogHeader>
-                                <ToppingCategoryForm 
-                                  onSubmit={(values) => handleEditToppingCategory(category.id, values)}
-                                  initialValues={{
-                                    name: category.name,
-                                    description: category.description || "",
-                                    icon: category.icon || "",
-                                    min_selections: category.min_selections,
-                                    max_selections: category.max_selections
-                                  }}
-                                  isLoading={savingToppingCategory}
-                                />
-                              </DialogContent>
-                            </Dialog>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedToppingCategory(category.id);
-                                setIsAddingTopping(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                            <Dialog 
-                              open={toppingCategoryToDelete === category.id} 
-                              onOpenChange={(open) => setToppingCategoryToDelete(open ? category.id : null)}
-                            >
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Trash2 className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="sm:max-w-[425px]">
-                                <DialogHeader>
-                                  <DialogTitle>Delete Topping Category</DialogTitle>
-                                </DialogHeader>
-                                <div className="py-4">
-                                  <p>Are you sure you want to delete the category <strong>{category.name}</strong>?</p>
-                                  <p className="text-sm text-muted-foreground mt-2">This will also delete all toppings in this category.</p>
-                                </div>
-                                <div className="flex justify-end space-x-2">
-                                  <Button variant="outline" onClick={() => setToppingCategoryToDelete(null)}>
-                                    Cancel
-                                  </Button>
-                                  <Button 
-                                    variant="destructive" 
-                                    onClick={() => handleDeleteToppingCategory(category.id)}
-                                    disabled={isDeletingToppingCategory}
-                                  >
-                                    {isDeletingToppingCategory ? (
-                                      <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Deleting...
-                                      </>
-                                    ) : (
-                                      "Delete"
-                                    )}
-                                  </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
+                          <div>
+                            <span className="font-medium">{category.name}</span>
+                            {category.description && (
+                              <p className="text-xs text-muted-foreground">{category.description}</p>
+                            )}
+                            <div className="flex items-center mt-1 text-xs text-muted-foreground">
+                              <span>
+                                Min: {category.min_selections !== null ? category.min_selections : 0}
+                              </span>
+                              <span className="mx-2">|</span>
+                              <span>
+                                Max: {category.max_selections !== null ? category.max_selections : 0}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <div className="p-4">
-                          {toppings[category.id]?.length > 0 ? (
-                            <div className="grid gap-2">
-                              {toppings[category.id].map((topping) => (
+                        <div className="flex space-x-1">
+                          <Dialog 
+                            open={isEditingToppingCategory === category.id} 
+                            onOpenChange={(open) => setIsEditingToppingCategory(open ? category.id : null)}
+                          >
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                              <DialogHeader>
+                                <DialogTitle>Edit Topping Category</DialogTitle>
+                              </DialogHeader>
+                              <ToppingCategoryForm 
+                                onSubmit={(values) => handleEditToppingCategory(category.id, values)}
+                                initialValues={{
+                                  name: category.name,
+                                  description: category.description || "",
+                                  icon: category.icon || "",
+                                  min_selections: category.min_selections !== null ? category.min_selections : 0,
+                                  max_selections: category.max_selections !== null ? category.max_selections : 0
+                                }}
+                                isLoading={savingToppingCategory}
+                              />
+                            </DialogContent>
+                          </Dialog>
+                          
+                          <Dialog 
+                            open={toppingCategoryToDelete === category.id} 
+                            onOpenChange={(open) => setToppingCategoryToDelete(open ? category.id : null)}
+                          >
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                              <DialogHeader>
+                                <DialogTitle>Delete Topping Category</DialogTitle>
+                              </DialogHeader>
+                              <div className="py-4">
+                                <p>Are you sure you want to delete the category <strong>{category.name}</strong>?</p>
+                                <p className="text-sm text-muted-foreground mt-2">This will also delete all toppings in this category.</p>
+                              </div>
+                              <div className="flex justify-end space-x-2">
+                                <Button variant="outline" onClick={() => setToppingCategoryToDelete(null)}>
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  onClick={() => handleDeleteToppingCategory(category.id)}
+                                  disabled={isDeletingToppingCategory}
+                                >
+                                  {isDeletingToppingCategory ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Deleting...
+                                    </>
+                                  ) : (
+                                    "Delete"
+                                  )}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                    ))}
+                    <Dialog open={isAddingToppingCategory} onOpenChange={setIsAddingToppingCategory}>
+                      <DialogTrigger asChild>
+                        <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                          <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Category
+                          </Button>
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Add Topping Category</DialogTitle>
+                        </DialogHeader>
+                        <ToppingCategoryForm 
+                          onSubmit={handleAddToppingCategory}
+                          isLoading={savingToppingCategory}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">No topping categories found for this restaurant</p>
+                    <Dialog open={isAddingToppingCategory} onOpenChange={setIsAddingToppingCategory}>
+                      <DialogTrigger asChild>
+                        <Button className="bg-kiosk-primary">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add First Category
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Add Your First Topping Category</DialogTitle>
+                        </DialogHeader>
+                        <ToppingCategoryForm 
+                          onSubmit={handleAddToppingCategory}
+                          isLoading={savingToppingCategory}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
+
+                {toppingCategories.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between mt-8">
+                      <h3 className="text-lg font-medium">Toppings</h3>
+                      <Dialog 
+                        open={isAddingTopping} 
+                        onOpenChange={(open) => {
+                          setIsAddingTopping(open);
+                          if (!open) setSelectedToppingCategory(null);
+                        }}
+                      >
+                        <DialogTrigger asChild>
+                          <Button className="bg-kiosk-primary">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Topping
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[600px]">
+                          <DialogHeader>
+                            <DialogTitle>Add Topping</DialogTitle>
+                          </DialogHeader>
+                          <ToppingForm 
+                            onSubmit={handleAddTopping}
+                            categories={toppingCategories}
+                            isLoading={savingTopping}
+                            initialValues={
+                              selectedToppingCategory ? { 
+                                name: "",
+                                price: 0,
+                                tax_percentage: 10,
+                                category_id: selectedToppingCategory 
+                              } : undefined
+                            }
+                          />
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    
+                    {loading ? (
+                      <div className="flex justify-center items-center h-40">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {toppingCategories.map((category) => {
+                          const categoryToppings = toppings[category.id] || [];
+                          
+                          if (categoryToppings.length === 0) {
+                            return (
+                              <div key={category.id} className="text-center py-4 border rounded-lg">
+                                <p className="text-muted-foreground mb-4">No toppings in {category.name}</p>
+                                <Dialog 
+                                  open={isAddingTopping && selectedToppingCategory === category.id} 
+                                  onOpenChange={(open) => {
+                                    setIsAddingTopping(open);
+                                    setSelectedToppingCategory(open ? category.id : null);
+                                  }}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline">
+                                      <Plus className="mr-2 h-4 w-4" />
+                                      Add Topping to {category.name}
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-[600px]">
+                                    <DialogHeader>
+                                      <DialogTitle>Add Topping to {category.name}</DialogTitle>
+                                    </DialogHeader>
+                                    <ToppingForm 
+                                      onSubmit={handleAddTopping}
+                                      categories={toppingCategories}
+                                      isLoading={savingTopping}
+                                      initialValues={{ 
+                                        name: "",
+                                        price: 0,
+                                        tax_percentage: 10,
+                                        category_id: category.id 
+                                      }}
+                                    />
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div key={category.id} className="space-y-2">
+                              <h4 className="font-medium text-sm text-muted-foreground">{category.name}</h4>
+                              {categoryToppings.map(topping => (
                                 <div 
                                   key={topping.id} 
-                                  className="flex items-center justify-between py-2 border-b last:border-0"
+                                  className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
                                 >
-                                  <div>
-                                    <span className="font-medium">{topping.name}</span>
-                                  </div>
                                   <div className="flex items-center space-x-4">
-                                    <div className="flex items-center">
-                                      <DollarSign className="h-4 w-4 text-muted-foreground mr-1" />
-                                      <span>{topping.price.toFixed(2)}</span>
+                                    <div>
+                                      <h3 className="font-medium">{topping.name}</h3>
+                                      <div className="flex items-center mt-1 space-x-2">
+                                        <span className="flex items-center text-sm font-medium">
+                                          <DollarSign className="h-3 w-3 mr-1" />
+                                          {parseFloat(topping.price.toString()).toFixed(2)}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">|</span>
+                                        <span className="flex items-center text-sm text-muted-foreground">
+                                          <Percent className="h-3 w-3 mr-1" />
+                                          {topping.tax_percentage !== null ? topping.tax_percentage : 10}%
+                                        </span>
+                                      </div>
                                     </div>
-                                    <div className="flex space-x-1">
-                                      <Dialog 
-                                        open={isEditingTopping === topping.id} 
-                                        onOpenChange={(open) => setIsEditingTopping(open ? topping.id : null)}
-                                      >
-                                        <DialogTrigger asChild>
-                                          <Button variant="ghost" size="sm">
-                                            <Edit className="h-4 w-4" />
+                                  </div>
+                                  <div className="flex space-x-2 mt-4 md:mt-0">
+                                    <Dialog 
+                                      open={isEditingTopping === topping.id} 
+                                      onOpenChange={(open) => setIsEditingTopping(open ? topping.id : null)}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <Edit className="h-4 w-4 mr-2" />
+                                          Edit
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-[600px]">
+                                        <DialogHeader>
+                                          <DialogTitle>Edit Topping</DialogTitle>
+                                        </DialogHeader>
+                                        <ToppingForm 
+                                          onSubmit={(values) => handleEditTopping(topping.id, values)}
+                                          categories={toppingCategories}
+                                          isLoading={savingTopping}
+                                          initialValues={{
+                                            name: topping.name,
+                                            price: topping.price,
+                                            tax_percentage: topping.tax_percentage !== null ? topping.tax_percentage : 10,
+                                            category_id: topping.category_id
+                                          }}
+                                        />
+                                      </DialogContent>
+                                    </Dialog>
+                                    
+                                    <Dialog 
+                                      open={toppingToDelete === topping.id} 
+                                      onOpenChange={(open) => setToppingToDelete(open ? topping.id : null)}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="text-red-500">
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Delete
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                          <DialogTitle>Delete Topping</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="py-4">
+                                          <p>Are you sure you want to delete <strong>{topping.name}</strong>?</p>
+                                          <p className="text-sm text-muted-foreground mt-2">This action cannot be undone.</p>
+                                        </div>
+                                        <div className="flex justify-end space-x-2">
+                                          <Button 
+                                            variant="outline" 
+                                            onClick={() => setToppingToDelete(null)}
+                                          >
+                                            Cancel
                                           </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="sm:max-w-[425px]">
-                                          <DialogHeader>
-                                            <DialogTitle>Edit Topping</DialogTitle>
-                                          </DialogHeader>
-                                          <ToppingForm 
-                                            onSubmit={(values) => handleEditTopping(topping.id, values)}
-                                            initialValues={{
-                                              name: topping.name,
-                                              price: topping.price,
-                                              tax_percentage: topping.tax_percentage,
-                                              category_id: topping.category_id
-                                            }}
-                                            categories={toppingCategories}
-                                            isLoading={savingTopping}
-                                          />
-                                        </DialogContent>
-                                      </Dialog>
-                                      <Dialog 
-                                        open={toppingToDelete === topping.id} 
-                                        onOpenChange={(open) => setToppingToDelete(open ? topping.id : null)}
-                                      >
-                                        <DialogTrigger asChild>
-                                          <Button variant="ghost" size="sm">
-                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                          <Button 
+                                            variant="destructive" 
+                                            onClick={() => handleDeleteTopping(topping.id)}
+                                            disabled={isDeletingTopping}
+                                          >
+                                            {isDeletingTopping ? (
+                                              <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Deleting...
+                                              </>
+                                            ) : (
+                                              "Delete"
+                                            )}
                                           </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="sm:max-w-[425px]">
-                                          <DialogHeader>
-                                            <DialogTitle>Delete Topping</DialogTitle>
-                                          </DialogHeader>
-                                          <div className="py-4">
-                                            <p>Are you sure you want to delete the topping <strong>{topping.name}</strong>?</p>
-                                          </div>
-                                          <div className="flex justify-end space-x-2">
-                                            <Button variant="outline" onClick={() => setToppingToDelete(null)}>
-                                              Cancel
-                                            </Button>
-                                            <Button 
-                                              variant="destructive" 
-                                              onClick={() => handleDeleteTopping(topping.id)}
-                                              disabled={isDeletingTopping}
-                                            >
-                                              {isDeletingTopping ? (
-                                                <>
-                                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                  Deleting...
-                                                </>
-                                              ) : (
-                                                "Delete"
-                                              )}
-                                            </Button>
-                                          </div>
-                                        </DialogContent>
-                                      </Dialog>
-                                    </div>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
                                   </div>
                                 </div>
                               ))}
                             </div>
-                          ) : (
-                            <div className="text-center py-4">
-                              <p className="text-muted-foreground mb-2">No toppings in this category yet.</p>
-                              <Button
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedToppingCategory(category.id);
-                                  setIsAddingTopping(true);
-                                }}
-                              >
+                          );
+                        })}
+                        <Dialog 
+                          open={isAddingTopping && !selectedToppingCategory} 
+                          onOpenChange={setIsAddingTopping}
+                        >
+                          <DialogTrigger asChild>
+                            <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                              <Button variant="ghost" className="w-full h-full flex items-center justify-center">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Add Topping
+                                Add New Topping
                               </Button>
                             </div>
-                          )}
-                        </div>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[600px]">
+                            <DialogHeader>
+                              <DialogTitle>Add Topping</DialogTitle>
+                            </DialogHeader>
+                            <ToppingForm 
+                              onSubmit={handleAddTopping}
+                              categories={toppingCategories}
+                              isLoading={savingTopping}
+                            />
+                          </DialogContent>
+                        </Dialog>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">No topping categories yet. Add your first topping category.</p>
-                    <Button
-                      onClick={() => setIsAddingToppingCategory(true)}
-                      className="bg-kiosk-primary"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add First Topping Category
-                    </Button>
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
-              
-              <Dialog open={isAddingTopping} onOpenChange={setIsAddingTopping}>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Add Topping</DialogTitle>
-                  </DialogHeader>
-                  <ToppingForm 
-                    onSubmit={handleAddTopping}
-                    initialValues={{
-                      name: "",
-                      price: 0,
-                      tax_percentage: 10,
-                      category_id: selectedToppingCategory || ""
-                    }}
-                    categories={toppingCategories}
-                    isLoading={savingTopping}
-                  />
-                </DialogContent>
-              </Dialog>
             </TabsContent>
             
             <TabsContent value="orders">
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Recent Orders</h3>
                 </div>
                 
-                <div className="space-y-4">
-                  {mockOrders.map((order) => (
-                    <div key={order.id} className="border rounded-lg overflow-hidden">
-                      <div className="p-4 bg-gray-50 flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium">Order #{order.id}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[order.status]}`}>
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                            </span>
+                {mockOrders
+                  .filter(order => order.restaurantId === restaurant.id)
+                  .map((order) => (
+                    <div 
+                      key={order.id}
+                      className="border rounded-lg overflow-hidden"
+                    >
+                      <div className="flex flex-col md:flex-row justify-between p-4 border-b bg-gray-50">
+                        <div className="flex items-center space-x-4">
+                          <div>
+                            <p className="font-bold">{order.id}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {order.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(order.date).toLocaleString()}
-                          </p>
                         </div>
-                        <div className="font-medium">${order.total.toFixed(2)}</div>
+                        <div className="flex items-center space-x-4 mt-4 md:mt-0">
+                          <div className={`px-2 py-1 rounded text-xs font-medium ${statusColors[order.status]}`}>
+                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          </div>
+                          <p className="text-sm font-bold">${order.total.toFixed(2)}</p>
+                        </div>
                       </div>
                       <div className="p-4">
+                        <p className="text-sm font-medium mb-2">Order Items:</p>
                         <div className="space-y-2">
                           {order.items.map((item, index) => (
-                            <div key={index} className="flex justify-between">
+                            <div key={index} className="flex justify-between text-sm">
                               <div>
-                                <span className="font-medium">{item.quantity}x</span> {item.name}
+                                <span className="font-medium">{item.quantity}x </span>
+                                {item.name}
+                                {item.options && item.options.length > 0 && (
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    ({item.options.join(", ")})
+                                  </span>
+                                )}
                               </div>
-                              <div>${(item.price * item.quantity).toFixed(2)}</div>
+                              <span>${(item.price * item.quantity).toFixed(2)}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     </div>
                   ))}
-                </div>
+                
+                {mockOrders.filter(order => order.restaurantId === restaurant.id).length === 0 && (
+                  <div className="text-center py-8 border rounded-lg">
+                    <p className="text-muted-foreground">No orders yet for this restaurant</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
             
             <TabsContent value="settings">
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">Restaurant Settings</h3>
-                </div>
-                
-                <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Restaurant Information</h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="name">Restaurant Name</Label>
-                      <Input 
-                        id="name" 
-                        defaultValue={restaurant.name} 
-                        placeholder="Restaurant name"
-                      />
+                      <Input id="name" defaultValue={restaurant.name} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="slug">URL Slug</Label>
+                      <Input id="slug" defaultValue={restaurant.slug} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="location">Location</Label>
-                      <Input 
-                        id="location" 
-                        defaultValue={restaurant.location || ""} 
-                        placeholder="Restaurant location"
+                      <Input id="location" defaultValue={restaurant.location || ''} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <ImageUpload
+                        value={restaurant.image_url || ''}
+                        onChange={(url) => {
+                          console.log("New image URL:", url);
+                        }}
+                        label="Cover Photo"
                       />
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="logo">Restaurant Logo</Label>
-                    <ImageUpload
-                      value={restaurant.logo_url || ""}
-                      onChange={() => {}}
-                      label="Upload Logo"
-                    />
-                  </div>
-                  
-                  <div className="pt-4">
-                    <Button 
-                      onClick={handleSaveRestaurantInfo}
-                      className="bg-kiosk-primary"
-                    >
-                      Save Settings
-                    </Button>
-                  </div>
+                  <Button className="mt-4 bg-kiosk-primary" onClick={handleSaveRestaurantInfo}>Save Changes</Button>
+                </div>
+                
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-medium mb-4">Business Hours</h3>
+                  <Button className="mt-4 bg-kiosk-primary">Save Hours</Button>
+                </div>
+                
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-medium mb-4 text-red-600">Danger Zone</h3>
+                  <Button variant="destructive">Delete Restaurant</Button>
                 </div>
               </div>
             </TabsContent>
