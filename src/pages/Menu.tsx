@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -62,17 +61,24 @@ const MenuPage = () => {
       
       try {
         setLoading(true);
+        console.log("Fetching categories for restaurant ID:", selectedRestaurant);
         const data = await getCategoriesByRestaurantId(selectedRestaurant);
+        console.log("Fetched categories:", data);
         setCategories(data);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching categories:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch menu categories. Please try again.",
+          variant: "destructive"
+        });
         setLoading(false);
       }
     };
 
     fetchCategories();
-  }, [selectedRestaurant]);
+  }, [selectedRestaurant, toast]);
 
   useEffect(() => {
     const fetchMenuItems = async () => {
@@ -110,6 +116,7 @@ const MenuPage = () => {
         throw new Error("No restaurant selected");
       }
       
+      console.log("Adding category for restaurant:", selectedRestaurant);
       const newCategory = await createCategory({
         name: values.name,
         description: values.description || null,
@@ -118,6 +125,7 @@ const MenuPage = () => {
         restaurant_id: selectedRestaurant
       });
       
+      console.log("New category created:", newCategory);
       setCategories([...categories, newCategory]);
       
       toast({

@@ -159,17 +159,24 @@ const RestaurantManage = () => {
       
       try {
         setLoading(true);
+        console.log("Fetching categories for restaurant ID:", restaurant.id);
         const data = await getCategoriesByRestaurantId(restaurant.id);
+        console.log("Fetched categories:", data);
         setCategories(data);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching categories:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load categories. Please try again.",
+          variant: "destructive"
+        });
         setLoading(false);
       }
     };
 
     fetchCategories();
-  }, [restaurant]);
+  }, [restaurant, toast]);
 
   useEffect(() => {
     const fetchMenuItems = async () => {
@@ -220,7 +227,8 @@ const RestaurantManage = () => {
         restaurant_id: restaurant.id
       });
       
-      setCategories([...categories, newCategory]);
+      console.log("New category created:", newCategory);
+      setCategories(prevCategories => [...prevCategories, newCategory]);
       
       toast({
         title: "Category Added",
@@ -253,6 +261,7 @@ const RestaurantManage = () => {
         icon: values.icon || "utensils"
       });
       
+      console.log("Category updated:", updatedCategory);
       setCategories(categories.map(cat => 
         cat.id === categoryId ? updatedCategory : cat
       ));
@@ -279,8 +288,10 @@ const RestaurantManage = () => {
     try {
       setIsDeletingCategory(true);
       
+      console.log("Deleting category:", categoryId);
       await deleteCategory(categoryId);
       
+      console.log("Category deleted successfully");
       setCategories(categories.filter(cat => cat.id !== categoryId));
       
       toast({

@@ -77,6 +77,7 @@ export const getRestaurantBySlug = async (slug: string): Promise<Restaurant | nu
 
 // Menu Category services
 export const getCategoriesByRestaurantId = async (restaurantId: string): Promise<MenuCategory[]> => {
+  console.log("Fetching categories for restaurant:", restaurantId);
   const { data, error } = await supabase
     .from("menu_categories")
     .select("*")
@@ -91,6 +92,7 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
 };
 
 export const createCategory = async (category: Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>): Promise<MenuCategory> => {
+  console.log("Creating category with data:", category);
   const { data, error } = await supabase
     .from("menu_categories")
     .insert(category)
@@ -106,6 +108,7 @@ export const createCategory = async (category: Omit<MenuCategory, 'id' | 'create
 };
 
 export const updateCategory = async (id: string, updates: Partial<Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuCategory> => {
+  console.log("Updating category:", id, "with data:", updates);
   const { data, error } = await supabase
     .from("menu_categories")
     .update(updates)
@@ -122,6 +125,7 @@ export const updateCategory = async (id: string, updates: Partial<Omit<MenuCateg
 };
 
 export const deleteCategory = async (id: string): Promise<void> => {
+  console.log("Deleting category:", id);
   const { error } = await supabase
     .from("menu_categories")
     .delete()
