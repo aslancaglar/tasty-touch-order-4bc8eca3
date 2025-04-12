@@ -570,8 +570,8 @@ const RestaurantManage = () => {
         description: values.description || null,
         icon: "utensils",
         restaurant_id: restaurant.id,
-        min_selections: values.min_selections || 0,
-        max_selections: values.max_selections || null
+        min_selections: Number(values.min_selections) || 0,
+        max_selections: values.max_selections !== undefined ? Number(values.max_selections) : null
       });
       
       console.log("New topping category created:", newToppingCategory);
@@ -605,8 +605,8 @@ const RestaurantManage = () => {
         name: values.name,
         description: values.description || null,
         icon: "utensils",
-        min_selections: values.min_selections || 0,
-        max_selections: values.max_selections || null
+        min_selections: Number(values.min_selections) || 0,
+        max_selections: values.max_selections !== undefined ? Number(values.max_selections) : null
       });
       
       console.log("Topping category updated:", updatedToppingCategory);
