@@ -6,7 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Restaurant, 
   MenuCategory, 
-  MenuItem
+  MenuItem,
+  ToppingCategory
 } from "@/types/database-types";
 import { 
   getCategoriesByRestaurantId, 
@@ -16,9 +17,11 @@ import {
   deleteCategory,
   createMenuItem,
   updateMenuItem,
-  deleteMenuItem
+  deleteMenuItem,
+  getToppingCategoriesByRestaurantId
 } from "@/services/kiosk-service";
 import { getIconComponent } from "@/utils/icon-mapping";
+import { Badge } from "@/components/ui/badge";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 
@@ -30,6 +33,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
   const [loading, setLoading] = useState(true);
+  const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
   
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
@@ -72,6 +76,23 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
   }, [restaurant, toast]);
 
   useEffect(() => {
+    const fetchToppingCategories = async () => {
+      if (!restaurant?.id) return;
+      
+      try {
+        console.log("Fetching topping categories for restaurant ID:", restaurant.id);
+        const data = await getToppingCategoriesByRestaurantId(restaurant.id);
+        console.log("Fetched topping categories:", data);
+        setToppingCategories(data);
+      } catch (error) {
+        console.error("Error fetching topping categories:", error);
+      }
+    };
+
+    fetchToppingCategories();
+  }, [restaurant]);
+
+  useEffect(() => {
     const fetchMenuItems = async () => {
       if (categories.length === 0) return;
       
@@ -94,6 +115,11 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
 
     fetchMenuItems();
   }, [categories]);
+
+  const getToppingCategoryName = (id: string) => {
+    const category = toppingCategories.find(tc => tc.id === id);
+    return category ? category.name : "";
+  };
 
   const handleAddCategory = async (values: any) => {
     try {
@@ -530,14 +556,28 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                           <div>
                             <h3 className="font-medium">{item.name}</h3>
                             <p className="text-sm text-muted-foreground">{item.description}</p>
-                            <p className="text-sm font-medium mt-1">
-                              ${parseFloat(item.price.toString()).toFixed(2)}
-                              {item.promotion_price && (
-                                <span className="ml-2 line-through text-muted-foreground">
-                                  ${parseFloat(item.promotion_price.toString()).toFixed(2)}
-                                </span>
+                            <div className="flex flex-wrap items-center mt-1">
+                              <p className="text-sm font-medium">
+                                ${parseFloat(item.price.toString()).toFixed(2)}
+                                {item.promotion_price && (
+                                  <span className="ml-2 line-through text-muted-foreground">
+                                    ${parseFloat(item.promotion_price.toString()).toFixed(2)}
+                                  </span>
+                                )}
+                              </p>
+                              {item.topping_categories && item.topping_categories.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1 ml-2">
+                                  {item.topping_categories.map((categoryId) => (
+                                    <Badge 
+                                      key={categoryId} 
+                                      className="bg-[#D6BCFA] text-[#4C1D95] hover:bg-[#D6BCFA]/80"
+                                    >
+                                      {getToppingCategoryName(categoryId)}
+                                    </Badge>
+                                  ))}
+                                </div>
                               )}
-                            </p>
+                            </div>
                           </div>
                         </div>
                         <div className="flex mt-2 md:mt-0">

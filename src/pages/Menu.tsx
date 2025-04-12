@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowRight, Edit, Plus, Trash2, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { 
   Select,
   SelectContent,
@@ -20,9 +21,10 @@ import {
   getMenuItemsByCategory,
   createCategory,
   updateCategory,
-  deleteCategory
+  deleteCategory,
+  getToppingCategoriesByRestaurantId
 } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, ToppingCategory } from "@/types/database-types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
@@ -36,6 +38,7 @@ const MenuPage = () => {
   const [loading, setLoading] = useState(true);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,6 +85,23 @@ const MenuPage = () => {
   }, [selectedRestaurant, toast]);
 
   useEffect(() => {
+    const fetchToppingCategories = async () => {
+      if (!selectedRestaurant) return;
+      
+      try {
+        console.log("Fetching topping categories for restaurant ID:", selectedRestaurant);
+        const data = await getToppingCategoriesByRestaurantId(selectedRestaurant);
+        console.log("Fetched topping categories:", data);
+        setToppingCategories(data);
+      } catch (error) {
+        console.error("Error fetching topping categories:", error);
+      }
+    };
+
+    fetchToppingCategories();
+  }, [selectedRestaurant]);
+
+  useEffect(() => {
     const fetchMenuItems = async () => {
       if (categories.length === 0) return;
       
@@ -107,6 +127,11 @@ const MenuPage = () => {
 
   const handleRestaurantChange = (value: string) => {
     setSelectedRestaurant(value);
+  };
+
+  const getToppingCategoryName = (id: string) => {
+    const category = toppingCategories.find(tc => tc.id === id);
+    return category ? category.name : "";
   };
 
   const handleAddCategory = async (values: any) => {
@@ -318,7 +343,28 @@ const MenuPage = () => {
                               <div>
                                 <h3 className="font-medium">{item.name}</h3>
                                 <p className="text-sm text-muted-foreground">{item.description}</p>
-                                <p className="text-sm font-medium mt-1">${parseFloat(item.price.toString()).toFixed(2)}</p>
+                                <div className="flex flex-wrap items-center mt-1">
+                                  <p className="text-sm font-medium">
+                                    ${parseFloat(item.price.toString()).toFixed(2)}
+                                    {item.promotion_price && (
+                                      <span className="ml-2 line-through text-muted-foreground">
+                                        ${parseFloat(item.promotion_price.toString()).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </p>
+                                  {item.topping_categories && item.topping_categories.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1 ml-2">
+                                      {item.topping_categories.map((categoryId) => (
+                                        <Badge 
+                                          key={categoryId} 
+                                          className="bg-[#D6BCFA] text-[#4C1D95] hover:bg-[#D6BCFA]/80"
+                                        >
+                                          {getToppingCategoryName(categoryId)}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             <div className="flex space-x-2 mt-4 md:mt-0">
