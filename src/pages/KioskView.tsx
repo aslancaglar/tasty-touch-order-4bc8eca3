@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -166,7 +165,6 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
-  // When an item is added to the cart, open the cart drawer
   useEffect(() => {
     if (cart.length > 0) {
       setIsCartOpen(true);
@@ -325,7 +323,6 @@ const KioskView = () => {
     });
   };
 
-  // Fix the function to properly handle topping toggling
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -711,11 +708,14 @@ const KioskView = () => {
         </div>
       </div>
 
-      {/* New Cart UI as a bottom drawer */}
-      <Drawer open={isCartOpen && cart.length > 0} onOpenChange={setIsCartOpen}>
+      <Drawer open={isCartOpen} onOpenChange={(open) => {
+        if (cart.length === 0 || open) {
+          setIsCartOpen(open);
+        }
+      }}>
         <DrawerContent className="max-h-[85vh]">
           <div className="mx-auto w-full max-w-4xl">
-            <DrawerHeader className="px-4 sm:px-6 pt-4 pb-0">
+            <DrawerHeader className="px-4 pt-4 pb-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <ShoppingCart className="text-red-500 mr-2" />
@@ -730,7 +730,7 @@ const KioskView = () => {
               </div>
             </DrawerHeader>
             
-            <div className="p-4 sm:p-6 overflow-auto max-h-[50vh]">
+            <div className="p-4 overflow-auto max-h-[50vh]">
               {cart.map((item) => (
                 <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
                   <div className="flex items-start">
@@ -784,7 +784,7 @@ const KioskView = () => {
               ))}
             </div>
             
-            <div className="px-4 sm:px-6 pb-4">
+            <div className="px-4 pb-4">
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Sous-total:</span>
@@ -825,7 +825,6 @@ const KioskView = () => {
         </DrawerContent>
       </Drawer>
 
-      {/* Item customization dialog */}
       {selectedItem && (
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">
