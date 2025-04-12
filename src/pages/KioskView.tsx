@@ -663,16 +663,14 @@ const KioskView = () => {
       <Drawer 
         open={isCartOpen} 
         onOpenChange={open => {
-          if (cart.length > 0) {
-            if (!open) {
-              setIsCartOpen(true);
-            }
-          } else {
+          if (cart.length === 0) {
             setIsCartOpen(open);
+          } else {
+            setIsCartOpen(true);
           }
         }}
       >
-        <DrawerContent>
+        <DrawerContent preventClose={cart.length > 0}>
           <div className="w-full">
             <DrawerHeader className="pt-4 pb-0 px-4">
               <div className="flex items-center justify-between">

@@ -13,7 +13,7 @@ const DrawerTrigger = DrawerPrimitive.Trigger;
 const DrawerPortal = DrawerPrimitive.Portal;
 const DrawerClose = DrawerPrimitive.Close;
 
-// Define the overlay but we won't use it in DrawerContent by default
+// Define the overlay but we won't use it by default
 const DrawerOverlay = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Overlay>, React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>>(({
   className,
   ...props
@@ -22,20 +22,37 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
 interface DrawerContentProps extends React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> {
   showOverlay?: boolean;
+  preventClose?: boolean;
 }
 
 const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Content>, DrawerContentProps>(({
   className,
   children,
   showOverlay = false,
+  preventClose = false,
   ...props
-}, ref) => <DrawerPortal>
-    {showOverlay && <DrawerOverlay />}
-    <DrawerPrimitive.Content ref={ref} className={cn("fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background", className)} {...props}>
-      <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted my-2" />
-      {children}
-    </DrawerPrimitive.Content>
-  </DrawerPortal>);
+}, ref) => {
+  // This custom handler prevents the dismissible behavior when preventClose is true
+  const handlePointerDownOutside = preventClose ? (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+  } : undefined;
+
+  return (
+    <DrawerPortal>
+      {showOverlay && <DrawerOverlay />}
+      <DrawerPrimitive.Content 
+        ref={ref} 
+        className={cn("fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background", className)} 
+        onPointerDownOutside={handlePointerDownOutside}
+        {...props}
+      >
+        <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted my-2" />
+        {children}
+      </DrawerPrimitive.Content>
+    </DrawerPortal>
+  );
+});
 DrawerContent.displayName = "DrawerContent";
 
 const DrawerHeader = ({
