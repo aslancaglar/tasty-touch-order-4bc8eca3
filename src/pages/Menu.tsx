@@ -342,7 +342,8 @@ const MenuPage = () => {
                                       description: item.description || "",
                                       price: item.price.toString(),
                                       promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
-                                      image: item.image || ""
+                                      image: item.image || "",
+                                      topping_categories: item.topping_categories || []
                                     }}
                                     restaurantId={selectedRestaurant || ""}
                                   />

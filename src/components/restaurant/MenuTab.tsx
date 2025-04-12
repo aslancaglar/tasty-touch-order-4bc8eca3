@@ -214,7 +214,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         price: Number(values.price),
         promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
         image: values.image || null,
-        category_id: categoryId
+        category_id: categoryId,
+        topping_categories: values.topping_categories || []
       });
       
       console.log("New menu item created:", newMenuItem);
@@ -253,7 +254,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         description: values.description || null,
         price: Number(values.price),
         promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
-        image: values.image || null
+        image: values.image || null,
+        topping_categories: values.topping_categories || []
       });
       
       console.log("Menu item updated:", updatedMenuItem);

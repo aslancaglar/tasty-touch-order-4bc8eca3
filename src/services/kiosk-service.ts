@@ -140,7 +140,7 @@ export const deleteCategory = async (id: string): Promise<void> => {
 
 // Menu Item services
 export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuItem[]> => {
-  const { data, error } = await supabase
+  const { data: menuItems, error } = await supabase
     .from("menu_items")
     .select("*")
     .eq("category_id", categoryId);
@@ -150,7 +150,26 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
     throw error;
   }
 
-  return data;
+  const menuItemsWithToppingCategories = await Promise.all(
+    menuItems.map(async (item) => {
+      const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
+        .from("menu_item_topping_categories")
+        .select("topping_category_id")
+        .eq("menu_item_id", item.id);
+
+      if (toppingCategoriesError) {
+        console.error("Error fetching menu item topping categories:", toppingCategoriesError);
+        return item;
+      }
+
+      return {
+        ...item,
+        topping_categories: menuItemToppingCategories.map(tc => tc.topping_category_id)
+      };
+    })
+  );
+
+  return menuItemsWithToppingCategories;
 };
 
 export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
@@ -168,14 +187,30 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     throw error;
   }
 
-  return data;
+  const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
+    .from("menu_item_topping_categories")
+    .select("topping_category_id")
+    .eq("menu_item_id", id);
+
+  if (toppingCategoriesError) {
+    console.error("Error fetching menu item topping categories:", toppingCategoriesError);
+    return data;
+  }
+
+  return {
+    ...data,
+    topping_categories: menuItemToppingCategories.map(tc => tc.topping_category_id)
+  };
 };
 
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
   console.log("Creating menu item with data:", item);
+  
+  const { topping_categories, ...menuItemData } = item as any;
+  
   const { data, error } = await supabase
     .from("menu_items")
-    .insert(item)
+    .insert(menuItemData)
     .select()
     .single();
 
@@ -184,14 +219,35 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
     throw error;
   }
 
-  return data;
+  if (topping_categories && topping_categories.length > 0) {
+    const toppingCategoryRelations = topping_categories.map(categoryId => ({
+      menu_item_id: data.id,
+      topping_category_id: categoryId
+    }));
+
+    const { error: relationError } = await supabase
+      .from("menu_item_topping_categories")
+      .insert(toppingCategoryRelations);
+
+    if (relationError) {
+      console.error("Error creating topping category relations:", relationError);
+    }
+  }
+
+  return {
+    ...data,
+    topping_categories: topping_categories || []
+  };
 };
 
 export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
   console.log("Updating menu item:", id, "with data:", updates);
+  
+  const { topping_categories, ...menuItemData } = updates as any;
+  
   const { data, error } = await supabase
     .from("menu_items")
-    .update(updates)
+    .update(menuItemData)
     .eq("id", id)
     .select()
     .single();
@@ -201,7 +257,36 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
     throw error;
   }
 
-  return data;
+  if (topping_categories !== undefined) {
+    const { error: deleteError } = await supabase
+      .from("menu_item_topping_categories")
+      .delete()
+      .eq("menu_item_id", id);
+
+    if (deleteError) {
+      console.error("Error deleting existing topping category relations:", deleteError);
+    }
+
+    if (topping_categories && topping_categories.length > 0) {
+      const toppingCategoryRelations = topping_categories.map(categoryId => ({
+        menu_item_id: id,
+        topping_category_id: categoryId
+      }));
+
+      const { error: insertError } = await supabase
+        .from("menu_item_topping_categories")
+        .insert(toppingCategoryRelations);
+
+      if (insertError) {
+        console.error("Error creating new topping category relations:", insertError);
+      }
+    }
+  }
+
+  return {
+    ...data,
+    topping_categories: topping_categories || []
+  };
 };
 
 export const deleteMenuItem = async (id: string): Promise<void> => {
