@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
@@ -661,14 +660,19 @@ const KioskView = () => {
         </div>
       </div>
 
-      <Drawer open={isCartOpen} onOpenChange={open => {
-      if (cart.length > 0) {
-        setIsCartOpen(open);
-      } else {
-        setIsCartOpen(open);
-      }
-    }}>
-        <DrawerContent className="max-h-[85vh]">
+      <Drawer 
+        open={isCartOpen} 
+        onOpenChange={open => {
+          if (cart.length > 0) {
+            if (!open) {
+              setIsCartOpen(true);
+            }
+          } else {
+            setIsCartOpen(open);
+          }
+        }}
+      >
+        <DrawerContent>
           <div className="w-full">
             <DrawerHeader className="pt-4 pb-0 px-4">
               <div className="flex items-center justify-between">

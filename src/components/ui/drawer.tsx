@@ -13,19 +13,24 @@ const DrawerTrigger = DrawerPrimitive.Trigger;
 const DrawerPortal = DrawerPrimitive.Portal;
 const DrawerClose = DrawerPrimitive.Close;
 
-// Define the overlay but we won't use it in DrawerContent
+// Define the overlay but we won't use it in DrawerContent by default
 const DrawerOverlay = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Overlay>, React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>>(({
   className,
   ...props
 }, ref) => <DrawerPrimitive.Overlay ref={ref} className={cn("fixed inset-0 z-50 bg-black/80", className)} {...props} />);
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
-const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Content>, React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>>(({
+interface DrawerContentProps extends React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> {
+  showOverlay?: boolean;
+}
+
+const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Content>, DrawerContentProps>(({
   className,
   children,
+  showOverlay = false,
   ...props
 }, ref) => <DrawerPortal>
-    {/* No overlay here, allowing interaction with the page behind the drawer */}
+    {showOverlay && <DrawerOverlay />}
     <DrawerPrimitive.Content ref={ref} className={cn("fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background", className)} {...props}>
       <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted my-2" />
       {children}
