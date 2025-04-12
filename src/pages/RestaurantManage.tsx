@@ -33,7 +33,8 @@ import {
   deleteCategory,
   createMenuItem,
   updateMenuItem,
-  deleteMenuItem
+  deleteMenuItem,
+  createCategory
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
 import { getIconComponent } from "@/utils/icon-mapping";
@@ -220,17 +221,16 @@ const RestaurantManage = () => {
       console.log("Adding new category:", values);
       
       const newCategory = {
-        id: `temp-${Date.now()}`,
         name: values.name,
         description: values.description || null,
         image_url: values.image_url || null,
-        icon: "utensils",
+        icon: values.icon || "utensils",
         restaurant_id: restaurant?.id || "",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       };
       
-      setCategories([...categories, newCategory as MenuCategory]);
+      const savedCategory = await createCategory(newCategory);
+      
+      setCategories([...categories, savedCategory]);
       
       toast({
         title: "Category Added",

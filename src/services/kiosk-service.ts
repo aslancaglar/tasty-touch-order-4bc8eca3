@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -87,6 +88,7 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
   }
 
   return data.map(category => {
+    // Create a base result with required fields
     const result: MenuCategory = {
       id: category.id,
       name: category.name,
@@ -98,12 +100,13 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
       updated_at: category.updated_at
     };
     
-    if ('description' in category) {
-      result.description = (category as any).description;
+    // Conditionally add optional fields if they exist in the response
+    if ('description' in category && category.description !== undefined) {
+      result.description = category.description;
     }
     
-    if ('image_url' in category) {
-      result.image_url = (category as any).image_url;
+    if ('image_url' in category && category.image_url !== undefined) {
+      result.image_url = category.image_url;
     }
     
     return result;
@@ -111,9 +114,18 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
 };
 
 export const createCategory = async (category: Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>): Promise<MenuCategory> => {
+  // Ensure we're sending valid data to Supabase
+  const categoryData = {
+    name: category.name,
+    restaurant_id: category.restaurant_id,
+    icon: category.icon || null,
+    description: category.description || null,
+    image_url: category.image_url || null
+  };
+
   const { data, error } = await supabase
     .from("menu_categories")
-    .insert(category)
+    .insert(categoryData)
     .select()
     .single();
 
@@ -122,14 +134,25 @@ export const createCategory = async (category: Omit<MenuCategory, 'id' | 'create
     throw error;
   }
 
+  // Ensure the returned data matches our MenuCategory type
   return {
-    ...data,
+    id: data.id,
+    name: data.name,
+    restaurant_id: data.restaurant_id,
     description: data.description || null,
-    image_url: data.image_url || null
+    icon: data.icon || null,
+    image_url: data.image_url || null,
+    created_at: data.created_at,
+    updated_at: data.updated_at
   };
 };
 
 export const updateCategory = async (id: string, updates: Partial<Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuCategory> => {
+  // Check if id is a temporary id (starts with "temp-")
+  if (id.startsWith("temp-")) {
+    throw new Error("Cannot update a temporary category. Please create it first.");
+  }
+
   const { data, error } = await supabase
     .from("menu_categories")
     .update(updates)
@@ -142,14 +165,25 @@ export const updateCategory = async (id: string, updates: Partial<Omit<MenuCateg
     throw error;
   }
 
+  // Ensure the returned data matches our MenuCategory type
   return {
-    ...data,
+    id: data.id,
+    name: data.name,
+    restaurant_id: data.restaurant_id,
     description: data.description || null,
-    image_url: data.image_url || null
+    icon: data.icon || null,
+    image_url: data.image_url || null,
+    created_at: data.created_at,
+    updated_at: data.updated_at
   };
 };
 
 export const deleteCategory = async (id: string): Promise<void> => {
+  // Check if id is a temporary id (starts with "temp-")
+  if (id.startsWith("temp-")) {
+    throw new Error("Cannot delete a temporary category. It exists only in the UI.");
+  }
+
   const { error } = await supabase
     .from("menu_categories")
     .delete()
@@ -163,6 +197,12 @@ export const deleteCategory = async (id: string): Promise<void> => {
 
 // Menu Item services
 export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuItem[]> => {
+  // Check if categoryId is a temporary id (starts with "temp-")
+  if (categoryId.startsWith("temp-")) {
+    // Return empty array for temporary categories
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("menu_items")
     .select("*")
@@ -173,7 +213,18 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
     throw error;
   }
 
-  return data;
+  // Transform the data to ensure it matches our MenuItem type
+  return data.map(item => ({
+    id: item.id,
+    name: item.name,
+    description: item.description || null,
+    price: item.price,
+    promotion_price: item.promotion_price || null,
+    image: item.image || null,
+    category_id: item.category_id,
+    created_at: item.created_at,
+    updated_at: item.updated_at
+  }));
 };
 
 export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
@@ -191,13 +242,31 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     throw error;
   }
 
-  return data;
+  // Transform to ensure it matches our MenuItem type
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description || null,
+    price: data.price,
+    promotion_price: data.promotion_price || null,
+    image: data.image || null,
+    category_id: data.category_id,
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  };
 };
 
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
   const { data, error } = await supabase
     .from("menu_items")
-    .insert(item)
+    .insert({
+      name: item.name,
+      description: item.description || null,
+      price: item.price,
+      promotion_price: item.promotion_price || null,
+      image: item.image || null,
+      category_id: item.category_id
+    })
     .select()
     .single();
 
@@ -206,7 +275,18 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
     throw error;
   }
 
-  return data;
+  // Transform to ensure it matches our MenuItem type
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description || null,
+    price: data.price,
+    promotion_price: data.promotion_price || null,
+    image: data.image || null,
+    category_id: data.category_id,
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  };
 };
 
 export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
@@ -222,7 +302,18 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
     throw error;
   }
 
-  return data;
+  // Transform to ensure it matches our MenuItem type
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description || null,
+    price: data.price,
+    promotion_price: data.promotion_price || null,
+    image: data.image || null,
+    category_id: data.category_id,
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  };
 };
 
 export const deleteMenuItem = async (id: string): Promise<void> => {

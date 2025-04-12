@@ -17,7 +17,7 @@ import ImageUpload from "@/components/ImageUpload";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MenuCategory } from "@/types/database-types";
+import { MenuCategory, MenuItem } from "@/types/database-types";
 
 const menuItemSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -32,7 +32,7 @@ type MenuItemFormValues = z.infer<typeof menuItemSchema>;
 
 interface MenuItemFormProps {
   onSubmit: (values: MenuItemFormValues) => void;
-  initialValues?: Partial<MenuItemFormValues>;
+  initialValues?: Partial<MenuItemFormValues> & { id?: string }; // Added id as optional
   isLoading?: boolean;
   categories: MenuCategory[];
 }
