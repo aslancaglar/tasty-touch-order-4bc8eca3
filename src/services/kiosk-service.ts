@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -369,4 +368,155 @@ export const getMenuForRestaurant = async (restaurantId: string) => {
   );
 
   return categoriesWithItems;
+};
+
+// Topping Categories
+export const getToppingCategoriesByRestaurantId = async (restaurantId: string) => {
+  const { data, error } = await supabase
+    .from('topping_categories')
+    .select('*')
+    .eq('restaurant_id', restaurantId)
+    .order('name');
+  
+  if (error) {
+    console.error('Error fetching topping categories:', error);
+    throw error;
+  }
+  
+  return data || [];
+};
+
+export const createToppingCategory = async (toppingCategory: {
+  name: string;
+  description: string | null;
+  icon: string | null;
+  restaurant_id: string;
+  min_selections: number | null;
+  max_selections: number | null;
+}) => {
+  const { data, error } = await supabase
+    .from('topping_categories')
+    .insert([toppingCategory])
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error creating topping category:', error);
+    throw error;
+  }
+  
+  return data;
+};
+
+export const updateToppingCategory = async (
+  id: string,
+  updates: {
+    name?: string;
+    description?: string | null;
+    icon?: string | null;
+    min_selections?: number | null;
+    max_selections?: number | null;
+  }
+) => {
+  const { data, error } = await supabase
+    .from('topping_categories')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error updating topping category:', error);
+    throw error;
+  }
+  
+  return data;
+};
+
+export const deleteToppingCategory = async (id: string) => {
+  const { error } = await supabase
+    .from('topping_categories')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    console.error('Error deleting topping category:', error);
+    throw error;
+  }
+  
+  return true;
+};
+
+// Toppings
+export const getToppingsByCategory = async (categoryId: string) => {
+  const { data, error } = await supabase
+    .from('toppings')
+    .select('*')
+    .eq('category_id', categoryId)
+    .order('name');
+  
+  if (error) {
+    console.error('Error fetching toppings:', error);
+    throw error;
+  }
+  
+  return data || [];
+};
+
+export const createTopping = async (topping: {
+  name: string;
+  price: number;
+  category_id: string;
+  tax_percentage?: number | null;
+}) => {
+  const { data, error } = await supabase
+    .from('toppings')
+    .insert([topping])
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error creating topping:', error);
+    throw error;
+  }
+  
+  return data;
+};
+
+export const updateTopping = async (
+  id: string,
+  updates: {
+    name?: string;
+    price?: number;
+    category_id?: string;
+    tax_percentage?: number | null;
+  }
+) => {
+  const { data, error } = await supabase
+    .from('toppings')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error updating topping:', error);
+    throw error;
+  }
+  
+  return data;
+};
+
+export const deleteTopping = async (id: string) => {
+  const { error } = await supabase
+    .from('toppings')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    console.error('Error deleting topping:', error);
+    throw error;
+  }
+  
+  return true;
 };
