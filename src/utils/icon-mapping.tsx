@@ -15,7 +15,7 @@ import {
   Cherry,
   Leaf,
   Apple,
-  TouchIcon
+  Touchpad // Changed from TouchIcon to Touchpad which exists
 } from "lucide-react";
 
 type IconProps = {
@@ -59,7 +59,7 @@ export const getIconComponent = (iconName: string, props: IconProps = {}): React
     case 'spoon':
       return <Utensils className={`h-${size/4} w-${size/4} ${className}`} />; // Replaced Spoon with Utensils
     case 'touch':
-      return <TouchIcon className={`h-${size/4} w-${size/4} ${className}`} />;
+      return <Touchpad className={`h-${size/4} w-${size/4} ${className}`} />; // Changed TouchIcon to Touchpad
     default:
       return <UtensilsCrossed className={`h-${size/4} w-${size/4} ${className}`} />;
   }

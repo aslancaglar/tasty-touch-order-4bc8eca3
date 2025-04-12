@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { Restaurant } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
-import { TouchToOrderIcon } from "lucide-react";
+import { TouchToOrderIcon } from "@/utils/icon-mapping";
 
 interface WelcomePageProps {
   restaurant: Restaurant;
