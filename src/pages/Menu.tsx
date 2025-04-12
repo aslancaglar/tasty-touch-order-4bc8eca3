@@ -15,8 +15,18 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { getIconComponent } from "@/utils/icon-mapping";
-import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
+import { 
+  getRestaurants, 
+  getCategoriesByRestaurantId, 
+  getMenuItemsByCategory,
+  createCategory,
+  updateCategory,
+  deleteCategory
+} from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import CategoryForm from "@/components/forms/CategoryForm";
+import { useToast } from "@/hooks/use-toast";
 
 const MenuPage = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -24,6 +34,9 @@ const MenuPage = () => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
   const [loading, setLoading] = useState(true);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -89,6 +102,66 @@ const MenuPage = () => {
     setSelectedRestaurant(value);
   };
 
+  const handleAddCategory = async (values: any) => {
+    try {
+      setSavingCategory(true);
+      
+      if (!selectedRestaurant) {
+        throw new Error("No restaurant selected");
+      }
+      
+      const newCategory = await createCategory({
+        name: values.name,
+        description: values.description || null,
+        image_url: values.image_url || null,
+        icon: "utensils", // Default icon
+        restaurant_id: selectedRestaurant
+      });
+      
+      setCategories([...categories, newCategory]);
+      
+      toast({
+        title: "Category Added",
+        description: `${values.name} has been added to your menu categories.`,
+      });
+      
+      setIsAddingCategory(false);
+    } catch (error) {
+      console.error("Error adding category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add the category. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      setLoading(true);
+      
+      await deleteCategory(categoryId);
+      
+      setCategories(categories.filter(cat => cat.id !== categoryId));
+      
+      toast({
+        title: "Category Deleted",
+        description: "The category has been deleted.",
+      });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the category. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading && restaurants.length === 0) {
     return (
       <AdminLayout>
@@ -121,10 +194,23 @@ const MenuPage = () => {
               ))}
             </SelectContent>
           </Select>
-          <Button className="bg-kiosk-primary">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
+          <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+            <DialogTrigger asChild>
+              <Button className="bg-kiosk-primary">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Category
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add Menu Category</DialogTitle>
+              </DialogHeader>
+              <CategoryForm 
+                onSubmit={handleAddCategory}
+                isLoading={savingCategory}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -155,18 +241,35 @@ const MenuPage = () => {
                       <Button variant="ghost" size="sm">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteCategory(category.id)}
+                      >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
                   </div>
                 ))}
-                <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
-                  <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Category
-                  </Button>
-                </div>
+                <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+                  <DialogTrigger asChild>
+                    <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                      <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Category
+                      </Button>
+                    </div>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Add Menu Category</DialogTitle>
+                    </DialogHeader>
+                    <CategoryForm 
+                      onSubmit={handleAddCategory}
+                      isLoading={savingCategory}
+                    />
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>

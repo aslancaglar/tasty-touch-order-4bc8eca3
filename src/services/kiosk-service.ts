@@ -105,6 +105,34 @@ export const createCategory = async (category: Omit<MenuCategory, 'id' | 'create
   return data;
 };
 
+export const updateCategory = async (id: string, updates: Partial<Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuCategory> => {
+  const { data, error } = await supabase
+    .from("menu_categories")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating category:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteCategory = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from("menu_categories")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting category:", error);
+    throw error;
+  }
+};
+
 // Menu Item services
 export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuItem[]> => {
   const { data, error } = await supabase

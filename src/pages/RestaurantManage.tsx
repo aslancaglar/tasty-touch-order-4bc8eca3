@@ -23,7 +23,14 @@ import {
   Cherry,
   Utensils
 } from "lucide-react";
-import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory } from "@/services/kiosk-service";
+import { 
+  getRestaurants, 
+  getCategoriesByRestaurantId, 
+  getMenuItemsByCategory, 
+  createCategory,
+  updateCategory,
+  deleteCategory
+} from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
 import { getIconComponent } from "@/utils/icon-mapping";
 import ImageUpload from "@/components/ImageUpload";
@@ -108,6 +115,9 @@ const RestaurantManage = () => {
   const [loading, setLoading] = useState(true);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -198,18 +208,19 @@ const RestaurantManage = () => {
       
       console.log("Adding new category:", values);
       
-      const newCategory = {
-        id: `temp-${Date.now()}`,
+      if (!restaurant?.id) {
+        throw new Error("Restaurant ID is missing");
+      }
+      
+      const newCategory = await createCategory({
         name: values.name,
         description: values.description || null,
         image_url: values.image_url || null,
         icon: "utensils",
-        restaurant_id: restaurant?.id || "",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+        restaurant_id: restaurant.id
+      });
       
-      setCategories([...categories, newCategory as MenuCategory]);
+      setCategories([...categories, newCategory]);
       
       toast({
         title: "Category Added",
@@ -226,6 +237,67 @@ const RestaurantManage = () => {
       });
     } finally {
       setSavingCategory(false);
+    }
+  };
+
+  const handleEditCategory = async (categoryId: string, values: any) => {
+    try {
+      setSavingCategory(true);
+      
+      console.log("Editing category:", categoryId, values);
+      
+      const updatedCategory = await updateCategory(categoryId, {
+        name: values.name,
+        description: values.description || null,
+        image_url: values.image_url || null,
+        icon: values.icon || "utensils"
+      });
+      
+      setCategories(categories.map(cat => 
+        cat.id === categoryId ? updatedCategory : cat
+      ));
+      
+      toast({
+        title: "Category Updated",
+        description: `${values.name} has been updated.`,
+      });
+      
+      setIsEditingCategory(null);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update the category. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      setIsDeletingCategory(true);
+      
+      await deleteCategory(categoryId);
+      
+      setCategories(categories.filter(cat => cat.id !== categoryId));
+      
+      toast({
+        title: "Category Deleted",
+        description: "The category has been deleted.",
+      });
+      
+      setCategoryToDelete(null);
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the category. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingCategory(false);
     }
   };
 
@@ -345,16 +417,67 @@ const RestaurantManage = () => {
                           </div>
                         </div>
                         <div className="flex space-x-1">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                          <Dialog open={isEditingCategory === category.id} onOpenChange={(open) => setIsEditingCategory(open ? category.id : null)}>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                              <DialogHeader>
+                                <DialogTitle>Edit Category</DialogTitle>
+                              </DialogHeader>
+                              <CategoryForm 
+                                onSubmit={(values) => handleEditCategory(category.id, values)}
+                                initialValues={{
+                                  name: category.name,
+                                  description: category.description || "",
+                                  icon: category.icon || "",
+                                  image_url: category.image_url || ""
+                                }}
+                                isLoading={savingCategory}
+                              />
+                            </DialogContent>
+                          </Dialog>
+                          <Dialog open={categoryToDelete === category.id} onOpenChange={(open) => setCategoryToDelete(open ? category.id : null)}>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                              <DialogHeader>
+                                <DialogTitle>Delete Category</DialogTitle>
+                              </DialogHeader>
+                              <div className="py-4">
+                                <p>Are you sure you want to delete the category <strong>{category.name}</strong>?</p>
+                                <p className="text-sm text-muted-foreground mt-2">This will also delete all menu items in this category.</p>
+                              </div>
+                              <div className="flex justify-end space-x-2">
+                                <Button variant="outline" onClick={() => setCategoryToDelete(null)}>
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  onClick={() => handleDeleteCategory(category.id)}
+                                  disabled={isDeletingCategory}
+                                >
+                                  {isDeletingCategory ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Deleting...
+                                    </>
+                                  ) : (
+                                    "Delete"
+                                  )}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </div>
                     ))}
-                    <Dialog>
+                    <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
                       <DialogTrigger asChild>
                         <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
                           <Button variant="ghost" className="w-full h-full flex items-center justify-center">
@@ -377,7 +500,7 @@ const RestaurantManage = () => {
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">No categories found for this restaurant</p>
-                    <Dialog>
+                    <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
                       <DialogTrigger asChild>
                         <Button className="bg-kiosk-primary">
                           <Plus className="mr-2 h-4 w-4" />
