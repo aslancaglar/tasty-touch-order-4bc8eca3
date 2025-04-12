@@ -25,6 +25,21 @@ export const getRestaurants = async (): Promise<Restaurant[]> => {
   return data;
 };
 
+export const getRestaurantById = async (id: string): Promise<Restaurant> => {
+  const { data, error } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching restaurant by id:", error);
+    throw error;
+  }
+
+  return data;
+};
+
 export const createRestaurant = async (restaurant: Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>): Promise<Restaurant> => {
   const { data, error } = await supabase
     .from("restaurants")
