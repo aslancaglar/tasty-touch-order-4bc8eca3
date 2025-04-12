@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -32,14 +31,12 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
   const [loading, setLoading] = useState(true);
   
-  // Menu category state
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
   const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
   
-  // Menu item state
   const [isAddingMenuItem, setIsAddingMenuItem] = useState(false);
   const [selectedCategoryForItem, setSelectedCategoryForItem] = useState<string | null>(null);
   const [isEditingMenuItem, setIsEditingMenuItem] = useState<string | null>(null);
@@ -559,9 +556,11 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                                   description: item.description || "",
                                   price: item.price.toString(),
                                   promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
-                                  image: item.image || ""
+                                  image: item.image || "",
+                                  topping_categories: item.topping_categories || []
                                 }}
                                 isLoading={savingMenuItem}
+                                restaurantId={restaurant.id}
                               />
                             </DialogContent>
                           </Dialog>
@@ -610,7 +609,6 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         </>
       )}
 
-      {/* Add Menu Item Dialog */}
       <Dialog open={isAddingMenuItem} onOpenChange={(open) => {
         setIsAddingMenuItem(open);
         if (!open) setSelectedCategoryForItem(null);
@@ -636,6 +634,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
           <MenuItemForm 
             onSubmit={(values) => selectedCategoryForItem && handleAddMenuItem(selectedCategoryForItem, values)}
             isLoading={savingMenuItem}
+            restaurantId={restaurant.id}
           />
         </DialogContent>
       </Dialog>

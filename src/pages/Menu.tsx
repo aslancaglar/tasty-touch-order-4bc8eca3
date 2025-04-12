@@ -25,6 +25,7 @@ import {
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import CategoryForm from "@/components/forms/CategoryForm";
+import MenuItemForm from "@/components/forms/MenuItemForm";
 import { useToast } from "@/hooks/use-toast";
 
 const MenuPage = () => {
@@ -321,10 +322,32 @@ const MenuPage = () => {
                               </div>
                             </div>
                             <div className="flex space-x-2 mt-4 md:mt-0">
-                              <Button variant="outline" size="sm">
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </Button>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[425px]">
+                                  <DialogHeader>
+                                    <DialogTitle>Edit Menu Item</DialogTitle>
+                                  </DialogHeader>
+                                  <MenuItemForm 
+                                    onSubmit={(values) => {
+                                      // Handle edit submission
+                                    }}
+                                    initialValues={{
+                                      name: item.name,
+                                      description: item.description || "",
+                                      price: item.price.toString(),
+                                      promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
+                                      image: item.image || ""
+                                    }}
+                                    restaurantId={selectedRestaurant || ""}
+                                  />
+                                </DialogContent>
+                              </Dialog>
                               <Button variant="outline" size="sm" className="text-red-500">
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
@@ -332,12 +355,28 @@ const MenuPage = () => {
                             </div>
                           </div>
                         ))}
-                        <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
-                          <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add New Item to {category.name}
-                          </Button>
-                        </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
+                              <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add New Item to {category.name}
+                              </Button>
+                            </div>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                              <DialogTitle>Add Menu Item</DialogTitle>
+                            </DialogHeader>
+                            <MenuItemForm 
+                              onSubmit={(values) => {
+                                // Handle add submission
+                              }}
+                              isLoading={false}
+                              restaurantId={selectedRestaurant || ""}
+                            />
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </TabsContent>
                   ))}
