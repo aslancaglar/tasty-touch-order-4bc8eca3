@@ -397,7 +397,8 @@ const RestaurantManage = () => {
         price: values.price,
         tax_percentage: tax_percentage,
         image: values.image || null,
-        category_id: values.category_id
+        category_id: values.category_id,
+        promotion_price: values.promotion_price || null
       });
       
       console.log("Menu item updated:", updatedMenuItem);
