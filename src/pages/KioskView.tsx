@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
@@ -11,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getIconComponent } from "@/utils/icon-mapping";
 import { supabase } from "@/integrations/supabase/client";
 import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, OrderItem, CartItem, MenuItemWithOptions, ToppingCategory } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, OrderItem, CartItem, MenuItemWithOptions, ToppingCategory, Topping } from "@/types/database-types";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection, { OrderType } from "@/components/kiosk/OrderTypeSelection";
 import Cart from "@/components/kiosk/Cart";
@@ -135,7 +134,8 @@ const KioskView = () => {
         console.error("Error fetching topping category details:", categoriesError);
         return [];
       }
-      const toppingCategoriesWithToppings: ToppingCategory[] = await Promise.all(toppingCategories.map(async category => {
+      
+      const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
         const {
           data: toppings,
           error: toppingsError
@@ -143,17 +143,29 @@ const KioskView = () => {
         if (toppingsError) {
           console.error(`Error fetching toppings for category ${category.id}:`, toppingsError);
           return {
-            ...category,
-            required: category.min_selections > 0,
+            id: category.id,
+            name: category.name,
+            min_selections: category.min_selections || 0,
+            max_selections: category.max_selections || 0,
+            required: category.min_selections ? category.min_selections > 0 : false,
             toppings: []
           };
         }
         return {
-          ...category,
-          required: category.min_selections > 0,
-          toppings: toppings
+          id: category.id,
+          name: category.name,
+          min_selections: category.min_selections || 0,
+          max_selections: category.max_selections || 0,
+          required: category.min_selections ? category.min_selections > 0 : false,
+          toppings: toppings.map(topping => ({
+            id: topping.id,
+            name: topping.name,
+            price: topping.price,
+            tax_percentage: topping.tax_percentage || 0
+          }))
         };
       }));
+      
       return toppingCategoriesWithToppings;
     } catch (error) {
       console.error("Error in fetchToppingCategories:", error);
