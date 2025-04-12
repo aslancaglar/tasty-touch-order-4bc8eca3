@@ -670,7 +670,7 @@ const KioskView = () => {
           }
         }}
       >
-        <DrawerContent preventClose={cart.length > 0}>
+        <DrawerContent preventClose={cart.length > 0} passClicksToPage={true}>
           <div className="w-full">
             <DrawerHeader className="pt-4 pb-0 px-4">
               <div className="flex items-center justify-between">

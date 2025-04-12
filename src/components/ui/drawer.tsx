@@ -23,6 +23,7 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 interface DrawerContentProps extends React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> {
   showOverlay?: boolean;
   preventClose?: boolean;
+  passClicksToPage?: boolean;
 }
 
 const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Content>, DrawerContentProps>(({
@@ -30,20 +31,32 @@ const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.C
   children,
   showOverlay = false,
   preventClose = false,
+  passClicksToPage = false,
   ...props
 }, ref) => {
-  // This custom handler prevents the dismissible behavior when preventClose is true
-  const handlePointerDownOutside = preventClose ? (e: Event) => {
-    e.preventDefault();
-    e.stopPropagation();
-  } : undefined;
+  // This custom handler prevents interaction with the drawer content from closing it
+  // while still allowing interaction with the page behind it
+  const handlePointerDownOutside = (e: Event) => {
+    if (preventClose) {
+      e.preventDefault();
+    }
+    
+    if (passClicksToPage) {
+      // Allow the event to continue to elements behind the drawer
+      e.stopPropagation();
+      return false;
+    }
+  };
 
   return (
     <DrawerPortal>
       {showOverlay && <DrawerOverlay />}
       <DrawerPrimitive.Content 
         ref={ref} 
-        className={cn("fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background", className)} 
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background", 
+          className
+        )} 
         onPointerDownOutside={handlePointerDownOutside}
         {...props}
       >
