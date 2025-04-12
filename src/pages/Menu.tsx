@@ -96,16 +96,21 @@ const MenuPage = () => {
       
       console.log(`Starting deletion process for category: ${categoryId}`);
       await deleteCategory(categoryId);
+      console.log(`Category successfully deleted: ${categoryId}`);
       
       // Update local state to reflect the deletion
-      setCategories(prevCategories => 
-        prevCategories.filter(cat => cat.id !== categoryId)
-      );
+      setCategories(prevCategories => {
+        const updatedCategories = prevCategories.filter(cat => cat.id !== categoryId);
+        console.log("Updated categories after deletion:", updatedCategories);
+        return updatedCategories;
+      });
       
       // Also update menuItems state to remove items from deleted category
-      const updatedMenuItems = { ...menuItems };
-      delete updatedMenuItems[categoryId];
-      setMenuItems(updatedMenuItems);
+      setMenuItems(prev => {
+        const updatedItems = { ...prev };
+        delete updatedItems[categoryId];
+        return updatedItems;
+      });
       
       toast({
         title: "Category Deleted",

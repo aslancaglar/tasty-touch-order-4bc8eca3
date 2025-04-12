@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -5,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import ImageUpload from "@/components/ImageUpload";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +14,6 @@ const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
   description: z.string().optional(),
   icon: z.string().optional(),
-  image_url: z.string().optional(),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -34,13 +33,12 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
       name: initialValues?.name || "",
       description: initialValues?.description || "",
       icon: initialValues?.icon || "",
-      image_url: initialValues?.image_url || "",
     },
   });
 
   const handleSubmit = (values: CategoryFormValues) => {
     console.log("Form submitted with values:", values);
-    console.log("Note: description field will be ignored by the server");
+    console.log("Note: description field and image_url are not stored in database");
     
     onSubmit(values);
   };
@@ -82,15 +80,14 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
         
         <FormField
           control={form.control}
-          name="image_url"
+          name="icon"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category Image</FormLabel>
+              <FormLabel>Icon Name (Optional)</FormLabel>
               <FormControl>
-                <ImageUpload
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  label="Category Image"
+                <Input
+                  placeholder="e.g., UtensilsCrossed, Coffee, Pizza"
+                  {...field}
                 />
               </FormControl>
               <FormMessage />

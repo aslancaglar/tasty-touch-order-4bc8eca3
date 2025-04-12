@@ -104,23 +104,19 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
       result.description = String(category.description);
     }
     
-    if ('image_url' in category && category.image_url !== null && category.image_url !== undefined) {
-      result.image_url = String(category.image_url);
-    }
-    
     return result;
   });
 };
 
 export const createCategory = async (category: Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>): Promise<MenuCategory> => {
-  // Ensure we're sending valid data to Supabase
+  // Ensure we're sending valid data to Supabase - remove fields that don't exist in database
   const categoryData = {
     name: category.name,
     restaurant_id: category.restaurant_id,
-    icon: category.icon || null,
-    description: category.description || null,
-    image_url: category.image_url || null
+    icon: category.icon || null
   };
+
+  console.log("Creating category with data:", categoryData);
 
   const { data, error } = await supabase
     .from("menu_categories")
@@ -138,9 +134,9 @@ export const createCategory = async (category: Omit<MenuCategory, 'id' | 'create
     id: data.id,
     name: data.name,
     restaurant_id: data.restaurant_id,
-    description: 'description' in data && data.description !== null ? String(data.description) : null,
+    description: null,
     icon: data.icon || null,
-    image_url: 'image_url' in data && data.image_url !== null ? String(data.image_url) : null,
+    image_url: null,
     created_at: data.created_at,
     updated_at: data.updated_at
   };
@@ -152,8 +148,12 @@ export const updateCategory = async (id: string, updates: Partial<Omit<MenuCateg
     throw new Error("Cannot update a temporary category. Please create it first.");
   }
 
-  // Remove the description field from updates as it doesn't exist in the database
-  const { description, ...validUpdates } = updates;
+  // Only include fields that exist in the database
+  const validUpdates = {
+    name: updates.name,
+    icon: updates.icon
+  };
+  
   console.log("Sending updates to database:", validUpdates);
 
   const { data, error } = await supabase
@@ -173,9 +173,9 @@ export const updateCategory = async (id: string, updates: Partial<Omit<MenuCateg
     id: data.id,
     name: data.name,
     restaurant_id: data.restaurant_id,
-    description: 'description' in data && data.description !== null ? String(data.description) : null,
+    description: null,
     icon: data.icon || null,
-    image_url: 'image_url' in data && data.image_url !== null ? String(data.image_url) : null,
+    image_url: null,
     created_at: data.created_at,
     updated_at: data.updated_at
   };

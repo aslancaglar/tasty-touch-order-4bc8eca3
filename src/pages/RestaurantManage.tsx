@@ -255,17 +255,20 @@ const RestaurantManage = () => {
     
     try {
       setSavingCategory(true);
+      console.log("Updating category with values:", values);
       
       const updatedCategory = await updateCategory(selectedCategory.id, {
         name: values.name,
-        description: values.description,
-        image_url: values.image_url,
         icon: values.icon || selectedCategory.icon
       });
       
-      setCategories(categories.map(cat => 
-        cat.id === updatedCategory.id ? updatedCategory : cat
-      ));
+      console.log("Successfully updated category:", updatedCategory);
+      
+      setCategories(prevCategories => 
+        prevCategories.map(cat => 
+          cat.id === updatedCategory.id ? updatedCategory : cat
+        )
+      );
       
       toast({
         title: "Category Updated",
@@ -294,14 +297,19 @@ const RestaurantManage = () => {
       
       console.log(`Starting deletion process for category: ${deletingCategoryId}`);
       await deleteCategory(deletingCategoryId);
+      console.log(`Category deleted successfully: ${deletingCategoryId}`);
       
-      setCategories(prevCategories => 
-        prevCategories.filter(cat => cat.id !== deletingCategoryId)
-      );
+      setCategories(prevCategories => {
+        const newCategories = prevCategories.filter(cat => cat.id !== deletingCategoryId);
+        console.log("Updated categories after deletion:", newCategories);
+        return newCategories;
+      });
       
-      const updatedMenuItems = { ...menuItems };
-      delete updatedMenuItems[deletingCategoryId];
-      setMenuItems(updatedMenuItems);
+      setMenuItems(prev => {
+        const updatedItems = { ...prev };
+        delete updatedItems[deletingCategoryId];
+        return updatedItems;
+      });
       
       toast({
         title: "Category Deleted",
