@@ -375,6 +375,43 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
   } : null;
 };
 
+export const getOrdersByRestaurantId = async (restaurantId: string): Promise<Order[]> => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("restaurant_id", restaurantId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching orders by restaurant id:", error);
+    throw error;
+  }
+
+  return data.map(order => ({
+    ...order,
+    status: order.status as OrderStatus
+  }));
+};
+
+export const updateOrderStatus = async (id: string, status: OrderStatus): Promise<Order> => {
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ status })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating order status:", error);
+    throw error;
+  }
+
+  return {
+    ...data,
+    status: data.status as OrderStatus
+  };
+};
+
 // Order Item services
 export const createOrderItems = async (items: Omit<OrderItem, 'id' | 'created_at' | 'updated_at'>[]): Promise<OrderItem[]> => {
   const { data, error } = await supabase
@@ -443,6 +480,31 @@ export const getMenuForRestaurant = async (restaurantId: string) => {
   );
 
   return categoriesWithItems;
+};
+
+// Helper function to get order items for a specific order
+export const getOrderItemsByOrderId = async (orderId: string) => {
+  const { data, error } = await supabase
+    .from("order_items")
+    .select(`
+      id,
+      quantity,
+      price,
+      special_instructions,
+      menu_items (
+        id,
+        name,
+        description
+      )
+    `)
+    .eq("order_id", orderId);
+
+  if (error) {
+    console.error("Error fetching order items:", error);
+    throw error;
+  }
+
+  return data;
 };
 
 // Topping Category services
