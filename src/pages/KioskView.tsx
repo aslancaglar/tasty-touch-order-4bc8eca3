@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus } from "lucide-react";
@@ -65,6 +66,12 @@ type CartItem = {
   specialInstructions?: string;
 };
 
+// Define the interface for the selectedToppings structure
+interface SelectedToppingCategory {
+  categoryId: string;
+  toppingIds: string[];
+}
+
 const KioskView = () => {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
   const navigate = useNavigate();
@@ -83,10 +90,7 @@ const KioskView = () => {
     optionId: string;
     choiceIds: string[];
   }[]>([]);
-  const [selectedToppings, setSelectedToppings] = useState<{
-    categoryId: string;
-    toppingIds: string[];
-  }[]>([]);
+  const [selectedToppings, setSelectedToppings] = useState<SelectedToppingCategory[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -327,13 +331,11 @@ const KioskView = () => {
     });
   };
 
-  const calculateItemPrice = (item: MenuItemWithOptions, options: {
-    optionId: string;
-    choiceIds: string[];
-  }[], toppings: {
-    categoryId: string;
-    toppingIds: string[];
-  }): number => {
+  const calculateItemPrice = (
+    item: MenuItemWithOptions, 
+    options: { optionId: string; choiceIds: string[]; }[], 
+    toppings: SelectedToppingCategory[]
+  ): number => {
     let price = parseFloat(item.price.toString());
     if (item.options) {
       item.options.forEach(option => {
@@ -464,13 +466,13 @@ const KioskView = () => {
     if (!restaurant || cart.length === 0) return;
     try {
       setPlacingOrder(true);
+      // Create the order without the order_type and table_number fields
+      // since they don't exist in the database schema yet
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
         total: calculateCartTotal(),
-        customer_name: null,
-        order_type: orderType || undefined,
-        table_number: tableNumber || undefined
+        customer_name: null
       });
       
       const orderItems = await createOrderItems(cart.map(item => ({
