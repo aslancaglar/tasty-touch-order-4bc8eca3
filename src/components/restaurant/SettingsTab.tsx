@@ -66,7 +66,7 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
             <ImageUpload 
               value={image} 
               onChange={(url) => setImage(url)} 
-              placeholder="Upload restaurant image..."
+              label="Upload restaurant image..."
             />
           </div>
         </div>

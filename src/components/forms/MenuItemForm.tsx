@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -14,8 +14,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import ImageUpload from "@/components/ImageUpload";
 import { Loader2 } from "lucide-react";
+import { ToppingCategory } from "@/types/database-types";
+import { getToppingCategoriesByRestaurantId } from "@/services/kiosk-service";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -29,6 +39,7 @@ const formSchema = z.object({
     message: "Promotional price must be a valid number",
   }).optional(),
   image: z.string().optional(),
+  topping_categories: z.array(z.string()).optional(),
 });
 
 type MenuItemFormValues = z.infer<typeof formSchema>;
@@ -41,12 +52,16 @@ interface MenuItemFormProps {
     price: string;
     promotion_price?: string;
     image?: string;
+    topping_categories?: string[];
   };
   isLoading?: boolean;
+  restaurantId?: string;
 }
 
-const MenuItemForm = ({ onSubmit, initialValues, isLoading = false }: MenuItemFormProps) => {
+const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId }: MenuItemFormProps) => {
   const [imageUrl, setImageUrl] = useState<string>(initialValues?.image || "");
+  const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
+  const [loadingToppingCategories, setLoadingToppingCategories] = useState(false);
 
   const form = useForm<MenuItemFormValues>({
     resolver: zodResolver(formSchema),
@@ -56,8 +71,27 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false }: MenuItemFo
       price: initialValues?.price || "",
       promotion_price: initialValues?.promotion_price || "",
       image: initialValues?.image || "",
+      topping_categories: initialValues?.topping_categories || [],
     },
   });
+
+  useEffect(() => {
+    const fetchToppingCategories = async () => {
+      if (!restaurantId) return;
+      
+      try {
+        setLoadingToppingCategories(true);
+        const data = await getToppingCategoriesByRestaurantId(restaurantId);
+        setToppingCategories(data);
+        setLoadingToppingCategories(false);
+      } catch (error) {
+        console.error("Error fetching topping categories:", error);
+        setLoadingToppingCategories(false);
+      }
+    };
+
+    fetchToppingCategories();
+  }, [restaurantId]);
 
   const handleImageChange = (url: string) => {
     setImageUrl(url);
@@ -151,6 +185,63 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false }: MenuItemFo
             </FormItem>
           )}
         />
+
+        {toppingCategories.length > 0 && (
+          <FormField
+            control={form.control}
+            name="topping_categories"
+            render={() => (
+              <FormItem>
+                <div className="mb-2">
+                  <FormLabel>Topping Categories</FormLabel>
+                  <p className="text-sm text-muted-foreground">
+                    Select which topping categories can be applied to this item
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {toppingCategories.map((category) => (
+                    <FormField
+                      key={category.id}
+                      control={form.control}
+                      name="topping_categories"
+                      render={({ field }) => {
+                        return (
+                          <FormItem
+                            key={category.id}
+                            className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
+                          >
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(category.id)}
+                                onCheckedChange={(checked) => {
+                                  const currentValues = field.value || [];
+                                  return checked
+                                    ? field.onChange([...currentValues, category.id])
+                                    : field.onChange(
+                                        currentValues.filter((value) => value !== category.id)
+                                      );
+                                }}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel className="cursor-pointer">{category.name}</FormLabel>
+                              {category.description && (
+                                <p className="text-sm text-muted-foreground">
+                                  {category.description}
+                                </p>
+                              )}
+                            </div>
+                          </FormItem>
+                        );
+                      }}
+                    />
+                  ))}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <Button type="submit" className="w-full bg-kiosk-primary" disabled={isLoading}>
           {isLoading ? (

@@ -14,8 +14,12 @@ const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
   description: z.string().optional(),
   icon: z.string().optional(),
-  min_selections: z.string().optional().transform(val => val === "" ? 0 : parseInt(val)),
-  max_selections: z.string().optional().transform(val => val === "" ? 0 : parseInt(val)),
+  min_selections: z.string().optional()
+    .transform(val => val === "" ? 0 : parseInt(val))
+    .pipe(z.number().min(0, "Must be 0 or greater")),
+  max_selections: z.string().optional()
+    .transform(val => val === "" ? 0 : parseInt(val))
+    .pipe(z.number().min(0, "Must be 0 or greater")),
 });
 
 type ToppingCategoryFormValues = z.infer<typeof toppingCategorySchema>;
@@ -33,8 +37,12 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
       name: initialValues?.name || "",
       description: initialValues?.description || "",
       icon: initialValues?.icon || "",
-      min_selections: initialValues?.min_selections?.toString() || "0",
-      max_selections: initialValues?.max_selections?.toString() || "0",
+      min_selections: initialValues?.min_selections !== undefined 
+        ? initialValues.min_selections.toString() 
+        : "0",
+      max_selections: initialValues?.max_selections !== undefined 
+        ? initialValues.max_selections.toString() 
+        : "0",
     },
   });
 
