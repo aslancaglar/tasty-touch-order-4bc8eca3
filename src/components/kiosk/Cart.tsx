@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Check, ArrowRight, Loader2, Plus, Minus, Trash2, ChevronDown } from "lucide-react";
+import { Check, ArrowRight, Loader2, Plus, Minus, Trash2, ChevronDown, X } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 
 interface CartProps {
@@ -55,57 +55,54 @@ const Cart: React.FC<CartProps> = ({
         </div>
 
         <div className="p-4 overflow-auto" style={{ maxHeight: "40vh" }}>
-          {cart.map(item => (
-            <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-              <div className="flex items-start">
-                <img 
-                  src={item.menuItem.image || '/placeholder.svg'} 
-                  alt={item.menuItem.name} 
-                  className="w-16 h-16 object-cover rounded mr-4" 
-                />
-                <div>
-                  <h3 className="font-bold">{item.menuItem.name}</h3>
-                  <div className="text-sm text-gray-500">
-                    {getFormattedOptions(item)}
-                    {getFormattedOptions(item) && getFormattedToppings(item) && ", "}
-                    {getFormattedToppings(item)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {cart.map(item => (
+              <div key={item.id} className="border border-gray-200 rounded-lg p-3 relative">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute right-1 top-1 text-red-500 h-7 w-7" 
+                  onClick={() => onRemoveItem(item.id)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+                
+                <div className="flex items-start space-x-3">
+                  <img 
+                    src={item.menuItem.image || '/placeholder.svg'} 
+                    alt={item.menuItem.name} 
+                    className="w-16 h-16 object-cover rounded" 
+                  />
+                  <div className="flex flex-col">
+                    <h3 className="font-bold">{item.menuItem.name}</h3>
+                    <p className="text-gray-700 font-medium">
+                      {parseFloat(item.itemPrice.toString()).toFixed(2)} €
+                    </p>
+                    
+                    <div className="flex items-center mt-2">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-7 w-7 rounded-full p-0" 
+                        onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center font-medium">{item.quantity}</span>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-7 w-7 rounded-full p-0" 
+                        onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-gray-700 font-medium mt-1">
-                    {parseFloat(item.itemPrice.toString()).toFixed(2)} €
-                  </p>
                 </div>
               </div>
-              <div className="flex items-center">
-                <div className="flex items-center">
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-8 w-8 rounded-full" 
-                    onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="w-8 text-center font-medium">{item.quantity}</span>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-8 w-8 rounded-full" 
-                    onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="ml-2 text-red-500" 
-                    onClick={() => onRemoveItem(item.id)}
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <div className="px-4 pb-4">
