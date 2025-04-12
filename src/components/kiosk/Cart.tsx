@@ -44,8 +44,8 @@ const Cart: React.FC<CartProps> = ({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{ maxHeight: "80vh" }}>
-      <div className="container mx-auto max-w-7xl">
-        <div className="flex items-center justify-between p-4 border-b">
+      <div className="w-full">
+        <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="flex items-center">
             <h2 className="text-xl font-bold">VOTRE COMMANDE ({cartItemCount})</h2>
           </div>
@@ -55,7 +55,7 @@ const Cart: React.FC<CartProps> = ({
         </div>
 
         <div className="p-4 overflow-auto" style={{ maxHeight: "40vh" }}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {cart.map(item => (
               <div key={item.id} className="border border-gray-200 rounded-lg p-3 relative">
                 <Button 
