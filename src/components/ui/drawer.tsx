@@ -34,19 +34,33 @@ const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.C
   passClicksToPage = false,
   ...props
 }, ref) => {
-  // This custom handler prevents interaction with the drawer content from closing it
-  // while still allowing interaction with the page behind it
-  const handlePointerDownOutside = (e: Event) => {
+  // Create a custom handler that only prevents the drawer from closing
+  // but doesn't block interaction with elements behind the drawer
+  const handlePointerDownOutside = React.useCallback((e: Event) => {
     if (preventClose) {
       e.preventDefault();
     }
-    
+  }, [preventClose]);
+
+  React.useEffect(() => {
+    // If we want to pass clicks to the page, we need to modify how the drawer handles pointer events
     if (passClicksToPage) {
-      // Allow the event to continue to elements behind the drawer
-      e.stopPropagation();
-      return false;
+      // Find the drawer's backdrop element that typically blocks interaction
+      const backdrop = document.querySelector('[data-vaul-drawer-wrapper]');
+      if (backdrop) {
+        // Store original pointer-events value to restore later
+        const originalPointerEvents = backdrop.getAttribute('style') || '';
+        
+        // Set pointer-events to none to allow clicks to pass through
+        backdrop.setAttribute('style', `${originalPointerEvents}; pointer-events: none !important;`);
+        
+        return () => {
+          // Restore original style when component unmounts or dependencies change
+          backdrop.setAttribute('style', originalPointerEvents);
+        };
+      }
     }
-  };
+  }, [passClicksToPage]);
 
   return (
     <DrawerPortal>
