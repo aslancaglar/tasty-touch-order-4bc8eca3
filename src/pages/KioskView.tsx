@@ -29,17 +29,15 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { getIconComponent } from "@/utils/icon-mapping";
-import { supabase } from "@/integrations/supabase/client";
 import { 
   getRestaurantBySlug, 
   getMenuForRestaurant, 
   getMenuItemWithOptions,
   createOrder,
   createOrderItems,
-  createOrderItemOptions,
-  getToppingsByCategory
+  createOrderItemOptions
 } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, OrderItem, ToppingCategory, Topping } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, OrderItem } from "@/types/database-types";
 
 // Types with more specific structure for the UI
 type CategoryWithItems = MenuCategory & {
@@ -58,7 +56,6 @@ type MenuItemWithOptions = MenuItem & {
       price: number | null;
     }[];
   }[];
-  topping_categories?: string[];
 };
 
 type CartItem = {
@@ -70,13 +67,6 @@ type CartItem = {
     choiceIds: string[];
   }[];
   specialInstructions?: string;
-};
-
-// Type for toppings data
-type ToppingCategoryWithToppings = {
-  id: string;
-  name: string;
-  toppings: Topping[];
 };
 
 const KioskView = () => {
@@ -93,7 +83,6 @@ const KioskView = () => {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [toppingCategoriesWithToppings, setToppingCategoriesWithToppings] = useState<Record<string, ToppingCategoryWithToppings>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -123,49 +112,6 @@ const KioskView = () => {
         // Fetch menu categories with items
         const menuData = await getMenuForRestaurant(restaurantData.id);
         setCategories(menuData);
-        
-        // Extract all topping category IDs from menu items
-        const toppingCategoryIds = new Set<string>();
-        menuData.forEach(category => {
-          category.items.forEach(item => {
-            if (item.topping_categories) {
-              item.topping_categories.forEach(id => toppingCategoryIds.add(id));
-            }
-          });
-        });
-        
-        // Fetch topping categories with their toppings
-        if (toppingCategoryIds.size > 0) {
-          try {
-            // Fetch topping categories
-            const { data: toppingCategoriesData, error: categoriesError } = await supabase
-              .from("topping_categories")
-              .select("*")
-              .in("id", Array.from(toppingCategoryIds));
-            
-            if (categoriesError) {
-              console.error("Error fetching topping categories:", categoriesError);
-              throw categoriesError;
-            }
-            
-            // For each topping category, fetch its toppings
-            const toppingCategoriesWithToppingsMap: Record<string, ToppingCategoryWithToppings> = {};
-            
-            await Promise.all(toppingCategoriesData.map(async (category) => {
-              const toppings = await getToppingsByCategory(category.id);
-              
-              toppingCategoriesWithToppingsMap[category.id] = {
-                id: category.id,
-                name: category.name,
-                toppings: toppings
-              };
-            }));
-            
-            setToppingCategoriesWithToppings(toppingCategoriesWithToppingsMap);
-          } catch (error) {
-            console.error("Error fetching topping categories and toppings:", error);
-          }
-        }
         
         setLoading(false);
       } catch (error) {
@@ -542,52 +488,13 @@ const KioskView = () => {
 
       {selectedItem && (
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{selectedItem.name}</DialogTitle>
               <DialogDescription>{selectedItem.description}</DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-6">
-              {selectedItem.topping_categories && selectedItem.topping_categories.length > 0 && (
-                <div className="space-y-4">
-                  <Label className="font-medium text-lg">Included Toppings</Label>
-                  <div className="space-y-4">
-                    {selectedItem.topping_categories.map((categoryId) => {
-                      const category = toppingCategoriesWithToppings[categoryId];
-                      
-                      if (!category) return null;
-                      
-                      return (
-                        <div key={categoryId} className="space-y-2">
-                          <Badge 
-                            variant="purple" 
-                            className="px-3 py-1 text-sm"
-                          >
-                            {category.name}
-                          </Badge>
-                          
-                          {category.toppings && category.toppings.length > 0 ? (
-                            <div className="pl-2 mt-2">
-                              <ul className="list-disc pl-4 text-sm text-gray-600 space-y-1">
-                                {category.toppings.map(topping => (
-                                  <li key={topping.id}>
-                                    {topping.name}
-                                    {topping.price > 0 && ` (+$${topping.price.toFixed(2)})`}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-gray-500 pl-2">No toppings available</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              
+            <div className="space-y-4">
               {selectedItem.options && selectedItem.options.map((option) => (
                 <div key={option.id} className="space-y-2">
                   <Label className="font-medium">
