@@ -223,7 +223,6 @@ const KioskView = () => {
       }
       
       setLoading(false);
-      setOrderStep("customizeItem");
     } catch (error) {
       console.error("Error fetching item details:", error);
       toast({
@@ -360,8 +359,6 @@ const KioskView = () => {
     };
     
     setCart(prev => [...prev, newItem]);
-    setSelectedItem(null);
-    setOrderStep("menu");
     
     toast({
       title: "Added to cart",
@@ -543,26 +540,6 @@ const KioskView = () => {
           onViewCart={() => setOrderStep("cart")}
           onGoBack={() => setOrderStep("orderType")}
           calculateCartTotal={calculateCartTotal}
-        />
-      )}
-      
-      {orderStep === "customizeItem" && selectedItem && (
-        <KioskItemCustomizationScreen 
-          item={selectedItem}
-          quantity={quantity}
-          selectedOptions={selectedOptions}
-          selectedToppings={selectedToppings}
-          specialInstructions={specialInstructions}
-          onSetQuantity={setQuantity}
-          onToggleChoice={handleToggleChoice}
-          onToggleTopping={handleToggleTopping}
-          onSetSpecialInstructions={setSpecialInstructions}
-          onAddToCart={handleAddToCart}
-          onCancel={() => {
-            setSelectedItem(null);
-            setOrderStep("menu");
-          }}
-          calculateItemPrice={() => calculateItemPrice(selectedItem, selectedOptions, selectedToppings)}
         />
       )}
       

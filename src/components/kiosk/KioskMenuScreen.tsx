@@ -1,12 +1,13 @@
-
 import { useState } from "react";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
-import { CartItem } from "@/types/kiosk-types";
+import { CartItem, MenuItemWithOptions, SelectedOption, SelectedTopping } from "@/types/kiosk-types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getIconComponent } from "@/utils/icon-mapping";
 import { ChevronRight, Home, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { KioskItemCustomizationScreen } from "@/components/kiosk/KioskItemCustomizationScreen";
 
 type KioskMenuScreenProps = {
   restaurant: Restaurant;
@@ -30,12 +31,32 @@ export const KioskMenuScreen = ({
   const [activeCategory, setActiveCategory] = useState<string>(
     categories.length > 0 ? categories[0].id : ""
   );
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
+  const [selectedToppings, setSelectedToppings] = useState<SelectedTopping[]>([]);
+  const [specialInstructions, setSpecialInstructions] = useState("");
 
   const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
   const totalPrice = calculateCartTotal();
   
   // Get the items for the active category
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
+
+  const handleSelectItem = async (item: MenuItem) => {
+    setDialogOpen(true);
+    onSelectItem(item);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setSelectedItem(null);
+    setQuantity(1);
+    setSelectedOptions([]);
+    setSelectedToppings([]);
+    setSpecialInstructions("");
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -95,7 +116,7 @@ export const KioskMenuScreen = ({
                 <div className="p-3 bg-white">
                   <Button 
                     className="w-full bg-red-600 hover:bg-red-700"
-                    onClick={() => onSelectItem(item)}
+                    onClick={() => handleSelectItem(item)}
                   >
                     AJOUTER AU PANIER
                     <ChevronRight className="h-4 w-4 ml-2" />
@@ -128,6 +149,92 @@ export const KioskMenuScreen = ({
           </div>
         </footer>
       )}
+
+      {/* Item Customization Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-4xl p-0 h-[90vh] max-h-[90vh]">
+          {selectedItem && (
+            <div className="h-full flex flex-col overflow-hidden">
+              <KioskItemCustomizationScreen
+                item={selectedItem}
+                quantity={quantity}
+                selectedOptions={selectedOptions}
+                selectedToppings={selectedToppings}
+                specialInstructions={specialInstructions}
+                onSetQuantity={setQuantity}
+                onToggleChoice={(optionId, choiceId, multiple) => {
+                  setSelectedOptions(prev => {
+                    const optionIndex = prev.findIndex(o => o.optionId === optionId);
+                    if (optionIndex === -1) {
+                      return [...prev, { optionId, choiceIds: [choiceId] }];
+                    }
+
+                    const option = prev[optionIndex];
+                    let newChoiceIds: string[];
+
+                    if (multiple) {
+                      if (option.choiceIds.includes(choiceId)) {
+                        newChoiceIds = option.choiceIds.filter(id => id !== choiceId);
+                      } else {
+                        newChoiceIds = [...option.choiceIds, choiceId];
+                      }
+                    } else {
+                      newChoiceIds = [choiceId];
+                    }
+
+                    const newOptions = [...prev];
+                    newOptions[optionIndex] = { ...option, choiceIds: newChoiceIds };
+                    return newOptions;
+                  });
+                }}
+                onToggleTopping={(categoryId, toppingId, maxSelections) => {
+                  setSelectedToppings(prev => {
+                    const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
+                    if (categoryIndex === -1) {
+                      return [...prev, { categoryId, toppingIds: [toppingId] }];
+                    }
+
+                    const category = prev[categoryIndex];
+                    let newToppingIds: string[];
+
+                    if (category.toppingIds.includes(toppingId)) {
+                      newToppingIds = category.toppingIds.filter(id => id !== toppingId);
+                    } else {
+                      if (maxSelections > 0 && category.toppingIds.length >= maxSelections) {
+                        alert(`You can only select ${maxSelections} items from this category.`);
+                        return prev;
+                      }
+                      newToppingIds = [...category.toppingIds, toppingId];
+                    }
+
+                    const newToppings = [...prev];
+                    newToppings[categoryIndex] = { ...category, toppingIds: newToppingIds };
+                    return newToppings;
+                  });
+                }}
+                onSetSpecialInstructions={setSpecialInstructions}
+                onAddToCart={() => {
+                  if (!selectedItem) return;
+    
+                  const newItem: CartItem = {
+                    id: Date.now().toString(),
+                    menuItem: selectedItem,
+                    quantity,
+                    selectedOptions,
+                    selectedToppings,
+                    specialInstructions: specialInstructions.trim() || undefined,
+                  };
+    
+                  setCart(prev => [...prev, newItem]);
+                  handleDialogClose();
+                }}
+                onCancel={handleDialogClose}
+                calculateItemPrice={() => 0} // This will be replaced with actual calculation
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
