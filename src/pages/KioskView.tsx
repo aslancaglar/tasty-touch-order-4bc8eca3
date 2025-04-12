@@ -11,7 +11,8 @@ import {
   Check,
   Loader2,
   ChevronLeft,
-  Plus
+  Plus,
+  ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -311,7 +312,7 @@ const KioskView = () => {
     });
   };
 
-  const handleToggleTopping = (categoryId: string, toppingId: string, maxSelections: number) => {
+  const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
       if (categoryIndex === -1) {
@@ -326,15 +327,25 @@ const KioskView = () => {
         // If it is, remove it
         newToppingIds = category.toppingIds.filter(id => id !== toppingId);
       } else {
-        // If it's not, check if we're at the max selections
-        if (maxSelections > 0 && category.toppingIds.length >= maxSelections) {
-          // If at max selections, show a toast and don't add
-          toast({
-            title: "Maximum selections reached",
-            description: `You can only select ${maxSelections} items from this category.`,
-          });
-          return prev;
+        // If the selected item has topping categories
+        if (selectedItem?.toppingCategories) {
+          // Find the current topping category
+          const toppingCategory = selectedItem.toppingCategories.find(c => c.id === categoryId);
+          
+          // If we found it and it has a max_selections limit
+          if (toppingCategory && toppingCategory.max_selections > 0) {
+            // Check if we're at the max selections
+            if (category.toppingIds.length >= toppingCategory.max_selections) {
+              // If at max selections, show a toast and don't add
+              toast({
+                title: "Maximum selections reached",
+                description: `You can only select ${toppingCategory.max_selections} items from this category.`,
+              });
+              return prev;
+            }
+          }
         }
+        
         // Otherwise, add it
         newToppingIds = [...category.toppingIds, toppingId];
       }
@@ -485,6 +496,14 @@ const KioskView = () => {
       );
       return total + (itemPrice * item.quantity);
     }, 0);
+  };
+
+  const calculateSubtotal = () => {
+    return calculateCartTotal();
+  };
+
+  const calculateTax = () => {
+    return calculateCartTotal() * 0.1; // 10% tax
   };
 
   const handlePlaceOrder = async () => {
@@ -698,132 +717,144 @@ const KioskView = () => {
         </div>
       </div>
 
-      {/* Cart section at the bottom */}
-      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg transition-all duration-300 ease-in-out ${showCartDetails ? 'max-h-80' : 'h-16'}`}>
-        {showCartDetails ? (
-          <div className="container mx-auto p-4 max-h-80 overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-lg">Your Order</h2>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setShowCartDetails(false)}
-              >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Collapse Cart
-              </Button>
-            </div>
-            
-            {cart.length === 0 ? (
-              <div className="text-center py-6">
-                <ShoppingCart className="h-8 w-8 mx-auto text-gray-300" />
-                <p className="mt-2 text-gray-500">Your cart is empty</p>
-              </div>
-            ) : (
-              <div>
-                <div className="space-y-3 max-h-40 overflow-y-auto">
-                  {cart.map((item) => {
-                    const itemTotal = calculateItemPrice(
-                      item.menuItem, 
-                      item.selectedOptions,
-                      item.selectedToppings
-                    ) * item.quantity;
-                    
-                    return (
-                      <div key={item.id} className="flex justify-between items-center p-2 border-b">
-                        <div className="flex items-center">
-                          <div className="flex items-center space-x-2 mr-4">
-                            <Button 
-                              variant="outline" 
-                              size="icon"
-                              className="h-6 w-6 rounded-full"
-                              onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity - 1)}
-                            >
-                              <MinusCircle className="h-3 w-3" />
-                            </Button>
-                            <span className="text-sm font-medium">{item.quantity}</span>
-                            <Button 
-                              variant="outline"
-                              size="icon"
-                              className="h-6 w-6 rounded-full"
-                              onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity + 1)}
-                            >
-                              <PlusCircle className="h-3 w-3" />
-                            </Button>
+      {/* Cart section at the bottom - Updated to match the design in the image */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+          <div className="container mx-auto px-4">
+            {showCartDetails ? (
+              <div className="pb-6">
+                <div className="flex items-center justify-between py-4">
+                  <div className="flex items-center">
+                    <ShoppingCart className="text-red-500 mr-2" />
+                    <h2 className="font-bold text-lg">VOTRE COMMANDE ({cartItemCount})</h2>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowCartDetails(false)}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Collapse Cart
+                  </Button>
+                </div>
+                
+                {/* Cart items */}
+                <div className="space-y-4 max-h-60 overflow-y-auto">
+                  {cart.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4">
+                      <div className="flex items-start">
+                        <img 
+                          src={item.menuItem.image || '/placeholder.svg'} 
+                          alt={item.menuItem.name} 
+                          className="w-16 h-16 object-cover rounded mr-4" 
+                        />
+                        <div>
+                          <h3 className="font-bold">{item.menuItem.name}</h3>
+                          <div className="text-sm text-gray-500">
+                            {getFormattedOptions(item)}
+                            {getFormattedOptions(item) && getFormattedToppings(item) && ", "}
+                            {getFormattedToppings(item)}
                           </div>
-                          <div>
-                            <h3 className="font-medium text-sm">{item.menuItem.name}</h3>
-                            <p className="text-xs text-gray-500 line-clamp-1">
-                              {getFormattedOptions(item)}
-                              {getFormattedOptions(item) && getFormattedToppings(item) && ", "}
-                              {getFormattedToppings(item)}
-                            </p>
-                          </div>
+                          <p className="text-gray-700 font-medium mt-1">
+                            {calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings).toFixed(2)} €
+                          </p>
                         </div>
-                        <div className="flex items-center">
-                          <p className="font-medium text-sm mr-3">${itemTotal.toFixed(2)}</p>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="flex items-center border rounded-md">
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            className="h-7 w-7 text-red-500"
-                            onClick={() => handleRemoveCartItem(item.id)}
+                            className="h-8 w-8 text-gray-500"
+                            onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity - 1)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <MinusCircle className="h-4 w-4" />
+                          </Button>
+                          <span className="w-8 text-center font-medium">{item.quantity}</span>
+                          <Button 
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-gray-500"
+                            onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity + 1)}
+                          >
+                            <PlusCircle className="h-4 w-4" />
                           </Button>
                         </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="ml-2 text-red-500"
+                          onClick={() => handleRemoveCartItem(item.id)}
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
                 
-                <div className="flex items-center justify-between pt-3">
-                  <div>
-                    <p className="font-bold">Total: ${calculateCartTotal().toFixed(2)}</p>
-                    <p className="text-xs text-gray-500">Tax: ${(calculateCartTotal() * 0.08).toFixed(2)}</p>
+                {/* Cart totals */}
+                <div className="space-y-2 mt-4 px-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Sous-total:</span>
+                    <span className="font-medium">{calculateSubtotal().toFixed(2)} €</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">TVA (10%):</span>
+                    <span className="font-medium">{calculateTax().toFixed(2)} €</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold mt-2">
+                    <span>TOTAL:</span>
+                    <span>{(calculateSubtotal() + calculateTax()).toFixed(2)} €</span>
+                  </div>
+                </div>
+                
+                {/* Buttons */}
+                <div className="flex mt-6 gap-4">
                   <Button 
-                    className="bg-kiosk-primary"
+                    variant="destructive"
+                    className="flex-1 h-14 text-white bg-red-500 hover:bg-red-600"
+                    onClick={() => setCart([])}
+                  >
+                    ANNULER
+                  </Button>
+                  <Button 
+                    className="flex-1 h-14 bg-green-800 text-white hover:bg-green-900"
                     onClick={handlePlaceOrder}
                     disabled={placingOrder || orderPlaced}
                   >
                     {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     {orderPlaced && <Check className="h-4 w-4 mr-2" />}
-                    {orderPlaced ? "Order Placed!" : placingOrder ? "Processing..." : "Place Order"}
+                    {orderPlaced ? "Order Placed!" : placingOrder ? "Processing..." : "VOIR MA COMMANDE"}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="h-16 flex items-center justify-between">
+                <Button 
+                  variant="ghost"
+                  className="flex items-center text-red-500"
+                  onClick={() => setShowCartDetails(true)}
+                >
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  <span className="font-medium">VOTRE COMMANDE ({cartItemCount})</span>
+                </Button>
+                <div className="flex items-center">
+                  <p className="font-bold mr-4">Total: {calculateCartTotal().toFixed(2)} €</p>
+                  <Button 
+                    className="bg-green-800 text-white hover:bg-green-900"
+                    onClick={() => setShowCartDetails(true)}
+                  >
+                    VOIR MA COMMANDE
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
               </div>
             )}
           </div>
-        ) : (
-          <div className="container mx-auto h-full flex items-center justify-between px-4">
-            <div className="flex items-center">
-              <Button 
-                variant="ghost"
-                className="flex items-center text-kiosk-primary"
-                onClick={() => setShowCartDetails(true)}
-                disabled={cart.length === 0}
-              >
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                <span className="font-medium">View Order</span>
-                {cartItemCount > 0 && (
-                  <Badge className="ml-2 bg-kiosk-primary text-white">{cartItemCount}</Badge>
-                )}
-              </Button>
-            </div>
-            {cart.length > 0 && (
-              <div className="flex items-center">
-                <p className="font-bold mr-4">Total: ${calculateCartTotal().toFixed(2)}</p>
-                <Button 
-                  className="bg-kiosk-primary"
-                  onClick={() => setShowCartDetails(true)}
-                >
-                  View Cart & Checkout
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Item customization dialog */}
       {selectedItem && (
@@ -907,7 +938,7 @@ const KioskView = () => {
                               variant="outline"
                               size="icon"
                               className={`h-8 w-8 rounded-full ${isSelected ? 'bg-kiosk-primary text-white border-kiosk-primary' : ''}`}
-                              onClick={() => handleToggleTopping(category.id, topping.id, category.max_selections)}
+                              onClick={() => handleToggleTopping(category.id, topping.id)}
                             >
                               {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                             </Button>
