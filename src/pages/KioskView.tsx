@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronUp } from "lucide-react";
@@ -63,6 +64,12 @@ type CartItem = {
   specialInstructions?: string;
 };
 
+// Fixed type for handling toppings
+type SelectedToppingCategory = {
+  categoryId: string;
+  toppingIds: string[];
+};
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -79,10 +86,7 @@ const KioskView = () => {
     optionId: string;
     choiceIds: string[];
   }[]>([]);
-  const [selectedToppings, setSelectedToppings] = useState<{
-    categoryId: string;
-    toppingIds: string[];
-  }[]>([]);
+  const [selectedToppings, setSelectedToppings] = useState<SelectedToppingCategory[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -276,18 +280,25 @@ const KioskView = () => {
 
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
+      // Find the category in the array
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
       if (categoryIndex === -1) {
+        // If category not found, add it with the topping
         return [...prev, {
           categoryId,
           toppingIds: [toppingId]
         }];
       }
+      
+      // Found the category, now handle the topping toggle
       const category = prev[categoryIndex];
       let newToppingIds: string[];
+      
       if (category.toppingIds.includes(toppingId)) {
+        // Remove the topping if it's already selected
         newToppingIds = category.toppingIds.filter(id => id !== toppingId);
       } else {
+        // Check maximum selections limit
         if (selectedItem?.toppingCategories) {
           const toppingCategory = selectedItem.toppingCategories.find(c => c.id === categoryId);
           if (toppingCategory && toppingCategory.max_selections > 0) {
@@ -300,8 +311,11 @@ const KioskView = () => {
             }
           }
         }
+        // Add the topping
         newToppingIds = [...category.toppingIds, toppingId];
       }
+      
+      // Create a new array with the updated category
       const newToppings = [...prev];
       newToppings[categoryIndex] = {
         ...category,
@@ -314,10 +328,7 @@ const KioskView = () => {
   const calculateItemPrice = (item: MenuItemWithOptions, options: {
     optionId: string;
     choiceIds: string[];
-  }[], toppings: {
-    categoryId: string;
-    toppingIds: string[];
-  }): number => {
+  }[], toppings: SelectedToppingCategory[]): number => {
     let price = parseFloat(item.price.toString());
     if (item.options) {
       item.options.forEach(option => {
@@ -606,9 +617,9 @@ const KioskView = () => {
         setIsCartOpen(open);
       }
     }}>
-        <DrawerContent className="max-h-[85vh] overflow-auto">
-          <div className="w-full px-4">
-            <DrawerHeader className="pt-4 pb-0">
+        <DrawerContent className="max-h-[85vh] overflow-auto p-0">
+          <div className="w-full">
+            <DrawerHeader className="pt-4 pb-0 px-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <ShoppingCart className="text-red-500 mr-2" />
