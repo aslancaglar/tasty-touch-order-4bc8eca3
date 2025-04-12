@@ -17,42 +17,56 @@ import {
   Apple
 } from "lucide-react";
 
-export const getIconComponent = (iconName: string, size: number = 4): React.ReactNode => {
-  const iconSize = `h-${size} w-${size}`;
+// Update the function to handle both number and object with size and className
+export const getIconComponent = (
+  iconName: string, 
+  sizeProps: number | { size: number, className?: string } = 4
+): React.ReactNode => {
+  // Handle both number and object formats
+  let size: number;
+  let className: string = '';
+  
+  if (typeof sizeProps === 'number') {
+    size = sizeProps;
+    className = `h-${size} w-${size}`;
+  } else {
+    size = sizeProps.size;
+    className = sizeProps.className || `h-${size} w-${size}`;
+  }
   
   switch (iconName.toLowerCase()) {
     case 'beef':
-      return <Beef className={iconSize} />;
+      return <Beef className={className} />;
     case 'coffee':
-      return <Coffee className={iconSize} />;
+      return <Coffee className={className} />;
     case 'pizza':
-      return <Pizza className={iconSize} />;
+      return <Pizza className={className} />;
     case 'sandwich':
-      return <Sandwich className={iconSize} />;
+      return <Sandwich className={className} />;
     case 'fish':
-      return <Fish className={iconSize} />;
+      return <Fish className={className} />;
     case 'ice-cream':
     case 'icecream':
-      return <IceCream className={iconSize} />;
+      return <IceCream className={className} />;
     case 'soup':
-      return <Soup className={iconSize} />;
+      return <Soup className={className} />;
     case 'dessert':
-      return <Dessert className={iconSize} />;
+      return <Dessert className={className} />;
     case 'salad':
-      return <Salad className={iconSize} />;
+      return <Salad className={className} />;
     case 'utensils':
-      return <Utensils className={iconSize} />;
+      return <Utensils className={className} />;
     case 'utensils-crossed':
-      return <UtensilsCrossed className={iconSize} />;
+      return <UtensilsCrossed className={className} />;
     case 'cheese':
-      return <Apple className={iconSize} />; // Replaced Cheese with Apple
+      return <Apple className={className} />; // Replaced Cheese with Apple
     case 'cherry':
-      return <Cherry className={iconSize} />;
+      return <Cherry className={className} />;
     case 'leaf':
-      return <Leaf className={iconSize} />;
+      return <Leaf className={className} />;
     case 'spoon':
-      return <Utensils className={iconSize} />; // Replaced Spoon with Utensils
+      return <Utensils className={className} />; // Replaced Spoon with Utensils
     default:
-      return <UtensilsCrossed className={iconSize} />;
+      return <UtensilsCrossed className={className} />;
   }
 };

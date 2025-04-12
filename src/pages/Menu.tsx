@@ -266,7 +266,7 @@ const MenuPage = () => {
                     key={category.id} 
                     className="flex flex-col items-center justify-between p-4 border rounded-lg"
                   >
-                    <div className="flex flex-col items-center space-y-2 mb-2">
+                    <div className="flex flex-col items-center space-y-3 mb-2">
                       <div className="p-3 bg-primary/10 rounded-full">
                         {getIconComponent(category.icon, 6)}
                       </div>
@@ -318,9 +318,9 @@ const MenuPage = () => {
                 <Tabs defaultValue={categories[0].id}>
                   <TabsList className="mb-4">
                     {categories.map((category) => (
-                      <TabsTrigger key={category.id} value={category.id} className="flex flex-col items-center p-2">
-                        <div className="mb-1">
-                          {getIconComponent(category.icon, 5)}
+                      <TabsTrigger key={category.id} value={category.id} className="flex flex-col items-center px-4 py-3">
+                        <div className="mb-2">
+                          {getIconComponent(category.icon, { size: 5, className: "h-6 w-6" })}
                         </div>
                         <span>{category.name}</span>
                       </TabsTrigger>
