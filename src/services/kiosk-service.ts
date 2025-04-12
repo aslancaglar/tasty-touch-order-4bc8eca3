@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -219,7 +218,9 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
     name: item.name,
     description: item.description || null,
     price: item.price,
-    promotion_price: 'promotion_price' in item && item.promotion_price !== undefined ? item.promotion_price : null,
+    promotion_price: 'promotion_price' in item && item.promotion_price !== undefined 
+      ? (typeof item.promotion_price === 'number' ? item.promotion_price : null) 
+      : null,
     image: item.image || null,
     category_id: item.category_id,
     created_at: item.created_at,
@@ -248,7 +249,9 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     name: data.name,
     description: data.description || null,
     price: data.price,
-    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined ? data.promotion_price : null,
+    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined 
+      ? (typeof data.promotion_price === 'number' ? data.promotion_price : null) 
+      : null,
     image: data.image || null,
     category_id: data.category_id,
     created_at: data.created_at,
@@ -281,7 +284,9 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
     name: data.name,
     description: data.description || null,
     price: data.price,
-    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined ? data.promotion_price : null,
+    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined 
+      ? (typeof data.promotion_price === 'number' ? data.promotion_price : null) 
+      : null,
     image: data.image || null,
     category_id: data.category_id,
     created_at: data.created_at,
@@ -308,7 +313,9 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
     name: data.name,
     description: data.description || null,
     price: data.price,
-    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined ? data.promotion_price : null,
+    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined 
+      ? (typeof data.promotion_price === 'number' ? data.promotion_price : null) 
+      : null,
     image: data.image || null,
     category_id: data.category_id,
     created_at: data.created_at,
