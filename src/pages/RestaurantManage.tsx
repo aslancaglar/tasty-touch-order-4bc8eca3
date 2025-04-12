@@ -12,15 +12,12 @@ import { Loader2 } from "lucide-react";
 import { 
   ArrowLeft, 
   UtensilsCrossed, 
-  Coffee, 
-  Beef, 
-  Pizza, 
+  Cherry, 
   Plus, 
   Edit, 
   Trash2, 
   Receipt, 
   Settings,
-  Cherry,
   Utensils
 } from "lucide-react";
 import { 
@@ -31,12 +28,10 @@ import {
   updateCategory,
   deleteCategory
 } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, OrderStatus } from "@/types/database-types";
 import { getIconComponent } from "@/utils/icon-mapping";
 import ImageUpload from "@/components/ImageUpload";
 import CategoryForm from "@/components/forms/CategoryForm";
-
-type OrderStatus = "pending" | "preparing" | "completed" | "cancelled";
 
 type OrderItem = {
   name: string;
