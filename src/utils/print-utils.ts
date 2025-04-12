@@ -58,20 +58,21 @@ export const printReceipt = (elementId: string) => {
             display: flex;
             justify-content: space-between;
             margin-bottom: 5px;
-            font-weight: 500; /* Increased from default */
+            font-weight: 600; /* Changed to semi-bold (600) */
           }
           .item-details {
             padding-left: 10px;
             font-size: 11px;
-            font-weight: 500; /* Increased from default */
+            font-weight: 600; /* Changed to semi-bold (600) */
           }
           .total-section {
             margin-top: 10px;
-            font-weight: 500; /* Increased from default */
+            font-weight: 600; /* Changed to semi-bold (600) */
           }
           .total-line {
             display: flex;
             justify-content: space-between;
+            font-weight: 600; /* Changed to semi-bold (600) */
           }
           .grand-total {
             font-weight: 700; /* Increased from default */
