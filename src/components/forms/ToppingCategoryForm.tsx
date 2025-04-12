@@ -19,12 +19,8 @@ import { Textarea } from "@/components/ui/textarea";
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
-  min_selections: z.string()
-    .transform((val) => (val === "" ? 0 : parseInt(val, 10)))
-    .optional(),
-  max_selections: z.string()
-    .transform((val) => (val === "" ? null : parseInt(val, 10)))
-    .optional(),
+  min_selections: z.coerce.number().optional(), // Using coerce.number to convert string to number
+  max_selections: z.coerce.number().optional(), // Using coerce.number to convert string to number
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -50,8 +46,8 @@ const ToppingCategoryForm = ({
     defaultValues: {
       name: initialValues?.name || "",
       description: initialValues?.description || "",
-      min_selections: initialValues?.min_selections?.toString() || "0",
-      max_selections: initialValues?.max_selections?.toString() || "",
+      min_selections: initialValues?.min_selections ?? 0,
+      max_selections: initialValues?.max_selections ?? undefined,
     },
   });
 
@@ -102,6 +98,11 @@ const ToppingCategoryForm = ({
                     min="0"
                     placeholder="0"
                     {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
+                      field.onChange(value);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -121,6 +122,11 @@ const ToppingCategoryForm = ({
                     min="0"
                     placeholder="Leave empty for unlimited"
                     {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
+                      field.onChange(value);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />

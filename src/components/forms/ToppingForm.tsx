@@ -24,12 +24,8 @@ import {
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  price: z.string()
-    .min(1, "Price is required")
-    .transform((val) => parseFloat(val)),
-  tax_percentage: z.string()
-    .transform((val) => (val === "" ? null : parseFloat(val)))
-    .optional(),
+  price: z.coerce.number().min(0, "Price must be a positive number"),
+  tax_percentage: z.coerce.number().optional(),
   category_id: z.string().min(1, "Category is required"),
 });
 
@@ -57,8 +53,8 @@ const ToppingForm = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: initialValues?.name || "",
-      price: initialValues?.price?.toString() || "0",
-      tax_percentage: initialValues?.tax_percentage?.toString() || "10",
+      price: initialValues?.price ?? 0,
+      tax_percentage: initialValues?.tax_percentage ?? 10,
       category_id: initialValues?.category_id || "",
     },
   });
@@ -94,6 +90,11 @@ const ToppingForm = ({
                     step="0.01"
                     placeholder="0.00"
                     {...field}
+                    value={field.value}
+                    onChange={(e) => {
+                      const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                      field.onChange(value);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -114,6 +115,11 @@ const ToppingForm = ({
                     step="0.1"
                     placeholder="10"
                     {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                      field.onChange(value);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />

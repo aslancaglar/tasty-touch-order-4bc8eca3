@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -236,7 +235,6 @@ const RestaurantManage = () => {
     fetchMenuItems();
   }, [categories]);
 
-  // Fetch topping categories
   useEffect(() => {
     const fetchToppingCategories = async () => {
       if (!restaurant?.id) return;
@@ -262,7 +260,6 @@ const RestaurantManage = () => {
     fetchToppingCategories();
   }, [restaurant, toast]);
 
-  // Fetch toppings
   useEffect(() => {
     const fetchToppings = async () => {
       if (toppingCategories.length === 0) return;
@@ -558,7 +555,6 @@ const RestaurantManage = () => {
     return null;
   };
 
-  // Topping category handlers
   const handleAddToppingCategory = async (values: any) => {
     try {
       setSavingToppingCategory(true);
@@ -666,7 +662,6 @@ const RestaurantManage = () => {
     }
   };
 
-  // Topping handlers
   const handleAddTopping = async (values: any) => {
     try {
       setSavingTopping(true);
@@ -1596,8 +1591,9 @@ const RestaurantManage = () => {
                   <Label htmlFor="restaurantImage">Restaurant Image</Label>
                   <div className="mt-2">
                     <ImageUpload
-                      onUpload={() => {}}
-                      existingImageUrl={restaurant.image_url}
+                      value={restaurant.image_url || ""}
+                      onChange={() => {}}
+                      label="Restaurant Image"
                     />
                   </div>
                 </div>
