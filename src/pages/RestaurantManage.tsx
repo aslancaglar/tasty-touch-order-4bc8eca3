@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { AdminLayout } from "@/components/layout/AdminLayout";
@@ -135,7 +134,6 @@ const RestaurantManage = () => {
       const toppingCategoriesData = await getToppingCategoriesByRestaurantId(restaurantId);
       setToppingCategories(toppingCategoriesData);
 
-      // Fetch all menu items for all categories
       let allMenuItems: MenuItem[] = [];
       for (const category of categoriesData) {
         const items = await getMenuItemsByCategory(category.id);
@@ -143,7 +141,6 @@ const RestaurantManage = () => {
       }
       setMenuItems(allMenuItems);
 
-      // Fetch all toppings for all topping categories
       let allToppings: Topping[] = [];
       for (const toppingCategory of toppingCategoriesData) {
         const toppingsForCategory = await getToppingsByCategory(toppingCategory.id);
@@ -166,7 +163,6 @@ const RestaurantManage = () => {
     fetchData();
   }, [restaurantId]);
 
-  // Category Handlers
   const handleCreateCategory = async (categoryData: Omit<MenuCategory, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>) => {
     if (!restaurantId) return;
     try {
@@ -221,7 +217,6 @@ const RestaurantManage = () => {
     }
   };
 
-  // Menu Item Handlers
   const handleCreateMenuItem = async (menuItemData: Omit<MenuItem, 'id' | 'category_id' | 'created_at' | 'updated_at'>, categoryId: string) => {
     try {
       await createMenuItem({ 
@@ -246,7 +241,12 @@ const RestaurantManage = () => {
 
   const handleUpdateMenuItem = async (menuItemId: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>) => {
     try {
-      await updateMenuItem(menuItemId, updates);
+      const updatesWithPromotion = {
+        ...updates,
+        promotion_price: updates.promotion_price !== undefined ? updates.promotion_price : null
+      };
+      
+      await updateMenuItem(menuItemId, updatesWithPromotion);
       toast({
         title: "Success",
         description: "Menu item updated successfully",
@@ -279,7 +279,6 @@ const RestaurantManage = () => {
     }
   };
 
-  // Topping Category Handlers
   const handleCreateToppingCategory = async (toppingCategoryData: Omit<ToppingCategory, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>) => {
     if (!restaurantId) return;
     try {
@@ -334,7 +333,6 @@ const RestaurantManage = () => {
     }
   };
 
-  // Topping Handlers
   const handleCreateTopping = async (toppingData: Omit<Topping, 'id' | 'category_id' | 'created_at' | 'updated_at'>, categoryId: string) => {
     try {
       await createTopping({ 
