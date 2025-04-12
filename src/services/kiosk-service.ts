@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -86,28 +87,22 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
     throw error;
   }
 
-  return data.map(category => {
-    const result: MenuCategory = {
-      id: category.id,
-      name: category.name,
-      restaurant_id: category.restaurant_id,
-      description: null,
-      icon: category.icon || null,
-      image_url: null,
-      created_at: category.created_at,
-      updated_at: category.updated_at
-    };
-    
-    if ('description' in category) {
-      result.description = (category as any).description;
-    }
-    
-    if ('image_url' in category) {
-      result.image_url = (category as any).image_url;
-    }
-    
-    return result;
-  });
+  return data;
+};
+
+export const createCategory = async (category: Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>): Promise<MenuCategory> => {
+  const { data, error } = await supabase
+    .from("menu_categories")
+    .insert(category)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating category:", error);
+    throw error;
+  }
+
+  return data;
 };
 
 // Menu Item services

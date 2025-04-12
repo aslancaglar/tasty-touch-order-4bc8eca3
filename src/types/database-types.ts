@@ -27,6 +27,7 @@ export type MenuItem = {
   name: string;
   description: string | null;
   price: number;
+  promotion_price: number | null;
   image: string | null;
   category_id: string;
   created_at: string;

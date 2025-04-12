@@ -12,24 +12,30 @@ export type Database = {
       menu_categories: {
         Row: {
           created_at: string
+          description: string | null
           icon: string | null
           id: string
+          image_url: string | null
           name: string
           restaurant_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
           icon?: string | null
           id?: string
+          image_url?: string | null
           name: string
           restaurant_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          description?: string | null
           icon?: string | null
           id?: string
+          image_url?: string | null
           name?: string
           restaurant_id?: string
           updated_at?: string
@@ -91,6 +97,7 @@ export type Database = {
           image: string | null
           name: string
           price: number
+          promotion_price: number | null
           updated_at: string
         }
         Insert: {
@@ -101,6 +108,7 @@ export type Database = {
           image?: string | null
           name: string
           price: number
+          promotion_price?: number | null
           updated_at?: string
         }
         Update: {
@@ -111,6 +119,7 @@ export type Database = {
           image?: string | null
           name?: string
           price?: number
+          promotion_price?: number | null
           updated_at?: string
         }
         Relationships: [
