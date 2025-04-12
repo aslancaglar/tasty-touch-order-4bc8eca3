@@ -27,7 +27,6 @@ export type MenuItem = {
   name: string;
   description: string | null;
   price: number;
-  tax_percentage: number | null;
   promotion_price: number | null;
   image: string | null;
   category_id: string;
@@ -82,32 +81,6 @@ export type OrderItemOption = {
   order_item_id: string;
   option_id: string;
   choice_id: string;
-  created_at: string;
-  updated_at: string;
-};
-
-// Add Topping and ToppingCategory types
-export type ToppingCategory = {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  restaurant_id: string;
-  min_selections: number | null;
-  max_selections: number | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type Topping = {
-  id: string;
-  name: string;
-  description?: string | null;
-  price: number;
-  category_id: string;
-  tax_percentage?: number | null;
-  image_url?: string | null;
-  restaurant_id?: string;
   created_at: string;
   updated_at: string;
 };

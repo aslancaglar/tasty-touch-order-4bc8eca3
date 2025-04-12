@@ -98,7 +98,6 @@ export type Database = {
           name: string
           price: number
           promotion_price: number | null
-          tax_percentage: number | null
           updated_at: string
         }
         Insert: {
@@ -110,7 +109,6 @@ export type Database = {
           name: string
           price: number
           promotion_price?: number | null
-          tax_percentage?: number | null
           updated_at?: string
         }
         Update: {
@@ -122,7 +120,6 @@ export type Database = {
           name?: string
           price?: number
           promotion_price?: number | null
-          tax_percentage?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -358,88 +355,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      topping_categories: {
-        Row: {
-          created_at: string
-          description: string | null
-          icon: string | null
-          id: string
-          max_selections: number | null
-          min_selections: number | null
-          name: string
-          restaurant_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          icon?: string | null
-          id?: string
-          max_selections?: number | null
-          min_selections?: number | null
-          name: string
-          restaurant_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          icon?: string | null
-          id?: string
-          max_selections?: number | null
-          min_selections?: number | null
-          name?: string
-          restaurant_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "topping_categories_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      toppings: {
-        Row: {
-          category_id: string
-          created_at: string
-          id: string
-          name: string
-          price: number
-          tax_percentage: number | null
-          updated_at: string
-        }
-        Insert: {
-          category_id: string
-          created_at?: string
-          id?: string
-          name: string
-          price?: number
-          tax_percentage?: number | null
-          updated_at?: string
-        }
-        Update: {
-          category_id?: string
-          created_at?: string
-          id?: string
-          name?: string
-          price?: number
-          tax_percentage?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "toppings_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "topping_categories"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
