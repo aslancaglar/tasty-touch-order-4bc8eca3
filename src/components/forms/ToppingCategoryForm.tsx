@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,11 +123,10 @@ const ToppingCategoryForm = ({
             <SelectValue placeholder="Select an icon" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="cheese">Cheese</SelectItem>
+            <SelectItem value="apple">Cheese</SelectItem>
             <SelectItem value="cherry">Sauces</SelectItem>
             <SelectItem value="leaf">Vegetables</SelectItem>
             <SelectItem value="beef">Meats</SelectItem>
-            <SelectItem value="egg">Egg</SelectItem>
             <SelectItem value="pizza">Pizza</SelectItem>
             <SelectItem value="utensils">Utensils</SelectItem>
           </SelectContent>

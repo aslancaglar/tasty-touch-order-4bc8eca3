@@ -43,13 +43,13 @@ export const getIconComponent = (iconName: string): React.ReactNode => {
     case 'utensils-crossed':
       return <UtensilsCrossed className="h-4 w-4" />;
     case 'cheese':
-      return <Apple className="h-4 w-4" />; // Replaced Cheese with Apple
+      return <Apple className="h-4 w-4" />; // Using Apple icon instead of Cheese
     case 'cherry':
       return <Cherry className="h-4 w-4" />;
     case 'leaf':
       return <Leaf className="h-4 w-4" />;
     case 'spoon':
-      return <Utensils className="h-4 w-4" />; // Replaced Spoon with Utensils
+      return <Utensils className="h-4 w-4" />; // Using Utensils for Spoon
     default:
       return <UtensilsCrossed className="h-4 w-4" />;
   }
