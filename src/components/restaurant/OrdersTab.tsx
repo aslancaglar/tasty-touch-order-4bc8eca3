@@ -142,7 +142,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
             return {
               id: order.id,
-              orderNumber: index + 1, // Assign the sequential order number
+              orderNumber: ordersData.length - index, // Assign numbers in reverse: most recent = highest number
               restaurantId: order.restaurant_id,
               status: order.status as OrderStatus,
               items: processedItems,
