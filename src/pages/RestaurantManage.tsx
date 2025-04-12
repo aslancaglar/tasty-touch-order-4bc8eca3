@@ -116,18 +116,15 @@ const RestaurantManage = () => {
   const [menuItemToDelete, setMenuItemToDelete] = useState<string | null>(null);
   const [isDeletingMenuItem, setIsDeletingMenuItem] = useState(false);
   
-  // Add state for topping categories and toppings
   const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
   const [toppings, setToppings] = useState<Record<string, Topping[]>>({});
   
-  // Topping category state
   const [isAddingToppingCategory, setIsAddingToppingCategory] = useState(false);
   const [savingToppingCategory, setSavingToppingCategory] = useState(false);
   const [isEditingToppingCategory, setIsEditingToppingCategory] = useState<string | null>(null);
   const [toppingCategoryToDelete, setToppingCategoryToDelete] = useState<string | null>(null);
   const [isDeletingToppingCategory, setIsDeletingToppingCategory] = useState(false);
   
-  // Topping state
   const [isAddingTopping, setIsAddingTopping] = useState(false);
   const [selectedToppingCategory, setSelectedToppingCategory] = useState<string | null>(null);
   const [savingTopping, setSavingTopping] = useState(false);
@@ -219,7 +216,6 @@ const RestaurantManage = () => {
     fetchMenuItems();
   }, [categories]);
 
-  // Load topping categories
   useEffect(() => {
     const fetchToppingCategories = async () => {
       if (!restaurant?.id) return;
@@ -245,7 +241,6 @@ const RestaurantManage = () => {
     fetchToppingCategories();
   }, [restaurant, toast]);
 
-  // Load toppings for each category
   useEffect(() => {
     const fetchToppings = async () => {
       if (toppingCategories.length === 0) return;
@@ -532,7 +527,6 @@ const RestaurantManage = () => {
     }
   };
 
-  // Topping Category CRUD functions
   const handleAddToppingCategory = async (values: any) => {
     try {
       setSavingToppingCategory(true);
@@ -638,7 +632,6 @@ const RestaurantManage = () => {
     }
   };
 
-  // Topping CRUD functions
   const handleAddTopping = async (values: any) => {
     try {
       setSavingTopping(true);
@@ -995,3 +988,178 @@ const RestaurantManage = () => {
                           onSubmit={handleAddCategory}
                           isLoading={savingCategory}
                         />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">No categories found. Add your first menu category to get started.</p>
+                    <Button onClick={() => setIsAddingCategory(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Category
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="toppings">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Topping Categories</h3>
+                  <Dialog open={isAddingToppingCategory} onOpenChange={setIsAddingToppingCategory}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-kiosk-primary">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Topping Category
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Add Topping Category</DialogTitle>
+                      </DialogHeader>
+                      <ToppingCategoryForm 
+                        onSubmit={handleAddToppingCategory}
+                        isLoading={savingToppingCategory}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                
+                {loading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : toppingCategories.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {toppingCategories.map((category) => (
+                      <div 
+                        key={category.id} 
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-primary/10 rounded-md">
+                            {category.icon && getIconComponent(category.icon)}
+                          </div>
+                          <div>
+                            <span className="font-medium">{category.name}</span>
+                            {category.description && (
+                              <p className="text-xs text-muted-foreground">{category.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex space-x-1">
+                          <Dialog open={isEditingToppingCategory === category.id} onOpenChange={(open) => setIsEditingToppingCategory(open ? category.id : null)}>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                              <DialogHeader>
+                                <DialogTitle>Edit Topping Category</DialogTitle>
+                              </DialogHeader>
+                              <ToppingCategoryForm 
+                                onSubmit={(values) => handleEditToppingCategory(category.id, values)}
+                                initialValues={{
+                                  name: category.name,
+                                  description: category.description || "",
+                                  icon: category.icon || "",
+                                  min_selections: category.min_selections || 0,
+                                  max_selections: category.max_selections || 0
+                                }}
+                                isLoading={savingToppingCategory}
+                              />
+                            </DialogContent>
+                          </Dialog>
+                          <Dialog open={toppingCategoryToDelete === category.id} onOpenChange={(open) => setToppingCategoryToDelete(open ? category.id : null)}>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                              <DialogHeader>
+                                <DialogTitle>Delete Topping Category</DialogTitle>
+                              </DialogHeader>
+                              <div className="py-4">
+                                <p>Are you sure you want to delete the topping category <strong>{category.name}</strong>?</p>
+                                <p className="text-sm text-muted-foreground mt-2">This will also delete all toppings in this category.</p>
+                              </div>
+                              <div className="flex justify-end space-x-2">
+                                <Button variant="outline" onClick={() => setToppingCategoryToDelete(null)}>
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  onClick={() => handleDeleteToppingCategory(category.id)}
+                                  disabled={isDeletingToppingCategory}
+                                >
+                                  {isDeletingToppingCategory ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Deleting...
+                                    </>
+                                  ) : (
+                                    "Delete"
+                                  )}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                    ))}
+                    <Dialog open={isAddingToppingCategory} onOpenChange={setIsAddingToppingCategory}>
+                      <DialogTrigger asChild>
+                        <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                          <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Topping Category
+                          </Button>
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Add Topping Category</DialogTitle>
+                        </DialogHeader>
+                        <ToppingCategoryForm 
+                          onSubmit={handleAddToppingCategory}
+                          isLoading={savingToppingCategory}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">No topping categories found. Add your first topping category to get started.</p>
+                    <Button onClick={() => setIsAddingToppingCategory(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Topping Category
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="orders">
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium">Recent Orders</h3>
+                {/* Orders tab content */}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="settings">
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium">Restaurant Settings</h3>
+                {/* Settings tab content */}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </AdminLayout>
+  );
+};
+
+export default RestaurantManage;
