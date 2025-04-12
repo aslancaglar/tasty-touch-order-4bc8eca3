@@ -323,46 +323,12 @@ const KioskView = () => {
     return price;
   };
 
-  const handleAddToCart = () => {
-    if (!selectedItem) return;
-    
-    const isOptionsValid = selectedItem.options?.every(option => {
-      if (!option.required) return true;
-      
-      const selected = selectedOptions.find(o => o.optionId === option.id);
-      return selected && selected.choiceIds.length > 0;
-    }) ?? true;
-    
-    const isToppingsValid = selectedItem.toppingCategories?.every(category => {
-      if (category.min_selections <= 0) return true;
-      
-      const selected = selectedToppings.find(t => t.categoryId === category.id);
-      return selected && selected.toppingIds.length >= category.min_selections;
-    }) ?? true;
-    
-    if (!isOptionsValid || !isToppingsValid) {
-      toast({
-        title: "Required selections",
-        description: "Please make all required selections before adding to cart",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newItem: CartItem = {
-      id: Date.now().toString(),
-      menuItem: selectedItem,
-      quantity,
-      selectedOptions,
-      selectedToppings,
-      specialInstructions: specialInstructions.trim() || undefined,
-    };
-    
+  const handleAddToCart = (newItem: CartItem) => {
     setCart(prev => [...prev, newItem]);
     
     toast({
       title: "Added to cart",
-      description: `${quantity}x ${selectedItem.name} added to your order`,
+      description: `${newItem.quantity}x ${newItem.menuItem.name} added to your order`,
     });
   };
 
@@ -540,6 +506,7 @@ const KioskView = () => {
           onViewCart={() => setOrderStep("cart")}
           onGoBack={() => setOrderStep("orderType")}
           calculateCartTotal={calculateCartTotal}
+          onAddToCart={handleAddToCart}
         />
       )}
       

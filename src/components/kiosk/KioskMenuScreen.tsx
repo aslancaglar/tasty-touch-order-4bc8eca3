@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
 import { CartItem, MenuItemWithOptions, SelectedOption, SelectedTopping } from "@/types/kiosk-types";
@@ -6,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { getIconComponent } from "@/utils/icon-mapping";
 import { ChevronRight, Home, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { KioskItemCustomizationScreen } from "@/components/kiosk/KioskItemCustomizationScreen";
 
 type KioskMenuScreenProps = {
@@ -17,6 +18,7 @@ type KioskMenuScreenProps = {
   onViewCart: () => void;
   onGoBack: () => void;
   calculateCartTotal: () => number;
+  onAddToCart: (item: CartItem) => void; // Add this prop for adding items to cart
 };
 
 export const KioskMenuScreen = ({ 
@@ -27,6 +29,7 @@ export const KioskMenuScreen = ({
   onViewCart,
   onGoBack,
   calculateCartTotal,
+  onAddToCart, // Destructure the new prop
 }: KioskMenuScreenProps) => {
   const [activeCategory, setActiveCategory] = useState<string>(
     categories.length > 0 ? categories[0].id : ""
@@ -155,6 +158,7 @@ export const KioskMenuScreen = ({
         <DialogContent className="max-w-4xl p-0 h-[90vh] max-h-[90vh]">
           {selectedItem && (
             <div className="h-full flex flex-col overflow-hidden">
+              <DialogTitle className="sr-only">Customize Item</DialogTitle>
               <KioskItemCustomizationScreen
                 item={selectedItem}
                 quantity={quantity}
@@ -225,7 +229,7 @@ export const KioskMenuScreen = ({
                     specialInstructions: specialInstructions.trim() || undefined,
                   };
     
-                  setCart(prev => [...prev, newItem]);
+                  onAddToCart(newItem); // Use the prop function instead of directly updating state
                   handleDialogClose();
                 }}
                 onCancel={handleDialogClose}
