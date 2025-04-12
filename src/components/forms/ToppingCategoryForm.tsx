@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import ImageUpload from "@/components/ImageUpload";
 import {
   Select,
   SelectContent,
@@ -123,10 +124,11 @@ const ToppingCategoryForm = ({
             <SelectValue placeholder="Select an icon" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="apple">Apple</SelectItem>
-            <SelectItem value="cherry">Cherry</SelectItem>
-            <SelectItem value="leaf">Leaf</SelectItem>
-            <SelectItem value="beef">Beef</SelectItem>
+            <SelectItem value="cheese">Cheese</SelectItem>
+            <SelectItem value="cherry">Sauces</SelectItem>
+            <SelectItem value="leaf">Vegetables</SelectItem>
+            <SelectItem value="beef">Meats</SelectItem>
+            <SelectItem value="egg">Egg</SelectItem>
             <SelectItem value="pizza">Pizza</SelectItem>
             <SelectItem value="utensils">Utensils</SelectItem>
           </SelectContent>
