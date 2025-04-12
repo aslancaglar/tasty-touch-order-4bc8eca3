@@ -14,6 +14,7 @@ type OrderItem = {
   price: number;
   options?: string[];
   specialInstructions?: string;
+  toppings?: Array<{name: string, price: number}>;
 };
 
 type Order = {
@@ -86,19 +87,44 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
               return null;
             }
 
-            // Transform to expected format
-            const items = orderItems.map(item => ({
-              name: item.menu_items?.name || "Unknown Item",
-              quantity: item.quantity,
-              price: item.price,
-              specialInstructions: item.special_instructions || undefined
+            // Process each order item to get its toppings
+            const processedItems = await Promise.all(orderItems.map(async (item) => {
+              // Fetch toppings for this order item
+              const { data: orderItemToppings, error: toppingsError } = await supabase
+                .from("order_item_toppings")
+                .select(`
+                  toppings (
+                    id,
+                    name,
+                    price
+                  )
+                `)
+                .eq("order_item_id", item.id);
+              
+              if (toppingsError) {
+                console.error("Error fetching order item toppings:", toppingsError);
+              }
+
+              // Transform toppings data
+              const toppings = orderItemToppings?.map(t => ({
+                name: t.toppings.name,
+                price: t.toppings.price
+              })) || [];
+
+              return {
+                name: item.menu_items?.name || "Unknown Item",
+                quantity: item.quantity,
+                price: item.price,
+                specialInstructions: item.special_instructions || undefined,
+                toppings: toppings.length > 0 ? toppings : undefined
+              };
             }));
 
             return {
               id: order.id,
               restaurantId: order.restaurant_id,
               status: order.status as OrderStatus,
-              items,
+              items: processedItems,
               total: order.total,
               date: new Date(order.created_at),
               customerName: order.customer_name || undefined
@@ -200,19 +226,38 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                   </div>
                   <div className="p-4">
                     <p className="text-sm font-medium mb-2">Order Items:</p>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {order.items.map((item, index) => (
-                        <div key={index} className="flex justify-between text-sm">
-                          <div>
-                            <span className="font-medium">{item.quantity}x </span>
-                            {item.name}
-                            {item.specialInstructions && (
-                              <span className="text-xs text-muted-foreground ml-2">
-                                ({item.specialInstructions})
-                              </span>
-                            )}
+                        <div key={index} className="border-b pb-2 last:border-0 last:pb-0">
+                          <div className="flex justify-between text-sm">
+                            <div>
+                              <span className="font-medium">{item.quantity}x </span>
+                              {item.name}
+                            </div>
+                            <span>${(item.price * item.quantity).toFixed(2)}</span>
                           </div>
-                          <span>${(item.price * item.quantity).toFixed(2)}</span>
+                          
+                          {/* Display toppings */}
+                          {item.toppings && item.toppings.length > 0 && (
+                            <div className="mt-1 ml-5 text-xs text-muted-foreground">
+                              <p className="font-medium text-gray-600">Toppings:</p>
+                              <ul className="pl-2">
+                                {item.toppings.map((topping, idx) => (
+                                  <li key={idx} className="flex justify-between">
+                                    <span>{topping.name}</span>
+                                    <span>${topping.price.toFixed(2)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {/* Display special instructions */}
+                          {item.specialInstructions && (
+                            <div className="mt-1 ml-5 text-xs text-gray-500 italic">
+                              Note: {item.specialInstructions}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
