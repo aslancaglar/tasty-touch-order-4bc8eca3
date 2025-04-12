@@ -61,9 +61,7 @@ export const KioskMenuScreen = ({
               }`}
               onClick={() => setActiveCategory(category.id)}
             >
-              {getIconComponent(category.icon || 'coffee', 
-                activeCategory === category.id ? 'text-red-900' : 'text-red-800'
-              )}
+              {getIconComponent(category.icon || 'coffee')}
               <span className="mt-1 text-xs uppercase">{category.name}</span>
             </button>
           ))}
