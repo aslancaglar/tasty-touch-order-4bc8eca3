@@ -16,7 +16,7 @@ import {
 import { getIconComponent } from "@/utils/icon-mapping";
 import { getRestaurants, getCategoriesByRestaurantId, getMenuItemsByCategory, deleteCategory } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
-import { toast } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 
 const MenuPage = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -24,6 +24,7 @@ const MenuPage = () => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchRestaurants = async () => {
