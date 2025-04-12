@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus } from "lucide-react";
@@ -66,7 +65,6 @@ type CartItem = {
   specialInstructions?: string;
 };
 
-// Define the interface for the selectedToppings structure
 interface SelectedToppingCategory {
   categoryId: string;
   toppingIds: string[];
@@ -466,8 +464,6 @@ const KioskView = () => {
     if (!restaurant || cart.length === 0) return;
     try {
       setPlacingOrder(true);
-      // Create the order without the order_type and table_number fields
-      // since they don't exist in the database schema yet
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
@@ -666,7 +662,7 @@ const KioskView = () => {
 
       <Drawer open={isCartOpen} onOpenChange={open => {
       if (cart.length > 0) {
-        setIsCartOpen(true);
+        setIsCartOpen(open);
       } else {
         setIsCartOpen(open);
       }
@@ -680,7 +676,9 @@ const KioskView = () => {
                   <DrawerTitle className="text-xl">VOTRE COMMANDE ({cartItemCount})</DrawerTitle>
                 </div>
                 <DrawerClose asChild>
-                  
+                  <Button variant="ghost" size="icon">
+                    <ChevronDown className="h-5 w-5" />
+                  </Button>
                 </DrawerClose>
               </div>
             </DrawerHeader>

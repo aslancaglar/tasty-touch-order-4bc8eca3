@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { Restaurant } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
-import { TouchToOrderIcon } from "@/utils/icon-mapping";
+import { UtensilsCrossed } from "lucide-react";
 
 interface WelcomePageProps {
   restaurant: Restaurant;
@@ -26,6 +26,7 @@ const WelcomePage = ({ restaurant, onStart }: WelcomePageProps) => {
         onClick={onStart}
         className="bg-white hover:bg-white/90 text-black hover:text-black/90 w-64 h-24 text-2xl font-bold rounded-full shadow-lg animate-pulse"
       >
+        <UtensilsCrossed className="mr-2 h-6 w-6" />
         TOUCH TO ORDER
       </Button>
     </div>
