@@ -20,6 +20,12 @@ interface CartProps {
   calculateTax: () => number;
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
+  restaurant?: {
+    name: string;
+    location?: string;
+  } | null;
+  orderType?: "dine-in" | "takeaway" | null;
+  tableNumber?: string | null;
 }
 
 const Cart: React.FC<CartProps> = ({
@@ -36,6 +42,9 @@ const Cart: React.FC<CartProps> = ({
   calculateTax,
   getFormattedOptions,
   getFormattedToppings,
+  restaurant = null,
+  orderType = null,
+  tableNumber = null,
 }) => {
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
@@ -167,6 +176,9 @@ const Cart: React.FC<CartProps> = ({
         calculateTax={calculateTax}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
+        restaurant={restaurant}
+        orderType={orderType}
+        tableNumber={tableNumber}
       />
     </>
   );

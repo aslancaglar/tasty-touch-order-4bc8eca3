@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
+import OrderReceipt from "./OrderReceipt";
+import { printReceipt } from "@/utils/print-utils";
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -16,6 +18,12 @@ interface OrderSummaryProps {
   calculateTax: () => number;
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
+  restaurant?: {
+    name: string;
+    location?: string;
+  } | null;
+  orderType?: "dine-in" | "takeaway" | null;
+  tableNumber?: string | null;
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -28,10 +36,23 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   calculateTax,
   getFormattedOptions,
   getFormattedToppings,
+  restaurant = { name: "Restaurant" },
+  orderType = null,
+  tableNumber = null,
 }) => {
   const subtotal = calculateSubtotal();
   const tax = calculateTax();
   const total = subtotal + tax;
+  
+  const handleConfirmOrder = () => {
+    onPlaceOrder();
+    // Print receipt immediately after placing order
+    setTimeout(() => {
+      printReceipt("receipt-content");
+    }, 500); // Small delay to ensure DOM is ready
+  };
+
+  const orderNumber = Date.now().toString().slice(-6); // Simple order number generation
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -102,7 +123,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         <div className="p-4 bg-gray-50">
           <Button 
             className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
-            onClick={onPlaceOrder}
+            onClick={handleConfirmOrder}
             disabled={placingOrder}
           >
             <Check className="mr-2 h-5 w-5" />
@@ -110,6 +131,19 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           </Button>
         </div>
       </DialogContent>
+
+      {/* Hidden receipt that will be used for printing */}
+      <OrderReceipt
+        restaurant={restaurant}
+        cart={cart}
+        orderNumber={orderNumber}
+        tableNumber={tableNumber}
+        orderType={orderType}
+        getFormattedOptions={getFormattedOptions}
+        getFormattedToppings={getFormattedToppings}
+        calculateSubtotal={calculateSubtotal}
+        calculateTax={calculateTax}
+      />
     </Dialog>
   );
 };
