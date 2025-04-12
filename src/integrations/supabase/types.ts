@@ -258,6 +258,45 @@ export type Database = {
           },
         ]
       }
+      order_item_toppings: {
+        Row: {
+          created_at: string
+          id: string
+          order_item_id: string
+          topping_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_item_id: string
+          topping_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_item_id?: string
+          topping_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_item_toppings_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_toppings_topping_id_fkey"
+            columns: ["topping_id"]
+            isOneToOne: false
+            referencedRelation: "toppings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string

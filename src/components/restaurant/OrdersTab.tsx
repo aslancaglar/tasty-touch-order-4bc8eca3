@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { updateOrderStatus } from "@/services/kiosk-service";
 
 type OrderItem = {
   name: string;
@@ -89,31 +90,41 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
             // Process each order item to get its toppings
             const processedItems = await Promise.all(orderItems.map(async (item) => {
-              // Check if we have order_item_toppings table
-              // For now, let's query the toppings directly with a join through order_item_toppings
-              const { data: toppingsData, error: toppingsError } = await supabase
-                .from("order_item_toppings")
-                .select(`
-                  topping_id
-                `)
-                .eq("order_item_id", item.id);
-              
               let toppings: Array<{name: string, price: number}> = [];
               
-              if (!toppingsError && toppingsData && toppingsData.length > 0) {
-                // Fetch the actual topping details using the topping_ids
-                const toppingIds = toppingsData.map(t => t.topping_id);
+              try {
+                // First, fetch topping_ids from the order_item_toppings table
+                const { data: toppingLinks, error: toppingLinksError } = await supabase
+                  .from("order_item_toppings")
+                  .select("topping_id")
+                  .eq("order_item_id", item.id);
                 
-                const { data: toppingDetails, error: toppingDetailsError } = await supabase
-                  .from("toppings")
-                  .select("name, price")
-                  .in("id", toppingIds);
-                
-                if (!toppingDetailsError && toppingDetails) {
-                  toppings = toppingDetails;
+                if (toppingLinksError) {
+                  throw toppingLinksError;
                 }
+                
+                if (toppingLinks && toppingLinks.length > 0) {
+                  // Get all topping_ids from the links
+                  const toppingIds = toppingLinks.map(link => link.topping_id);
+                  
+                  // Fetch the actual topping details
+                  const { data: toppingDetails, error: toppingDetailsError } = await supabase
+                    .from("toppings")
+                    .select("name, price")
+                    .in("id", toppingIds);
+                  
+                  if (toppingDetailsError) {
+                    throw toppingDetailsError;
+                  }
+                  
+                  if (toppingDetails) {
+                    toppings = toppingDetails;
+                  }
+                }
+              } catch (error) {
+                console.error("Error fetching toppings:", error);
               }
-
+              
               return {
                 name: item.menu_items?.name || "Unknown Item",
                 quantity: item.quantity,
@@ -156,14 +167,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
-      const { error } = await supabase
-        .from("orders")
-        .update({ status: newStatus })
-        .eq("id", orderId);
-
-      if (error) {
-        throw error;
-      }
+      await updateOrderStatus(orderId, newStatus);
 
       // Update local state
       setOrders(prevOrders => 
@@ -174,7 +178,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
       toast({
         title: "Status Updated",
-        description: `Order ${orderId} status changed to ${newStatus}`,
+        description: `Order status changed to ${newStatus}`,
       });
     } catch (error) {
       console.error("Error updating order status:", error);
