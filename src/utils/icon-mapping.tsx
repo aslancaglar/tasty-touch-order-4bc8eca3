@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Beef, 
@@ -66,5 +65,5 @@ export const getIconComponent = (iconName: string, props: IconProps = {}): React
 };
 
 export const TouchToOrderIcon = () => {
-  return <UtensilsCrossed className="h-6 w-6" />;
+  return <UtensilsCrossed className="h-6 w-6 mr-2" />;
 };
