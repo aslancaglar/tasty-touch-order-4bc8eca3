@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -168,6 +167,52 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
   }
 
   return data;
+};
+
+export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
+  console.log("Creating menu item with data:", item);
+  const { data, error } = await supabase
+    .from("menu_items")
+    .insert(item)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating menu item:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
+  console.log("Updating menu item:", id, "with data:", updates);
+  const { data, error } = await supabase
+    .from("menu_items")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating menu item:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteMenuItem = async (id: string): Promise<void> => {
+  console.log("Deleting menu item:", id);
+  const { error } = await supabase
+    .from("menu_items")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting menu item:", error);
+    throw error;
+  }
 };
 
 // Menu Item Options services

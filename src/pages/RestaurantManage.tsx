@@ -26,12 +26,16 @@ import {
   getMenuItemsByCategory, 
   createCategory,
   updateCategory,
-  deleteCategory
+  deleteCategory,
+  createMenuItem,
+  updateMenuItem,
+  deleteMenuItem
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, OrderStatus } from "@/types/database-types";
 import { getIconComponent } from "@/utils/icon-mapping";
 import ImageUpload from "@/components/ImageUpload";
 import CategoryForm from "@/components/forms/CategoryForm";
+import MenuItemForm from "@/components/forms/MenuItemForm";
 
 type OrderItem = {
   name: string;
@@ -113,6 +117,12 @@ const RestaurantManage = () => {
   const [isEditingCategory, setIsEditingCategory] = useState<string | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+  const [isAddingMenuItem, setIsAddingMenuItem] = useState(false);
+  const [selectedCategoryForItem, setSelectedCategoryForItem] = useState<string | null>(null);
+  const [isEditingMenuItem, setIsEditingMenuItem] = useState<string | null>(null);
+  const [menuItemToDelete, setMenuItemToDelete] = useState<string | null>(null);
+  const [isDeletingMenuItem, setIsDeletingMenuItem] = useState(false);
+  const [savingMenuItem, setSavingMenuItem] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -304,6 +314,125 @@ const RestaurantManage = () => {
       });
     } finally {
       setIsDeletingCategory(false);
+    }
+  };
+
+  const handleAddMenuItem = async (categoryId: string, values: any) => {
+    try {
+      setSavingMenuItem(true);
+      
+      console.log("Adding new menu item:", values);
+      
+      if (!restaurant?.id) {
+        throw new Error("Restaurant ID is missing");
+      }
+      
+      const newMenuItem = await createMenuItem({
+        name: values.name,
+        description: values.description || null,
+        price: Number(values.price),
+        promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
+        image: values.image || null,
+        category_id: categoryId
+      });
+      
+      console.log("New menu item created:", newMenuItem);
+      setMenuItems(prev => ({
+        ...prev,
+        [categoryId]: [...(prev[categoryId] || []), newMenuItem]
+      }));
+      
+      toast({
+        title: "Menu Item Added",
+        description: `${values.name} has been added to the menu.`,
+      });
+      
+      setIsAddingMenuItem(false);
+      setSelectedCategoryForItem(null);
+    } catch (error) {
+      console.error("Error adding menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add the menu item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingMenuItem(false);
+    }
+  };
+
+  const handleEditMenuItem = async (itemId: string, values: any) => {
+    try {
+      setSavingMenuItem(true);
+      
+      console.log("Editing menu item:", itemId, values);
+      
+      const updatedMenuItem = await updateMenuItem(itemId, {
+        name: values.name,
+        description: values.description || null,
+        price: Number(values.price),
+        promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
+        image: values.image || null
+      });
+      
+      console.log("Menu item updated:", updatedMenuItem);
+      
+      setMenuItems(prev => {
+        const newState = { ...prev };
+        Object.keys(newState).forEach(categoryId => {
+          newState[categoryId] = newState[categoryId].map(item => 
+            item.id === itemId ? updatedMenuItem : item
+          );
+        });
+        return newState;
+      });
+      
+      toast({
+        title: "Menu Item Updated",
+        description: `${values.name} has been updated.`,
+      });
+      
+      setIsEditingMenuItem(null);
+    } catch (error) {
+      console.error("Error updating menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update the menu item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingMenuItem(false);
+    }
+  };
+
+  const handleDeleteMenuItem = async (categoryId: string, itemId: string) => {
+    try {
+      setIsDeletingMenuItem(true);
+      
+      console.log("Deleting menu item:", itemId);
+      await deleteMenuItem(itemId);
+      
+      console.log("Menu item deleted successfully");
+      setMenuItems(prev => ({
+        ...prev,
+        [categoryId]: prev[categoryId].filter(item => item.id !== itemId)
+      }));
+      
+      toast({
+        title: "Menu Item Deleted",
+        description: "The menu item has been deleted.",
+      });
+      
+      setMenuItemToDelete(null);
+    } catch (error) {
+      console.error("Error deleting menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the menu item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingMenuItem(false);
     }
   };
 
@@ -530,7 +659,13 @@ const RestaurantManage = () => {
                   <>
                     <div className="flex items-center justify-between mt-8">
                       <h3 className="text-lg font-medium">Menu Items</h3>
-                      <Button className="bg-kiosk-primary">
+                      <Button 
+                        className="bg-kiosk-primary"
+                        onClick={() => {
+                          setSelectedCategoryForItem(categories[0].id);
+                          setIsAddingMenuItem(true);
+                        }}
+                      >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Item
                       </Button>
@@ -549,7 +684,13 @@ const RestaurantManage = () => {
                             return (
                               <div key={category.id} className="text-center py-4 border rounded-lg">
                                 <p className="text-muted-foreground mb-4">No items in {category.name}</p>
-                                <Button variant="outline">
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedCategoryForItem(category.id);
+                                    setIsAddingMenuItem(true);
+                                  }}
+                                >
                                   <Plus className="mr-2 h-4 w-4" />
                                   Add Item to {category.name}
                                 </Button>
@@ -557,44 +698,153 @@ const RestaurantManage = () => {
                             );
                           }
                           
-                          return items.map(item => (
-                            <div 
-                              key={item.id} 
-                              className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
-                            >
-                              <div className="flex items-center space-x-4">
-                                {item.image && (
-                                  <img 
-                                    src={item.image} 
-                                    alt={item.name} 
-                                    className="h-16 w-16 object-cover rounded-md"
-                                  />
-                                )}
-                                <div>
-                                  <h3 className="font-medium">{item.name}</h3>
-                                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                                  <p className="text-sm font-medium mt-1">${parseFloat(item.price.toString()).toFixed(2)}</p>
+                          return (
+                            <div key={category.id} className="space-y-2">
+                              <h4 className="font-medium text-sm text-muted-foreground">{category.name}</h4>
+                              {items.map(item => (
+                                <div 
+                                  key={item.id} 
+                                  className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
+                                >
+                                  <div className="flex items-center space-x-4">
+                                    {item.image && (
+                                      <img 
+                                        src={item.image} 
+                                        alt={item.name} 
+                                        className="h-16 w-16 object-cover rounded-md"
+                                      />
+                                    )}
+                                    <div>
+                                      <h3 className="font-medium">{item.name}</h3>
+                                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                                      <p className="text-sm font-medium mt-1">
+                                        ${parseFloat(item.price.toString()).toFixed(2)}
+                                        {item.promotion_price && (
+                                          <span className="ml-2 line-through text-muted-foreground">
+                                            ${parseFloat(item.promotion_price.toString()).toFixed(2)}
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex space-x-2 mt-4 md:mt-0">
+                                    <Dialog 
+                                      open={isEditingMenuItem === item.id} 
+                                      onOpenChange={(open) => setIsEditingMenuItem(open ? item.id : null)}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <Edit className="h-4 w-4 mr-2" />
+                                          Edit
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-[500px]">
+                                        <DialogHeader>
+                                          <DialogTitle>Edit Menu Item</DialogTitle>
+                                        </DialogHeader>
+                                        <MenuItemForm 
+                                          onSubmit={(values) => handleEditMenuItem(item.id, values)}
+                                          initialValues={{
+                                            name: item.name,
+                                            description: item.description || "",
+                                            price: item.price.toString(),
+                                            promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
+                                            image: item.image || ""
+                                          }}
+                                          isLoading={savingMenuItem}
+                                        />
+                                      </DialogContent>
+                                    </Dialog>
+                                    <Dialog 
+                                      open={menuItemToDelete === item.id} 
+                                      onOpenChange={(open) => setMenuItemToDelete(open ? item.id : null)}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="text-red-500">
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Delete
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                          <DialogTitle>Delete Menu Item</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="py-4">
+                                          <p>Are you sure you want to delete <strong>{item.name}</strong>?</p>
+                                          <p className="text-sm text-muted-foreground mt-2">This action cannot be undone.</p>
+                                        </div>
+                                        <div className="flex justify-end space-x-2">
+                                          <Button variant="outline" onClick={() => setMenuItemToDelete(null)}>
+                                            Cancel
+                                          </Button>
+                                          <Button 
+                                            variant="destructive" 
+                                            onClick={() => handleDeleteMenuItem(category.id, item.id)}
+                                            disabled={isDeletingMenuItem}
+                                          >
+                                            {isDeletingMenuItem ? (
+                                              <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Deleting...
+                                              </>
+                                            ) : (
+                                              "Delete"
+                                            )}
+                                          </Button>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="flex space-x-2 mt-4 md:mt-0">
-                                <Button variant="outline" size="sm">
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </Button>
-                                <Button variant="outline" size="sm" className="text-red-500">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </Button>
-                              </div>
+                              ))}
                             </div>
-                          ));
+                          );
                         })}
-                        <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
-                          <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add New Item
-                          </Button>
-                        </div>
+                        <Dialog 
+                          open={isAddingMenuItem} 
+                          onOpenChange={(open) => {
+                            setIsAddingMenuItem(open);
+                            if (!open) setSelectedCategoryForItem(null);
+                          }}
+                        >
+                          <DialogTrigger asChild>
+                            <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                              <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add New Item
+                              </Button>
+                            </div>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[500px]">
+                            <DialogHeader>
+                              <DialogTitle>Add Menu Item</DialogTitle>
+                            </DialogHeader>
+                            {selectedCategoryForItem && (
+                              <>
+                                <div className="mb-4">
+                                  <Label>Category</Label>
+                                  <div className="flex gap-2 mt-2">
+                                    {categories.map(category => (
+                                      <Button
+                                        key={category.id}
+                                        type="button"
+                                        variant={selectedCategoryForItem === category.id ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setSelectedCategoryForItem(category.id)}
+                                      >
+                                        {category.name}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <MenuItemForm 
+                                  onSubmit={(values) => handleAddMenuItem(selectedCategoryForItem, values)}
+                                  isLoading={savingMenuItem}
+                                />
+                              </>
+                            )}
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     )}
                   </>
