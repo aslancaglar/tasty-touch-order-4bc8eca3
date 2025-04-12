@@ -101,12 +101,12 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
     };
     
     // Conditionally add optional fields if they exist in the response
-    if ('description' in category && category.description !== undefined) {
-      result.description = category.description;
+    if ('description' in category && category.description !== null && category.description !== undefined) {
+      result.description = String(category.description);
     }
     
-    if ('image_url' in category && category.image_url !== undefined) {
-      result.image_url = category.image_url;
+    if ('image_url' in category && category.image_url !== null && category.image_url !== undefined) {
+      result.image_url = String(category.image_url);
     }
     
     return result;
@@ -139,9 +139,9 @@ export const createCategory = async (category: Omit<MenuCategory, 'id' | 'create
     id: data.id,
     name: data.name,
     restaurant_id: data.restaurant_id,
-    description: data.description || null,
+    description: 'description' in data && data.description !== null ? String(data.description) : null,
     icon: data.icon || null,
-    image_url: data.image_url || null,
+    image_url: 'image_url' in data && data.image_url !== null ? String(data.image_url) : null,
     created_at: data.created_at,
     updated_at: data.updated_at
   };
@@ -170,9 +170,9 @@ export const updateCategory = async (id: string, updates: Partial<Omit<MenuCateg
     id: data.id,
     name: data.name,
     restaurant_id: data.restaurant_id,
-    description: data.description || null,
+    description: 'description' in data && data.description !== null ? String(data.description) : null,
     icon: data.icon || null,
-    image_url: data.image_url || null,
+    image_url: 'image_url' in data && data.image_url !== null ? String(data.image_url) : null,
     created_at: data.created_at,
     updated_at: data.updated_at
   };
@@ -219,7 +219,7 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
     name: item.name,
     description: item.description || null,
     price: item.price,
-    promotion_price: item.promotion_price || null,
+    promotion_price: 'promotion_price' in item && item.promotion_price !== undefined ? item.promotion_price : null,
     image: item.image || null,
     category_id: item.category_id,
     created_at: item.created_at,
@@ -248,7 +248,7 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     name: data.name,
     description: data.description || null,
     price: data.price,
-    promotion_price: data.promotion_price || null,
+    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined ? data.promotion_price : null,
     image: data.image || null,
     category_id: data.category_id,
     created_at: data.created_at,
@@ -281,7 +281,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
     name: data.name,
     description: data.description || null,
     price: data.price,
-    promotion_price: data.promotion_price || null,
+    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined ? data.promotion_price : null,
     image: data.image || null,
     category_id: data.category_id,
     created_at: data.created_at,
@@ -308,7 +308,7 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
     name: data.name,
     description: data.description || null,
     price: data.price,
-    promotion_price: data.promotion_price || null,
+    promotion_price: 'promotion_price' in data && data.promotion_price !== undefined ? data.promotion_price : null,
     image: data.image || null,
     category_id: data.category_id,
     created_at: data.created_at,
