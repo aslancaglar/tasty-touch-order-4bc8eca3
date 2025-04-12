@@ -377,20 +377,20 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
           {categories.map((category) => (
             <div 
               key={category.id} 
-              className="flex flex-col items-center justify-between p-4 border rounded-lg"
+              className="flex items-center justify-between p-4 border rounded-lg"
             >
-              <div className="flex flex-col items-center space-y-3 mb-2">
+              <div className="flex items-center space-x-3">
                 <div className="p-2 bg-primary/10 rounded-md">
-                  {category.icon && getIconComponent(category.icon, { size: 5, className: "h-6 w-6" })}
+                  {category.icon && getIconComponent(category.icon)}
                 </div>
-                <div className="text-center">
+                <div>
                   <span className="font-medium">{category.name}</span>
                   {category.description && (
                     <p className="text-xs text-muted-foreground">{category.description}</p>
                   )}
                 </div>
               </div>
-              <div className="flex space-x-1 mt-2">
+              <div className="flex space-x-1">
                 <Dialog open={isEditingCategory === category.id} onOpenChange={(open) => setIsEditingCategory(open ? category.id : null)}>
                   <DialogTrigger asChild>
                     <Button variant="ghost" size="sm">

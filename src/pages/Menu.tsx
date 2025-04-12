@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -264,13 +263,13 @@ const MenuPage = () => {
                 {categories.map((category) => (
                   <div 
                     key={category.id} 
-                    className="flex flex-col items-center justify-between p-4 border rounded-lg"
+                    className="flex items-center justify-between p-4 border rounded-lg"
                   >
-                    <div className="flex flex-col items-center space-y-3 mb-2">
-                      <div className="p-3 bg-primary/10 rounded-full">
-                        {getIconComponent(category.icon, 6)}
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-primary/10 rounded-md">
+                        {getIconComponent(category.icon)}
                       </div>
-                      <span className="font-medium text-center">{category.name}</span>
+                      <span className="font-medium">{category.name}</span>
                     </div>
                     <div className="flex space-x-1">
                       <Button variant="ghost" size="sm">
@@ -318,11 +317,9 @@ const MenuPage = () => {
                 <Tabs defaultValue={categories[0].id}>
                   <TabsList className="mb-4">
                     {categories.map((category) => (
-                      <TabsTrigger key={category.id} value={category.id} className="flex flex-col items-center px-4 py-3">
-                        <div className="mb-2">
-                          {getIconComponent(category.icon, { size: 5, className: "h-6 w-6" })}
-                        </div>
-                        <span>{category.name}</span>
+                      <TabsTrigger key={category.id} value={category.id} className="flex items-center">
+                        {getIconComponent(category.icon)}
+                        <span className="ml-2">{category.name}</span>
                       </TabsTrigger>
                     ))}
                   </TabsList>
