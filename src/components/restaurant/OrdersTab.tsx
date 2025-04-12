@@ -20,6 +20,7 @@ type OrderItem = {
 
 type Order = {
   id: string;
+  orderNumber: number; // Added this to track the sequential order number
   restaurantId: string;
   status: OrderStatus;
   items: OrderItem[];
@@ -66,7 +67,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
         }
 
         const transformedOrders = await Promise.all(
-          ordersData.map(async (order) => {
+          ordersData.map(async (order, index) => {
             // Fetch order items
             const { data: orderItems, error: itemsError } = await supabase
               .from("order_items")
@@ -141,6 +142,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
             return {
               id: order.id,
+              orderNumber: index + 1, // Assign the sequential order number
               restaurantId: order.restaurant_id,
               status: order.status as OrderStatus,
               items: processedItems,
@@ -218,7 +220,8 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                   <div className="flex flex-col md:flex-row justify-between p-4 border-b bg-gray-50">
                     <div className="flex items-center space-x-4">
                       <div>
-                        <p className="font-bold">{order.id}</p>
+                        <p className="font-bold">Order #{order.orderNumber}</p>
+                        <p className="text-xs text-gray-500">{order.id}</p>
                         <p className="text-sm text-muted-foreground">
                           {order.customerName || "Guest Customer"}
                         </p>
