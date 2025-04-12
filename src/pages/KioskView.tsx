@@ -15,25 +15,24 @@ import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection, { OrderType } from "@/components/kiosk/OrderTypeSelection";
 import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
-
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
-
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
-
 const KioskView = () => {
-  const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
+  const {
+    restaurantSlug
+  } = useParams<{
+    restaurantSlug: string;
+  }>();
   const navigate = useNavigate();
-  
   const [showWelcome, setShowWelcome] = useState(true);
   const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
-  
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -50,9 +49,9 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -90,7 +89,6 @@ const KioskView = () => {
     };
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
-
   useEffect(() => {
     if (cart.length > 0) {
       setIsCartOpen(true);
@@ -98,12 +96,10 @@ const KioskView = () => {
       setIsCartOpen(false);
     }
   }, [cart]);
-
   const handleStartOrder = () => {
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
   };
-
   const handleOrderTypeSelected = (type: OrderType, table?: string) => {
     setOrderType(type);
     if (table) {
@@ -111,7 +107,6 @@ const KioskView = () => {
     }
     setShowOrderTypeSelection(false);
   };
-
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
       const {
@@ -134,7 +129,6 @@ const KioskView = () => {
         console.error("Error fetching topping category details:", categoriesError);
         return [];
       }
-      
       const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
         const {
           data: toppings,
@@ -165,14 +159,12 @@ const KioskView = () => {
           }))
         };
       }));
-      
       return toppingCategoriesWithToppings;
     } catch (error) {
       console.error("Error in fetchToppingCategories:", error);
       return [];
     }
   };
-
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
@@ -230,7 +222,6 @@ const KioskView = () => {
       setLoading(false);
     }
   };
-
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
       const optionIndex = prev.findIndex(o => o.optionId === optionId);
@@ -259,7 +250,6 @@ const KioskView = () => {
       return newOptions;
     });
   };
-
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -296,12 +286,10 @@ const KioskView = () => {
       return newToppings;
     });
   };
-
-  const calculateItemPrice = (
-    item: MenuItemWithOptions, 
-    options: { optionId: string; choiceIds: string[]; }[], 
-    toppings: SelectedToppingCategory[]
-  ): number => {
+  const calculateItemPrice = (item: MenuItemWithOptions, options: {
+    optionId: string;
+    choiceIds: string[];
+  }[], toppings: SelectedToppingCategory[]): number => {
     let price = parseFloat(item.price.toString());
     if (item.options) {
       item.options.forEach(option => {
@@ -331,7 +319,6 @@ const KioskView = () => {
     }
     return price;
   };
-
   const getFormattedOptions = (item: CartItem): string => {
     if (!item.menuItem.options) return "";
     return item.selectedOptions.flatMap(selectedOption => {
@@ -343,7 +330,6 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
-
   const getFormattedToppings = (item: CartItem): string => {
     if (!item.menuItem.toppingCategories) return "";
     return item.selectedToppings.flatMap(selectedCategory => {
@@ -355,7 +341,6 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
-
   const handleAddToCart = () => {
     if (!selectedItem) return;
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -376,9 +361,7 @@ const KioskView = () => {
       });
       return;
     }
-    
     const itemPrice = calculateItemPrice(selectedItem, selectedOptions, selectedToppings);
-    
     const newItem: CartItem = {
       id: Date.now().toString(),
       menuItem: selectedItem,
@@ -388,17 +371,14 @@ const KioskView = () => {
       specialInstructions: specialInstructions.trim() || undefined,
       itemPrice
     };
-    
     setCart(prev => [...prev, newItem]);
     setSelectedItem(null);
     setIsCartOpen(true);
-    
     toast({
       title: "Added to cart",
       description: `${quantity}x ${selectedItem.name} added to your order`
     });
   };
-
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       handleRemoveCartItem(itemId);
@@ -409,7 +389,6 @@ const KioskView = () => {
       quantity: newQuantity
     } : item));
   };
-
   const handleRemoveCartItem = (itemId: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.id !== itemId);
@@ -419,21 +398,17 @@ const KioskView = () => {
       return newCart;
     });
   };
-
   const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
       return total + item.itemPrice * item.quantity;
     }, 0);
   };
-
   const calculateSubtotal = () => {
     return calculateCartTotal();
   };
-
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
   };
-
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
     try {
@@ -444,7 +419,6 @@ const KioskView = () => {
         total: calculateCartTotal(),
         customer_name: null
       });
-      
       const orderItems = await createOrderItems(cart.map(item => ({
         order_id: order.id,
         menu_item_id: item.menuItem.id,
@@ -452,10 +426,8 @@ const KioskView = () => {
         price: item.itemPrice,
         special_instructions: item.specialInstructions || null
       })));
-      
       const orderItemOptionsToCreate = [];
       const orderItemToppingsToCreate = [];
-      
       for (let i = 0; i < cart.length; i++) {
         const cartItem = cart[i];
         const orderItem = orderItems[i];
@@ -477,20 +449,17 @@ const KioskView = () => {
           }
         }
       }
-      
       if (orderItemOptionsToCreate.length > 0) {
         await createOrderItemOptions(orderItemOptionsToCreate);
       }
       if (orderItemToppingsToCreate.length > 0) {
         await createOrderItemToppings(orderItemToppingsToCreate);
       }
-      
       setOrderPlaced(true);
       toast({
         title: "Order placed",
         description: "Your order has been placed successfully!"
       });
-      
       setTimeout(() => {
         setOrderPlaced(false);
         setCart([]);
@@ -508,22 +477,16 @@ const KioskView = () => {
       setPlacingOrder(false);
     }
   };
-
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
-
   if (loading && !restaurant) {
-    return (
-      <div className="flex items-center justify-center h-screen">
+    return <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
   if (!restaurant) {
-    return (
-      <div className="flex items-center justify-center h-screen">
+    return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Restaurant Not Found</h1>
           <p className="text-gray-500 mb-4">The restaurant you're looking for doesn't exist.</p>
@@ -532,44 +495,29 @@ const KioskView = () => {
             Back to Home
           </Button>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (showWelcome) {
     return <WelcomePage restaurant={restaurant} onStart={handleStartOrder} />;
   }
-
   if (showOrderTypeSelection) {
-    return (
-      <>
-        <div 
-          className="fixed inset-0 bg-cover bg-center bg-black/50"
-          style={{ 
-            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})` 
-          }}
-        />
-        <OrderTypeSelection 
-          isOpen={showOrderTypeSelection}
-          onClose={() => {
-            setShowOrderTypeSelection(false);
-            setShowWelcome(true);
-          }}
-          onSelectOrderType={handleOrderTypeSelected}
-        />
-      </>
-    );
+    return <>
+        <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+      }} />
+        <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
+        setShowOrderTypeSelection(false);
+        setShowWelcome(true);
+      }} onSelectOrderType={handleOrderTypeSelected} />
+      </>;
   }
-
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+  return <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="h-48 bg-cover bg-center relative" style={{
-        backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
-      }}>
+      backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+    }}>
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         <div className="absolute inset-0 flex items-center p-6">
           <div className="flex items-center">
@@ -580,18 +528,12 @@ const KioskView = () => {
                 <Clock className="h-4 w-4 mr-1" />
                 <span>{restaurant.location || 'Open now'}</span>
               </div>
-              {orderType && (
-                <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center">
-                  {orderType === 'dine-in' ? (
-                    <>
+              {orderType && <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center">
+                  {orderType === 'dine-in' ? <>
                       <span className="mr-1">Dine-in</span>
                       {tableNumber && <span>- Table {tableNumber}</span>}
-                    </>
-                  ) : (
-                    <span>Takeaway</span>
-                  )}
-                </div>
-              )}
+                    </> : <span>Takeaway</span>}
+                </div>}
             </div>
           </div>
         </div>
@@ -602,21 +544,15 @@ const KioskView = () => {
           <div className="p-4">
             <h2 className="font-bold text-lg mb-4">Menu Categories</h2>
             <div className="space-y-1">
-              {categories.map(category => (
-                <button 
-                  key={category.id} 
-                  onClick={() => setActiveCategory(category.id)} 
-                  className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${activeCategory === category.id ? 'bg-kiosk-primary text-white' : 'hover:bg-gray-100'}`}
-                >
+              {categories.map(category => <button key={category.id} onClick={() => setActiveCategory(category.id)} className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${activeCategory === category.id ? 'bg-kiosk-primary text-white' : 'hover:bg-gray-100'}`}>
                   <span className="mr-3">
                     {getIconComponent(category.icon, {
-                      size: 20,
-                      className: activeCategory === category.id ? 'text-white' : 'text-kiosk-primary'
-                    })}
+                  size: 20,
+                  className: activeCategory === category.id ? 'text-white' : 'text-kiosk-primary'
+                })}
                   </span>
                   <span className="font-medium">{category.name}</span>
-                </button>
-              ))}
+                </button>)}
             </div>
           </div>
         </div>
@@ -628,14 +564,10 @@ const KioskView = () => {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeItems.map(item => (
-                <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                  <div 
-                    className="h-40 bg-cover bg-center" 
-                    style={{
-                      backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
-                    }}
-                  ></div>
+              {activeItems.map(item => <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="h-40 bg-cover bg-center" style={{
+                backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
+              }}></div>
                   <div className="p-4">
                     <div className="flex justify-between">
                       <h3 className="font-bold text-lg">{item.name}</h3>
@@ -647,39 +579,17 @@ const KioskView = () => {
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
-                </Card>
-              ))}
+                </Card>)}
             </div>
           </div>
         </div>
       </div>
 
-      {!isCartOpen && !cartIsEmpty && (
-        <CartButton 
-          itemCount={cartItemCount}
-          total={calculateCartTotal()}
-          onClick={toggleCart}
-        />
-      )}
+      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} />}
 
-      <Cart
-        cart={cart}
-        isOpen={isCartOpen}
-        onToggleOpen={toggleCart}
-        onUpdateQuantity={handleUpdateCartItemQuantity}
-        onRemoveItem={handleRemoveCartItem}
-        onClearCart={() => setCart([])}
-        onPlaceOrder={handlePlaceOrder}
-        placingOrder={placingOrder}
-        orderPlaced={orderPlaced}
-        calculateSubtotal={calculateSubtotal}
-        calculateTax={calculateTax}
-        getFormattedOptions={getFormattedOptions}
-        getFormattedToppings={getFormattedToppings}
-      />
+      <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} />
 
-      {selectedItem && (
-        <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
+      {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{selectedItem.name}</DialogTitle>
@@ -755,16 +665,7 @@ const KioskView = () => {
                 </div>
               </div>
               
-              <div>
-                <Label className="font-medium">Special Instructions</Label>
-                <textarea 
-                  className="w-full mt-2 p-2 border border-gray-300 rounded-md" 
-                  placeholder="Any special requests or allergies?" 
-                  rows={2} 
-                  value={specialInstructions} 
-                  onChange={e => setSpecialInstructions(e.target.value)} 
-                />
-              </div>
+              
             </div>
             
             <DialogFooter>
@@ -775,10 +676,7 @@ const KioskView = () => {
               </div>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      )}
-    </div>
-  );
+        </Dialog>}
+    </div>;
 };
-
 export default KioskView;
