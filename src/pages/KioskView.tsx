@@ -70,6 +70,17 @@ type CartItem = {
   specialInstructions?: string;
 };
 
+// New type for toppings data
+type ToppingCategory = {
+  id: string;
+  name: string;
+  toppings: {
+    id: string;
+    name: string;
+    price: number;
+  }[];
+};
+
 const KioskView = () => {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
   const navigate = useNavigate();
@@ -84,7 +95,7 @@ const KioskView = () => {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [toppingCategoryNames, setToppingCategoryNames] = useState<Record<string, string>>({});
+  const [toppingCategories, setToppingCategories] = useState<Record<string, ToppingCategory>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -115,9 +126,6 @@ const KioskView = () => {
         const menuData = await getMenuForRestaurant(restaurantData.id);
         setCategories(menuData);
         
-        // Create a mapping of topping category IDs to names
-        const toppingMap: Record<string, string> = {};
-        
         // Extract all topping category IDs from menu items
         const toppingCategoryIds = new Set<string>();
         menuData.forEach(category => {
@@ -128,11 +136,12 @@ const KioskView = () => {
           });
         });
         
-        // Fetch topping category names if there are any IDs
+        // Fetch topping categories and their toppings if there are any IDs
         if (toppingCategoryIds.size > 0) {
           try {
-            // Make API call to get topping category names
-            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/topping_categories?id=in.(${Array.from(toppingCategoryIds).join(',')})&select=id,name`, {
+            // Make API call to get topping categories with toppings
+            const response = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/topping_categories?id=in.(${Array.from(toppingCategoryIds).join(',')})&select=id,name`, {
               headers: {
                 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
                 'Content-Type': 'application/json'
@@ -140,17 +149,36 @@ const KioskView = () => {
             });
             
             if (response.ok) {
-              const toppingCategories = await response.json();
-              toppingCategories.forEach((cat: { id: string; name: string }) => {
-                toppingMap[cat.id] = cat.name;
-              });
+              const toppingCategoriesData = await response.json();
+              const toppingCategoriesMap: Record<string, ToppingCategory> = {};
+              
+              // For each topping category, fetch its toppings
+              await Promise.all(toppingCategoriesData.map(async (category: { id: string; name: string }) => {
+                const toppingsResponse = await fetch(
+                  `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/toppings?category_id=eq.${category.id}&select=id,name,price`, {
+                  headers: {
+                    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                    'Content-Type': 'application/json'
+                  }
+                });
+                
+                if (toppingsResponse.ok) {
+                  const toppings = await toppingsResponse.json();
+                  toppingCategoriesMap[category.id] = {
+                    id: category.id,
+                    name: category.name,
+                    toppings: toppings
+                  };
+                }
+              }));
+              
+              setToppingCategories(toppingCategoriesMap);
             }
           } catch (error) {
             console.error("Error fetching topping categories:", error);
           }
         }
         
-        setToppingCategoryNames(toppingMap);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching restaurant and menu:", error);
@@ -526,26 +554,48 @@ const KioskView = () => {
 
       {selectedItem && (
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedItem.name}</DialogTitle>
               <DialogDescription>{selectedItem.description}</DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
+            <div className="space-y-6">
               {selectedItem.topping_categories && selectedItem.topping_categories.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="font-medium">Included Toppings</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedItem.topping_categories.map((categoryId) => (
-                      <Badge 
-                        key={categoryId}
-                        variant="purple"
-                        className="px-3 py-1 text-sm"
-                      >
-                        {toppingCategoryNames[categoryId] || 'Topping Category'}
-                      </Badge>
-                    ))}
+                <div className="space-y-4">
+                  <Label className="font-medium text-lg">Included Toppings</Label>
+                  <div className="space-y-4">
+                    {selectedItem.topping_categories.map((categoryId) => {
+                      const category = toppingCategories[categoryId];
+                      
+                      if (!category) return null;
+                      
+                      return (
+                        <div key={categoryId} className="space-y-2">
+                          <Badge 
+                            variant="purple" 
+                            className="px-3 py-1 text-sm"
+                          >
+                            {category.name}
+                          </Badge>
+                          
+                          {category.toppings && category.toppings.length > 0 ? (
+                            <div className="pl-2 mt-2">
+                              <ul className="list-disc pl-4 text-sm text-gray-600 space-y-1">
+                                {category.toppings.map(topping => (
+                                  <li key={topping.id}>
+                                    {topping.name}
+                                    {topping.price > 0 && ` (+$${topping.price.toFixed(2)})`}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500 pl-2">No toppings available</p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
