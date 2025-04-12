@@ -90,30 +90,34 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
             // Process each order item to get its toppings
             const processedItems = await Promise.all(orderItems.map(async (item) => {
+              // Array to store topping details
               let toppings: Array<{name: string, price: number}> = [];
               
               try {
-                // First, fetch topping_ids from the order_item_toppings table
+                // Get topping IDs for this order item from order_item_toppings table
                 const { data: toppingLinks, error: toppingLinksError } = await supabase
                   .from("order_item_toppings")
                   .select("topping_id")
                   .eq("order_item_id", item.id);
                 
                 if (toppingLinksError) {
+                  console.error("Error fetching topping links:", toppingLinksError);
                   throw toppingLinksError;
                 }
                 
+                // If toppings exist for this order item
                 if (toppingLinks && toppingLinks.length > 0) {
-                  // Get all topping_ids from the links
+                  // Get all topping IDs from the links
                   const toppingIds = toppingLinks.map(link => link.topping_id);
                   
-                  // Fetch the actual topping details
+                  // Fetch the topping details using the IDs
                   const { data: toppingDetails, error: toppingDetailsError } = await supabase
                     .from("toppings")
                     .select("name, price")
                     .in("id", toppingIds);
                   
                   if (toppingDetailsError) {
+                    console.error("Error fetching topping details:", toppingDetailsError);
                     throw toppingDetailsError;
                   }
                   
@@ -122,7 +126,8 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                   }
                 }
               } catch (error) {
-                console.error("Error fetching toppings:", error);
+                console.error("Error processing toppings:", error);
+                // Continue with empty toppings array in case of error
               }
               
               return {
@@ -246,9 +251,9 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                           
                           {/* Display toppings */}
                           {item.toppings && item.toppings.length > 0 && (
-                            <div className="mt-1 ml-5 text-xs text-muted-foreground">
-                              <p className="font-medium text-gray-600">Toppings:</p>
-                              <ul className="pl-2">
+                            <div className="mt-1 ml-5 text-xs text-gray-600">
+                              <p className="font-medium">Toppings:</p>
+                              <ul className="pl-2 space-y-1">
                                 {item.toppings.map((topping, idx) => (
                                   <li key={idx} className="flex justify-between">
                                     <span>{topping.name}</span>
