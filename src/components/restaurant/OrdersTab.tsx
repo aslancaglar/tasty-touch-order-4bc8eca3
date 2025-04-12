@@ -89,27 +89,30 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
             // Process each order item to get its toppings
             const processedItems = await Promise.all(orderItems.map(async (item) => {
-              // Fetch toppings for this order item
-              const { data: orderItemToppings, error: toppingsError } = await supabase
+              // Check if we have order_item_toppings table
+              // For now, let's query the toppings directly with a join through order_item_toppings
+              const { data: toppingsData, error: toppingsError } = await supabase
                 .from("order_item_toppings")
                 .select(`
-                  toppings (
-                    id,
-                    name,
-                    price
-                  )
+                  topping_id
                 `)
                 .eq("order_item_id", item.id);
               
-              if (toppingsError) {
-                console.error("Error fetching order item toppings:", toppingsError);
+              let toppings: Array<{name: string, price: number}> = [];
+              
+              if (!toppingsError && toppingsData && toppingsData.length > 0) {
+                // Fetch the actual topping details using the topping_ids
+                const toppingIds = toppingsData.map(t => t.topping_id);
+                
+                const { data: toppingDetails, error: toppingDetailsError } = await supabase
+                  .from("toppings")
+                  .select("name, price")
+                  .in("id", toppingIds);
+                
+                if (!toppingDetailsError && toppingDetails) {
+                  toppings = toppingDetails;
+                }
               }
-
-              // Transform toppings data
-              const toppings = orderItemToppings?.map(t => ({
-                name: t.toppings.name,
-                price: t.toppings.price
-              })) || [];
 
               return {
                 name: item.menu_items?.name || "Unknown Item",
