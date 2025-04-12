@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Dialog, 
   DialogContent, 
@@ -97,15 +96,16 @@ const KioskView = () => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{ optionId: string; choiceIds: string[] }[]>([]);
   const [selectedToppings, setSelectedToppings] = useState<{ categoryId: string; toppingIds: string[] }[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState("");
-  const [showCart, setShowCart] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showCartDetails, setShowCartDetails] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -135,6 +135,11 @@ const KioskView = () => {
         // Fetch menu categories with items
         const menuData = await getMenuForRestaurant(restaurantData.id);
         setCategories(menuData);
+        
+        // Set initial active category
+        if (menuData.length > 0) {
+          setActiveCategory(menuData[0].id);
+        }
         
         setLoading(false);
       } catch (error) {
@@ -559,7 +564,7 @@ const KioskView = () => {
       setTimeout(() => {
         setOrderPlaced(false);
         setCart([]);
-        setShowCart(false);
+        setShowCartDetails(false);
         setPlacingOrder(false);
       }, 3000);
       
@@ -599,98 +604,228 @@ const KioskView = () => {
     );
   }
 
+  const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header with logo and cover photo */}
       <div 
         className="h-48 bg-cover bg-center relative"
         style={{ backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})` }}
       >
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
-        <div className="absolute inset-0 flex items-center justify-between p-6">
+        <div className="absolute inset-0 flex items-center p-6">
           <div className="flex items-center">
             <img 
               src={restaurant.image_url || 'https://via.placeholder.com/100'} 
               alt={restaurant.name} 
-              className="h-16 w-16 rounded-full border-2 border-white mr-4"
+              className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover"
             />
             <div>
-              <h1 className="text-white text-2xl font-bold">{restaurant.name}</h1>
-              <div className="flex items-center text-white text-sm">
+              <h1 className="text-white text-3xl font-bold">{restaurant.name}</h1>
+              <div className="flex items-center text-white text-sm mt-1">
                 <Clock className="h-4 w-4 mr-1" />
                 <span>{restaurant.location || 'Open now'}</span>
               </div>
             </div>
           </div>
-          <Button 
-            className="bg-white text-kiosk-primary hover:bg-gray-100"
-            size="lg"
-            onClick={() => setShowCart(true)}
-          >
-            <ShoppingCart className="mr-2 h-5 w-5" />
-            <span>View Order</span>
-            {cart.length > 0 && (
-              <Badge className="ml-2 bg-kiosk-primary text-white">
-                {cart.reduce((total, item) => total + item.quantity, 0)}
-              </Badge>
-            )}
-          </Button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {categories.length > 0 ? (
-          <Tabs defaultValue={categories[0].id}>
-            <TabsList className="mb-6 bg-white p-1 rounded-lg border">
+      {/* Main content area with left sidebar and menu items */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left sidebar for categories */}
+        <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+          <div className="p-4">
+            <h2 className="font-bold text-lg mb-4">Menu Categories</h2>
+            <div className="space-y-1">
               {categories.map((category) => (
-                <TabsTrigger 
-                  key={category.id} 
-                  value={category.id}
-                  className="data-[state=active]:bg-kiosk-primary data-[state=active]:text-white"
+                <button
+                  key={category.id}
+                  onClick={() => setActiveCategory(category.id)}
+                  className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${
+                    activeCategory === category.id
+                      ? 'bg-kiosk-primary text-white'
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
-                  <span className="flex items-center">
-                    {getIconComponent(category.icon)}
-                    <span className="ml-2">{category.name}</span>
+                  <span className="mr-3">
+                    {getIconComponent(category.icon, { 
+                      size: 20, 
+                      className: activeCategory === category.id ? 'text-white' : 'text-kiosk-primary' 
+                    })}
                   </span>
-                </TabsTrigger>
+                  <span className="font-medium">{category.name}</span>
+                </button>
               ))}
-            </TabsList>
+            </div>
+          </div>
+        </div>
+
+        {/* Main content area with menu items */}
+        <div className="flex-1 overflow-y-auto pb-32">
+          <div className="p-6">
+            <h2 className="text-xl font-bold mb-4">
+              {categories.find(c => c.id === activeCategory)?.name || 'Menu Items'}
+            </h2>
             
-            {categories.map((category) => (
-              <TabsContent key={category.id} value={category.id}>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {category.items.map(item => (
-                    <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                      <div 
-                        className="h-40 bg-cover bg-center" 
-                        style={{ backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})` }}
-                      ></div>
-                      <div className="p-4">
-                        <div className="flex justify-between">
-                          <h3 className="font-bold text-lg">{item.name}</h3>
-                          <p className="font-bold">${parseFloat(item.price.toString()).toFixed(2)}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {activeItems.map(item => (
+                <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <div 
+                    className="h-40 bg-cover bg-center" 
+                    style={{ backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})` }}
+                  ></div>
+                  <div className="p-4">
+                    <div className="flex justify-between">
+                      <h3 className="font-bold text-lg">{item.name}</h3>
+                      <p className="font-bold">${parseFloat(item.price.toString()).toFixed(2)}</p>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+                    <Button 
+                      className="w-full mt-4 bg-kiosk-primary"
+                      onClick={() => handleSelectItem(item)}
+                    >
+                      Add to Order
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Cart section at the bottom */}
+      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg transition-all duration-300 ease-in-out ${showCartDetails ? 'max-h-80' : 'h-16'}`}>
+        {showCartDetails ? (
+          <div className="container mx-auto p-4 max-h-80 overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-bold text-lg">Your Order</h2>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowCartDetails(false)}
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Collapse Cart
+              </Button>
+            </div>
+            
+            {cart.length === 0 ? (
+              <div className="text-center py-6">
+                <ShoppingCart className="h-8 w-8 mx-auto text-gray-300" />
+                <p className="mt-2 text-gray-500">Your cart is empty</p>
+              </div>
+            ) : (
+              <div>
+                <div className="space-y-3 max-h-40 overflow-y-auto">
+                  {cart.map((item) => {
+                    const itemTotal = calculateItemPrice(
+                      item.menuItem, 
+                      item.selectedOptions,
+                      item.selectedToppings
+                    ) * item.quantity;
+                    
+                    return (
+                      <div key={item.id} className="flex justify-between items-center p-2 border-b">
+                        <div className="flex items-center">
+                          <div className="flex items-center space-x-2 mr-4">
+                            <Button 
+                              variant="outline" 
+                              size="icon"
+                              className="h-6 w-6 rounded-full"
+                              onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity - 1)}
+                            >
+                              <MinusCircle className="h-3 w-3" />
+                            </Button>
+                            <span className="text-sm font-medium">{item.quantity}</span>
+                            <Button 
+                              variant="outline"
+                              size="icon"
+                              className="h-6 w-6 rounded-full"
+                              onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity + 1)}
+                            >
+                              <PlusCircle className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-sm">{item.menuItem.name}</h3>
+                            <p className="text-xs text-gray-500 line-clamp-1">
+                              {getFormattedOptions(item)}
+                              {getFormattedOptions(item) && getFormattedToppings(item) && ", "}
+                              {getFormattedToppings(item)}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
-                        <Button 
-                          className="w-full mt-4 bg-kiosk-primary"
-                          onClick={() => handleSelectItem(item)}
-                        >
-                          Add to Order
-                          <ChevronRight className="h-4 w-4 ml-2" />
-                        </Button>
+                        <div className="flex items-center">
+                          <p className="font-medium text-sm mr-3">${itemTotal.toFixed(2)}</p>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-7 w-7 text-red-500"
+                            onClick={() => handleRemoveCartItem(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </Card>
-                  ))}
+                    );
+                  })}
                 </div>
-              </TabsContent>
-            ))}
-          </Tabs>
+                
+                <div className="flex items-center justify-between pt-3">
+                  <div>
+                    <p className="font-bold">Total: ${calculateCartTotal().toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">Tax: ${(calculateCartTotal() * 0.08).toFixed(2)}</p>
+                  </div>
+                  <Button 
+                    className="bg-kiosk-primary"
+                    onClick={handlePlaceOrder}
+                    disabled={placingOrder || orderPlaced}
+                  >
+                    {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {orderPlaced && <Check className="h-4 w-4 mr-2" />}
+                    {orderPlaced ? "Order Placed!" : placingOrder ? "Processing..." : "Place Order"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No menu items available.</p>
+          <div className="container mx-auto h-full flex items-center justify-between px-4">
+            <div className="flex items-center">
+              <Button 
+                variant="ghost"
+                className="flex items-center text-kiosk-primary"
+                onClick={() => setShowCartDetails(true)}
+                disabled={cart.length === 0}
+              >
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                <span className="font-medium">View Order</span>
+                {cartItemCount > 0 && (
+                  <Badge className="ml-2 bg-kiosk-primary text-white">{cartItemCount}</Badge>
+                )}
+              </Button>
+            </div>
+            {cart.length > 0 && (
+              <div className="flex items-center">
+                <p className="font-bold mr-4">Total: ${calculateCartTotal().toFixed(2)}</p>
+                <Button 
+                  className="bg-kiosk-primary"
+                  onClick={() => setShowCartDetails(true)}
+                >
+                  View Cart & Checkout
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
 
+      {/* Item customization dialog */}
       {selectedItem && (
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">
@@ -829,149 +964,6 @@ const KioskView = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
-
-      {showCart && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex">
-          <div className="ml-auto h-full w-full max-w-md bg-white flex flex-col">
-            <div className="p-4 border-b flex items-center justify-between">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setShowCart(false)}
-              >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back to Menu
-              </Button>
-              <h2 className="font-bold text-lg">Your Order</h2>
-              <div className="w-8"></div>
-            </div>
-            
-            <div className="flex-1 overflow-auto p-4">
-              {cart.length === 0 ? (
-                <div className="text-center py-12">
-                  <ShoppingCart className="h-12 w-12 mx-auto text-gray-300" />
-                  <p className="mt-4 text-gray-500">Your cart is empty</p>
-                  <Button 
-                    className="mt-4"
-                    variant="outline"
-                    onClick={() => setShowCart(false)}
-                  >
-                    Browse Menu
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {cart.map((item) => {
-                    const itemTotal = calculateItemPrice(
-                      item.menuItem, 
-                      item.selectedOptions,
-                      item.selectedToppings
-                    ) * item.quantity;
-                    
-                    const formattedOptions = getFormattedOptions(item);
-                    const formattedToppings = getFormattedToppings(item);
-                    
-                    return (
-                      <div key={item.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-medium">{item.menuItem.name}</h3>
-                            <p className="text-sm text-gray-500">
-                              ${calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings).toFixed(2)}
-                            </p>
-                          </div>
-                          <p className="font-medium">${itemTotal.toFixed(2)}</p>
-                        </div>
-                        
-                        {formattedOptions && (
-                          <p className="text-sm text-gray-500 mt-1">
-                            Options: {formattedOptions}
-                          </p>
-                        )}
-                        
-                        {formattedToppings && (
-                          <p className="text-sm text-gray-500 mt-1">
-                            Toppings: {formattedToppings}
-                          </p>
-                        )}
-                        
-                        {item.specialInstructions && (
-                          <p className="text-sm italic mt-1">
-                            "{item.specialInstructions}"
-                          </p>
-                        )}
-                        
-                        <div className="flex items-center justify-between mt-3">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="text-red-500"
-                            onClick={() => handleRemoveCartItem(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Remove
-                          </Button>
-                          
-                          <div className="flex items-center space-x-3">
-                            <Button 
-                              variant="outline" 
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity - 1)}
-                            >
-                              <MinusCircle className="h-4 w-4" />
-                            </Button>
-                            <span>{item.quantity}</span>
-                            <Button 
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleUpdateCartItemQuantity(item.id, item.quantity + 1)}
-                            >
-                              <PlusCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            
-            {cart.length > 0 && (
-              <div className="p-4 border-t">
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Subtotal</span>
-                    <span>${calculateCartTotal().toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Tax</span>
-                    <span>${(calculateCartTotal() * 0.08).toFixed(2)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total</span>
-                    <span>${(calculateCartTotal() * 1.08).toFixed(2)}</span>
-                  </div>
-                </div>
-                
-                <Button 
-                  className="w-full bg-kiosk-primary"
-                  size="lg"
-                  onClick={handlePlaceOrder}
-                  disabled={placingOrder || orderPlaced}
-                >
-                  {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {orderPlaced && <Check className="h-4 w-4 mr-2" />}
-                  {orderPlaced ? "Order Placed!" : placingOrder ? "Processing..." : "Place Order"}
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
       )}
     </div>
   );
