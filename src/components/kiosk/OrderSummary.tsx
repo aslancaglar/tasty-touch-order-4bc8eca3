@@ -46,10 +46,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   
   const handleConfirmOrder = () => {
     onPlaceOrder();
-    // Print receipt immediately after placing order
-    setTimeout(() => {
-      printReceipt("receipt-content");
-    }, 500); // Small delay to ensure DOM is ready
+    // We'll let the onPlaceOrder function handle what happens after order is placed
+    // This fixes the issue with multiple popups
   };
 
   const orderNumber = Date.now().toString().slice(-6); // Simple order number generation

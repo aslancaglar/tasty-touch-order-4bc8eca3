@@ -1,5 +1,4 @@
 
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -8,6 +7,7 @@ import { CartItem } from "@/types/database-types";
 import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { printReceipt } from "@/utils/print-utils";
 
 interface CartProps {
   cart: CartItem[];
@@ -63,6 +63,13 @@ const Cart: React.FC<CartProps> = ({
   const handlePlaceOrder = () => {
     onPlaceOrder();
     setShowOrderSummary(false);
+    
+    // Print receipt after the order is placed
+    if (!placingOrder) {
+      setTimeout(() => {
+        printReceipt("receipt-content");
+      }, 500); // Small delay to ensure DOM is ready
+    }
   };
 
   if (!isOpen) {
