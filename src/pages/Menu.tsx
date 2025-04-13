@@ -212,7 +212,7 @@ const MenuPage = () => {
     <AdminLayout>
       <div className="flex flex-col h-screen overflow-hidden">
         {/* Fixed header section */}
-        <div className="flex-none pb-8">
+        <div className="flex-none">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold">Menu Management</h1>
@@ -258,7 +258,7 @@ const MenuPage = () => {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
-            <Card>
+            <Card className="mb-6">
               <CardHeader>
                 <CardTitle>Categories</CardTitle>
               </CardHeader>
@@ -316,8 +316,8 @@ const MenuPage = () => {
 
         {/* Scrollable menu items section */}
         <div className="flex-grow overflow-hidden">
-          <ScrollArea className="h-full pr-4">
-            <div className="pb-32">
+          <ScrollArea className="h-full">
+            <div className="pb-32 pr-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Menu Items</CardTitle>
