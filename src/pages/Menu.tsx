@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import { useToast } from "@/hooks/use-toast";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 const MenuPage = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -210,52 +208,52 @@ const MenuPage = () => {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col h-full">
-        {/* Sticky header */}
-        <div className="sticky top-0 z-10 bg-background pb-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold">Menu Management</h1>
-              <p className="text-muted-foreground">
-                Manage your restaurant's menu categories and items
-              </p>
-            </div>
-            <div className="flex space-x-2 mt-4 sm:mt-0">
-              <Select value={selectedRestaurant || ""} onValueChange={handleRestaurantChange}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select Restaurant" />
-                </SelectTrigger>
-                <SelectContent>
-                  {restaurants.map(restaurant => (
-                    <SelectItem key={restaurant.id} value={restaurant.id}>
-                      {restaurant.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
-                <DialogTrigger asChild>
-                  <Button className="bg-kiosk-primary">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Category
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Add Menu Category</DialogTitle>
-                  </DialogHeader>
-                  <CategoryForm 
-                    onSubmit={handleAddCategory}
-                    isLoading={savingCategory}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Menu Management</h1>
+          <p className="text-muted-foreground">
+            Manage your restaurant's menu categories and items
+          </p>
         </div>
+        <div className="flex space-x-2 mt-4 sm:mt-0">
+          <Select value={selectedRestaurant || ""} onValueChange={handleRestaurantChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Restaurant" />
+            </SelectTrigger>
+            <SelectContent>
+              {restaurants.map(restaurant => (
+                <SelectItem key={restaurant.id} value={restaurant.id}>
+                  {restaurant.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
+            <DialogTrigger asChild>
+              <Button className="bg-kiosk-primary">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Category
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add Menu Category</DialogTitle>
+              </DialogHeader>
+              <CategoryForm 
+                onSubmit={handleAddCategory}
+                isLoading={savingCategory}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
 
-        {/* Scrollable content */}
-        <div className="flex-grow overflow-auto">
+      {loading ? (
+        <div className="flex justify-center items-center h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <>
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>Categories</CardTitle>
@@ -310,14 +308,14 @@ const MenuPage = () => {
             </CardContent>
           </Card>
 
-          <Card className="h-full flex flex-col">
-            <CardHeader className="flex-none">
+          <Card>
+            <CardHeader>
               <CardTitle>Menu Items</CardTitle>
             </CardHeader>
-            <CardContent className="flex-grow overflow-hidden p-0">
+            <CardContent>
               {categories.length > 0 ? (
-                <Tabs defaultValue={categories[0].id} className="h-full flex flex-col">
-                  <TabsList className="mb-4 mx-6 flex-none">
+                <Tabs defaultValue={categories[0].id}>
+                  <TabsList className="mb-4">
                     {categories.map((category) => (
                       <TabsTrigger key={category.id} value={category.id} className="flex items-center">
                         {getIconComponent(category.icon)}
@@ -327,108 +325,106 @@ const MenuPage = () => {
                   </TabsList>
                   
                   {categories.map((category) => (
-                    <TabsContent key={category.id} value={category.id} className="h-full overflow-hidden">
-                      <ScrollArea className="h-full px-6 pb-6">
-                        <div className="space-y-4">
-                          {menuItems[category.id]?.map(item => (
-                            <div 
-                              key={item.id} 
-                              className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
-                            >
-                              <div className="flex items-center space-x-4">
-                                {item.image && (
-                                  <img 
-                                    src={item.image} 
-                                    alt={item.name} 
-                                    className="h-16 w-16 object-cover rounded-md"
-                                  />
-                                )}
-                                <div>
-                                  <h3 className="font-medium">{item.name}</h3>
-                                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                                  <div className="flex flex-wrap items-center mt-1">
-                                    <p className="text-sm font-medium">
-                                      ${parseFloat(item.price.toString()).toFixed(2)}
-                                      {item.promotion_price && (
-                                        <span className="ml-2 line-through text-muted-foreground">
-                                          ${parseFloat(item.promotion_price.toString()).toFixed(2)}
-                                        </span>
-                                      )}
-                                    </p>
-                                    {item.topping_categories && item.topping_categories.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-1 ml-2">
-                                        {item.topping_categories.map((categoryId) => (
-                                          <Badge 
-                                            key={categoryId} 
-                                            className="bg-[#D6BCFA] text-[#4C1D95] hover:bg-[#D6BCFA]/80"
-                                          >
-                                            {getToppingCategoryName(categoryId)}
-                                          </Badge>
-                                        ))}
-                                      </div>
+                    <TabsContent key={category.id} value={category.id}>
+                      <div className="space-y-4">
+                        {menuItems[category.id]?.map(item => (
+                          <div 
+                            key={item.id} 
+                            className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
+                          >
+                            <div className="flex items-center space-x-4">
+                              {item.image && (
+                                <img 
+                                  src={item.image} 
+                                  alt={item.name} 
+                                  className="h-16 w-16 object-cover rounded-md"
+                                />
+                              )}
+                              <div>
+                                <h3 className="font-medium">{item.name}</h3>
+                                <p className="text-sm text-muted-foreground">{item.description}</p>
+                                <div className="flex flex-wrap items-center mt-1">
+                                  <p className="text-sm font-medium">
+                                    ${parseFloat(item.price.toString()).toFixed(2)}
+                                    {item.promotion_price && (
+                                      <span className="ml-2 line-through text-muted-foreground">
+                                        ${parseFloat(item.promotion_price.toString()).toFixed(2)}
+                                      </span>
                                     )}
-                                  </div>
+                                  </p>
+                                  {item.topping_categories && item.topping_categories.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1 ml-2">
+                                      {item.topping_categories.map((categoryId) => (
+                                        <Badge 
+                                          key={categoryId} 
+                                          className="bg-[#D6BCFA] text-[#4C1D95] hover:bg-[#D6BCFA]/80"
+                                        >
+                                          {getToppingCategoryName(categoryId)}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                              <div className="flex space-x-2 mt-4 md:mt-0">
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                      <Edit className="h-4 w-4 mr-2" />
-                                      Edit
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-[425px]">
-                                    <DialogHeader>
-                                      <DialogTitle>Edit Menu Item</DialogTitle>
-                                    </DialogHeader>
-                                    <MenuItemForm 
-                                      onSubmit={(values) => {
-                                        // Handle edit submission
-                                      }}
-                                      initialValues={{
-                                        name: item.name,
-                                        description: item.description || "",
-                                        price: item.price.toString(),
-                                        promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
-                                        image: item.image || "",
-                                        topping_categories: item.topping_categories || []
-                                      }}
-                                      restaurantId={selectedRestaurant || ""}
-                                    />
-                                  </DialogContent>
-                                </Dialog>
-                                <Button variant="outline" size="sm" className="text-red-500">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </Button>
-                              </div>
                             </div>
-                          ))}
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
-                                <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                                  <Plus className="mr-2 h-4 w-4" />
-                                  Add New Item to {category.name}
-                                </Button>
-                              </div>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px]">
-                              <DialogHeader>
-                                <DialogTitle>Add Menu Item</DialogTitle>
-                              </DialogHeader>
-                              <MenuItemForm 
-                                onSubmit={(values) => {
-                                  // Handle add submission
-                                }}
-                                isLoading={false}
-                                restaurantId={selectedRestaurant || ""}
-                              />
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-                      </ScrollArea>
+                            <div className="flex space-x-2 mt-4 md:mt-0">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[425px]">
+                                  <DialogHeader>
+                                    <DialogTitle>Edit Menu Item</DialogTitle>
+                                  </DialogHeader>
+                                  <MenuItemForm 
+                                    onSubmit={(values) => {
+                                      // Handle edit submission
+                                    }}
+                                    initialValues={{
+                                      name: item.name,
+                                      description: item.description || "",
+                                      price: item.price.toString(),
+                                      promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
+                                      image: item.image || "",
+                                      topping_categories: item.topping_categories || []
+                                    }}
+                                    restaurantId={selectedRestaurant || ""}
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                              <Button variant="outline" size="sm" className="text-red-500">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
+                              <Button variant="ghost" className="w-full h-full flex items-center justify-center">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add New Item to {category.name}
+                              </Button>
+                            </div>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                              <DialogTitle>Add Menu Item</DialogTitle>
+                            </DialogHeader>
+                            <MenuItemForm 
+                              onSubmit={(values) => {
+                                // Handle add submission
+                              }}
+                              isLoading={false}
+                              restaurantId={selectedRestaurant || ""}
+                            />
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </TabsContent>
                   ))}
                 </Tabs>
@@ -443,8 +439,8 @@ const MenuPage = () => {
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </>
+      )}
     </AdminLayout>
   );
 };
