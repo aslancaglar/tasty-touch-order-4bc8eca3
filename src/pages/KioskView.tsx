@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { getIconComponent } from "@/utils/icon-mapping";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,16 +15,13 @@ import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection, { OrderType } from "@/components/kiosk/OrderTypeSelection";
 import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
-
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
-
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
-
 const KioskView = () => {
   const {
     restaurantSlug
@@ -56,7 +52,6 @@ const KioskView = () => {
   const {
     toast
   } = useToast();
-
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -94,7 +89,6 @@ const KioskView = () => {
     };
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
-
   useEffect(() => {
     if (cart.length > 0) {
       setIsCartOpen(true);
@@ -102,12 +96,10 @@ const KioskView = () => {
       setIsCartOpen(false);
     }
   }, [cart]);
-
   const handleStartOrder = () => {
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
   };
-
   const handleOrderTypeSelected = (type: OrderType, table?: string) => {
     setOrderType(type);
     if (table) {
@@ -115,7 +107,6 @@ const KioskView = () => {
     }
     setShowOrderTypeSelection(false);
   };
-
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
       const {
@@ -174,7 +165,6 @@ const KioskView = () => {
       return [];
     }
   };
-
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
@@ -232,7 +222,6 @@ const KioskView = () => {
       setLoading(false);
     }
   };
-
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
       const optionIndex = prev.findIndex(o => o.optionId === optionId);
@@ -261,7 +250,6 @@ const KioskView = () => {
       return newOptions;
     });
   };
-
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -298,7 +286,6 @@ const KioskView = () => {
       return newToppings;
     });
   };
-
   const calculateItemPrice = (item: MenuItemWithOptions, options: {
     optionId: string;
     choiceIds: string[];
@@ -332,7 +319,6 @@ const KioskView = () => {
     }
     return price;
   };
-
   const getFormattedOptions = (item: CartItem): string => {
     if (!item.menuItem.options) return "";
     return item.selectedOptions.flatMap(selectedOption => {
@@ -344,7 +330,6 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
-
   const getFormattedToppings = (item: CartItem): string => {
     if (!item.menuItem.toppingCategories) return "";
     return item.selectedToppings.flatMap(selectedCategory => {
@@ -356,7 +341,6 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
-
   const handleAddToCart = () => {
     if (!selectedItem) return;
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -395,8 +379,7 @@ const KioskView = () => {
       description: `${quantity}x ${selectedItem.name} added to your order`
     });
   };
-
-  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
+  const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       handleRemoveCartItem(itemId);
       return;
@@ -406,7 +389,6 @@ const KioskView = () => {
       quantity: newQuantity
     } : item));
   };
-
   const handleRemoveCartItem = (itemId: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.id !== itemId);
@@ -416,21 +398,17 @@ const KioskView = () => {
       return newCart;
     });
   };
-
   const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
       return total + item.itemPrice * item.quantity;
     }, 0);
   };
-
   const calculateSubtotal = () => {
     return calculateCartTotal();
   };
-
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
   };
-
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
     try {
@@ -499,17 +477,14 @@ const KioskView = () => {
       setPlacingOrder(false);
     }
   };
-
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
-
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>;
   }
-
   if (!restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -522,11 +497,9 @@ const KioskView = () => {
         </div>
       </div>;
   }
-
   if (showWelcome) {
     return <WelcomePage restaurant={restaurant} onStart={handleStartOrder} />;
   }
-
   if (showOrderTypeSelection) {
     return <>
         <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
@@ -538,16 +511,13 @@ const KioskView = () => {
       }} onSelectOrderType={handleOrderTypeSelected} />
       </>;
   }
-
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+  return <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="h-48 bg-cover bg-center relative" style={{
-        backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
-      }}>
+      backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+    }}>
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         <div className="absolute inset-0 flex items-center p-6">
           <div className="flex items-center">
@@ -569,83 +539,55 @@ const KioskView = () => {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden" style={{ paddingBottom: isCartOpen ? "0" : "0" }}>
-        <div className="w-64 border-r border-gray-200 h-[calc(100vh-12rem)] overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-4">
-              <div className="space-y-1">
-                {categories.map(category => (
-                  <button
-                    key={category.id}
-                    onClick={() => setActiveCategory(category.id)}
-                    className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${activeCategory === category.id ? 'bg-kiosk-primary text-white' : 'hover:bg-gray-100'}`}
-                  >
-                    <span className="mr-3">
-                      {getIconComponent(category.icon, {
-                        size: 20,
-                        className: activeCategory === category.id ? 'text-white' : 'text-kiosk-primary'
-                      })}
-                    </span>
-                    <span className="font-medium">{category.name}</span>
-                  </button>
-                ))}
-              </div>
+      <div className="flex flex-1 overflow-hidden">
+        <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+          <div className="p-4">
+            
+            <div className="space-y-1">
+              {categories.map(category => <button key={category.id} onClick={() => setActiveCategory(category.id)} className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${activeCategory === category.id ? 'bg-kiosk-primary text-white' : 'hover:bg-gray-100'}`}>
+                  <span className="mr-3">
+                    {getIconComponent(category.icon, {
+                  size: 20,
+                  className: activeCategory === category.id ? 'text-white' : 'text-kiosk-primary'
+                })}
+                  </span>
+                  <span className="font-medium">{category.name}</span>
+                </button>)}
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
-        <div className="flex-1 h-[calc(100vh-12rem)] overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-6 pb-32">
-              <h2 className="text-xl font-bold mb-4">
-                {categories.find(c => c.id === activeCategory)?.name || 'Menu Items'}
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {activeItems.map(item => (
-                  <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="h-40 bg-cover bg-center" style={{
-                      backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
-                    }}></div>
-                    <div className="p-4">
-                      <div className="flex justify-between">
-                        <h3 className="font-bold text-lg">{item.name}</h3>
-                        <p className="font-bold">${parseFloat(item.price.toString()).toFixed(2)}</p>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
-                      <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
-                        Add to Order
-                        <ChevronRight className="h-4 w-4 ml-2" />
-                      </Button>
+        <div className="flex-1 overflow-y-auto pb-24">
+          <div className="p-6">
+            <h2 className="text-xl font-bold mb-4">
+              {categories.find(c => c.id === activeCategory)?.name || 'Menu Items'}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {activeItems.map(item => <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="h-40 bg-cover bg-center" style={{
+                backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
+              }}></div>
+                  <div className="p-4">
+                    <div className="flex justify-between">
+                      <h3 className="font-bold text-lg">{item.name}</h3>
+                      <p className="font-bold">${parseFloat(item.price.toString()).toFixed(2)}</p>
                     </div>
-                  </Card>
-                ))}
-              </div>
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+                    <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
+                      Add to Order
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </div>
+                </Card>)}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </div>
 
       {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} />}
 
-      <Cart
-        cart={cart}
-        isOpen={isCartOpen}
-        onToggleOpen={toggleCart}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveCartItem}
-        onClearCart={() => setCart([])}
-        onPlaceOrder={handlePlaceOrder}
-        placingOrder={placingOrder}
-        orderPlaced={orderPlaced}
-        calculateSubtotal={calculateSubtotal}
-        calculateTax={calculateTax}
-        getFormattedOptions={getFormattedOptions}
-        getFormattedToppings={getFormattedToppings}
-        restaurant={restaurant}
-        orderType={orderType}
-        tableNumber={tableNumber}
-      />
+      <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} />
 
       {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">
@@ -723,6 +665,7 @@ const KioskView = () => {
                 </div>
               </div>
               
+              
             </div>
             
             <DialogFooter>
@@ -734,8 +677,6 @@ const KioskView = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>}
-    </div>
-  );
+    </div>;
 };
-
 export default KioskView;

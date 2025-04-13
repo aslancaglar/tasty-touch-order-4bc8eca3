@@ -2,11 +2,9 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Check, ArrowRight, Loader2, Plus, Minus, Trash2, ChevronDown, X, ChevronUp } from "lucide-react";
+import { Check, ArrowRight, Loader2, Plus, Minus, Trash2, ChevronDown, X } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderSummary from "./OrderSummary";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface CartProps {
   cart: CartItem[];
@@ -49,7 +47,6 @@ const Cart: React.FC<CartProps> = ({
   tableNumber = null,
 }) => {
   const [showOrderSummary, setShowOrderSummary] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   const handleShowOrderSummary = () => {
@@ -65,85 +62,73 @@ const Cart: React.FC<CartProps> = ({
     setShowOrderSummary(false);
   };
 
-  const toggleCollapsed = () => {
-    setCollapsed(!collapsed);
-  };
-
   if (!isOpen) {
     return null;
   }
 
   return (
     <>
-      <Collapsible
-        open={!collapsed}
-        onOpenChange={(open) => setCollapsed(!open)}
-        className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg"
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div className="flex items-center">
-            <h2 className="text-xl font-bold">VOTRE COMMANDE ({cartItemCount})</h2>
-          </div>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon">
-              {collapsed ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{ maxHeight: "80vh" }}>
+        <div className="w-full">
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <div className="flex items-center">
+              <h2 className="text-xl font-bold">VOTRE COMMANDE ({cartItemCount})</h2>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onToggleOpen}>
+              <ChevronDown className="h-5 w-5" />
             </Button>
-          </CollapsibleTrigger>
-        </div>
+          </div>
 
-        <CollapsibleContent>
-          <ScrollArea className="overflow-auto" style={{ maxHeight: "30vh" }}>
-            <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {cart.map(item => (
-                  <div key={item.id} className="border border-gray-200 rounded-lg p-3 relative">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="absolute right-1 top-1 text-red-500 h-7 w-7" 
-                      onClick={() => onRemoveItem(item.id)}
-                    >
-                      <X className="h-5 w-5" />
-                    </Button>
-                    
-                    <div className="flex items-start space-x-3">
-                      <img 
-                        src={item.menuItem.image || '/placeholder.svg'} 
-                        alt={item.menuItem.name} 
-                        className="w-16 h-16 object-cover rounded" 
-                      />
-                      <div className="flex flex-col">
-                        <h3 className="font-bold">{item.menuItem.name}</h3>
-                        <p className="text-gray-700 font-medium">
-                          {parseFloat(item.itemPrice.toString()).toFixed(2)} €
-                        </p>
-                        
-                        <div className="flex items-center mt-2">
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-7 w-7 rounded-full p-0" 
-                            onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center font-medium">{item.quantity}</span>
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-7 w-7 rounded-full p-0" 
-                            onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
+          <div className="p-4 overflow-auto" style={{ maxHeight: "40vh" }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {cart.map(item => (
+                <div key={item.id} className="border border-gray-200 rounded-lg p-3 relative">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute right-1 top-1 text-red-500 h-7 w-7" 
+                    onClick={() => onRemoveItem(item.id)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                  
+                  <div className="flex items-start space-x-3">
+                    <img 
+                      src={item.menuItem.image || '/placeholder.svg'} 
+                      alt={item.menuItem.name} 
+                      className="w-16 h-16 object-cover rounded" 
+                    />
+                    <div className="flex flex-col">
+                      <h3 className="font-bold">{item.menuItem.name}</h3>
+                      <p className="text-gray-700 font-medium">
+                        {parseFloat(item.itemPrice.toString()).toFixed(2)} €
+                      </p>
+                      
+                      <div className="flex items-center mt-2">
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-7 w-7 rounded-full p-0" 
+                          onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center font-medium">{item.quantity}</span>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-7 w-7 rounded-full p-0" 
+                          onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          </ScrollArea>
+          </div>
 
           <div className="px-4 pb-4">
             <div className="space-y-2">
@@ -178,8 +163,8 @@ const Cart: React.FC<CartProps> = ({
               </Button>
             </div>
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
+      </div>
 
       <OrderSummary
         isOpen={showOrderSummary}
