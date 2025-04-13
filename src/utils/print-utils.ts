@@ -105,9 +105,18 @@ export const printReceipt = (elementId: string) => {
   printWindow.onload = function() {
     printWindow.focus();
     printWindow.print();
+    
     // Close the window after printing (or after the print dialog is closed)
     printWindow.onafterprint = function() {
       printWindow.close();
     };
+    
+    // Fallback for browsers that don't support onafterprint
+    // Close the window after a short delay regardless of print outcome
+    setTimeout(() => {
+      if (!printWindow.closed) {
+        printWindow.close();
+      }
+    }, 2000);
   };
 };
