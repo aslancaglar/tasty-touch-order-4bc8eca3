@@ -211,8 +211,8 @@ const MenuPage = () => {
   return (
     <AdminLayout>
       <div className="flex flex-col h-full">
-        {/* Fixed header */}
-        <div className="flex-none">
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 bg-background pb-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold">Menu Management</h1>
@@ -252,7 +252,10 @@ const MenuPage = () => {
               </Dialog>
             </div>
           </div>
-          
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-grow overflow-auto">
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>Categories</CardTitle>
@@ -306,10 +309,7 @@ const MenuPage = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Scrollable menu items section */}
-        <div className="flex-grow overflow-hidden">
           <Card className="h-full flex flex-col">
             <CardHeader className="flex-none">
               <CardTitle>Menu Items</CardTitle>
