@@ -542,7 +542,6 @@ const KioskView = () => {
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-  const cartHeight = isCartOpen ? (window.innerWidth < 768 ? "300px" : "260px") : "0px";
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -570,8 +569,8 @@ const KioskView = () => {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden" style={{ paddingBottom: cartHeight }}>
-        <div className="w-64 border-r border-gray-200 overflow-hidden flex flex-col">
+      <div className="flex flex-1 overflow-hidden" style={{ paddingBottom: isCartOpen ? "0" : "0" }}>
+        <div className="w-64 border-r border-gray-200 h-[calc(100vh-12rem)] overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
               <div className="space-y-1">
@@ -595,9 +594,9 @@ const KioskView = () => {
           </ScrollArea>
         </div>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 h-[calc(100vh-12rem)] overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="p-6">
+            <div className="p-6 pb-32">
               <h2 className="text-xl font-bold mb-4">
                 {categories.find(c => c.id === activeCategory)?.name || 'Menu Items'}
               </h2>
@@ -723,7 +722,6 @@ const KioskView = () => {
                   </Button>
                 </div>
               </div>
-              
               
             </div>
             
