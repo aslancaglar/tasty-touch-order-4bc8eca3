@@ -542,7 +542,8 @@ const KioskView = () => {
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-
+  const cartHeight = isCartOpen ? "50vh" : "0";
+  
   return <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="h-48 bg-cover bg-center relative sticky top-0 z-10" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
@@ -568,7 +569,7 @@ const KioskView = () => {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden" style={{ maxHeight: `calc(100vh - 12rem - ${cartHeight})` }}>
         <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-4">
             
@@ -593,8 +594,8 @@ const KioskView = () => {
             </h2>
           </div>
           
-          <ScrollArea className="flex-1 h-[calc(100vh-12rem)]">
-            <div className="p-6 pt-0">
+          <ScrollArea className="flex-1">
+            <div className="p-6 pt-0 pb-20">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {activeItems.map(item => <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
                     <div className="h-40 bg-cover bg-center" style={{
