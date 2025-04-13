@@ -1,4 +1,5 @@
 
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -68,7 +69,7 @@ const Cart: React.FC<CartProps> = ({
     return null;
   }
 
-  // Reverse the cart to show newest items first (at the beginning of the carousel)
+  // Reverse the cart to show newest items first
   const reversedCart = [...cart].reverse();
 
   return (
