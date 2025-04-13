@@ -11,15 +11,13 @@ export const printReceipt = (elementId: string) => {
   const printContent = document.getElementById(elementId);
   if (!printContent) return;
 
-  // Create a new window for printing
-  const printWindow = window.open('', '_blank', 'width=800,height=600');
-  if (!printWindow) {
-    alert("Please allow popups for this website to print receipts");
-    return;
-  }
-
+  // Create a hidden iframe for printing
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
+  
   // Setup print-specific styles for 80mm thermal printer (typically 302px wide)
-  printWindow.document.write(`
+  iframe.contentDocument?.write(`
     <html>
       <head>
         <title>Order Receipt</title>
@@ -99,24 +97,19 @@ export const printReceipt = (elementId: string) => {
     </html>
   `);
   
-  printWindow.document.close();
+  iframe.contentDocument?.close();
   
   // Wait for resources to load before printing
-  printWindow.onload = function() {
-    printWindow.focus();
-    printWindow.print();
-    
-    // Close the window after printing (or after the print dialog is closed)
-    printWindow.onafterprint = function() {
-      printWindow.close();
-    };
-    
-    // Fallback for browsers that don't support onafterprint
-    // Close the window after a short delay regardless of print outcome
+  const iframeWindow = iframe.contentWindow;
+  if (iframeWindow) {
     setTimeout(() => {
-      if (!printWindow.closed) {
-        printWindow.close();
-      }
-    }, 2000);
-  };
+      iframeWindow.focus();
+      iframeWindow.print();
+      
+      // Remove the iframe after printing is done or canceled
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 500);
+  }
 };
