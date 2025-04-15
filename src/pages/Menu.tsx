@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -345,10 +345,10 @@ const MenuPage = () => {
                                 <p className="text-sm text-muted-foreground">{item.description}</p>
                                 <div className="flex flex-wrap items-center mt-1">
                                   <p className="text-sm font-medium">
-                                    {parseFloat(item.price.toString()).toFixed(2)} €
+                                    ${parseFloat(item.price.toString()).toFixed(2)}
                                     {item.promotion_price && (
                                       <span className="ml-2 line-through text-muted-foreground">
-                                        {parseFloat(item.promotion_price.toString()).toFixed(2)} €
+                                        ${parseFloat(item.promotion_price.toString()).toFixed(2)}
                                       </span>
                                     )}
                                   </p>
