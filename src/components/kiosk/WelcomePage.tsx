@@ -24,7 +24,7 @@ const WelcomePage = ({ restaurant, onStart }: WelcomePageProps) => {
 
       <Button 
         onClick={onStart}
-        className="bg-white hover:bg-white/90 text-black hover:text-black/90 w-64 h-24 text-2xl font-bold rounded-full shadow-lg animate-pulse"
+        className="bg-white hover:bg-white/90 text-black hover:text-black/90 w-100 h-24 text-2xl font-bold rounded-full shadow-lg animate-pulse"
       >
         <UtensilsCrossed className="mr-2 h-6 w-6" />
         TOUCHEZ POUR COMMANDER
