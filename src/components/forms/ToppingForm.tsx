@@ -61,7 +61,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false }: ToppingForm
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Price ($)</FormLabel>
+              <FormLabel>Price (€)</FormLabel>
               <FormControl>
                 <Input placeholder="0.75" {...field} />
               </FormControl>

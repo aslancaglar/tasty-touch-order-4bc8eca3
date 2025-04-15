@@ -236,7 +236,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                         <span className="capitalize ml-1">{order.status}</span>
                       </Badge>
                       <p className="text-sm font-medium">{formatTime(order.date)}</p>
-                      <p className="text-sm font-bold">${order.total.toFixed(2)}</p>
+                      <p className="text-sm font-bold">{order.total.toFixed(2)} €</p>
                     </div>
                   </div>
                   <div className="p-4">
@@ -249,7 +249,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                               <span className="font-medium">{item.quantity}x </span>
                               {item.name}
                             </div>
-                            <span>${(item.price * item.quantity).toFixed(2)}</span>
+                            <span>{(item.price * item.quantity).toFixed(2)} €</span>
                           </div>
                           
                           {/* Display toppings */}
@@ -260,7 +260,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                                 {item.toppings.map((topping, idx) => (
                                   <li key={idx} className="flex justify-between">
                                     <span>{topping.name}</span>
-                                    <span>${topping.price.toFixed(2)}</span>
+                                    <span>{topping.price.toFixed(2)} €</span>
                                   </li>
                                 ))}
                               </ul>
