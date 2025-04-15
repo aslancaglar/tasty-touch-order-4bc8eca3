@@ -383,6 +383,38 @@ export type Database = {
           },
         ]
       }
+      printer_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          printnode_api_key: string
+          restaurant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          printnode_api_key: string
+          restaurant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          printnode_api_key?: string
+          restaurant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "printer_settings_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: true
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -406,6 +438,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      restaurant_printers: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          last_seen: string | null
+          name: string
+          online_status: boolean | null
+          printer_id: string
+          printnode_printer_id: string | null
+          restaurant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_seen?: string | null
+          name: string
+          online_status?: boolean | null
+          printer_id?: string
+          printnode_printer_id?: string | null
+          restaurant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_seen?: string | null
+          name?: string
+          online_status?: boolean | null
+          printer_id?: string
+          printnode_printer_id?: string | null
+          restaurant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_printers_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       restaurants: {
         Row: {
@@ -524,7 +606,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_daily_order_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_monthly_order_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_popular_items: {
+        Args: { limit_count: number }
+        Returns: Json
+      }
+      get_popular_restaurants: {
+        Args: { limit_count: number }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

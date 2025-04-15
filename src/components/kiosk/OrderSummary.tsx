@@ -68,11 +68,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <h3 className="font-bold text-lg mb-4">ARTICLES COMMANDÉS</h3>
           
           <div className="space-y-6 mb-6">
-            {cart.map((item, index) => (
+            {cart.map((item) => (
               <div key={item.id} className="space-y-2">
                 <div className="flex justify-between">
-                  <div className="flex">
-                    <span className="font-medium mr-2">{index + 1}</span>
+                  <div className="flex items-center">
+                    <span className="font-medium mr-2">{item.quantity}x</span>
                     <span className="font-medium">{item.menuItem.name}</span>
                   </div>
                   <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
