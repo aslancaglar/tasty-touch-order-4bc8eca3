@@ -9,9 +9,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 const toppingSchema = z.object({
-  name: z.string().min(1, "Topping name is required"),
+  name: z.string().min(1, "Nom du complément requis"),
   price: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
-    message: "Price must be a valid number greater than or equal to 0",
+    message: "Le prix doit être un nombre valide supérieur ou égal à 0",
   }),
 });
 
@@ -47,9 +47,9 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false }: ToppingForm
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Topping Name</FormLabel>
+              <FormLabel>Nom du complément</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Cheddar Cheese, Tomatoes" {...field} />
+                <Input placeholder="ex: Fromage Cheddar, Tomates" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -61,7 +61,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false }: ToppingForm
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Price (€)</FormLabel>
+              <FormLabel>Prix (€)</FormLabel>
               <FormControl>
                 <Input placeholder="0.75" {...field} />
               </FormControl>
@@ -74,10 +74,10 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false }: ToppingForm
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              Sauvegarde...
             </>
           ) : (
-            "Save Topping"
+            "Enregistrer"
           )}
         </Button>
       </form>

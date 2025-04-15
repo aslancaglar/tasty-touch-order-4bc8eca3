@@ -40,9 +40,9 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         <div className="logo">{restaurant.name}</div>
         {restaurant.location && <div>{restaurant.location}</div>}
         <div>{currentDate}</div>
-        <div>Order #{orderNumber}</div>
+        <div>Commande #{orderNumber}</div>
         {orderType === "dine-in" && tableNumber && <div>Table: {tableNumber}</div>}
-        {orderType === "takeaway" && <div>Takeaway</div>}
+        {orderType === "takeaway" && <div>À Emporter</div>}
       </div>
 
       <div className="divider"></div>

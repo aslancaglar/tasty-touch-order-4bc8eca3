@@ -35,7 +35,7 @@ const TableSelection = ({ isOpen, onClose, onSelect }: TableSelectionProps) => {
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center text-2xl">Select Your Table</DialogTitle>
+          <DialogTitle className="text-center text-2xl">Sélectionnez votre table</DialogTitle>
         </DialogHeader>
         
         <div className="py-4">
@@ -57,7 +57,7 @@ const TableSelection = ({ isOpen, onClose, onSelect }: TableSelectionProps) => {
             disabled={!selectedTable}
             className="w-full bg-kiosk-primary"
           >
-            Confirm
+            Confirmer
           </Button>
         </DialogFooter>
       </DialogContent>

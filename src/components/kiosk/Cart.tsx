@@ -181,7 +181,7 @@ const Cart: React.FC<CartProps> = ({
               >
                 {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {orderPlaced && <Check className="h-4 w-4 mr-2" />}
-                {orderPlaced ? "CONFIRMÉ" : placingOrder ? "EN COURS..." : "VOIR MA COMMANDE"}
+                {orderPlaced ? "CONFIRMÉE" : placingOrder ? "EN COURS..." : "VOIR MA COMMANDE"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>

@@ -19,7 +19,7 @@ const WelcomePage = ({ restaurant, onStart }: WelcomePageProps) => {
     >
       <div className="mb-8 text-center">
         <h1 className="text-white text-5xl font-bold mb-2">{restaurant.name}</h1>
-        <p className="text-white text-xl">Welcome to our self-ordering kiosk</p>
+        <p className="text-white text-xl">Bienvenue sur notre borne de commande</p>
       </div>
 
       <Button 
@@ -27,7 +27,7 @@ const WelcomePage = ({ restaurant, onStart }: WelcomePageProps) => {
         className="bg-white hover:bg-white/90 text-black hover:text-black/90 w-64 h-24 text-2xl font-bold rounded-full shadow-lg animate-pulse"
       >
         <UtensilsCrossed className="mr-2 h-6 w-6" />
-        TOUCH TO ORDER
+        TOUCHEZ POUR COMMANDER
       </Button>
     </div>
   );

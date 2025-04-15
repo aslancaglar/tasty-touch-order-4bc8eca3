@@ -67,8 +67,8 @@ const KioskView = () => {
         const restaurantData = await getRestaurantBySlug(restaurantSlug);
         if (!restaurantData) {
           toast({
-            title: "Restaurant not found",
-            description: "Sorry, we couldn't find that restaurant.",
+            title: "Restaurant introuvable",
+            description: "Désolé, nous n'avons pas pu trouver ce restaurant.",
             variant: "destructive"
           });
           navigate('/');
@@ -82,10 +82,10 @@ const KioskView = () => {
         }
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching restaurant and menu:", error);
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
         toast({
-          title: "Error",
-          description: "There was a problem loading the menu. Please try again.",
+          title: "Erreur",
+          description: "Un problème est survenu lors du chargement du menu. Veuillez réessayer.",
           variant: "destructive"
         });
         setLoading(false);
@@ -122,7 +122,7 @@ const KioskView = () => {
         error: toppingCategoriesError
       } = await supabase.from('menu_item_topping_categories').select('topping_category_id').eq('menu_item_id', menuItemId);
       if (toppingCategoriesError) {
-        console.error("Error fetching topping categories:", toppingCategoriesError);
+        console.error("Erreur lors du chargement des catégories de toppings:", toppingCategoriesError);
         return [];
       }
       if (!menuItemToppingCategories.length) {
@@ -134,7 +134,7 @@ const KioskView = () => {
         error: categoriesError
       } = await supabase.from('topping_categories').select('*').in('id', toppingCategoryIds);
       if (categoriesError) {
-        console.error("Error fetching topping category details:", categoriesError);
+        console.error("Erreur lors du chargement des détails des catégories de toppings:", categoriesError);
         return [];
       }
       const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
@@ -143,7 +143,7 @@ const KioskView = () => {
           error: toppingsError
         } = await supabase.from('toppings').select('*').eq('category_id', category.id);
         if (toppingsError) {
-          console.error(`Error fetching toppings for category ${category.id}:`, toppingsError);
+          console.error(`Erreur lors du chargement des ingrédients pour la catégorie ${category.id}:`, toppingsError);
           return {
             id: category.id,
             name: category.name,
@@ -169,7 +169,7 @@ const KioskView = () => {
       }));
       return toppingCategoriesWithToppings;
     } catch (error) {
-      console.error("Error in fetchToppingCategories:", error);
+      console.error("Erreur lors de la récupération des catégories de toppings:", error);
       return [];
     }
   };
@@ -180,8 +180,8 @@ const KioskView = () => {
       const itemWithOptions = await getMenuItemWithOptions(item.id);
       if (!itemWithOptions) {
         toast({
-          title: "Error",
-          description: "Could not load item details. Please try again.",
+          title: "Erreur",
+          description: "Impossible de charger les détails de l'article. Veuillez réessayer.",
           variant: "destructive"
         });
         return;
@@ -222,10 +222,10 @@ const KioskView = () => {
       }
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching item details:", error);
+      console.error("Erreur lors du chargement des détails de l'article:", error);
       toast({
-        title: "Error",
-        description: "There was a problem loading the item details. Please try again.",
+        title: "Erreur",
+        description: "Un problème est survenu lors du chargement des détails de l'article. Veuillez réessayer.",
         variant: "destructive"
       });
       setLoading(false);
@@ -280,8 +280,8 @@ const KioskView = () => {
           if (toppingCategory && toppingCategory.max_selections > 0) {
             if (category.toppingIds.length >= toppingCategory.max_selections) {
               toast({
-                title: "Maximum selections reached",
-                description: `You can only select ${toppingCategory.max_selections} items from this category.`
+                title: "Nombre maximum de sélections atteint",
+                description: `Vous ne pouvez sélectionner que ${toppingCategory.max_selections} éléments dans cette catégorie.`
               });
               return prev;
             }
@@ -372,8 +372,8 @@ const KioskView = () => {
     
     if (!isOptionsValid || !isToppingsValid) {
       toast({
-        title: "Required selections",
-        description: "Please make all required selections before adding to cart",
+        title: "Sélections requises",
+        description: "Veuillez faire toutes les sélections requises avant d'ajouter au panier",
         variant: "destructive"
       });
       return;
@@ -394,8 +394,8 @@ const KioskView = () => {
     setSelectedItem(null);
     setIsCartOpen(true);
     toast({
-      title: "Added to cart",
-      description: `${quantity}x ${selectedItem.name} added to your order`
+      title: "Ajouté au panier",
+      description: `${quantity}x ${selectedItem.name} ajouté à votre commande`
     });
   };
 
@@ -482,8 +482,8 @@ const KioskView = () => {
       }
       setOrderPlaced(true);
       toast({
-        title: "Order placed",
-        description: "Your order has been placed successfully!"
+        title: "Commande passée",
+        description: "Votre commande a été passée avec succès !"
       });
       setTimeout(() => {
         setOrderPlaced(false);
@@ -493,10 +493,10 @@ const KioskView = () => {
         setShowWelcome(true);
       }, 3000);
     } catch (error) {
-      console.error("Error placing order:", error);
+      console.error("Erreur lors de la commande:", error);
       toast({
-        title: "Error",
-        description: "There was a problem placing your order. Please try again.",
+        title: "Erreur",
+        description: "Un problème est survenu lors de la commande. Veuillez réessayer.",
         variant: "destructive"
       });
       setPlacingOrder(false);
@@ -516,11 +516,11 @@ const KioskView = () => {
   if (!restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Restaurant Not Found</h1>
-          <p className="text-gray-500 mb-4">The restaurant you're looking for doesn't exist.</p>
+          <h1 className="text-2xl font-bold mb-2">Restaurant introuvable</h1>
+          <p className="text-gray-500 mb-4">Le restaurant que vous recherchez n'existe pas.</p>
           <Button onClick={() => navigate('/')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
+            Retour à l'accueil
           </Button>
         </div>
       </div>;
@@ -559,13 +559,13 @@ const KioskView = () => {
               <h1 className="text-white text-3xl font-bold">{restaurant.name}</h1>
               <div className="flex items-center text-white text-sm mt-1">
                 <Clock className="h-4 w-4 mr-1" />
-                <span>{restaurant.location || 'Open now'}</span>
+                <span>{restaurant.location || 'Ouvert maintenant'}</span>
               </div>
               {orderType && <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center">
                   {orderType === 'dine-in' ? <>
-                      <span className="mr-1">Dine-in</span>
+                      <span className="mr-1">Sur Place</span>
                       {tableNumber && <span>- Table {tableNumber}</span>}
-                    </> : <span>Takeaway</span>}
+                    </> : <span>À Emporter</span>}
                 </div>}
             </div>
           </div>
@@ -593,7 +593,7 @@ const KioskView = () => {
         <div className="flex-1 overflow-y-auto pb-24">
           <div className="p-6">
             <h2 className="text-xl font-bold mb-4">
-              {categories.find(c => c.id === activeCategory)?.name || 'Menu Items'}
+              {categories.find(c => c.id === activeCategory)?.name || 'Menu'}
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -608,7 +608,7 @@ const KioskView = () => {
                     </div>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                     <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
-                      Add to Order
+                      Ajouter à la commande
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
@@ -634,7 +634,7 @@ const KioskView = () => {
                   <Label className="font-medium">
                     {option.name}
                     {option.required && <span className="text-red-500 ml-1">*</span>}
-                    {option.multiple && <span className="text-sm text-gray-500 ml-2">(Select multiple)</span>}
+                    {option.multiple && <span className="text-sm text-gray-500 ml-2">(Sélection multiple)</span>}
                   </Label>
                   <div className="space-y-2">
                     {option.choices.map(choice => {
@@ -664,7 +664,7 @@ const KioskView = () => {
                     {category.name} 
                     {category.required && <span className="text-red-500 ml-1">*</span>}
                     <span className="text-sm text-gray-500 ml-2">
-                      {category.max_selections > 0 ? `(Select up to ${category.max_selections})` : "(Select multiple)"}
+                      {category.max_selections > 0 ? `(Sélectionnez jusqu'à ${category.max_selections})` : "(Sélection multiple)"}
                     </span>
                   </div>
                   
@@ -686,7 +686,7 @@ const KioskView = () => {
                 </div>)}
               
               <div>
-                <Label className="font-medium">Quantity</Label>
+                <Label className="font-medium">Quantité</Label>
                 <div className="flex items-center space-x-4 mt-2">
                   <Button variant="outline" size="icon" onClick={() => quantity > 1 && setQuantity(quantity - 1)}>
                     <MinusCircle className="h-4 w-4" />
@@ -704,7 +704,7 @@ const KioskView = () => {
             <DialogFooter>
               <div className="w-full">
                 <Button className="w-full bg-kiosk-primary" onClick={handleAddToCart}>
-                  Add to Order - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
+                  Ajouter à la commande - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
                 </Button>
               </div>
             </DialogFooter>
