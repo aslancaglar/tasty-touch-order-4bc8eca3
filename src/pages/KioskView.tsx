@@ -604,7 +604,7 @@ const KioskView = () => {
                   <div className="p-4">
                     <div className="flex justify-between">
                       <h3 className="font-bold text-lg">{item.name}</h3>
-                      <p className="font-bold">${parseFloat(item.price.toString()).toFixed(2)}</p>
+                      <p className="font-bold">{parseFloat(item.price.toString()).toFixed(2)} €</p>
                     </div>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                     <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
@@ -653,7 +653,7 @@ const KioskView = () => {
                             </div>
                             <span>{choice.name}</span>
                           </div>
-                          {choice.price && choice.price > 0 && <span>+${parseFloat(choice.price.toString()).toFixed(2)}</span>}
+                          {choice.price && choice.price > 0 && <span>+{parseFloat(choice.price.toString()).toFixed(2)} €</span>}
                         </div>;
               })}
                   </div>
@@ -675,7 +675,7 @@ const KioskView = () => {
                 return <div key={topping.id} className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300">
                           <span>{topping.name}</span>
                           <div className="flex items-center gap-2">
-                            {topping.price > 0 && <span className="text-sm">+${parseFloat(topping.price.toString()).toFixed(2)}</span>}
+                            {topping.price > 0 && <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} €</span>}
                             <Button variant="outline" size="icon" className={`h-8 w-8 rounded-full ${isSelected ? 'bg-kiosk-primary text-white border-kiosk-primary' : ''}`} onClick={() => handleToggleTopping(category.id, topping.id)}>
                               {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                             </Button>
@@ -704,7 +704,7 @@ const KioskView = () => {
             <DialogFooter>
               <div className="w-full">
                 <Button className="w-full bg-kiosk-primary" onClick={handleAddToCart}>
-                  Add to Order - ${(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)}
+                  Add to Order - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
                 </Button>
               </div>
             </DialogFooter>
