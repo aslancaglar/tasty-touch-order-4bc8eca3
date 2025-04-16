@@ -502,7 +502,7 @@ const KioskView = () => {
     }
   };
 
-  const toggleCart = () => {
+  const handleToggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
 
@@ -514,6 +514,7 @@ const KioskView = () => {
 
   const handleShowOrderSummary = () => {
     setIsCartOpen(false); // Hide cart when showing order summary
+    setShowOrderSummary(true); // Show the order summary popup
   };
 
   if (loading && !restaurant) {
@@ -627,11 +628,11 @@ const KioskView = () => {
         </div>
       </div>
 
-      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} />}
+      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={handleToggleCart} />}
 
       <Cart cart={cart} 
           isOpen={isCartOpen} 
-          onToggleOpen={toggleCart} 
+          onToggleOpen={handleToggleCart} 
           onUpdateQuantity={handleUpdateCartItemQuantity} 
           onRemoveItem={handleRemoveCartItem} 
           onClearCart={() => setCart([])} 
