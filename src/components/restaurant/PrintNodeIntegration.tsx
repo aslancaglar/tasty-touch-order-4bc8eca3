@@ -48,7 +48,9 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           .single();
         
         if (error) {
-          console.error("Error fetching print config:", error);
+          if (error.code !== 'PGRST116') { // Not found error
+            console.error("Error fetching print config:", error);
+          }
           return;
         }
         
@@ -161,36 +163,65 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   };
 
   const fetchPrintersFromAPI = async (key: string): Promise<Printer[]> => {
-    // Mock implementation for PrintNode API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (key && key.length > 10) {
-      return [
-        {
-          id: "printer1",
-          name: "Printer 1",
-          description: "Front Counter",
-          state: "online",
-          selected: false
-        },
-        {
-          id: "printer2",
-          name: "Printer 2",
-          description: "Kitchen",
-          state: "online",
-          selected: false
-        },
-        {
-          id: "printer3",
-          name: "Printer 3",
-          description: "Bar",
-          state: "offline",
-          selected: false
-        }
-      ];
+    if (!key || key.length < 10) {
+      return [];
     }
     
-    return [];
+    try {
+      // Make actual API call to PrintNode
+      const response = await fetch('https://api.printnode.com/printers', {
+        headers: {
+          'Authorization': `Basic ${btoa(key + ':')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`PrintNode API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Transform PrintNode response to our Printer interface
+      return data.map((printer: any) => ({
+        id: printer.id.toString(),
+        name: printer.name,
+        description: printer.description || (printer.computer ? printer.computer.name : undefined),
+        state: printer.state === "online" ? "online" : "offline",
+        selected: false
+      }));
+    } catch (error) {
+      console.error("Error calling PrintNode API:", error);
+      
+      // Fallback to mock data during development or when API fails
+      if (process.env.NODE_ENV === 'development') {
+        console.log("Using mock printer data in development");
+        return [
+          {
+            id: "printer1",
+            name: "Printer 1",
+            description: "Front Counter",
+            state: "online",
+            selected: false
+          },
+          {
+            id: "printer2",
+            name: "Printer 2",
+            description: "Kitchen",
+            state: "online",
+            selected: false
+          },
+          {
+            id: "printer3",
+            name: "Printer 3",
+            description: "Bar",
+            state: "offline",
+            selected: false
+          }
+        ];
+      }
+      
+      return [];
+    }
   };
 
   const togglePrinterSelection = async (printerId: string) => {
@@ -237,18 +268,56 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     setIsTesting({ ...isTesting, [printerId]: true });
     
     try {
-      // Simulate sending a test print
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const printer = printers.find(p => p.id === printerId);
+      
+      if (!printer) {
+        throw new Error("Printer not found");
+      }
+      
+      if (printer.state === "offline") {
+        throw new Error("Cannot print to offline printer");
+      }
+      
+      // Create a test receipt
+      const testReceipt = {
+        title: "Test Receipt",
+        content: [
+          { type: "text", value: "Test Receipt", style: "header" },
+          { type: "text", value: new Date().toLocaleString(), style: "normal" },
+          { type: "text", value: "This is a test receipt from your restaurant's kiosk system", style: "normal" },
+          { type: "text", value: "If you can read this, printing is working correctly!", style: "bold" }
+        ]
+      };
+      
+      // In a real implementation, make an API call to PrintNode
+      const response = await fetch('https://api.printnode.com/printjobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${btoa(apiKey + ':')}`
+        },
+        body: JSON.stringify({
+          printer: printerId,
+          title: "Test Print",
+          contentType: "raw_base64",
+          content: btoa(JSON.stringify(testReceipt)),
+          source: "Restaurant Kiosk"
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error sending print job: ${response.status}`);
+      }
       
       toast({
         title: "Test Print Sent",
-        description: "Test print sent to printer",
+        description: `Test print sent to ${printer.name}`,
       });
     } catch (error) {
       console.error("Error testing printer:", error);
       toast({
         title: "Error",
-        description: "Error sending test print",
+        description: "Error sending test print: " + (error instanceof Error ? error.message : "Unknown error"),
         variant: "destructive"
       });
     } finally {
