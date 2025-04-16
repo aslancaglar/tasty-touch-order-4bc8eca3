@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Check, ArrowRight, Loader2, Plus, Minus, ChevronDown, X } from "lucide-react";
@@ -17,7 +17,6 @@ interface CartProps {
   onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
   onPlaceOrder: () => void;
-  onShowOrderSummary: () => void;
   placingOrder: boolean;
   orderPlaced: boolean;
   calculateSubtotal: () => number;
@@ -40,7 +39,6 @@ const Cart: React.FC<CartProps> = ({
   onRemoveItem,
   onClearCart,
   onPlaceOrder,
-  onShowOrderSummary,
   placingOrder,
   orderPlaced,
   calculateSubtotal,
@@ -53,26 +51,9 @@ const Cart: React.FC<CartProps> = ({
 }) => {
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
-  const cartRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Handle clicks outside of the cart
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isOpen && cartRef.current && !cartRef.current.contains(event.target as Node)) {
-        onToggleOpen(); // Close the cart
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen, onToggleOpen]);
 
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
-    // Use the parent function to close the cart
-    onShowOrderSummary();
   };
 
   const handleCloseOrderSummary = () => {
@@ -100,7 +81,7 @@ const Cart: React.FC<CartProps> = ({
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{ maxHeight: "60vh" }} ref={cartRef}>
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{ maxHeight: "60vh" }}>
         <div className="w-full">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center">
