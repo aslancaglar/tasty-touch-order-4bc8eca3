@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -91,22 +90,22 @@ const RestaurantManage = () => {
         <Button variant="ghost" asChild className="mr-4">
           <Link to="/restaurants">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Restaurants
+            Retour aux Restaurants
           </Link>
         </Button>
         <div>
           <h1 className="text-3xl font-bold">{restaurant.name}</h1>
-          <p className="text-muted-foreground">{restaurant.location || "No location set"}</p>
+          <p className="text-muted-foreground">{restaurant.location || "Aucun emplacement défini"}</p>
         </div>
       </div>
       
       <Card className="mb-8">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle>Restaurant Management</CardTitle>
+            <CardTitle>Gestion du Restaurant</CardTitle>
             <Button variant="outline" asChild>
               <Link to={`/r/${restaurant.slug}`} target="_blank">
-                View Kiosk
+                Voir Kiosk
               </Link>
             </Button>
           </div>
@@ -120,15 +119,15 @@ const RestaurantManage = () => {
               </TabsTrigger>
               <TabsTrigger value="toppings" className="flex items-center">
                 <Cherry className="mr-2 h-4 w-4" />
-                Toppings
+                Suppléments
               </TabsTrigger>
               <TabsTrigger value="orders" className="flex items-center">
                 <Receipt className="mr-2 h-4 w-4" />
-                Orders
+                Commandes
               </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center">
                 <Settings className="mr-2 h-4 w-4" />
-                Settings
+                Paramètres
               </TabsTrigger>
             </TabsList>
             
