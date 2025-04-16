@@ -439,6 +439,41 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurant_print_config: {
+        Row: {
+          api_key: string | null
+          configured_printers: Json | null
+          created_at: string | null
+          id: string
+          restaurant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          configured_printers?: Json | null
+          created_at?: string | null
+          id?: string
+          restaurant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          configured_printers?: Json | null
+          created_at?: string | null
+          id?: string
+          restaurant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_print_config_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: true
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurant_printers: {
         Row: {
           created_at: string | null

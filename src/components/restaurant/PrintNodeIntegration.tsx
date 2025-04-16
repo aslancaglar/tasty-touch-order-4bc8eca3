@@ -22,6 +22,13 @@ interface PrintNodeIntegrationProps {
   restaurantId: string;
 }
 
+interface PrintConfig {
+  id?: string;
+  restaurant_id: string;
+  api_key?: string | null;
+  configured_printers?: string[];
+}
+
 const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const [apiKey, setApiKey] = useState("");
   const [isConfigured, setIsConfigured] = useState(false);
@@ -32,20 +39,16 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if API key is already configured for this restaurant
     const fetchApiConfig = async () => {
       try {
-        // Fetch API key from database
         const { data, error } = await supabase
           .from('restaurant_print_config')
-          .select('api_key, configured_printers')
+          .select('*')
           .eq('restaurant_id', restaurantId)
           .single();
         
         if (error) {
-          if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-            console.error("Error fetching print config:", error);
-          }
+          console.error("Error fetching print config:", error);
           return;
         }
         
@@ -53,8 +56,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           setApiKey(data.api_key || "");
           setIsConfigured(!!data.api_key);
           
-          // If we have configured printers, fetch their status
-          if (data.configured_printers && data.api_key) {
+          if (data.api_key) {
             fetchPrinters(data.api_key);
           }
         }
@@ -70,27 +72,27 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     try {
       setIsFetching(true);
       
-      // First check if the API key is valid by fetching printers
       const printerData = await fetchPrintersFromAPI(apiKey);
       
       if (printerData.length === 0) {
         toast({
           title: "API Key Invalid",
-          description: "Impossible de récupérer les imprimantes avec cette clé API",
+          description: "Unable to retrieve printers with this API key",
           variant: "destructive"
         });
         setIsFetching(false);
         return;
       }
       
-      // Save API key to database
+      const printConfig: PrintConfig = {
+        restaurant_id: restaurantId,
+        api_key: apiKey,
+        configured_printers: []
+      };
+
       const { error } = await supabase
         .from('restaurant_print_config')
-        .upsert({
-          restaurant_id: restaurantId,
-          api_key: apiKey,
-          configured_printers: []
-        }, {
+        .upsert(printConfig, {
           onConflict: 'restaurant_id'
         });
       
@@ -103,13 +105,13 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       toast({
         title: "API Key Saved",
-        description: "Clé API PrintNode enregistrée avec succès",
+        description: "PrintNode API key saved successfully",
       });
     } catch (error) {
       console.error("Error saving API key:", error);
       toast({
         title: "Error",
-        description: "Erreur lors de l'enregistrement de la clé API",
+        description: "Error saving API key",
         variant: "destructive"
       });
     } finally {
@@ -123,7 +125,6 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       const printerData = await fetchPrintersFromAPI(key);
       
-      // Get selected printers from database
       const { data: configData, error: configError } = await supabase
         .from('restaurant_print_config')
         .select('configured_printers')
@@ -136,7 +137,6 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       const selectedPrinterIds = (configData?.configured_printers || []) as string[];
       
-      // Mark previously selected printers
       const printersWithSelection = printerData.map(printer => ({
         ...printer,
         selected: selectedPrinterIds.includes(printer.id)
@@ -146,13 +146,13 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       toast({
         title: "Printers Fetched",
-        description: `${printerData.length} imprimantes récupérées`,
+        description: `${printerData.length} printers retrieved`,
       });
     } catch (error) {
       console.error("Error fetching printers:", error);
       toast({
         title: "Error",
-        description: "Erreur lors de la récupération des imprimantes",
+        description: "Error fetching printers",
         variant: "destructive"
       });
     } finally {
@@ -161,13 +161,9 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   };
 
   const fetchPrintersFromAPI = async (key: string): Promise<Printer[]> => {
-    // This is a mock implementation
-    // In a real application, you would make an API call to PrintNode
-    
-    // Simulate API call delay
+    // Mock implementation for PrintNode API
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Return mock data
     if (key && key.length > 10) {
       return [
         {
@@ -207,7 +203,6 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     
     setPrinters(updatedPrinters);
     
-    // Save selected printers to database
     try {
       const selectedPrinterIds = updatedPrinters
         .filter(p => p.selected)
@@ -226,20 +221,19 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       toast({
         title: "Printers Updated",
-        description: "Configuration des imprimantes mise à jour",
+        description: "Printer configuration updated",
       });
     } catch (error) {
       console.error("Error saving printer selection:", error);
       toast({
         title: "Error",
-        description: "Erreur lors de la sauvegarde de la sélection d'imprimantes",
+        description: "Error saving printer selection",
         variant: "destructive"
       });
     }
   };
 
   const testPrinter = async (printerId: string) => {
-    // Set testing state for this printer
     setIsTesting({ ...isTesting, [printerId]: true });
     
     try {
@@ -248,13 +242,13 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       toast({
         title: "Test Print Sent",
-        description: "Impression de test envoyée à l'imprimante",
+        description: "Test print sent to printer",
       });
     } catch (error) {
       console.error("Error testing printer:", error);
       toast({
         title: "Error",
-        description: "Erreur lors de l'envoi de l'impression de test",
+        description: "Error sending test print",
         variant: "destructive"
       });
     } finally {
@@ -269,14 +263,14 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          <Label htmlFor="api-key">Clé API PrintNode</Label>
+          <Label htmlFor="api-key">PrintNode API Key</Label>
           <div className="flex gap-2">
             <Input 
               id="api-key" 
               type="password"
               value={apiKey} 
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Entrez votre clé API PrintNode"
+              placeholder="Enter your PrintNode API key"
               disabled={isFetching}
               className="flex-1"
             />
@@ -285,11 +279,11 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
               disabled={isFetching || !apiKey}
               className="bg-kiosk-primary"
             >
-              {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}
+              {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            Obtenir une clé API en créant un compte sur 
+            Get an API key by creating an account on 
             <a href="https://www.printnode.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
               PrintNode.com
             </a>
@@ -299,7 +293,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         {isConfigured && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-md font-medium">Imprimantes Disponibles</h3>
+              <h3 className="text-md font-medium">Available Printers</h3>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -307,7 +301,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
                 disabled={isFetching}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                Actualiser
+                Refresh
               </Button>
             </div>
             
@@ -349,7 +343,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
                         ) : (
                           <XCircle className="h-3 w-3 mr-1" />
                         )}
-                        {printer.state === 'online' ? 'En ligne' : 'Hors ligne'}
+                        {printer.state === 'online' ? 'Online' : 'Offline'}
                       </Badge>
                     </div>
                     <Button 
@@ -363,14 +357,14 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
                       ) : (
                         <Printer className="h-4 w-4 mr-2" />
                       )}
-                      Tester
+                      Test
                     </Button>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-6 border rounded-md">
-                <p className="text-muted-foreground">Aucune imprimante trouvée</p>
+                <p className="text-muted-foreground">No printers found</p>
               </div>
             )}
           </div>
