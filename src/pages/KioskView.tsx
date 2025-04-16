@@ -52,6 +52,7 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [showOrderSummary, setShowOrderSummary] = useState(false);
   const {
     toast
   } = useToast();
@@ -95,9 +96,7 @@ const KioskView = () => {
   }, [restaurantSlug, navigate, toast]);
 
   useEffect(() => {
-    if (cart.length > 0) {
-      setIsCartOpen(true);
-    } else {
+    if (cart.length === 0) {
       setIsCartOpen(false);
     }
   }, [cart]);
@@ -392,7 +391,7 @@ const KioskView = () => {
     
     setCart(prev => [newItem, ...prev]);
     setSelectedItem(null);
-    setIsCartOpen(true);
+    setIsCartOpen(false);
     toast({
       title: "Ajouté au panier",
       description: `${quantity}x ${selectedItem.name} ajouté à votre commande`
@@ -507,6 +506,12 @@ const KioskView = () => {
     setIsCartOpen(!isCartOpen);
   };
 
+  const handleOutsideClick = (e: React.MouseEvent) => {
+    if (isCartOpen && e.target === e.currentTarget) {
+      setIsCartOpen(false);
+    }
+  };
+
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -547,7 +552,7 @@ const KioskView = () => {
   const cartIsEmpty = cart.length === 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col" onClick={handleOutsideClick}>
       <div className="h-48 bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
     }}>
@@ -608,7 +613,7 @@ const KioskView = () => {
                     </div>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                     <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
-                      Ajouter à la commande
+                      Ajouter au panier
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
@@ -620,7 +625,23 @@ const KioskView = () => {
 
       {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} />}
 
-      <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} />
+      <Cart cart={cart} 
+          isOpen={isCartOpen} 
+          onToggleOpen={toggleCart} 
+          onUpdateQuantity={handleUpdateCartItemQuantity} 
+          onRemoveItem={handleRemoveCartItem} 
+          onClearCart={() => setCart([])} 
+          onPlaceOrder={handlePlaceOrder}
+          onShowOrderSummary={handleShowOrderSummary}
+          placingOrder={placingOrder} 
+          orderPlaced={orderPlaced} 
+          calculateSubtotal={calculateSubtotal} 
+          calculateTax={calculateTax} 
+          getFormattedOptions={getFormattedOptions} 
+          getFormattedToppings={getFormattedToppings} 
+          restaurant={restaurant} 
+          orderType={orderType} 
+          tableNumber={tableNumber} />
 
       {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">

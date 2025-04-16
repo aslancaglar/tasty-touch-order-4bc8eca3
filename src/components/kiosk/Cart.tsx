@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Check, ArrowRight, Loader2, Plus, Minus, ChevronDown, X } from "lucide-react";
@@ -17,6 +17,7 @@ interface CartProps {
   onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
   onPlaceOrder: () => void;
+  onShowOrderSummary: () => void;
   placingOrder: boolean;
   orderPlaced: boolean;
   calculateSubtotal: () => number;
@@ -39,6 +40,7 @@ const Cart: React.FC<CartProps> = ({
   onRemoveItem,
   onClearCart,
   onPlaceOrder,
+  onShowOrderSummary,
   placingOrder,
   orderPlaced,
   calculateSubtotal,
@@ -54,6 +56,8 @@ const Cart: React.FC<CartProps> = ({
 
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
+    // Use the parent function to close the cart
+    onShowOrderSummary();
   };
 
   const handleCloseOrderSummary = () => {
