@@ -188,7 +188,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     });
     
     // Thermal printer width (typically 48 characters for 80mm printer)
-    const lineWidth = 48;
+    const lineWidth = 28;
     
     // Helper function to center text
     const centerText = (text: string) => {
