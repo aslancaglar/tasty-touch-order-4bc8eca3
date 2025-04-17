@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -278,16 +277,28 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         throw new Error("Cannot print to offline printer");
       }
       
-      // Create a test receipt
-      const testReceipt = {
-        title: "Test Receipt",
-        content: [
-          { type: "text", value: "Test Receipt", style: "header" },
-          { type: "text", value: new Date().toLocaleString(), style: "normal" },
-          { type: "text", value: "This is a test receipt from your restaurant's kiosk system", style: "normal" },
-          { type: "text", value: "If you can read this, printing is working correctly!", style: "bold" }
-        ]
-      };
+      // Create a test receipt in plain text format for thermal printer
+      const testReceipt = 
+`
+==================================
+        TEST RECEIPT
+==================================
+${new Date().toLocaleString()}
+
+This is a test receipt from your
+restaurant's kiosk system.
+
+If you can read this, printing
+is working correctly!
+
+==================================
+        PRINT TEST PASSED
+==================================
+
+`;
+
+      // Properly encode for PrintNode - fix for non-Latin1 characters
+      const encodedContent = btoa(unescape(encodeURIComponent(testReceipt)));
       
       // In a real implementation, make an API call to PrintNode
       const response = await fetch('https://api.printnode.com/printjobs', {
@@ -297,16 +308,18 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           'Authorization': `Basic ${btoa(apiKey + ':')}`
         },
         body: JSON.stringify({
-          printer: printerId,
+          printer: parseInt(printerId, 10) || printerId, // Handle numeric IDs
           title: "Test Print",
           contentType: "raw_base64",
-          content: btoa(JSON.stringify(testReceipt)),
+          content: encodedContent,
           source: "Restaurant Kiosk"
         })
       });
       
       if (!response.ok) {
-        throw new Error(`Error sending print job: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`PrintNode API error: ${response.status}`, errorText);
+        throw new Error(`Error sending print job: ${response.status} - ${errorText}`);
       }
       
       toast({

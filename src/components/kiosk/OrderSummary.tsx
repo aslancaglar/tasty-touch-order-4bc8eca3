@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -126,8 +125,15 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       // Create the receipt content as raw text for thermal printer
       const receiptContent = generatePrintNodeReceipt(orderData);
       
+      // Properly encode the receipt content for PrintNode - fix for non-Latin1 characters
+      const encodedContent = btoa(unescape(encodeURIComponent(receiptContent)));
+      
+      console.log("Sending receipt to PrintNode printers:", printerIds);
+      
       // Send to each configured printer
       for (const printerId of printerIds) {
+        console.log(`Sending to printer ID: ${printerId}`);
+        
         const response = await fetch('https://api.printnode.com/printjobs', {
           method: 'POST',
           headers: {
@@ -135,20 +141,22 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             'Authorization': `Basic ${btoa(apiKey + ':')}`
           },
           body: JSON.stringify({
-            printer: printerId,
+            printer: parseInt(printerId, 10) || printerId, // Handle numeric IDs
             title: `Order #${orderData.orderNumber}`,
             contentType: "raw_base64",
-            content: btoa(receiptContent),
+            content: encodedContent,
             source: "Restaurant Kiosk"
           })
         });
         
         if (!response.ok) {
-          throw new Error(`Error sending print job: ${response.status}`);
+          const errorText = await response.text();
+          console.error(`PrintNode API error: ${response.status}`, errorText);
+          throw new Error(`Error sending print job: ${response.status} - ${errorText}`);
+        } else {
+          console.log(`PrintNode receipt sent successfully to printer ${printerId}`);
         }
       }
-      
-      console.log(`Receipt sent to ${printerIds.length} printer(s)`);
     } catch (error) {
       console.error("Error sending receipt to PrintNode:", error);
     }
