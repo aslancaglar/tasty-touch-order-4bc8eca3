@@ -1,9 +1,13 @@
+
 import React from "react";
-import { CartItem, Restaurant } from "@/types/database-types";
+import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
 
 interface OrderReceiptProps {
-  restaurant: Partial<Restaurant>;
+  restaurant: {
+    name: string;
+    location?: string;
+  };
   cart: CartItem[];
   orderNumber: string;
   tableNumber?: string | null;

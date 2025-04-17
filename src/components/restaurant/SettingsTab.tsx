@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { printReceipt } from "@/utils/print-utils";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
-import { supabase } from "@/integrations/supabase/client";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
@@ -26,36 +26,13 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
   const [image, setImage] = useState(restaurant.image_url || "");
   const [isSaving, setIsSaving] = useState(false);
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   
   const { toast } = useToast();
-
-  useEffect(() => {
-    const loadPrintSettings = async () => {
-      try {
-        setIsLoadingSettings(true);
-        const { data, error } = await supabase
-          .from('restaurant_print_config')
-          .select('browser_printing_enabled')
-          .eq('restaurant_id', restaurant.id)
-          .maybeSingle();
-        
-        if (!error && data) {
-          setBrowserPrintEnabled(data.browser_printing_enabled !== false);
-        }
-      } catch (error) {
-        console.error("Error loading print settings:", error);
-      } finally {
-        setIsLoadingSettings(false);
-      }
-    };
-    
-    loadPrintSettings();
-  }, [restaurant.id]);
 
   const handleSaveRestaurantInfo = () => {
     setIsSaving(true);
     
+    // Simulate saving
     setTimeout(() => {
       setIsSaving(false);
       toast({
@@ -65,44 +42,18 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
     }, 1000);
   };
 
-  const handleBrowserPrintToggle = async (enabled: boolean) => {
-    setBrowserPrintEnabled(enabled);
-    
-    try {
-      const { error } = await supabase
-        .from('restaurant_print_config')
-        .upsert({
-          restaurant_id: restaurant.id,
-          browser_printing_enabled: enabled
-        }, {
-          onConflict: 'restaurant_id'
-        });
-      
-      if (error) {
-        throw error;
-      }
-      
-      toast({
-        title: enabled ? "Browser Printing Enabled" : "Browser Printing Disabled",
-        description: enabled ? "Receipts will be printed via browser" : "Receipts will not be printed via browser",
-      });
-    } catch (error) {
-      console.error("Error saving browser print setting:", error);
-      toast({
-        title: "Error",
-        description: "Error saving browser printing setting",
-        variant: "destructive"
-      });
-      setBrowserPrintEnabled(!enabled);
-    }
-  };
-
   const handleTestPrint = () => {
     if (browserPrintEnabled) {
+      // Generate a test receipt
       const testReceipt = document.getElementById("receipt-content");
       if (testReceipt) {
+        // Make it visible for printing
         testReceipt.style.display = "block";
+        
+        // Print using browser
         printReceipt("receipt-content");
+        
+        // Hide it again after printing
         setTimeout(() => {
           testReceipt.style.display = "none";
         }, 500);
@@ -198,15 +149,11 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
                     Activer l'impression via le navigateur
                   </p>
                 </div>
-                {isLoadingSettings ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                ) : (
-                  <Switch 
-                    id="browser-print"
-                    checked={browserPrintEnabled}
-                    onCheckedChange={handleBrowserPrintToggle}
-                  />
-                )}
+                <Switch 
+                  id="browser-print"
+                  checked={browserPrintEnabled}
+                  onCheckedChange={setBrowserPrintEnabled}
+                />
               </div>
               
               <div className="flex justify-end">
@@ -220,6 +167,7 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
           
           <PrintNodeIntegration restaurantId={restaurant.id} />
           
+          {/* Hidden test receipt for browser printing */}
           <div id="receipt-content" className="receipt" style={{ display: "none" }}>
             <div className="header">
               <div className="logo">{restaurant.name}</div>

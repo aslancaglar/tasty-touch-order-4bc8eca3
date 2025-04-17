@@ -1,12 +1,12 @@
+
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check } from "lucide-react";
-import { CartItem, Restaurant } from "@/types/database-types";
+import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
-import { printReceipt, sendToPrintNode } from "@/utils/print-utils";
-import { supabase } from "@/integrations/supabase/client";
+import { printReceipt } from "@/utils/print-utils";
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -18,7 +18,10 @@ interface OrderSummaryProps {
   calculateTax: () => number;
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
-  restaurant?: Partial<Restaurant> | null;
+  restaurant?: {
+    name: string;
+    location?: string;
+  } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
 }
@@ -41,71 +44,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const tax = calculateTax();
   const total = subtotal + tax;
   
-  const handleConfirmOrder = async () => {
-    // First send to PrintNode printers if configured
-    if (restaurant && restaurant.id) {
-      try {
-        // Get restaurant print config
-        const { data: printConfig } = await supabase
-          .from('restaurant_print_config')
-          .select('api_key, configured_printers')
-          .eq('restaurant_id', restaurant.id)
-          .maybeSingle();
-          
-        if (printConfig && printConfig.api_key && printConfig.configured_printers && Array.isArray(printConfig.configured_printers) && printConfig.configured_printers.length > 0) {
-          // Get browser printing configuration
-          const { data: browserPrintConfig } = await supabase
-            .from('restaurant_print_config')
-            .select('browser_printing_enabled')
-            .eq('restaurant_id', restaurant.id)
-            .maybeSingle();
-          
-          const browserPrintingEnabled = browserPrintConfig?.browser_printing_enabled !== false;
-          
-          // Generate order data for receipt
-          const orderNumber = Date.now().toString().slice(-6);
-          const receiptData = {
-            restaurant: restaurant,
-            orderNumber: orderNumber,
-            tableNumber: tableNumber,
-            orderType: orderType,
-            items: cart.map(item => ({
-              name: item.menuItem.name,
-              quantity: item.quantity,
-              price: item.itemPrice,
-              options: getFormattedOptions(item).split(', ').filter(Boolean),
-              toppings: getFormattedToppings(item).split(', ').filter(Boolean)
-            })),
-            subtotal: subtotal,
-            tax: tax,
-            total: total,
-            date: new Date().toLocaleString()
-          };
-          
-          // Print to PrintNode printers
-          if (Array.isArray(printConfig.configured_printers)) {
-            for (const printerId of printConfig.configured_printers) {
-              await sendToPrintNode(printerId, receiptData, printConfig.api_key);
-            }
-          }
-          
-          // Also print via browser if enabled
-          if (browserPrintingEnabled) {
-            printReceipt("receipt-content");
-          }
-        } else {
-          // Fallback to browser printing if PrintNode is not configured
-          printReceipt("receipt-content");
-        }
-      } catch (error) {
-        console.error("Error printing receipt:", error);
-        // Fallback to browser printing on error
-        printReceipt("receipt-content");
-      }
-    }
-    
-    // Continue with placing the order
+  const handleConfirmOrder = () => {
     onPlaceOrder();
+    // We'll let the onPlaceOrder function handle what happens after order is placed
+    // This fixes the issue with multiple popups
   };
 
   const orderNumber = Date.now().toString().slice(-6); // Simple order number generation
