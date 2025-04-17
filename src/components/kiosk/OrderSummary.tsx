@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -7,6 +7,7 @@ import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ interface OrderSummaryProps {
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
   restaurant?: {
+    id?: string;
     name: string;
     location?: string;
   } | null;
@@ -44,13 +46,200 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const tax = calculateTax();
   const total = subtotal + tax;
   
-  const handleConfirmOrder = () => {
-    onPlaceOrder();
-    // We'll let the onPlaceOrder function handle what happens after order is placed
-    // This fixes the issue with multiple popups
-  };
-
+  // Generate a unique order number
   const orderNumber = Date.now().toString().slice(-6); // Simple order number generation
+
+  const handleConfirmOrder = async () => {
+    onPlaceOrder();
+    
+    // After order is placed successfully, print receipt
+    if (restaurant?.id) {
+      try {
+        // Check if PrintNode is configured for this restaurant
+        const { data: printConfig, error } = await supabase
+          .from('restaurant_print_config')
+          .select('api_key, configured_printers, browser_printing_enabled')
+          .eq('restaurant_id', restaurant.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching print configuration:", error);
+          return;
+        }
+        
+        // Print receipt via browser printing if enabled or if no PrintNode config
+        if (printConfig?.browser_printing_enabled || !printConfig?.api_key) {
+          // Wait a bit to ensure content is rendered
+          setTimeout(() => {
+            printReceipt('receipt-content');
+          }, 500);
+        }
+        
+        // If PrintNode is configured and there are selected printers, send to PrintNode
+        if (printConfig?.api_key && printConfig?.configured_printers) {
+          const configuredPrinters = Array.isArray(printConfig.configured_printers) 
+            ? printConfig.configured_printers 
+            : [];
+            
+          if (configuredPrinters.length > 0) {
+            await sendReceiptToPrintNode(
+              printConfig.api_key,
+              configuredPrinters,
+              {
+                restaurant,
+                cart,
+                orderNumber,
+                tableNumber,
+                orderType,
+                subtotal,
+                tax,
+                total
+              }
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error during receipt printing:", error);
+      }
+    }
+  };
+  
+  // Function to send receipt to PrintNode
+  const sendReceiptToPrintNode = async (
+    apiKey: string,
+    printerIds: string[],
+    orderData: {
+      restaurant: typeof restaurant;
+      cart: CartItem[];
+      orderNumber: string;
+      tableNumber?: string | null;
+      orderType: "dine-in" | "takeaway" | null;
+      subtotal: number;
+      tax: number;
+      total: number;
+    }
+  ) => {
+    try {
+      // Create the receipt content as raw text for thermal printer
+      const receiptContent = generatePrintNodeReceipt(orderData);
+      
+      // Send to each configured printer
+      for (const printerId of printerIds) {
+        const response = await fetch('https://api.printnode.com/printjobs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${btoa(apiKey + ':')}`
+          },
+          body: JSON.stringify({
+            printer: printerId,
+            title: `Order #${orderData.orderNumber}`,
+            contentType: "raw_base64",
+            content: btoa(receiptContent),
+            source: "Restaurant Kiosk"
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Error sending print job: ${response.status}`);
+        }
+      }
+      
+      console.log(`Receipt sent to ${printerIds.length} printer(s)`);
+    } catch (error) {
+      console.error("Error sending receipt to PrintNode:", error);
+    }
+  };
+  
+  // Generate plain text receipt for PrintNode
+  const generatePrintNodeReceipt = (orderData: {
+    restaurant: typeof restaurant;
+    cart: CartItem[];
+    orderNumber: string;
+    tableNumber?: string | null;
+    orderType: "dine-in" | "takeaway" | null;
+    subtotal: number;
+    tax: number;
+    total: number;
+  }): string => {
+    const { restaurant, cart, orderNumber, tableNumber, orderType, subtotal, tax, total } = orderData;
+    const now = new Date();
+    const date = now.toLocaleDateString();
+    const time = now.toLocaleTimeString();
+    
+    // Helper function to center text in a line of specified width
+    const centerText = (text: string, width: number = 40) => {
+      const padding = Math.max(0, width - text.length) / 2;
+      return ' '.repeat(Math.floor(padding)) + text + ' '.repeat(Math.ceil(padding));
+    };
+    
+    // Helper function to align text left and right in a line
+    const alignLeftRight = (left: string, right: string, width: number = 40) => {
+      const padding = Math.max(0, width - left.length - right.length);
+      return left + ' '.repeat(padding) + right;
+    };
+    
+    let receipt = '';
+    
+    // Header
+    receipt += centerText(restaurant?.name || 'Restaurant') + '\n';
+    if (restaurant?.location) {
+      receipt += centerText(restaurant.location) + '\n';
+    }
+    receipt += centerText(`${date} ${time}`) + '\n';
+    receipt += centerText(`Order #${orderNumber}`) + '\n';
+    
+    if (orderType === 'dine-in' && tableNumber) {
+      receipt += centerText(`Table: ${tableNumber}`) + '\n';
+    } else if (orderType === 'takeaway') {
+      receipt += centerText('TAKEAWAY') + '\n';
+    }
+    
+    receipt += '\n' + '-'.repeat(40) + '\n\n';
+    
+    // Items
+    cart.forEach(item => {
+      receipt += alignLeftRight(
+        `${item.quantity}x ${item.menuItem.name}`, 
+        `${parseFloat(item.itemPrice.toString()).toFixed(2)} €`
+      ) + '\n';
+      
+      // Options
+      const options = getFormattedOptions(item).split(', ').filter(Boolean);
+      options.forEach(option => {
+        receipt += alignLeftRight(`  + ${option}`, '') + '\n';
+      });
+      
+      // Toppings
+      const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
+      toppings.forEach(topping => {
+        receipt += alignLeftRight(`  + ${topping}`, '') + '\n';
+      });
+      
+      if (options.length > 0 || toppings.length > 0) {
+        receipt += '\n';
+      }
+    });
+    
+    receipt += '\n' + '-'.repeat(40) + '\n\n';
+    
+    // Totals
+    receipt += alignLeftRight('Subtotal:', `${subtotal.toFixed(2)} €`) + '\n';
+    receipt += alignLeftRight('TVA (10%):', `${tax.toFixed(2)} €`) + '\n';
+    receipt += '\n';
+    receipt += alignLeftRight('TOTAL:', `${total.toFixed(2)} €`) + '\n';
+    
+    receipt += '\n' + '-'.repeat(40) + '\n\n';
+    
+    // Footer
+    receipt += centerText('Thank you for your order!') + '\n';
+    receipt += centerText('Please come again!') + '\n';
+    
+    // Add extra space at the end for paper cutting
+    receipt += '\n\n\n\n';
+    
+    return receipt;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

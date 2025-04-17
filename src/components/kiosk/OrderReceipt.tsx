@@ -5,6 +5,7 @@ import { format } from "date-fns";
 
 interface OrderReceiptProps {
   restaurant: {
+    id?: string;
     name: string;
     location?: string;
   };
