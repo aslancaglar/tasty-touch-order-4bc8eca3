@@ -77,14 +77,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         
         // If PrintNode is configured and there are selected printers, send to PrintNode
         if (printConfig?.api_key && printConfig?.configured_printers) {
-          const configuredPrinters = Array.isArray(printConfig.configured_printers) 
+          const printerArray = Array.isArray(printConfig.configured_printers) 
             ? printConfig.configured_printers 
             : [];
             
-          if (configuredPrinters.length > 0) {
+          // Convert any non-string printer IDs to strings
+          const printerIds = printerArray.map(id => String(id));
+            
+          if (printerIds.length > 0) {
             await sendReceiptToPrintNode(
               printConfig.api_key,
-              configuredPrinters,
+              printerIds,
               {
                 restaurant,
                 cart,
