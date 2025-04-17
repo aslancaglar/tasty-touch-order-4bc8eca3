@@ -442,6 +442,7 @@ export type Database = {
       restaurant_print_config: {
         Row: {
           api_key: string | null
+          browser_printing_enabled: boolean | null
           configured_printers: Json | null
           created_at: string | null
           id: string
@@ -450,6 +451,7 @@ export type Database = {
         }
         Insert: {
           api_key?: string | null
+          browser_printing_enabled?: boolean | null
           configured_printers?: Json | null
           created_at?: string | null
           id?: string
@@ -458,6 +460,7 @@ export type Database = {
         }
         Update: {
           api_key?: string | null
+          browser_printing_enabled?: boolean | null
           configured_printers?: Json | null
           created_at?: string | null
           id?: string

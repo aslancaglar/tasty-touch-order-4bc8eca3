@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +31,6 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load browser printing setting from the database
     const loadPrintSettings = async () => {
       try {
         setIsLoadingSettings(true);
@@ -40,10 +38,9 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
           .from('restaurant_print_config')
           .select('browser_printing_enabled')
           .eq('restaurant_id', restaurant.id)
-          .single();
+          .maybeSingle();
         
         if (!error && data) {
-          // If the setting exists, use it, otherwise default to true
           setBrowserPrintEnabled(data.browser_printing_enabled !== false);
         }
       } catch (error) {
@@ -59,7 +56,6 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
   const handleSaveRestaurantInfo = () => {
     setIsSaving(true);
     
-    // Simulate saving
     setTimeout(() => {
       setIsSaving(false);
       toast({
@@ -97,23 +93,16 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
         description: "Error saving browser printing setting",
         variant: "destructive"
       });
-      // Revert the UI state if save failed
       setBrowserPrintEnabled(!enabled);
     }
   };
 
   const handleTestPrint = () => {
     if (browserPrintEnabled) {
-      // Generate a test receipt
       const testReceipt = document.getElementById("receipt-content");
       if (testReceipt) {
-        // Make it visible for printing
         testReceipt.style.display = "block";
-        
-        // Print using browser
         printReceipt("receipt-content");
-        
-        // Hide it again after printing
         setTimeout(() => {
           testReceipt.style.display = "none";
         }, 500);
@@ -231,7 +220,6 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
           
           <PrintNodeIntegration restaurantId={restaurant.id} />
           
-          {/* Hidden test receipt for browser printing */}
           <div id="receipt-content" className="receipt" style={{ display: "none" }}>
             <div className="header">
               <div className="logo">{restaurant.name}</div>

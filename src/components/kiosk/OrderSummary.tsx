@@ -1,12 +1,11 @@
-
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check } from "lucide-react";
-import { CartItem } from "@/types/database-types";
+import { CartItem, Restaurant } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
-import { printReceipt } from "@/utils/print-utils";
+import { printReceipt, sendToPrintNode } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
 
 interface OrderSummaryProps {
@@ -19,10 +18,7 @@ interface OrderSummaryProps {
   calculateTax: () => number;
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
-  restaurant?: {
-    name: string;
-    location?: string;
-  } | null;
+  restaurant?: Partial<Restaurant> | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
 }
@@ -54,15 +50,15 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           .from('restaurant_print_config')
           .select('api_key, configured_printers')
           .eq('restaurant_id', restaurant.id)
-          .single();
+          .maybeSingle();
           
-        if (printConfig && printConfig.api_key && printConfig.configured_printers && printConfig.configured_printers.length > 0) {
+        if (printConfig && printConfig.api_key && printConfig.configured_printers && Array.isArray(printConfig.configured_printers) && printConfig.configured_printers.length > 0) {
           // Get browser printing configuration
           const { data: browserPrintConfig } = await supabase
             .from('restaurant_print_config')
             .select('browser_printing_enabled')
             .eq('restaurant_id', restaurant.id)
-            .single();
+            .maybeSingle();
           
           const browserPrintingEnabled = browserPrintConfig?.browser_printing_enabled !== false;
           
@@ -87,8 +83,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           };
           
           // Print to PrintNode printers
-          for (const printerId of printConfig.configured_printers) {
-            await sendToPrintNode(printerId, receiptData, printConfig.api_key);
+          if (Array.isArray(printConfig.configured_printers)) {
+            for (const printerId of printConfig.configured_printers) {
+              await sendToPrintNode(printerId, receiptData, printConfig.api_key);
+            }
           }
           
           // Also print via browser if enabled
@@ -108,60 +106,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     // Continue with placing the order
     onPlaceOrder();
-  };
-
-  const sendToPrintNode = async (printerId: string, receiptData: any, apiKey: string) => {
-    try {
-      // Format the receipt for thermal printer
-      const formattedReceipt = {
-        title: `Order #${receiptData.orderNumber}`,
-        content: [
-          { type: "text", value: receiptData.restaurant.name, style: "header" },
-          { type: "text", value: receiptData.restaurant.location || "", style: "normal" },
-          { type: "text", value: receiptData.date, style: "normal" },
-          { type: "text", value: `Order #${receiptData.orderNumber}`, style: "bold" },
-          { type: "text", value: receiptData.orderType === "dine-in" ? `Table: ${receiptData.tableNumber}` : "Takeaway", style: "normal" },
-          { type: "divider" },
-          ...receiptData.items.flatMap(item => [
-            { type: "text", value: `${item.quantity}x ${item.name}`, style: "bold" },
-            { type: "text", value: `${item.price.toFixed(2)} €`, style: "normal", align: "right" },
-            ...item.options.map(option => ({ type: "text", value: `+ ${option}`, style: "small" })),
-            ...item.toppings.map(topping => ({ type: "text", value: `+ ${topping}`, style: "small" }))
-          ]),
-          { type: "divider" },
-          { type: "text", value: `Subtotal: ${receiptData.subtotal.toFixed(2)} €`, style: "normal" },
-          { type: "text", value: `Tax (10%): ${receiptData.tax.toFixed(2)} €`, style: "normal" },
-          { type: "text", value: `Total: ${receiptData.total.toFixed(2)} €`, style: "bold" },
-          { type: "divider" },
-          { type: "text", value: "Thank you for your order!", style: "normal", align: "center" }
-        ]
-      };
-
-      // Send to PrintNode API
-      const response = await fetch('https://api.printnode.com/printjobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${btoa(apiKey + ':')}`
-        },
-        body: JSON.stringify({
-          printer: printerId,
-          title: `Order #${receiptData.orderNumber}`,
-          contentType: "raw_base64",
-          content: btoa(JSON.stringify(formattedReceipt)),
-          source: "Restaurant Kiosk"
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error sending print job: ${response.status}`);
-      }
-      
-      console.log(`Receipt sent to PrintNode printer ${printerId}`);
-    } catch (error) {
-      console.error("Error sending to PrintNode:", error);
-      // Continue with order even if printing fails
-    }
   };
 
   const orderNumber = Date.now().toString().slice(-6); // Simple order number generation
