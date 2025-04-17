@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import { sendToPrintNode } from "@/utils/print-utils";
 
 interface Printer {
   id: string;
@@ -27,6 +28,7 @@ interface PrintConfig {
   restaurant_id: string;
   api_key?: string | null;
   configured_printers?: string[];
+  browser_printing_enabled?: boolean;
 }
 
 const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
@@ -86,10 +88,18 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         return;
       }
       
+      // Get the current browser printing setting
+      const { data: currentConfig } = await supabase
+        .from('restaurant_print_config')
+        .select('browser_printing_enabled')
+        .eq('restaurant_id', restaurantId)
+        .single();
+      
       const printConfig: PrintConfig = {
         restaurant_id: restaurantId,
         api_key: apiKey,
-        configured_printers: []
+        configured_printers: [],
+        browser_printing_enabled: currentConfig?.browser_printing_enabled !== false
       };
 
       const { error } = await supabase
@@ -239,10 +249,19 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         .filter(p => p.selected)
         .map(p => p.id);
       
+      // Get the current browser printing setting
+      const { data: currentConfig } = await supabase
+        .from('restaurant_print_config')
+        .select('browser_printing_enabled')
+        .eq('restaurant_id', restaurantId)
+        .single();
+      
       const { error } = await supabase
         .from('restaurant_print_config')
         .update({
-          configured_printers: selectedPrinterIds
+          configured_printers: selectedPrinterIds,
+          // Preserve the browser printing setting
+          browser_printing_enabled: currentConfig?.browser_printing_enabled !== false
         })
         .eq('restaurant_id', restaurantId);
       
@@ -289,25 +308,13 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         ]
       };
       
-      // In a real implementation, make an API call to PrintNode
-      const response = await fetch('https://api.printnode.com/printjobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${btoa(apiKey + ':')}`
-        },
-        body: JSON.stringify({
-          printer: printerId,
-          title: "Test Print",
-          contentType: "raw_base64",
-          content: btoa(JSON.stringify(testReceipt)),
-          source: "Restaurant Kiosk"
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error sending print job: ${response.status}`);
-      }
+      // Send to PrintNode using the utility function
+      await sendToPrintNode(
+        printerId, 
+        apiKey, 
+        testReceipt, 
+        "Test Print"
+      );
       
       toast({
         title: "Test Print Sent",

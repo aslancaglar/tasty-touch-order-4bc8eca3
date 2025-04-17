@@ -9,7 +9,10 @@
  */
 export const printReceipt = (elementId: string) => {
   const printContent = document.getElementById(elementId);
-  if (!printContent) return;
+  if (!printContent) {
+    console.error(`Element with ID '${elementId}' not found for printing`);
+    return;
+  }
 
   // Create a hidden iframe for printing
   const iframe = document.createElement('iframe');
@@ -111,5 +114,49 @@ export const printReceipt = (elementId: string) => {
         document.body.removeChild(iframe);
       }, 1000);
     }, 500);
+  } else {
+    console.error("Could not access iframe window for printing");
+  }
+};
+
+/**
+ * Send print job to PrintNode printer
+ * @param printerId The PrintNode printer ID
+ * @param apiKey The PrintNode API key
+ * @param content The content to print (formatted for thermal printer)
+ * @param title Print job title
+ */
+export const sendToPrintNode = async (
+  printerId: string, 
+  apiKey: string, 
+  content: any, 
+  title: string = "Receipt"
+) => {
+  try {
+    const response = await fetch('https://api.printnode.com/printjobs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${btoa(apiKey + ':')}`
+      },
+      body: JSON.stringify({
+        printer: printerId,
+        title: title,
+        contentType: "raw_base64",
+        content: btoa(JSON.stringify(content)),
+        source: "Restaurant Kiosk"
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error sending print job: ${response.status}`);
+    }
+    
+    const responseData = await response.text();
+    console.log(`PrintNode job sent successfully, ID: ${responseData}`);
+    return responseData;
+  } catch (error) {
+    console.error("Error sending to PrintNode:", error);
+    throw error;
   }
 };

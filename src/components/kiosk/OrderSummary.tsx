@@ -7,6 +7,7 @@ import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -44,10 +45,123 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const tax = calculateTax();
   const total = subtotal + tax;
   
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
+    // First send to PrintNode printers if configured
+    if (restaurant && restaurant.id) {
+      try {
+        // Get restaurant print config
+        const { data: printConfig } = await supabase
+          .from('restaurant_print_config')
+          .select('api_key, configured_printers')
+          .eq('restaurant_id', restaurant.id)
+          .single();
+          
+        if (printConfig && printConfig.api_key && printConfig.configured_printers && printConfig.configured_printers.length > 0) {
+          // Get browser printing configuration
+          const { data: browserPrintConfig } = await supabase
+            .from('restaurant_print_config')
+            .select('browser_printing_enabled')
+            .eq('restaurant_id', restaurant.id)
+            .single();
+          
+          const browserPrintingEnabled = browserPrintConfig?.browser_printing_enabled !== false;
+          
+          // Generate order data for receipt
+          const orderNumber = Date.now().toString().slice(-6);
+          const receiptData = {
+            restaurant: restaurant,
+            orderNumber: orderNumber,
+            tableNumber: tableNumber,
+            orderType: orderType,
+            items: cart.map(item => ({
+              name: item.menuItem.name,
+              quantity: item.quantity,
+              price: item.itemPrice,
+              options: getFormattedOptions(item).split(', ').filter(Boolean),
+              toppings: getFormattedToppings(item).split(', ').filter(Boolean)
+            })),
+            subtotal: subtotal,
+            tax: tax,
+            total: total,
+            date: new Date().toLocaleString()
+          };
+          
+          // Print to PrintNode printers
+          for (const printerId of printConfig.configured_printers) {
+            await sendToPrintNode(printerId, receiptData, printConfig.api_key);
+          }
+          
+          // Also print via browser if enabled
+          if (browserPrintingEnabled) {
+            printReceipt("receipt-content");
+          }
+        } else {
+          // Fallback to browser printing if PrintNode is not configured
+          printReceipt("receipt-content");
+        }
+      } catch (error) {
+        console.error("Error printing receipt:", error);
+        // Fallback to browser printing on error
+        printReceipt("receipt-content");
+      }
+    }
+    
+    // Continue with placing the order
     onPlaceOrder();
-    // We'll let the onPlaceOrder function handle what happens after order is placed
-    // This fixes the issue with multiple popups
+  };
+
+  const sendToPrintNode = async (printerId: string, receiptData: any, apiKey: string) => {
+    try {
+      // Format the receipt for thermal printer
+      const formattedReceipt = {
+        title: `Order #${receiptData.orderNumber}`,
+        content: [
+          { type: "text", value: receiptData.restaurant.name, style: "header" },
+          { type: "text", value: receiptData.restaurant.location || "", style: "normal" },
+          { type: "text", value: receiptData.date, style: "normal" },
+          { type: "text", value: `Order #${receiptData.orderNumber}`, style: "bold" },
+          { type: "text", value: receiptData.orderType === "dine-in" ? `Table: ${receiptData.tableNumber}` : "Takeaway", style: "normal" },
+          { type: "divider" },
+          ...receiptData.items.flatMap(item => [
+            { type: "text", value: `${item.quantity}x ${item.name}`, style: "bold" },
+            { type: "text", value: `${item.price.toFixed(2)} €`, style: "normal", align: "right" },
+            ...item.options.map(option => ({ type: "text", value: `+ ${option}`, style: "small" })),
+            ...item.toppings.map(topping => ({ type: "text", value: `+ ${topping}`, style: "small" }))
+          ]),
+          { type: "divider" },
+          { type: "text", value: `Subtotal: ${receiptData.subtotal.toFixed(2)} €`, style: "normal" },
+          { type: "text", value: `Tax (10%): ${receiptData.tax.toFixed(2)} €`, style: "normal" },
+          { type: "text", value: `Total: ${receiptData.total.toFixed(2)} €`, style: "bold" },
+          { type: "divider" },
+          { type: "text", value: "Thank you for your order!", style: "normal", align: "center" }
+        ]
+      };
+
+      // Send to PrintNode API
+      const response = await fetch('https://api.printnode.com/printjobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${btoa(apiKey + ':')}`
+        },
+        body: JSON.stringify({
+          printer: printerId,
+          title: `Order #${receiptData.orderNumber}`,
+          contentType: "raw_base64",
+          content: btoa(JSON.stringify(formattedReceipt)),
+          source: "Restaurant Kiosk"
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error sending print job: ${response.status}`);
+      }
+      
+      console.log(`Receipt sent to PrintNode printer ${printerId}`);
+    } catch (error) {
+      console.error("Error sending to PrintNode:", error);
+      // Continue with order even if printing fails
+    }
   };
 
   const orderNumber = Date.now().toString().slice(-6); // Simple order number generation
