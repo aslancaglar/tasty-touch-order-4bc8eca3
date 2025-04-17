@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -162,7 +163,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     }
   };
   
-  // Generate plain text receipt for PrintNode
+  // Generate plain text receipt for PrintNode - Updated to match the image template
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -175,42 +176,61 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   }): string => {
     const { restaurant, cart, orderNumber, tableNumber, orderType, subtotal, tax, total } = orderData;
     const now = new Date();
-    const date = now.toLocaleDateString();
-    const time = now.toLocaleTimeString();
+    const date = now.toLocaleDateString('fr-FR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+    const time = now.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
     
-    // Helper function to center text in a line of specified width
-    const centerText = (text: string, width: number = 40) => {
-      const padding = Math.max(0, width - text.length) / 2;
-      return ' '.repeat(Math.floor(padding)) + text + ' '.repeat(Math.ceil(padding));
+    // Thermal printer width (typically 48 characters for 80mm printer)
+    const lineWidth = 48;
+    
+    // Helper function to center text
+    const centerText = (text: string) => {
+      const padding = Math.max(0, lineWidth - text.length) / 2;
+      return ' '.repeat(Math.floor(padding)) + text;
     };
     
-    // Helper function to align text left and right in a line
-    const alignLeftRight = (left: string, right: string, width: number = 40) => {
-      const padding = Math.max(0, width - left.length - right.length);
-      return left + ' '.repeat(padding) + right;
+    // Helper to right-align text with a value (price)
+    const rightAlignPrice = (label: string, price: string) => {
+      const padding = Math.max(0, lineWidth - label.length - price.length);
+      return label + ' '.repeat(padding) + price;
     };
+    
+    // Helper for item with price
+    const formatItemWithPrice = (item: string, price: string) => {
+      return rightAlignPrice(item, price);
+    };
+    
+    // Create horizontal separator line
+    const separator = '-'.repeat(lineWidth);
     
     let receipt = '';
     
-    // Header
+    // Header section - centered as in the image
     receipt += centerText(restaurant?.name || 'Restaurant') + '\n';
     if (restaurant?.location) {
       receipt += centerText(restaurant.location) + '\n';
     }
     receipt += centerText(`${date} ${time}`) + '\n';
-    receipt += centerText(`Order #${orderNumber}`) + '\n';
+    receipt += centerText(`Commande #${orderNumber}`) + '\n';
     
-    if (orderType === 'dine-in' && tableNumber) {
+    if (orderType === 'takeaway') {
+      receipt += centerText('À Emporter') + '\n';
+    } else if (orderType === 'dine-in' && tableNumber) {
       receipt += centerText(`Table: ${tableNumber}`) + '\n';
-    } else if (orderType === 'takeaway') {
-      receipt += centerText('TAKEAWAY') + '\n';
     }
     
-    receipt += '\n' + '-'.repeat(40) + '\n\n';
+    receipt += separator + '\n';
     
-    // Items
+    // Items section - with prices aligned to the right
     cart.forEach(item => {
-      receipt += alignLeftRight(
+      receipt += formatItemWithPrice(
         `${item.quantity}x ${item.menuItem.name}`, 
         `${parseFloat(item.itemPrice.toString()).toFixed(2)} €`
       ) + '\n';
@@ -218,33 +238,29 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       // Options
       const options = getFormattedOptions(item).split(', ').filter(Boolean);
       options.forEach(option => {
-        receipt += alignLeftRight(`  + ${option}`, '') + '\n';
+        receipt += `+ ${option}\n`;
       });
       
       // Toppings
       const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
       toppings.forEach(topping => {
-        receipt += alignLeftRight(`  + ${topping}`, '') + '\n';
+        receipt += `+ ${topping}\n`;
       });
-      
-      if (options.length > 0 || toppings.length > 0) {
-        receipt += '\n';
-      }
     });
     
-    receipt += '\n' + '-'.repeat(40) + '\n\n';
+    receipt += separator + '\n';
     
-    // Totals
-    receipt += alignLeftRight('Subtotal:', `${subtotal.toFixed(2)} €`) + '\n';
-    receipt += alignLeftRight('TVA (10%):', `${tax.toFixed(2)} €`) + '\n';
-    receipt += '\n';
-    receipt += alignLeftRight('TOTAL:', `${total.toFixed(2)} €`) + '\n';
+    // Totals section - with prices aligned to the right as in the image
+    receipt += rightAlignPrice('Sous-total', `${subtotal.toFixed(2)} €`) + '\n';
+    receipt += rightAlignPrice('TVA (10%)', `${tax.toFixed(2)} €`) + '\n';
+    receipt += separator + '\n';
+    receipt += rightAlignPrice('TOTAL', `${total.toFixed(2)} €`) + '\n';
     
-    receipt += '\n' + '-'.repeat(40) + '\n\n';
+    receipt += separator + '\n';
     
-    // Footer
-    receipt += centerText('Thank you for your order!') + '\n';
-    receipt += centerText('Please come again!') + '\n';
+    // Footer - centered as in the image
+    receipt += '\n' + centerText('Merci de votre visite!') + '\n';
+    receipt += centerText('A bientôt!') + '\n';
     
     // Add extra space at the end for paper cutting
     receipt += '\n\n\n\n';
