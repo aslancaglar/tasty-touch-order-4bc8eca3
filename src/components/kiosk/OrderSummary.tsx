@@ -49,7 +49,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const orderNumber = Date.now().toString().slice(-6);
 
   // Define the separator string for receipt formatting
-  const separator = '-'.repeat(28);
+  const separatorLine = '-'.repeat(28);
 
   const handleConfirmOrder = async () => {
     onPlaceOrder();
@@ -67,10 +67,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           return;
         }
         
-        if (printConfig?.browser_printing_enabled || !printConfig?.api_key) {
+        // Use browser printing only if explicitly enabled or if no config exists
+        const shouldUseBrowserPrinting = printConfig === null || 
+                                        printConfig.browser_printing_enabled !== false;
+                                        
+        if (shouldUseBrowserPrinting) {
+          console.log("Using browser printing for receipt");
           setTimeout(() => {
             printReceipt('receipt-content');
           }, 500);
+        } else {
+          console.log("Browser printing disabled for this restaurant");
         }
         
         if (printConfig?.api_key && printConfig?.configured_printers) {
@@ -209,7 +216,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       receipt += centerText(`Table: ${tableNumber}`) + '\n';
     }
     
-    receipt += separator + '\n';
+    receipt += separatorLine + '\n';
     
     cart.forEach(item => {
       receipt += formatItemWithPrice(
@@ -228,14 +235,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       });
     });
     
-    receipt += separator + '\n';
+    receipt += separatorLine + '\n';
     
     receipt += rightAlignPrice('Sous-total', `${subtotal.toFixed(2)} €`) + '\n';
     receipt += rightAlignPrice('TVA (10%)', `${tax.toFixed(2)} €`) + '\n';
-    receipt += separator + '\n';
+    receipt += separatorLine + '\n';
     receipt += rightAlignPrice('TOTAL', `${total.toFixed(2)} €`) + '\n';
     
-    receipt += separator + '\n';
+    receipt += separatorLine + '\n';
     
     receipt += '\n' + centerText('Merci de votre visite!') + '\n';
     receipt += centerText('A bientôt!') + '\n';

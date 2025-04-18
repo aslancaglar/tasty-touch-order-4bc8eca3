@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { printReceipt } from "@/utils/print-utils";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
@@ -26,8 +27,35 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
   const [image, setImage] = useState(restaurant.image_url || "");
   const [isSaving, setIsSaving] = useState(false);
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
+  const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
   
   const { toast } = useToast();
+
+  // Fetch print settings when component mounts
+  useEffect(() => {
+    const fetchPrintSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('restaurant_print_config')
+          .select('browser_printing_enabled')
+          .eq('restaurant_id', restaurant.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching print settings:", error);
+          return;
+        }
+        
+        if (data) {
+          setBrowserPrintEnabled(data.browser_printing_enabled !== false);
+        }
+      } catch (error) {
+        console.error("Error in fetchPrintSettings:", error);
+      }
+    };
+    
+    fetchPrintSettings();
+  }, [restaurant.id]);
 
   const handleSaveRestaurantInfo = () => {
     setIsSaving(true);
@@ -40,6 +68,59 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
         description: "This feature will be implemented in a future update",
       });
     }, 1000);
+  };
+
+  const handleSavePrintSettings = async () => {
+    setIsSavingPrintSettings(true);
+    
+    try {
+      // Check if config exists for this restaurant
+      const { data: existingConfig, error: checkError } = await supabase
+        .from('restaurant_print_config')
+        .select('id')
+        .eq('restaurant_id', restaurant.id)
+        .single();
+      
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+      
+      let result;
+      
+      if (existingConfig) {
+        // Update existing config
+        result = await supabase
+          .from('restaurant_print_config')
+          .update({ browser_printing_enabled: browserPrintEnabled })
+          .eq('restaurant_id', restaurant.id);
+      } else {
+        // Create new config
+        result = await supabase
+          .from('restaurant_print_config')
+          .insert({ 
+            restaurant_id: restaurant.id,
+            browser_printing_enabled: browserPrintEnabled 
+          });
+      }
+      
+      if (result.error) {
+        throw result.error;
+      }
+      
+      toast({
+        title: "Paramètres sauvegardés",
+        description: "Les paramètres d'impression ont été mis à jour"
+      });
+    } catch (error) {
+      console.error("Error saving print settings:", error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la sauvegarde des paramètres d'impression",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingPrintSettings(false);
+    }
   };
 
   const handleTestPrint = () => {
@@ -156,10 +237,23 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
                 />
               </div>
               
-              <div className="flex justify-end">
+              <div className="flex justify-between">
                 <Button onClick={handleTestPrint} className="bg-kiosk-primary">
                   <Printer className="mr-2 h-4 w-4" />
                   Tester l'Impression Navigateur
+                </Button>
+                
+                <Button 
+                  onClick={handleSavePrintSettings} 
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={isSavingPrintSettings}
+                >
+                  {isSavingPrintSettings ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="mr-2 h-4 w-4" />
+                  )}
+                  Enregistrer les paramètres
                 </Button>
               </div>
             </CardContent>
