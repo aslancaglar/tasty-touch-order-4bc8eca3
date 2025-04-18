@@ -34,26 +34,28 @@ const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType }: OrderTypeSel
   return (
     <>
       <Dialog open={isOpen && !showTableSelection} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-8">
           <DialogHeader>
-            <DialogTitle className="text-center text-2xl">Comment souhaitez-vous commander ?</DialogTitle>
+            <DialogTitle className="text-center text-3xl font-bold mb-6">
+              Comment souhaitez-vous commander ?
+            </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="grid grid-cols-2 gap-6 py-4">
             <Button 
               onClick={handleSelectDineIn} 
               variant="outline" 
-              className="flex flex-col items-center justify-center h-36 p-4 hover:bg-primary/10"
+              className="flex flex-col items-center justify-center h-64 p-6 hover:bg-primary/10"
             >
-              <UtensilsCrossed className="h-12 w-12 mb-2" />
-              <span className="text-lg font-medium">Sur Place</span>
+              <UtensilsCrossed className="h-24 w-24 mb-4" />
+              <span className="text-2xl font-semibold">Sur Place</span>
             </Button>
             <Button 
               onClick={handleSelectTakeaway} 
               variant="outline" 
-              className="flex flex-col items-center justify-center h-36 p-4 hover:bg-primary/10"
+              className="flex flex-col items-center justify-center h-64 p-6 hover:bg-primary/10"
             >
-              <ShoppingBag className="h-12 w-12 mb-2" />
-              <span className="text-lg font-medium">À Emporter</span>
+              <ShoppingBag className="h-24 w-24 mb-4" />
+              <span className="text-2xl font-semibold">À Emporter</span>
             </Button>
           </div>
         </DialogContent>
