@@ -95,9 +95,7 @@ const KioskView = () => {
   }, [restaurantSlug, navigate, toast]);
 
   useEffect(() => {
-    if (cart.length > 0) {
-      setIsCartOpen(true);
-    } else {
+    if (cart.length === 0) {
       setIsCartOpen(false);
     }
   }, [cart]);
@@ -507,6 +505,22 @@ const KioskView = () => {
     setIsCartOpen(!isCartOpen);
   };
 
+  const handleClickOutside = (event: MouseEvent) => {
+    const cartElement = document.querySelector('.cart-container');
+    if (isCartOpen && cartElement && !cartElement.contains(event.target as Node)) {
+      setIsCartOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isCartOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCartOpen]);
+
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -620,7 +634,24 @@ const KioskView = () => {
 
       {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} />}
 
-      <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} />
+      <Cart 
+        cart={cart} 
+        isOpen={isCartOpen} 
+        onToggleOpen={toggleCart}
+        onUpdateQuantity={handleUpdateCartItemQuantity}
+        onRemoveItem={handleRemoveCartItem}
+        onClearCart={() => setCart([])}
+        onPlaceOrder={handlePlaceOrder}
+        placingOrder={placingOrder}
+        orderPlaced={orderPlaced}
+        calculateSubtotal={calculateSubtotal}
+        calculateTax={calculateTax}
+        getFormattedOptions={getFormattedOptions}
+        getFormattedToppings={getFormattedToppings}
+        restaurant={restaurant}
+        orderType={orderType}
+        tableNumber={tableNumber}
+      />
 
       {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">
