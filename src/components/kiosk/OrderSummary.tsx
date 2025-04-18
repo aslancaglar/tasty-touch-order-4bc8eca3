@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const subtotal = total - tva;
   
   const orderNumber = Date.now().toString().slice(-6);
+
+  // Define the separator string for receipt formatting
+  const separator = '-'.repeat(28);
 
   const handleConfirmOrder = async () => {
     onPlaceOrder();
