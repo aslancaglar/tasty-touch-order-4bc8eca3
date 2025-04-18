@@ -67,6 +67,12 @@ const Cart: React.FC<CartProps> = ({
     return null;
   }
 
+  // Calculate total from items (prices are TTC)
+  const total = cart.reduce((sum, item) => sum + (item.itemPrice * item.quantity), 0);
+  // Calculate TVA (10% of total)
+  const tva = total * 0.1;
+  const subtotal = total - tva;
+
   // Reverse the cart to show newest items first
   const reversedCart = [...cart].reverse();
 
@@ -147,17 +153,17 @@ const Cart: React.FC<CartProps> = ({
           <div className="px-4 pb-4">
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Sous-total:</span>
-                <span className="font-medium">{calculateSubtotal().toFixed(2)} €</span>
+                <span className="text-gray-600">Total HT:</span>
+                <span className="font-medium">{subtotal.toFixed(2)} €</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">TVA (10%):</span>
-                <span className="font-medium">{calculateTax().toFixed(2)} €</span>
+                <span className="font-medium">{tva.toFixed(2)} €</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between text-lg font-bold">
-                <span>TOTAL:</span>
-                <span>{(calculateSubtotal() + calculateTax()).toFixed(2)} €</span>
+                <span>TOTAL TTC:</span>
+                <span>{total.toFixed(2)} €</span>
               </div>
             </div>
 
@@ -186,8 +192,8 @@ const Cart: React.FC<CartProps> = ({
         cart={cart}
         onPlaceOrder={handlePlaceOrder}
         placingOrder={placingOrder}
-        calculateSubtotal={calculateSubtotal}
-        calculateTax={calculateTax}
+        calculateSubtotal={() => subtotal}
+        calculateTax={() => tva}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
         restaurant={restaurant}

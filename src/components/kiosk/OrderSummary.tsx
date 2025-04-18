@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -42,20 +41,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   orderType = null,
   tableNumber = null,
 }) => {
-  const subtotal = calculateSubtotal();
-  const tax = calculateTax();
-  const total = subtotal + tax;
+  const total = cart.reduce((sum, item) => sum + (item.itemPrice * item.quantity), 0);
+  const tva = total * 0.1;
+  const subtotal = total - tva;
   
-  // Generate a unique order number
-  const orderNumber = Date.now().toString().slice(-6); // Simple order number generation
+  const orderNumber = Date.now().toString().slice(-6);
 
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     
-    // After order is placed successfully, print receipt
     if (restaurant?.id) {
       try {
-        // Check if PrintNode is configured for this restaurant
         const { data: printConfig, error } = await supabase
           .from('restaurant_print_config')
           .select('api_key, configured_printers, browser_printing_enabled')
@@ -67,21 +63,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           return;
         }
         
-        // Print receipt via browser printing if enabled or if no PrintNode config
         if (printConfig?.browser_printing_enabled || !printConfig?.api_key) {
-          // Wait a bit to ensure content is rendered
           setTimeout(() => {
             printReceipt('receipt-content');
           }, 500);
         }
         
-        // If PrintNode is configured and there are selected printers, send to PrintNode
         if (printConfig?.api_key && printConfig?.configured_printers) {
           const printerArray = Array.isArray(printConfig.configured_printers) 
             ? printConfig.configured_printers 
             : [];
             
-          // Convert any non-string printer IDs to strings
           const printerIds = printerArray.map(id => String(id));
             
           if (printerIds.length > 0) {
@@ -95,7 +87,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 tableNumber,
                 orderType,
                 subtotal,
-                tax,
+                tax: tva,
                 total
               }
             );
@@ -107,7 +99,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     }
   };
   
-  // Function to send receipt to PrintNode
   const sendReceiptToPrintNode = async (
     apiKey: string,
     printerIds: string[],
@@ -123,15 +114,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     }
   ) => {
     try {
-      // Create the receipt content as raw text for thermal printer
       const receiptContent = generatePrintNodeReceipt(orderData);
       
-      // Properly encode the receipt content for PrintNode - fix for non-Latin1 characters
       const encodedContent = btoa(unescape(encodeURIComponent(receiptContent)));
       
       console.log("Sending receipt to PrintNode printers:", printerIds);
       
-      // Send to each configured printer
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
         
@@ -142,7 +130,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             'Authorization': `Basic ${btoa(apiKey + ':')}`
           },
           body: JSON.stringify({
-            printer: parseInt(printerId, 10) || printerId, // Handle numeric IDs
+            printer: parseInt(printerId, 10) || printerId,
             title: `Order #${orderData.orderNumber}`,
             contentType: "raw_base64",
             content: encodedContent,
@@ -163,7 +151,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     }
   };
   
-  // Generate plain text receipt for PrintNode - Updated to match the image template
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -187,32 +174,24 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       hour12: false
     });
     
-    // Thermal printer width (typically 48 characters for 80mm printer)
     const lineWidth = 28;
     
-    // Helper function to center text
     const centerText = (text: string) => {
       const padding = Math.max(0, lineWidth - text.length) / 2;
       return ' '.repeat(Math.floor(padding)) + text;
     };
     
-    // Helper to right-align text with a value (price)
     const rightAlignPrice = (label: string, price: string) => {
       const padding = Math.max(0, lineWidth - label.length - price.length);
       return label + ' '.repeat(padding) + price;
     };
     
-    // Helper for item with price
     const formatItemWithPrice = (item: string, price: string) => {
       return rightAlignPrice(item, price);
     };
     
-    // Create horizontal separator line
-    const separator = '-'.repeat(lineWidth);
-    
     let receipt = '';
     
-    // Header section - centered as in the image
     receipt += centerText(restaurant?.name || 'Restaurant') + '\n';
     if (restaurant?.location) {
       receipt += centerText(restaurant.location) + '\n';
@@ -228,20 +207,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     receipt += separator + '\n';
     
-    // Items section - with prices aligned to the right
     cart.forEach(item => {
       receipt += formatItemWithPrice(
         `${item.quantity}x ${item.menuItem.name}`, 
         `${parseFloat(item.itemPrice.toString()).toFixed(2)} €`
       ) + '\n';
       
-      // Options
       const options = getFormattedOptions(item).split(', ').filter(Boolean);
       options.forEach(option => {
         receipt += `+ ${option}\n`;
       });
       
-      // Toppings
       const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
       toppings.forEach(topping => {
         receipt += `+ ${topping}\n`;
@@ -250,7 +226,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     receipt += separator + '\n';
     
-    // Totals section - with prices aligned to the right as in the image
     receipt += rightAlignPrice('Sous-total', `${subtotal.toFixed(2)} €`) + '\n';
     receipt += rightAlignPrice('TVA (10%)', `${tax.toFixed(2)} €`) + '\n';
     receipt += separator + '\n';
@@ -258,12 +233,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     receipt += separator + '\n';
     
-    // Footer - centered as in the image
     receipt += '\n' + centerText('Merci de votre visite!') + '\n';
     receipt += centerText('A bientôt!') + '\n';
-    
-    // Add extra space at the end for paper cutting
-    receipt += '\n\n\n\n';
     
     return receipt;
   };
@@ -319,16 +290,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           
           <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
-              <span>Sous-total</span>
+              <span>Total HT:</span>
               <span>{subtotal.toFixed(2)} €</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>TVA (10%)</span>
-              <span>{tax.toFixed(2)} €</span>
+              <span>TVA (10%):</span>
+              <span>{tva.toFixed(2)} €</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
-              <span>Total</span>
+              <span>Total TTC:</span>
               <span>{total.toFixed(2)} €</span>
             </div>
           </div>
@@ -346,7 +317,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
       </DialogContent>
 
-      {/* Hidden receipt that will be used for printing */}
       <OrderReceipt
         restaurant={restaurant}
         cart={cart}
