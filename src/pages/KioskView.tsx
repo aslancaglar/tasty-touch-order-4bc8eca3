@@ -94,8 +94,6 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
-  
-
   const handleStartOrder = () => {
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
@@ -630,7 +628,7 @@ const KioskView = () => {
       restaurant={restaurant} 
       orderType={orderType} 
       tableNumber={tableNumber}
-      showOrderSummaryOnly={true}
+      showOrderSummaryOnly={false}
     />
 
       {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
