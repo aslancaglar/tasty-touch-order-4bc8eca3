@@ -56,7 +56,8 @@ const Cart: React.FC<CartProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (isOpen && cartRef.current && !cartRef.current.contains(event.target as Node)) {
+      // Only handle outside clicks when order summary is not shown
+      if (isOpen && !showOrderSummary && cartRef.current && !cartRef.current.contains(event.target as Node)) {
         onToggleOpen();
       }
     };
@@ -65,7 +66,7 @@ const Cart: React.FC<CartProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, onToggleOpen]);
+  }, [isOpen, onToggleOpen, showOrderSummary]);
 
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
