@@ -94,13 +94,7 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
-  useEffect(() => {
-    if (cart.length > 0) {
-      setIsCartOpen(true);
-    } else {
-      setIsCartOpen(false);
-    }
-  }, [cart]);
+  
 
   const handleStartOrder = () => {
     setShowWelcome(false);
@@ -392,7 +386,6 @@ const KioskView = () => {
     
     setCart(prev => [newItem, ...prev]);
     setSelectedItem(null);
-    setIsCartOpen(true);
     toast({
       title: "Ajouté au panier",
       description: `${quantity}x ${selectedItem.name} ajouté à votre commande`
@@ -620,7 +613,25 @@ const KioskView = () => {
 
       {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} />}
 
-      <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} />
+      <Cart 
+      cart={cart} 
+      isOpen={isCartOpen} 
+      onToggleOpen={toggleCart} 
+      onUpdateQuantity={handleUpdateCartItemQuantity} 
+      onRemoveItem={handleRemoveCartItem} 
+      onClearCart={() => setCart([])} 
+      onPlaceOrder={handlePlaceOrder} 
+      placingOrder={placingOrder} 
+      orderPlaced={orderPlaced} 
+      calculateSubtotal={calculateSubtotal} 
+      calculateTax={calculateTax} 
+      getFormattedOptions={getFormattedOptions} 
+      getFormattedToppings={getFormattedToppings} 
+      restaurant={restaurant} 
+      orderType={orderType} 
+      tableNumber={tableNumber}
+      showOrderSummaryOnly={true}
+    />
 
       {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
           <DialogContent className="sm:max-w-[500px]">
