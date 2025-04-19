@@ -69,7 +69,8 @@ const Cart: React.FC<CartProps> = ({
 
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
-    if (isOpen && showOrderSummaryOnly) {
+    // Close the cart when opening order summary
+    if (isOpen) {
       onToggleOpen();
     }
   };
