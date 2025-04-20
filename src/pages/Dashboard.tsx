@@ -2,25 +2,22 @@
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store } from "lucide-react";
-import { 
-  ChartContainer, 
-  ChartTooltip, 
-  ChartTooltipContent 
-} from "@/components/ui/chart";
-import { CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const StatCard = ({ 
-  title, 
-  value, 
-  description, 
-  icon: Icon, 
-  trend 
-}: { 
-  title: string; 
-  value: string | number; 
-  description: string; 
-  icon: React.ElementType; 
-  trend?: { value: string; positive: boolean } 
+const StatCard = ({
+  title,
+  value,
+  description,
+  icon: Icon,
+  trend
+}: {
+  title: string;
+  value: string | number;
+  description: string;
+  icon: React.ElementType;
+  trend?: { value: string; positive: boolean };
 }) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -33,11 +30,12 @@ const StatCard = ({
       {trend && (
         <div className="mt-2 flex items-center text-xs">
           <span className={trend.positive ? "text-green-500" : "text-red-500"}>
-            {trend.positive ? "+" : ""}{trend.value}
+            {trend.positive ? "+" : ""}
+            {trend.value}
           </span>
-          <ArrowUpRight 
-            className={`ml-1 h-3 w-3 ${trend.positive ? "text-green-500" : "text-red-500"}`} 
-            style={{ transform: trend.positive ? 'none' : 'rotate(135deg)' }}
+          <ArrowUpRight
+            className={`ml-1 h-3 w-3 ${trend.positive ? "text-green-500" : "text-red-500"}`}
+            style={{ transform: trend.positive ? "none" : "rotate(135deg)" }}
           />
           <span className="ml-1 text-muted-foreground">from last month</span>
         </div>
@@ -46,7 +44,79 @@ const StatCard = ({
   </Card>
 );
 
-const PopularItems = () => (
+// Fetch functions
+const fetchStats = async () => {
+  // Total revenue
+  const { data: totalRevenueData, error: totalRevenueError } = await supabase
+    .from("orders")
+    .select("total")
+    .neq("status", "cancelled");
+
+  // Total restaurants
+  const { count: restaurantCount, error: restaurantsError } = await supabase
+    .from("restaurants")
+    .select("*", { count: "exact", head: true });
+
+  // Monthly order count
+  const { data: monthlyOrderData, error: monthlyError } = await supabase.rpc("get_monthly_order_count");
+
+  // Daily order count
+  const { data: dailyOrderData, error: dailyError } = await supabase.rpc("get_daily_order_count");
+
+  if (
+    totalRevenueError ||
+    restaurantsError ||
+    monthlyError ||
+    dailyError
+  )
+    throw (
+      totalRevenueError ||
+      restaurantsError ||
+      monthlyError ||
+      dailyError
+    );
+
+  const revenue = totalRevenueData ? totalRevenueData.reduce((acc, cur) => acc + Number(cur.total), 0) : 0;
+
+  return {
+    revenue,
+    restaurants: restaurantCount ?? 0,
+    monthlyOrders: monthlyOrderData ?? 0,
+    dailyOrders: dailyOrderData ?? 0
+  };
+};
+
+const fetchPopularItems = async () => {
+  // Top 5 items by sales (uses db function)
+  const { data, error } = await supabase.rpc("get_popular_items", { limit_count: 5 });
+  if (error) throw error;
+  // Ensure array and fields present
+  return (data ?? []).map((item: any) => ({
+    name: item.name,
+    price: item.price,
+    restaurant: item.restaurant_name,
+    orders: item.order_count
+  }));
+};
+
+const fetchPopularRestaurants = async () => {
+  // Top 5 restaurants by revenue (uses db function)
+  const { data, error } = await supabase.rpc("get_popular_restaurants", { limit_count: 5 });
+  if (error) throw error;
+  // Ensure array and fields present
+  return (data ?? []).map((item: any) => ({
+    name: item.name,
+    total_revenue: item.total_revenue
+  }));
+};
+
+const PopularItems = ({
+  items,
+  isLoading
+}: {
+  items: { name: string; price: number; restaurant: string; orders: number }[] | undefined;
+  isLoading: boolean;
+}) => (
   <Card className="col-span-2">
     <CardHeader>
       <CardTitle>Popular Items</CardTitle>
@@ -54,45 +124,119 @@ const PopularItems = () => (
     </CardHeader>
     <CardContent>
       <div className="space-y-4">
-        {[
-          { name: "Classic Cheeseburger", restaurant: "Burger House", price: "$12.99", orders: 234 },
-          { name: "Pepperoni Pizza", restaurant: "Pizza Palace", price: "$15.50", orders: 189 },
-          { name: "California Roll", restaurant: "Sushi Squad", price: "$8.75", orders: 156 },
-          { name: "Beef Tacos", restaurant: "Taco Time", price: "$9.25", orders: 142 },
-          { name: "Fettuccine Alfredo", restaurant: "Pasta Place", price: "$13.50", orders: 128 }
-        ].map((item, index) => (
-          <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-            <div className="flex items-center space-x-3">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Pizza className="h-4 w-4 text-primary" />
+        {isLoading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                <div className="flex items-center space-x-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <div>
+                    <Skeleton className="h-4 w-32 mb-1" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <Skeleton className="h-4 w-14 mb-1" />
+                  <Skeleton className="h-3 w-14" />
+                </div>
               </div>
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-muted-foreground">{item.restaurant}</p>
+            ))
+          : (items ?? []).map((item, index) => (
+              <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                <div className="flex items-center space-x-3">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Pizza className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{item.name}</p>
+                    <p className="text-sm text-muted-foreground">{item.restaurant}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">${parseFloat(item.price.toString()).toFixed(2)}</p>
+                  <p className="text-sm text-muted-foreground">{item.orders} orders</p>
+                </div>
               </div>
-            </div>
-            <div className="text-right">
-              <p className="font-medium">{item.price}</p>
-              <p className="text-sm text-muted-foreground">{item.orders} orders</p>
-            </div>
-          </div>
-        ))}
+            ))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const PopularRestaurants = ({
+  data,
+  isLoading
+}: {
+  data: { name: string; total_revenue: number }[] | undefined;
+  isLoading: boolean;
+}) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Popular Restaurants</CardTitle>
+      <CardDescription>Top performing restaurants</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        {isLoading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <Skeleton className="h-4 w-16" />
+              </div>
+            ))
+          : (data ?? []).map((item, index) => (
+              <div key={index} className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-xs font-bold text-primary">
+                      {item.name
+                        .split(" ")
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join("")}
+                    </span>
+                  </div>
+                  <p className="font-medium">{item.name}</p>
+                </div>
+                <p className="font-medium">
+                  ${parseFloat(item.total_revenue?.toString() ?? "0").toFixed(2)}
+                </p>
+              </div>
+            ))}
       </div>
     </CardContent>
   </Card>
 );
 
 const Dashboard = () => {
-  // Sample data for daily orders chart
-  const orderData = [
-    { day: 'Mon', orders: 85 },
-    { day: 'Tue', orders: 92 },
-    { day: 'Wed', orders: 120 },
-    { day: 'Thu', orders: 105 },
-    { day: 'Fri', orders: 145 },
-    { day: 'Sat', orders: 168 },
-    { day: 'Sun', orders: 132 },
-  ];
+  const {
+    data: stats,
+    isLoading: isStatsLoading,
+    error: statsError
+  } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: fetchStats
+  });
+
+  const {
+    data: popularItems,
+    isLoading: isItemsLoading,
+    error: itemsError
+  } = useQuery({
+    queryKey: ["dashboard-popular-items"],
+    queryFn: fetchPopularItems
+  });
+
+  const {
+    data: popularRestaurants,
+    isLoading: isRestaurantsLoading,
+    error: restaurantsError
+  } = useQuery({
+    queryKey: ["dashboard-popular-restaurants"],
+    queryFn: fetchPopularRestaurants
+  });
 
   return (
     <AdminLayout>
@@ -100,62 +244,44 @@ const Dashboard = () => {
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Welcome to your TastyTouch Admin Dashboard</p>
       </div>
-      
+
+      {statsError && <div className="mb-4 text-red-500 font-medium">Failed to load stats.</div>}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard 
-          title="Total Revenue" 
-          value="$15,231.89" 
+        <StatCard
+          title="Total Revenue"
+          value={
+            isStatsLoading ? <Skeleton className="h-8 w-32" /> : `$${stats?.revenue?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+          }
           description="All-time revenue across all restaurants"
           icon={BadgeDollarSign}
           trend={{ value: "12.5%", positive: true }}
         />
-        <StatCard 
-          title="Restaurants" 
-          value="12" 
+        <StatCard
+          title="Restaurants"
+          value={isStatsLoading ? <Skeleton className="h-8 w-12" /> : stats?.restaurants ?? 0}
           description="Active restaurants on the platform"
           icon={ChefHat}
           trend={{ value: "2", positive: true }}
         />
-        <StatCard 
-          title="Total Orders" 
-          value="1,234" 
+        <StatCard
+          title="Total Orders"
+          value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.monthlyOrders ?? 0}
           description="Orders processed this month"
           icon={ShoppingBag}
           trend={{ value: "5.2%", positive: true }}
         />
-        <StatCard 
-          title="Daily Orders" 
-          value="178" 
+        <StatCard
+          title="Daily Orders"
+          value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.dailyOrders ?? 0}
           description="Orders processed today"
           icon={Store}
           trend={{ value: "15.3%", positive: true }}
         />
       </div>
-      
+
       <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <PopularItems />
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Popular Restaurants</CardTitle>
-            <CardDescription>Top performing restaurants</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {["Burger House", "Pizza Palace", "Sushi Squad", "Taco Time", "Pasta Place"].map((name, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-xs font-bold text-primary">{name.charAt(0)}{name.split(' ')[1]?.charAt(0)}</span>
-                    </div>
-                    <p className="font-medium">{name}</p>
-                  </div>
-                  <p className="font-medium">${(Math.random() * 1000 + 500).toFixed(2)}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <PopularItems items={popularItems} isLoading={isItemsLoading} />
+        <PopularRestaurants data={popularRestaurants} isLoading={isRestaurantsLoading} />
       </div>
     </AdminLayout>
   );
