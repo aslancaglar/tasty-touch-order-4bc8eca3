@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
-import { printReceipt, ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from "@/utils/print-utils";
+import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,7 +44,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   orderType = null,
   tableNumber = null,
 }) => {
-  const [orderNumber, setOrderNumber] = useState<number>(0);
+  const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
   
   const total = calculateSubtotal();
@@ -59,7 +59,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           .select('*', { count: 'exact', head: true })
           .eq('restaurant_id', restaurant.id);
         
-        setOrderNumber((count || 0) + 1);
+        setOrderNumber(((count || 0) + 1).toString());
       }
     };
 
@@ -110,12 +110,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               {
                 restaurant,
                 cart,
-                orderNumber: orderNumber.toString(),
+                orderNumber,
                 tableNumber,
                 orderType,
                 subtotal,
                 tax,
-                total
+                total,
+                getFormattedOptions,
+                getFormattedToppings
               }
             );
           }
@@ -189,14 +191,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     total: number;
   }): string => {
     return generateStandardReceipt({
-      restaurant,
-      cart,
-      orderNumber,
-      tableNumber,
-      orderType,
-      subtotal,
-      tax,
-      total,
+      restaurant: orderData.restaurant,
+      cart: orderData.cart,
+      orderNumber: orderData.orderNumber,
+      tableNumber: orderData.tableNumber,
+      orderType: orderData.orderType,
+      subtotal: orderData.subtotal,
+      tax: orderData.tax,
+      total: orderData.total,
       getFormattedOptions,
       getFormattedToppings
     });
@@ -283,7 +285,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       <OrderReceipt
         restaurant={restaurant}
         cart={cart}
-        orderNumber={orderNumber.toString()}
+        orderNumber={orderNumber}
         tableNumber={tableNumber}
         orderType={orderType}
         getFormattedOptions={getFormattedOptions}

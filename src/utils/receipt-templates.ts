@@ -1,3 +1,4 @@
+
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
 
@@ -14,10 +15,24 @@ interface ReceiptData {
   subtotal: number;
   tax: number;
   total: number;
+  getFormattedOptions?: (item: CartItem) => string;
+  getFormattedToppings?: (item: CartItem) => string;
 }
 
 export const generateStandardReceipt = (data: ReceiptData): string => {
-  const { restaurant, cart, orderNumber, tableNumber, orderType, subtotal, tax, total } = data;
+  const { 
+    restaurant, 
+    cart, 
+    orderNumber, 
+    tableNumber, 
+    orderType, 
+    subtotal, 
+    tax, 
+    total,
+    getFormattedOptions = () => '',
+    getFormattedToppings = () => ''
+  } = data;
+  
   const now = new Date();
   const date = now.toLocaleDateString('fr-FR', { 
     day: '2-digit', 
@@ -99,15 +114,21 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
 
 // Helper function to format options (moved from OrderSummary)
 const getFormattedOptions = (item: CartItem): string => {
-  return item.options
-    .map((option) => {
-      const optionName = option.name;
-      const selectedValues = option.values
-        .filter((value) => value.selected)
-        .map((value) => value.name);
+  if (!item.selectedOptions) return '';
+  
+  return item.selectedOptions
+    .map(option => {
+      // Find the option in the menu item
+      const menuOption = item.menuItem.options?.find(opt => opt.id === option.optionId);
+      if (!menuOption) return null;
       
-      if (selectedValues.length > 0) {
-        return `${optionName}: ${selectedValues.join(', ')}`;
+      // Find the selected choices
+      const selectedChoices = menuOption.choices
+        .filter(choice => option.choiceIds.includes(choice.id))
+        .map(choice => choice.name);
+      
+      if (selectedChoices.length > 0) {
+        return `${menuOption.name}: ${selectedChoices.join(', ')}`;
       }
       
       return null;
@@ -118,8 +139,23 @@ const getFormattedOptions = (item: CartItem): string => {
 
 // Helper function to format toppings (moved from OrderSummary)
 const getFormattedToppings = (item: CartItem): string => {
-  return item.toppings
-    .filter((topping) => topping.selected)
-    .map((topping) => topping.name)
-    .join(', ');
+  if (!item.selectedToppings) return '';
+  
+  // Flatten toppings from all categories
+  const allToppings: string[] = [];
+  
+  item.selectedToppings.forEach(toppingGroup => {
+    // Find the category
+    const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingGroup.categoryId);
+    if (!category) return;
+    
+    // Get names of selected toppings
+    const selectedToppingNames = category.toppings
+      .filter(topping => toppingGroup.toppingIds.includes(topping.id))
+      .map(topping => topping.name);
+    
+    allToppings.push(...selectedToppingNames);
+  });
+  
+  return allToppings.join(', ');
 };
