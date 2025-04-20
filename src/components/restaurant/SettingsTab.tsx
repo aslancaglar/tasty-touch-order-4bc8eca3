@@ -33,9 +33,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
+  onRestaurantUpdated?: (updatedRestaurant: Restaurant) => void;
 }
 
-const SettingsTab = ({ restaurant }: SettingsTabProps) => {
+const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [activeTab, setActiveTab] = useState("basic");
   const [name, setName] = useState(restaurant.name);
   const [location, setLocation] = useState(restaurant.location || "");
@@ -78,6 +79,13 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
     fetchPrintSettings();
   }, [restaurant.id]);
 
+  // Update state when restaurant prop changes
+  useEffect(() => {
+    setName(restaurant.name);
+    setLocation(restaurant.location || "");
+    setImage(restaurant.image_url || "");
+  }, [restaurant]);
+
   const handleSaveRestaurantInfo = async () => {
     if (!name.trim()) {
       toast({
@@ -91,7 +99,7 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
     setIsSaving(true);
     
     try {
-      await updateRestaurant(restaurant.id, {
+      const updatedRestaurant = await updateRestaurant(restaurant.id, {
         name,
         location,
         image_url: image,
@@ -101,6 +109,11 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
         title: "Success",
         description: "Restaurant information updated successfully",
       });
+
+      // Call the callback to update parent component state
+      if (onRestaurantUpdated && updatedRestaurant) {
+        onRestaurantUpdated(updatedRestaurant);
+      }
     } catch (error) {
       console.error("Error updating restaurant:", error);
       toast({

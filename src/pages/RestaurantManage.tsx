@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -60,6 +61,11 @@ const RestaurantManage = () => {
 
     fetchRestaurant();
   }, [id, toast]);
+
+  // Handle restaurant updates from SettingsTab
+  const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
+    setRestaurant(updatedRestaurant);
+  };
 
   if (loading && !restaurant) {
     return (
@@ -144,7 +150,10 @@ const RestaurantManage = () => {
             </TabsContent>
             
             <TabsContent value="settings">
-              <SettingsTab restaurant={restaurant} />
+              <SettingsTab 
+                restaurant={restaurant} 
+                onRestaurantUpdated={handleRestaurantUpdated} 
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
