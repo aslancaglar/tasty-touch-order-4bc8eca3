@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -67,8 +68,12 @@ const Cart: React.FC<CartProps> = ({
   }, [isOpen, onToggleOpen, showOrderSummary]);
 
   const handleShowOrderSummary = () => {
+    // First show the order summary modal
     setShowOrderSummary(true);
-    onToggleOpen();
+    // Then close the cart with a slight delay to ensure the modal is visible first
+    setTimeout(() => {
+      onToggleOpen();
+    }, 50);
   };
 
   const handleCloseOrderSummary = () => {
