@@ -1,8 +1,7 @@
-
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
-import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
+import { calculateCartTotals } from "@/utils/price-utils";
 
 interface OrderReceiptProps {
   restaurant: {
@@ -16,8 +15,6 @@ interface OrderReceiptProps {
   orderType: "dine-in" | "takeaway" | null;
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
-  calculateSubtotal: () => number;
-  calculateTax: () => number;
 }
 
 const OrderReceipt: React.FC<OrderReceiptProps> = ({
@@ -28,19 +25,10 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   orderType,
   getFormattedOptions,
   getFormattedToppings,
-  calculateSubtotal,
-  calculateTax,
 }) => {
-  // Sum taxes for all items by their individual VAT, fallback to 10%
-  const total = calculateSubtotal();
-  const firstItem = cart[0];
-  // If all items have the same VAT, use it, else use a note or pick item wise (simple for now)
-  const vat = firstItem?.menuItem.tax_percentage ?? 10;
-
-  const subtotal = calculatePriceWithoutTax(total, vat);
-  const tax = calculateTaxAmount(total, vat);
+  const { total, subtotal, tax } = calculateCartTotals(cart);
   const currentDate = format(new Date(), "dd/MM/yyyy HH:mm");
-
+  
   return (
     <div id="receipt-content" className="receipt" style={{ display: "none" }}>
       <div className="header">
@@ -91,7 +79,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
           <span>{subtotal.toFixed(2)} €</span>
         </div>
         <div className="total-line">
-          <span>TVA (10%)</span>
+          <span>TVA</span>
           <span>{tax.toFixed(2)} €</span>
         </div>
         <div className="divider"></div>

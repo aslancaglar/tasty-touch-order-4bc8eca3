@@ -47,10 +47,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
   
-  const total = calculateSubtotal();
-  const subtotal = calculatePriceWithoutTax(total);
-  const tax = calculateTaxAmount(total);
-  
+  const { total, subtotal, tax } = calculateCartTotals(cart);
+
   useEffect(() => {
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
@@ -266,7 +264,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <span>{subtotal.toFixed(2)} €</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>TVA (10%):</span>
+              <span>TVA:</span>
               <span>{tax.toFixed(2)} €</span>
             </div>
             <Separator className="my-2" />

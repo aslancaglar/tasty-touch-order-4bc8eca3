@@ -83,9 +83,7 @@ const Cart: React.FC<CartProps> = ({
     return null;
   }
 
-  const total = cart.reduce((sum, item) => sum + (item.itemPrice * item.quantity), 0);
-  const tva = total * 0.1;
-  const subtotal = total - tva;
+  const { total, subtotal, tax } = calculateCartTotals(cart);
 
   const reversedCart = [...cart].reverse();
 
@@ -174,8 +172,8 @@ const Cart: React.FC<CartProps> = ({
                 <span className="font-medium">{subtotal.toFixed(2)} €</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">TVA (10%):</span>
-                <span className="font-medium">{tva.toFixed(2)} €</span>
+                <span className="text-gray-600">TVA:</span>
+                <span className="font-medium">{tax.toFixed(2)} €</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between text-lg font-bold">

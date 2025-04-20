@@ -90,7 +90,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   
   receipt += ESCPOS.ALIGN_RIGHT;
   receipt += formatText('Sous-total: ' + subtotal.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(`TVA (${vat}%): ` + tax.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText('TVA: ' + tax.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
   receipt += createDivider(48) + addLineFeed();
   
   receipt += ESCPOS.ALIGN_RIGHT;
