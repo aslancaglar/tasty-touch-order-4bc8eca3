@@ -18,6 +18,8 @@ import { Restaurant } from "@/types/database-types";
 import { getRestaurants, createRestaurant } from "@/services/kiosk-service";
 import { useAuth } from "@/contexts/AuthContext";
 import ImageUpload from "@/components/ImageUpload";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 
 const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => void }) => {
   const [open, setOpen] = useState(false);
@@ -169,10 +171,20 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
   );
 };
 
-const RestaurantCard = ({ restaurant }: { restaurant: Restaurant }) => {
-  const totalOrders = Math.floor(Math.random() * 1500);
-  const revenue = parseFloat((Math.random() * 10000).toFixed(2));
+type RestaurantStats = {
+  totalOrders: number;
+  revenue: number;
+};
 
+const RestaurantCard = ({
+  restaurant,
+  stats,
+  loadingStats,
+}: {
+  restaurant: Restaurant;
+  stats: RestaurantStats | undefined;
+  loadingStats: boolean;
+}) => {
   return (
     <Card className="overflow-hidden">
       <div className="h-40 w-full overflow-hidden">
@@ -190,11 +202,21 @@ const RestaurantCard = ({ restaurant }: { restaurant: Restaurant }) => {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Orders</p>
-            <p className="font-medium">{totalOrders}</p>
+            {loadingStats ? (
+              <Skeleton className="h-6 w-16" />
+            ) : (
+              <p className="font-medium">{stats?.totalOrders ?? 0}</p>
+            )}
           </div>
           <div>
             <p className="text-muted-foreground">Revenue</p>
-            <p className="font-medium">${revenue.toLocaleString()}</p>
+            {loadingStats ? (
+              <Skeleton className="h-6 w-20" />
+            ) : (
+              <p className="font-medium">
+                ${stats?.revenue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
+              </p>
+            )}
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
@@ -215,9 +237,41 @@ const RestaurantCard = ({ restaurant }: { restaurant: Restaurant }) => {
   );
 };
 
+const fetchRestaurantStats = async (restaurantIds: string[]): Promise<Record<string, RestaurantStats>> => {
+  if (restaurantIds.length === 0) return {};
+
+  let stats: Record<string, RestaurantStats> = {};
+  const { data, error } = await supabase
+    .from("orders")
+    .select("restaurant_id,total,status")
+    .in("restaurant_id", restaurantIds);
+
+  if (error) {
+    console.error("Error fetching order stats for restaurants:", error);
+    throw error;
+  }
+
+  for (const id of restaurantIds) {
+    stats[id] = { totalOrders: 0, revenue: 0 };
+  }
+
+  if (data) {
+    for (const order of data) {
+      if (order.status === "cancelled") continue;
+      if (order.restaurant_id && stats[order.restaurant_id]) {
+        stats[order.restaurant_id].totalOrders += 1;
+        stats[order.restaurant_id].revenue += parseFloat(order.total || 0);
+      }
+    }
+  }
+  return stats;
+};
+
 const Restaurants = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [stats, setStats] = useState<Record<string, RestaurantStats>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -244,7 +298,30 @@ const Restaurants = () => {
     } else {
       setLoading(false);
     }
+    setStats({});
+    setLoadingStats(true);
   }, [user]);
+
+  useEffect(() => {
+    const getStats = async () => {
+      if (restaurants.length === 0) {
+        setStats({});
+        setLoadingStats(false);
+        return;
+      }
+      setLoadingStats(true);
+      try {
+        const ids = restaurants.map((r) => r.id);
+        const statData = await fetchRestaurantStats(ids);
+        setStats(statData);
+      } catch (err) {
+        console.error("Failed to fetch restaurant stats", err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    getStats();
+  }, [restaurants]);
 
   return (
     <AdminLayout>
@@ -272,7 +349,12 @@ const Restaurants = () => {
       ) : restaurants.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {restaurants.map((restaurant) => (
-            <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+            <RestaurantCard
+              key={restaurant.id}
+              restaurant={restaurant}
+              stats={stats[restaurant.id]}
+              loadingStats={loadingStats}
+            />
           ))}
         </div>
       ) : (
