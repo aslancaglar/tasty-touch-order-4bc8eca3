@@ -46,7 +46,6 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   
   let receipt = '';
   
-  // Header centered with proper encoding
   receipt += ESCPOS.ALIGN_CENTER;
   receipt += formatText(restaurant?.name || 'Restaurant', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
   
@@ -64,18 +63,15 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   }
   receipt += ESCPOS.ALIGN_LEFT;
   
-  // Divider line (48 characters for 80mm paper)
   receipt += createDivider(48) + addLineFeed();
   
-  // Items section with proper spacing for 80mm
   cart.forEach(item => {
     const itemPrice = parseFloat(item.itemPrice.toString()).toFixed(2);
     const itemText = `${item.quantity}x ${item.menuItem.name}`;
-    const spaces = 48 - itemText.length - itemPrice.length - 4; // -4 for "EUR " at the end
+    const spaces = 48 - itemText.length - itemPrice.length - 4;
     
     receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + itemPrice + ' EUR', ESCPOS.FONT_BOLD) + addLineFeed();
     
-    // Options and toppings with small font and indentation
     const options = getFormattedOptions(item).split(', ').filter(Boolean);
     options.forEach(option => {
       receipt += formatText(`  + ${option}`, ESCPOS.FONT_SMALL) + addLineFeed();
@@ -87,32 +83,22 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     });
   });
   
-  // Totals section with right-aligned text and prices
   receipt += createDivider(48) + addLineFeed();
   
-  const formatTotalLine = (label: string, amount: string, isGrandTotal: boolean = false) => {
-    if (isGrandTotal) {
-      return ESCPOS.ALIGN_RIGHT + formatText(label + amount + ' EUR', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
-    }
-    return ESCPOS.ALIGN_RIGHT + formatText(label + amount + ' EUR', ESCPOS.FONT_NORMAL) + ESCPOS.ALIGN_LEFT + addLineFeed();
-  };
-
-  receipt += formatTotalLine('Sous-total:', subtotal.toFixed(2));
-  receipt += formatTotalLine('TVA (10%):', tax.toFixed(2));
+  receipt += ESCPOS.ALIGN_RIGHT;
+  receipt += formatText('Sous-total: ' + subtotal.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText('TVA (10%): ' + tax.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
   receipt += createDivider(48) + addLineFeed();
-  receipt += formatTotalLine('TOTAL:', total.toFixed(2), true);
+  receipt += formatText('TOTAL: ' + total.toFixed(2) + ' EUR', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
   
-  // Footer with extra spacing
   receipt += ESCPOS.ALIGN_CENTER;
-  receipt += addLineFeed(2); // Add extra space before thank you message
+  receipt += addLineFeed(2);
   receipt += formatText('Merci de votre visite!', ESCPOS.FONT_NORMAL) + addLineFeed();
   receipt += formatText('A bientot!', ESCPOS.FONT_NORMAL) + addLineFeed(3);
   receipt += ESCPOS.ALIGN_LEFT;
   
-  // Add extra line feeds before cutting to ensure the full receipt is printed
   receipt += addLineFeed(5);
   
-  // Explicitly add the cut paper command with full feed
   receipt += ESCPOS.CUT_PAPER;
   
   return receipt;
@@ -123,11 +109,9 @@ const getFormattedOptions = (item: CartItem): string => {
   
   return item.selectedOptions
     .map(option => {
-      // Find the option in the menu item
       const menuOption = item.menuItem.options?.find(opt => opt.id === option.optionId);
       if (!menuOption) return null;
       
-      // Find the selected choices
       const selectedChoices = menuOption.choices
         .filter(choice => option.choiceIds.includes(choice.id))
         .map(choice => choice.name);
@@ -145,15 +129,12 @@ const getFormattedOptions = (item: CartItem): string => {
 const getFormattedToppings = (item: CartItem): string => {
   if (!item.selectedToppings) return '';
   
-  // Flatten toppings from all categories
   const allToppings: string[] = [];
   
   item.selectedToppings.forEach(toppingGroup => {
-    // Find the category
     const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingGroup.categoryId);
     if (!category) return;
     
-    // Get names of selected toppings
     const selectedToppingNames = category.toppings
       .filter(topping => toppingGroup.toppingIds.includes(topping.id))
       .map(topping => topping.name);
