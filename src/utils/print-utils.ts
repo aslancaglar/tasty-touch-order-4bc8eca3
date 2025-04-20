@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 /**
@@ -87,7 +86,12 @@ export const addLineFeed = (count: number = 1): string => {
  * @param elementId The ID of the element to print
  */
 export const printReceipt = (elementId: string) => {
-  console.log(`Attempting to print element with ID: ${elementId}`);
+  console.log(`Attempting to print element with ID: ${elementId}`, {
+    userAgent: navigator.userAgent,
+    screen: { width: window.innerWidth, height: window.innerHeight },
+    isMobileDevice: /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(navigator.userAgent.toLowerCase())
+  });
+  
   const printContent = document.getElementById(elementId);
   if (!printContent) {
     console.error(`Element with ID '${elementId}' not found`);
@@ -116,7 +120,7 @@ export const printReceipt = (elementId: string) => {
             width: 72mm; /* Accounting for printer margins */
             margin: 0 auto;
             padding: 5mm 0;
-            font-size: 12px;  // Updated from 8px to 14px
+            font-size: 12px;
             line-height: 1.2;
             font-weight: 400;
           }
@@ -129,7 +133,7 @@ export const printReceipt = (elementId: string) => {
             font-weight: 600;
           }
           .logo {
-            font-size: 16px;  // Slightly larger to maintain hierarchy
+            font-size: 16px;
             font-weight: 700;
             margin-bottom: 5px;
           }
@@ -145,7 +149,7 @@ export const printReceipt = (elementId: string) => {
           }
           .item-details {
             padding-left: 15px;
-            font-size: 12px;  // Updated from 8px to 14px
+            font-size: 12px;
             font-weight: 400;
           }
           .total-section {
@@ -164,7 +168,7 @@ export const printReceipt = (elementId: string) => {
           .footer {
             text-align: center;
             margin-top: 20px;
-            font-size: 12px;  // Updated from 8px to 14px
+            font-size: 12px;
             font-weight: 500;
           }
           @media print {

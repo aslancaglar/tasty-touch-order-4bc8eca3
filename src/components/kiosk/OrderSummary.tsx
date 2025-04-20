@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const { total, subtotal, tax } = calculateCartTotals(cart);
 
   useEffect(() => {
+    console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
+    
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
         const { count } = await supabase
@@ -64,7 +67,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
 
     fetchOrderCount();
-  }, [restaurant?.id]);
+  }, [restaurant?.id, isMobile]);
 
   const separatorLine = '-'.repeat(28);
 
@@ -73,7 +76,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     if (restaurant?.id) {
       try {
-        console.log("Screen width:", window.innerWidth, "isMobile:", isMobile);
+        console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
         
         const { data: printConfig, error } = await supabase
           .from('restaurant_print_config')
@@ -86,6 +89,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           return;
         }
         
+        // Only enable browser printing on desktop devices (not mobile or tablet)
         const shouldUseBrowserPrinting = 
           !isMobile && 
           (printConfig === null || printConfig.browser_printing_enabled !== false);
@@ -113,7 +117,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         } else {
           console.log("Browser printing disabled for this device or restaurant");
           if (isMobile) {
-            console.log("Browser printing disabled because this is a mobile device");
+            console.log("Browser printing disabled because this is a mobile or tablet device");
           } else if (printConfig?.browser_printing_enabled === false) {
             console.log("Browser printing disabled in restaurant settings");
           }
