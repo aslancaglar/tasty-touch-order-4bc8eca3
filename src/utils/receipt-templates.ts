@@ -87,14 +87,14 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     });
   });
   
-  // Totals section with left-aligned text and right-aligned prices
+  // Totals section with right-aligned text and prices
   receipt += createDivider(48) + addLineFeed();
   
   const formatTotalLine = (label: string, amount: string, isGrandTotal: boolean = false) => {
-    const command = isGrandTotal ? ESCPOS.FONT_LARGE_BOLD : ESCPOS.FONT_NORMAL;
-    const receiptWidth = 48;
-    const totalSpaces = receiptWidth - label.length - amount.length - 4; // -4 for "EUR " at the end
-    return formatText(label + ' '.repeat(Math.max(0, totalSpaces)) + amount + ' EUR', command) + addLineFeed();
+    if (isGrandTotal) {
+      return ESCPOS.ALIGN_RIGHT + formatText(label + amount + ' EUR', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
+    }
+    return formatText(label + ' '.repeat(1) + amount + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
   };
 
   receipt += formatTotalLine('Sous-total:', subtotal.toFixed(2));
