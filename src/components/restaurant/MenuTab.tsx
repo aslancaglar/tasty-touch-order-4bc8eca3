@@ -281,7 +281,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         price: Number(values.price),
         promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
         image: values.image || null,
-        topping_categories: values.topping_categories || []
+        topping_categories: values.topping_categories || [],
+        tax_percentage: values.tax_percentage || "10"
       });
       
       console.log("Menu item updated:", updatedMenuItem);
@@ -599,7 +600,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                                   price: item.price.toString(),
                                   promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
                                   image: item.image || "",
-                                  topping_categories: item.topping_categories || []
+                                  topping_categories: item.topping_categories || [],
+                                  tax_percentage: item.tax_percentage ? item.tax_percentage.toString() : "10"
                                 }}
                                 isLoading={savingMenuItem}
                                 restaurantId={restaurant.id}
