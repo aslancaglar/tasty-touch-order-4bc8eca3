@@ -111,7 +111,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 tableNumber,
                 orderType,
                 subtotal,
-                tax: tax,
+                tax,
                 total
               }
             );
@@ -250,10 +250,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     receipt += separatorLine + '\n';
     
-    receipt += rightAlignPrice('Sous-total', `${subtotal.toFixed(2)} €`) + '\n';
-    receipt += rightAlignPrice('TVA (10%)', `${tax.toFixed(2)} €`) + '\n';
+    receipt += rightAlignPrice('Sous-total', `${orderData.subtotal.toFixed(2)} €`) + '\n';
+    receipt += rightAlignPrice('TVA (10%)', `${orderData.tax.toFixed(2)} €`) + '\n';
     receipt += separatorLine + '\n';
-    receipt += rightAlignPrice('TOTAL', `${total.toFixed(2)} €`) + '\n';
+    receipt += rightAlignPrice('TOTAL', `${orderData.total.toFixed(2)} €`) + '\n';
     
     receipt += separatorLine + '\n';
     

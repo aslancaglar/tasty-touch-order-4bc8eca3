@@ -2,6 +2,7 @@
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
+import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 
 interface OrderReceiptProps {
   restaurant: {
@@ -30,9 +31,9 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   calculateSubtotal,
   calculateTax,
 }) => {
-  const subtotal = calculateSubtotal();
-  const tax = calculateTax();
-  const total = subtotal + tax;
+  const total = calculateSubtotal();
+  const subtotal = calculatePriceWithoutTax(total);
+  const tax = calculateTaxAmount(total);
   const currentDate = format(new Date(), "dd/MM/yyyy HH:mm");
 
   return (
