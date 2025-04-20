@@ -7,6 +7,7 @@ import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
+import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -43,9 +44,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<number>(0);
   
-  const subtotal = calculateSubtotal();
-  const tax = calculateTax();
-  const total = subtotal + tax;
+  const total = calculateSubtotal();
+  const subtotal = calculatePriceWithoutTax(total);
+  const tax = calculateTaxAmount(total);
   
   useEffect(() => {
     const fetchOrderCount = async () => {

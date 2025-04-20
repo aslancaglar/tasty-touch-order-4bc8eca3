@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { printReceipt } from "@/utils/print-utils";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
 import { supabase } from "@/integrations/supabase/client";
+import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
@@ -31,7 +31,10 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
   
   const { toast } = useToast();
 
-  // Fetch print settings when component mounts
+  const testTotal = 10.00;
+  const testSubtotal = calculatePriceWithoutTax(testTotal);
+  const testTax = calculateTaxAmount(testTotal);
+
   useEffect(() => {
     const fetchPrintSettings = async () => {
       try {
@@ -109,7 +112,7 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
       
       toast({
         title: "Paramètres sauvegardés",
-        description: "Les paramètres d'impression ont été mis à jour"
+        description: "Les paramètres d'impression ont ét�� mis à jour"
       });
     } catch (error) {
       console.error("Error saving print settings:", error);
@@ -261,7 +264,6 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
           
           <PrintNodeIntegration restaurantId={restaurant.id} />
           
-          {/* Hidden test receipt for browser printing */}
           <div id="receipt-content" className="receipt" style={{ display: "none" }}>
             <div className="header">
               <div className="logo">{restaurant.name}</div>
@@ -294,16 +296,16 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
             <div className="total-section">
               <div className="total-line">
                 <span>Sous-total</span>
-                <span>9.09 €</span>
+                <span>{testSubtotal.toFixed(2)} €</span>
               </div>
               <div className="total-line">
                 <span>TVA (10%)</span>
-                <span>0.91 €</span>
+                <span>{testTax.toFixed(2)} €</span>
               </div>
               <div className="divider"></div>
               <div className="total-line grand-total">
                 <span>TOTAL</span>
-                <span>10.00 €</span>
+                <span>{testTotal.toFixed(2)} €</span>
               </div>
             </div>
 
