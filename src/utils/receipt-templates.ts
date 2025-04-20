@@ -94,7 +94,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     if (isGrandTotal) {
       return ESCPOS.ALIGN_RIGHT + formatText(label + amount + ' EUR', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
     }
-    return formatText(label + ' '.repeat(1) + amount + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
+    return ESCPOS.ALIGN_RIGHT + formatText(label + amount + ' EUR', ESCPOS.FONT_NORMAL) + ESCPOS.ALIGN_LEFT + addLineFeed();
   };
 
   receipt += formatTotalLine('Sous-total:', subtotal.toFixed(2));
@@ -102,8 +102,9 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   receipt += createDivider(48) + addLineFeed();
   receipt += formatTotalLine('TOTAL:', total.toFixed(2), true);
   
-  // Footer
+  // Footer with extra spacing
   receipt += ESCPOS.ALIGN_CENTER;
+  receipt += addLineFeed(2); // Add extra space before thank you message
   receipt += formatText('Merci de votre visite!', ESCPOS.FONT_NORMAL) + addLineFeed();
   receipt += formatText('A bientot!', ESCPOS.FONT_NORMAL) + addLineFeed(3);
   receipt += ESCPOS.ALIGN_LEFT;
