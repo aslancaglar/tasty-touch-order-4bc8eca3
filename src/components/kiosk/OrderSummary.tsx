@@ -200,67 +200,54 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       hour12: false
     });
     
-    const lineWidth = 28;
-    
-    const centerText = (text: string) => {
-      const padding = Math.max(0, lineWidth - text.length) / 2;
-      return ' '.repeat(Math.floor(padding)) + text;
-    };
-    
-    const rightAlignPrice = (label: string, price: string) => {
-      const padding = Math.max(0, lineWidth - label.length - price.length);
-      return label + ' '.repeat(padding) + price;
-    };
-    
-    const formatItemWithPrice = (item: string, price: string) => {
-      return rightAlignPrice(item, price);
-    };
-    
     let receipt = '';
     
-    receipt += centerText(restaurant?.name || 'Restaurant') + '\n';
+    receipt += centerText(restaurant?.name || 'Restaurant', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
+    
     if (restaurant?.location) {
-      receipt += centerText(restaurant.location) + '\n';
+      receipt += centerText(restaurant.location) + addLineFeed();
     }
-    receipt += centerText(`${date} ${time}`) + '\n';
-    receipt += centerText(`Commande #${orderNumber}`) + '\n';
+    
+    receipt += centerText(`${date} ${time}`) + addLineFeed();
+    receipt += centerText(`Commande #${orderNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
     
     if (orderType === 'takeaway') {
-      receipt += centerText('À Emporter') + '\n';
+      receipt += centerText('À Emporter', ESCPOS.FONT_BOLD) + addLineFeed();
     } else if (orderType === 'dine-in' && tableNumber) {
-      receipt += centerText(`Table: ${tableNumber}`) + '\n';
+      receipt += centerText(`Table: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
     }
     
-    receipt += separatorLine + '\n';
+    receipt += createDivider(28) + addLineFeed();
     
     cart.forEach(item => {
-      receipt += formatItemWithPrice(
-        `${item.quantity}x ${item.menuItem.name}`, 
-        `${parseFloat(item.itemPrice.toString()).toFixed(2)} €`
-      ) + '\n';
+      receipt += formatText(`${item.quantity}x ${item.menuItem.name}`, ESCPOS.FONT_BOLD) + 
+                 rightAlignText(`${parseFloat(item.itemPrice.toString()).toFixed(2)} €`) + 
+                 addLineFeed();
       
       const options = getFormattedOptions(item).split(', ').filter(Boolean);
       options.forEach(option => {
-        receipt += `+ ${option}\n`;
+        receipt += formatText(`+ ${option}`, ESCPOS.FONT_SMALL) + addLineFeed();
       });
       
       const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
       toppings.forEach(topping => {
-        receipt += `+ ${topping}\n`;
+        receipt += formatText(`+ ${topping}`, ESCPOS.FONT_SMALL) + addLineFeed();
       });
     });
     
-    receipt += separatorLine + '\n';
+    receipt += createDivider(28) + addLineFeed();
     
-    receipt += rightAlignPrice('Sous-total', `${orderData.subtotal.toFixed(2)} €`) + '\n';
-    receipt += rightAlignPrice('TVA (10%)', `${orderData.tax.toFixed(2)} €`) + '\n';
-    receipt += separatorLine + '\n';
-    receipt += rightAlignPrice('TOTAL', `${orderData.total.toFixed(2)} €`) + '\n';
+    receipt += formatLine('Sous-total', `${orderData.subtotal.toFixed(2)} €`) + addLineFeed();
+    receipt += formatLine('TVA (10%)', `${orderData.tax.toFixed(2)} €`) + addLineFeed();
+    receipt += createDivider(28) + addLineFeed();
+    receipt += formatLine('TOTAL', `${orderData.total.toFixed(2)} €`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
     
-    receipt += separatorLine + '\n';
+    receipt += createDivider(28) + addLineFeed(2);
     
-    receipt += '\n' + centerText('Merci de votre visite!') + '\n';
-    receipt += centerText('A bientôt!') + '\n';
+    receipt += centerText('Merci de votre visite!') + addLineFeed();
+    receipt += centerText('A bientôt!') + addLineFeed();
+    
+    receipt += ESCPOS.CUT_PAPER;
     
     return receipt;
   };
