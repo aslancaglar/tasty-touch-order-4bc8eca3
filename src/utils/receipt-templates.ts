@@ -92,7 +92,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   
   const formatTotalLine = (label: string, amount: string, isGrandTotal: boolean = false) => {
     const command = isGrandTotal ? ESCPOS.FONT_LARGE_BOLD : ESCPOS.FONT_NORMAL;
-    const spaces = 48 - label.length - amount.length - 4; // -4 for "EUR " at the end
+    const spaces = 48 - label.length - amount.length - 4; // Reduced space to bring Total text and price closer
     return formatText(label + ' '.repeat(Math.max(0, spaces)) + amount + ' EUR', command) + addLineFeed();
   };
 
