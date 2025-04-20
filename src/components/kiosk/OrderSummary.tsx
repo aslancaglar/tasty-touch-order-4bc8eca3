@@ -140,6 +140,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       subtotal: number;
       tax: number;
       total: number;
+      getFormattedOptions: (item: CartItem) => string;
+      getFormattedToppings: (item: CartItem) => string;
     }
   ) => {
     try {
@@ -189,6 +191,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     subtotal: number;
     tax: number;
     total: number;
+    getFormattedOptions: (item: CartItem) => string;
+    getFormattedToppings: (item: CartItem) => string;
   }): string => {
     return generateStandardReceipt({
       restaurant: orderData.restaurant,
@@ -199,8 +203,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       subtotal: orderData.subtotal,
       tax: orderData.tax,
       total: orderData.total,
-      getFormattedOptions,
-      getFormattedToppings
+      getFormattedOptions: orderData.getFormattedOptions,
+      getFormattedToppings: orderData.getFormattedToppings
     });
   };
 
