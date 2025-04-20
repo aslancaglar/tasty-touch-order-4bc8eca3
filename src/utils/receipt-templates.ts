@@ -90,10 +90,10 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   receipt += createDivider(32) + addLineFeed();
   
   const subtotalLine = `Sous-total${' '.repeat(Math.max(0, 21 - subtotal.toFixed(2).length))}${subtotal.toFixed(2)} €`;
-  receipt += formatText(subtotalLine) + addLineFeed();
+  receipt += formatText(subtotalLine, ESCPOS.FONT_NORMAL) + addLineFeed();
   
   const taxLine = `TVA (10%)${' '.repeat(Math.max(0, 22 - tax.toFixed(2).length))}${tax.toFixed(2)} €`;
-  receipt += formatText(taxLine) + addLineFeed();
+  receipt += formatText(taxLine, ESCPOS.FONT_NORMAL) + addLineFeed();
   
   receipt += createDivider(32) + addLineFeed();
   
@@ -103,8 +103,8 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   receipt += createDivider(32) + addLineFeed(2);
   
   // Footer
-  receipt += centerText('Merci de votre visite!') + addLineFeed();
-  receipt += centerText('À bientôt!') + addLineFeed(2);
+  receipt += centerText('Merci de votre visite!', ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += centerText('À bientôt!', ESCPOS.FONT_NORMAL) + addLineFeed(2);
   
   // Cut paper
   receipt += ESCPOS.CUT_PAPER;
