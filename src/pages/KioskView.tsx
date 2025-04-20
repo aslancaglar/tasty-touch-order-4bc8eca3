@@ -639,7 +639,8 @@ const KioskView = () => {
             </DialogHeader>
             
             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-              {selectedItem.options && selectedItem.options.map(option => <div key={option.id} className="space-y-2">
+              {selectedItem.options && selectedItem.options.map(option => 
+                <div key={option.id} className="space-y-2">
                   <Label className="font-medium">
                     {option.name}
                     {option.required && <span className="text-red-500 ml-1">*</span>}
@@ -666,34 +667,50 @@ const KioskView = () => {
                         </div>;
               })}
                   </div>
-                </div>)}
-              
-              {selectedItem.toppingCategories && selectedItem.toppingCategories.map(category => <div key={category.id} className="space-y-3">
+                </div>
+              )}
+
+              {selectedItem.toppingCategories && selectedItem.toppingCategories.map(category => (
+                <div key={category.id} className="space-y-3">
                   <div className="font-medium flex items-center">
                     {category.name} 
                     {category.required && <span className="text-red-500 ml-1">*</span>}
                     <span className="text-sm text-gray-500 ml-2">
-                      {category.max_selections > 0 ? `(Sélectionnez jusqu'à ${category.max_selections})` : "(Sélection multiple)"}
+                      {category.max_selections > 0 
+                        ? `(Sélectionnez jusqu'à ${category.max_selections})` 
+                        : "(Sélection multiple)"}
                     </span>
                   </div>
-                  
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {category.toppings.map(topping => {
-                const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
-                const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
-                return <div key={topping.id} className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300">
+                      const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
+                      const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
+                      return (
+                        <div 
+                          key={topping.id} 
+                          className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300"
+                        >
                           <span>{topping.name}</span>
                           <div className="flex items-center gap-2">
-                            {topping.price > 0 && <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} €</span>}
-                            <Button variant="outline" size="icon" className={`h-8 w-8 rounded-full ${isSelected ? 'bg-kiosk-primary text-white border-kiosk-primary' : ''}`} onClick={() => handleToggleTopping(category.id, topping.id)}>
+                            {topping.price > 0 && (
+                              <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} €</span>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className={`h-8 w-8 rounded-full ${isSelected ? 'bg-kiosk-primary text-white border-kiosk-primary' : ''}`} 
+                              onClick={() => handleToggleTopping(category.id, topping.id)}
+                            >
                               {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                             </Button>
                           </div>
-                        </div>;
-              })}
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>)}
-              
+                </div>
+              ))}
+
               <div>
                 <Label className="font-medium">Quantité</Label>
                 <div className="flex items-center space-x-4 mt-2">
@@ -706,8 +723,6 @@ const KioskView = () => {
                   </Button>
                 </div>
               </div>
-              
-              
             </div>
             
             <DialogFooter>
