@@ -294,16 +294,16 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
             <div className="total-section">
               <div className="total-line">
                 <span>Sous-total</span>
-                <span>10.00 €</span>
+                <span>9.09 €</span>
               </div>
               <div className="total-line">
                 <span>TVA (10%)</span>
-                <span>1.00 €</span>
+                <span>0.91 €</span>
               </div>
               <div className="divider"></div>
               <div className="total-line grand-total">
                 <span>TOTAL</span>
-                <span>11.00 €</span>
+                <span>10.00 €</span>
               </div>
             </div>
 

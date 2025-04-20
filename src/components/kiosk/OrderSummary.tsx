@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -42,9 +43,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   tableNumber = null,
 }) => {
   const [orderNumber, setOrderNumber] = useState<number>(0);
-  const total = cart.reduce((sum, item) => sum + (item.itemPrice * item.quantity), 0);
-  const tva = total * 0.1;
-  const subtotal = total - tva;
+  
+  // Use the provided calculation functions for consistent totals
+  const subtotal = calculateSubtotal();
+  const tax = calculateTax();
+  const total = subtotal + tax;
   
   useEffect(() => {
     const fetchOrderCount = async () => {
@@ -319,7 +322,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
             <div className="flex justify-between text-gray-600">
               <span>TVA (10%):</span>
-              <span>{tva.toFixed(2)} €</span>
+              <span>{tax.toFixed(2)} €</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
