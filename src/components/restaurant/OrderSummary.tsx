@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
+import { useToast } from "@/hooks/use-toast";
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -47,6 +47,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   
   const { total, subtotal, tax } = calculateCartTotals(cart);
 
@@ -72,6 +73,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     if (restaurant?.id) {
       try {
+        console.log("Screen width:", window.innerWidth, "isMobile:", isMobile);
+        
         const { data: printConfig, error } = await supabase
           .from('restaurant_print_config')
           .select('api_key, configured_printers, browser_printing_enabled')
@@ -83,16 +86,37 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           return;
         }
         
-        const shouldUseBrowserPrinting = !isMobile && 
+        const shouldUseBrowserPrinting = 
+          !isMobile && 
           (printConfig === null || printConfig.browser_printing_enabled !== false);
                                         
         if (shouldUseBrowserPrinting) {
           console.log("Using browser printing for receipt");
+          toast({
+            title: "Impression",
+            description: "Préparation de l'impression du reçu..."
+          });
+          
           setTimeout(() => {
-            printReceipt('receipt-content');
+            try {
+              printReceipt('receipt-content');
+              console.log("Print receipt triggered successfully");
+            } catch (printError) {
+              console.error("Error during browser printing:", printError);
+              toast({
+                title: "Erreur d'impression",
+                description: "Impossible d'imprimer le reçu. Vérifiez les paramètres de votre navigateur.",
+                variant: "destructive"
+              });
+            }
           }, 500);
         } else {
           console.log("Browser printing disabled for this device or restaurant");
+          if (isMobile) {
+            console.log("Browser printing disabled because this is a mobile device");
+          } else if (printConfig?.browser_printing_enabled === false) {
+            console.log("Browser printing disabled in restaurant settings");
+          }
         }
         
         if (printConfig?.api_key && printConfig?.configured_printers) {
@@ -123,6 +147,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         }
       } catch (error) {
         console.error("Error during receipt printing:", error);
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de l'impression",
+          variant: "destructive"
+        });
       }
     }
   };
@@ -238,7 +267,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 
                 {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
                   <div className="pl-6 space-y-1 text-sm text-gray-600">
-                    {/* Options, as before */}
                     {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                       <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
@@ -246,7 +274,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                       </div>
                     ))}
 
-                    {/* Toppings grouped by category */}
                     {getGroupedToppings(item).map((group, groupIdx) => (
                       <div key={`${item.id}-cat-summary-${groupIdx}`}>
                         <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>

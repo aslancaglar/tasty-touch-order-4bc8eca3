@@ -51,6 +51,7 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
         
         if (data) {
           setBrowserPrintEnabled(data.browser_printing_enabled !== false);
+          console.log("Browser printing enabled:", data.browser_printing_enabled !== false);
         }
       } catch (error) {
         console.error("Error in fetchPrintSettings:", error);
@@ -96,6 +97,8 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
           .from('restaurant_print_config')
           .update({ browser_printing_enabled: browserPrintEnabled })
           .eq('restaurant_id', restaurant.id);
+          
+        console.log("Updated browser printing setting:", browserPrintEnabled);
       } else {
         // Create new config
         result = await supabase
@@ -104,6 +107,8 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
             restaurant_id: restaurant.id,
             browser_printing_enabled: browserPrintEnabled 
           });
+          
+        console.log("Created new print config with browser printing:", browserPrintEnabled);
       }
       
       if (result.error) {
@@ -112,7 +117,7 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
       
       toast({
         title: "Paramètres sauvegardés",
-        description: "Les paramètres d'impression ont ét�� mis à jour"
+        description: "Les paramètres d'impression ont été mis à jour"
       });
     } catch (error) {
       console.error("Error saving print settings:", error);
@@ -131,26 +136,43 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
       // Generate a test receipt
       const testReceipt = document.getElementById("receipt-content");
       if (testReceipt) {
+        console.log("Testing browser printing");
         // Make it visible for printing
         testReceipt.style.display = "block";
         
         // Print using browser
-        printReceipt("receipt-content");
+        try {
+          printReceipt("receipt-content");
+          
+          toast({
+            title: "Test d'Impression",
+            description: "Impression du reçu de test via le navigateur"
+          });
+        } catch (error) {
+          console.error("Error in test print:", error);
+          toast({
+            title: "Erreur d'Impression",
+            description: "Impossible d'imprimer le reçu de test",
+            variant: "destructive"
+          });
+        }
         
         // Hide it again after printing
         setTimeout(() => {
           testReceipt.style.display = "none";
         }, 500);
+      } else {
+        console.error("Test receipt element not found");
+        toast({
+          title: "Erreur",
+          description: "Élément de reçu de test introuvable",
+          variant: "destructive"
+        });
       }
-      
-      toast({
-        title: "Test Receipt",
-        description: "Printing test receipt via browser",
-      });
     } else {
       toast({
-        title: "Browser Printing Disabled",
-        description: "Browser printing is currently disabled",
+        title: "Impression Navigateur Désactivée",
+        description: "L'impression via le navigateur est actuellement désactivée",
         variant: "destructive"
       });
     }

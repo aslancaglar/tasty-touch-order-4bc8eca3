@@ -87,13 +87,19 @@ export const addLineFeed = (count: number = 1): string => {
  * @param elementId The ID of the element to print
  */
 export const printReceipt = (elementId: string) => {
+  console.log(`Attempting to print element with ID: ${elementId}`);
   const printContent = document.getElementById(elementId);
-  if (!printContent) return;
+  if (!printContent) {
+    console.error(`Element with ID '${elementId}' not found`);
+    return;
+  }
 
   // Create a hidden iframe for printing
   const iframe = document.createElement('iframe');
   iframe.style.display = 'none';
   document.body.appendChild(iframe);
+  
+  console.log("Created iframe for printing");
   
   // Setup print-specific styles for 80mm thermal printer (typically 302px wide)
   iframe.contentDocument?.write(`
@@ -181,14 +187,24 @@ export const printReceipt = (elementId: string) => {
   // Wait for resources to load before printing
   const iframeWindow = iframe.contentWindow;
   if (iframeWindow) {
+    console.log("Preparing to print...");
     setTimeout(() => {
-      iframeWindow.focus();
-      iframeWindow.print();
+      try {
+        console.log("Opening print dialog...");
+        iframeWindow.focus();
+        iframeWindow.print();
+        console.log("Print dialog opened");
+      } catch (error) {
+        console.error("Error opening print dialog:", error);
+      }
       
       // Remove the iframe after printing is done or canceled
       setTimeout(() => {
         document.body.removeChild(iframe);
+        console.log("Print iframe removed from DOM");
       }, 1000);
     }, 500);
+  } else {
+    console.error("Failed to access iframe window");
   }
 };

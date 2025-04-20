@@ -1,8 +1,9 @@
 
 import * as React from "react"
 
-// Expanded breakpoint to include tablets (typically considered up to 1024px)
-const MOBILE_BREAKPOINT = 1024
+// Setting breakpoint for mobile devices and tablets (typically up to 768px)
+// Previously was 1024px which included some smaller desktop screens
+const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
