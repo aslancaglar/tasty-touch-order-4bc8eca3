@@ -251,6 +251,7 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
   console.log("Updating menu item:", id, "with data:", updates);
 
   const { topping_categories, tax_percentage, ...menuItemData } = updates as any;
+  
   const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
     ? (Number(tax_percentage) || 10)
     : 10;
