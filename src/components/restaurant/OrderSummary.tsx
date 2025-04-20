@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               {
                 restaurant,
                 cart,
-                orderNumber,
+                orderNumber: orderNumber.toString(), // Convert to string here
                 tableNumber,
                 orderType,
                 subtotal,
