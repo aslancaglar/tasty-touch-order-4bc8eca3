@@ -58,6 +58,18 @@ export const updateRestaurant = async (id: string, updates: Partial<Omit<Restaur
   return data;
 };
 
+export const deleteRestaurant = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from("restaurants")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting restaurant:", error);
+    throw error;
+  }
+};
+
 export const getRestaurantBySlug = async (slug: string): Promise<Restaurant | null> => {
   const { data, error } = await supabase
     .from("restaurants")

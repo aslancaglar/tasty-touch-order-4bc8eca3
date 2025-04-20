@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Printer, Check, XCircle } from "lucide-react";
+import { Loader2, Printer, Check, XCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Restaurant } from "@/types/database-types";
 import ImageUpload from "@/components/ImageUpload";
@@ -15,6 +16,20 @@ import { printReceipt } from "@/utils/print-utils";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
+import { updateRestaurant, deleteRestaurant } from "@/services/kiosk-service";
+import { useNavigate } from "react-router-dom";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger 
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
@@ -28,8 +43,10 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const testTotal = 10.00;
   const testSubtotal = calculatePriceWithoutTax(testTotal);
@@ -61,17 +78,63 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
     fetchPrintSettings();
   }, [restaurant.id]);
 
-  const handleSaveRestaurantInfo = () => {
+  const handleSaveRestaurantInfo = async () => {
+    if (!name.trim()) {
+      toast({
+        title: "Error",
+        description: "Restaurant name is required",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSaving(true);
     
-    // Simulate saving
-    setTimeout(() => {
-      setIsSaving(false);
-      toast({
-        title: "Not Implemented",
-        description: "This feature will be implemented in a future update",
+    try {
+      await updateRestaurant(restaurant.id, {
+        name,
+        location,
+        image_url: image,
       });
-    }, 1000);
+      
+      toast({
+        title: "Success",
+        description: "Restaurant information updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating restaurant:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update restaurant information",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteRestaurant = async () => {
+    setIsDeleting(true);
+    
+    try {
+      await deleteRestaurant(restaurant.id);
+      
+      toast({
+        title: "Success",
+        description: "Restaurant deleted successfully",
+      });
+      
+      // Redirect to restaurants page
+      navigate("/restaurants");
+    } catch (error) {
+      console.error("Error deleting restaurant:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete restaurant",
+        variant: "destructive"
+      });
+      setIsDeleting(false);
+    }
   };
 
   const handleSavePrintSettings = async () => {
@@ -224,21 +287,69 @@ const SettingsTab = ({ restaurant }: SettingsTabProps) => {
             </div>
           </div>
           
-          <div className="flex justify-end">
-            <Button
-              onClick={handleSaveRestaurantInfo}
-              disabled={isSaving}
-              className="bg-kiosk-primary"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sauvegarde...
-                </>
-              ) : (
-                "Enregistrer"
-              )}
-            </Button>
+          <div className="flex flex-col space-y-4">
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSaveRestaurantInfo}
+                disabled={isSaving}
+                className="bg-kiosk-primary"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sauvegarde...
+                  </>
+                ) : (
+                  "Enregistrer"
+                )}
+              </Button>
+            </div>
+            
+            <Alert variant="destructive" className="mt-6">
+              <AlertTitle className="text-red-600">Zone de danger</AlertTitle>
+              <AlertDescription className="text-red-600">
+                Supprimer ce restaurant effacera définitivement toutes les informations associées - menus, suppléments, commandes, etc.
+              </AlertDescription>
+              
+              <div className="mt-4">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={isDeleting}>
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Suppression...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Supprimer ce restaurant
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Êtes-vous absolument sûr?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Cette action supprimera définitivement le restaurant <strong>{restaurant.name}</strong> et toutes ses données associées. Cette action ne peut pas être annulée.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDeleteRestaurant}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Supprimer définitivement
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </Alert>
           </div>
         </TabsContent>
         
