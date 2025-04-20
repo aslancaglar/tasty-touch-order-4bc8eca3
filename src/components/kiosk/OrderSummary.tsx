@@ -147,7 +147,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     try {
       const receiptContent = generatePrintNodeReceipt(orderData);
       
-      const encodedContent = btoa(unescape(encodeURIComponent(receiptContent)));
+      const encodedContent = btoa(
+        new TextEncoder().encode(receiptContent)
+          .reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
       
       console.log("Sending receipt to PrintNode printers:", printerIds);
       

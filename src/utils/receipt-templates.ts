@@ -46,7 +46,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   
   let receipt = '';
   
-  // Header without emojis, centered with proper encoding
+  // Header centered with proper encoding
   receipt += ESCPOS.ALIGN_CENTER;
   receipt += formatText(restaurant?.name || 'Restaurant', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
   
@@ -58,7 +58,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   receipt += formatText(`Commande #${orderNumber}`, ESCPOS.FONT_BOLD) + addLineFeed(2);
   
   if (orderType === 'takeaway') {
-    receipt += formatText('À Emporter', ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText("A Emporter", ESCPOS.FONT_BOLD) + addLineFeed();
   } else if (orderType === 'dine-in' && tableNumber) {
     receipt += formatText(`Sur Place - Table: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
   }
@@ -102,10 +102,10 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   // Footer
   receipt += ESCPOS.ALIGN_CENTER;
   receipt += formatText('Merci de votre visite!', ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText('À bientôt!', ESCPOS.FONT_NORMAL) + addLineFeed(2);
+  receipt += formatText('A bientot!', ESCPOS.FONT_NORMAL) + addLineFeed(2);
   receipt += ESCPOS.ALIGN_LEFT;
   
-  // Cut paper
+  // Explicitly add the cut paper command
   receipt += ESCPOS.CUT_PAPER;
   
   return receipt;
