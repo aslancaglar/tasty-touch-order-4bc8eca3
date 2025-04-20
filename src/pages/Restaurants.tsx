@@ -260,7 +260,7 @@ const fetchRestaurantStats = async (restaurantIds: string[]): Promise<Record<str
       if (order.status === "cancelled") continue;
       if (order.restaurant_id && stats[order.restaurant_id]) {
         stats[order.restaurant_id].totalOrders += 1;
-        stats[order.restaurant_id].revenue += parseFloat(order.total || 0);
+        stats[order.restaurant_id].revenue += order.total ? parseFloat(String(order.total)) : 0;
       }
     }
   }
