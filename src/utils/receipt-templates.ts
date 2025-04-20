@@ -54,13 +54,13 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     receipt += formatText(restaurant.location, ESCPOS.FONT_NORMAL) + addLineFeed();
   }
   
-  receipt += formatText(date, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(`Commande #${orderNumber}`, ESCPOS.FONT_BOLD) + addLineFeed(2);
+  receipt += formatText(`${date} ${time}`, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`COMMANDE #${orderNumber}`, ESCPOS.FONT_LARGE) + addLineFeed(2);
   
   if (orderType === 'takeaway') {
-    receipt += formatText("A Emporter", ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText("A EMPORTER", ESCPOS.FONT_BOLD) + addLineFeed();
   } else if (orderType === 'dine-in' && tableNumber) {
-    receipt += formatText(`Sur Place - Table: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText(`SUR PLACE - TABLE: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
   }
   receipt += ESCPOS.ALIGN_LEFT;
   
@@ -87,17 +87,19 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     });
   });
   
-  // Totals section with right-aligned prices
+  // Totals section with left-aligned text and right-aligned prices
   receipt += createDivider(48) + addLineFeed();
   
-  receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText(`Sous-total: ${subtotal.toFixed(2)} EUR`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(`TVA (10%): ${tax.toFixed(2)} EUR`, ESCPOS.FONT_NORMAL) + addLineFeed();
+  const formatTotalLine = (label: string, amount: string, isGrandTotal: boolean = false) => {
+    const command = isGrandTotal ? ESCPOS.FONT_LARGE_BOLD : ESCPOS.FONT_NORMAL;
+    const spaces = 48 - label.length - amount.length - 4; // -4 for "EUR " at the end
+    return formatText(label + ' '.repeat(Math.max(0, spaces)) + amount + ' EUR', command) + addLineFeed();
+  };
+
+  receipt += formatTotalLine('Sous-total:', subtotal.toFixed(2));
+  receipt += formatTotalLine('TVA (10%):', tax.toFixed(2));
   receipt += createDivider(48) + addLineFeed();
-  receipt += formatText(`TOTAL: ${total.toFixed(2)} EUR`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
-  receipt += ESCPOS.ALIGN_LEFT;
-  
-  receipt += createDivider(48) + addLineFeed(2);
+  receipt += formatTotalLine('TOTAL:', total.toFixed(2), true);
   
   // Footer
   receipt += ESCPOS.ALIGN_CENTER;
