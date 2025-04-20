@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { generateStandardReceipt } from "@/utils/receipt-templates";
+import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -235,19 +236,26 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
                 </div>
                 
-                {(getFormattedOptions(item) || getFormattedToppings(item)) && (
+                {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
                   <div className="pl-6 space-y-1 text-sm text-gray-600">
+                    {/* Options, as before */}
                     {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                       <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
                         <span>0.00 €</span>
                       </div>
                     ))}
-                    
-                    {getFormattedToppings(item).split(', ').filter(Boolean).map((topping, idx) => (
-                      <div key={`${item.id}-topping-${idx}`} className="flex justify-between">
-                        <span>+ {topping}</span>
-                        <span>0.00 €</span>
+
+                    {/* Toppings grouped by category */}
+                    {getGroupedToppings(item).map((group, groupIdx) => (
+                      <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                        <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
+                        {group.toppings.map((topping, topIdx) => (
+                          <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                            <span style={{ paddingLeft: 6 }}>+ {topping}</span>
+                            <span>0.00 €</span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
