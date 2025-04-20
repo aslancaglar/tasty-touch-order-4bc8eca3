@@ -31,7 +31,7 @@ export const printReceipt = (elementId: string) => {
             width: 72mm; /* Accounting for printer margins */
             margin: 0 auto;
             padding: 5mm 0;
-            font-size: 12px;
+            font-size: 8px;
             line-height: 1.2;
             font-weight: 500;
           }
@@ -44,7 +44,7 @@ export const printReceipt = (elementId: string) => {
             font-weight: 600;
           }
           .logo {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 700;
             margin-bottom: 5px;
           }
@@ -59,8 +59,8 @@ export const printReceipt = (elementId: string) => {
             font-weight: 600;
           }
           .item-details {
-            padding-left: 10px;
-            font-size: 11px;
+            padding-left: 15px;
+            font-size: 8px;
             font-weight: 600;
           }
           .total-section {
@@ -74,12 +74,12 @@ export const printReceipt = (elementId: string) => {
           }
           .grand-total {
             font-weight: 700;
-            font-size: 14px;
+            font-size: 10px;
           }
           .footer {
             text-align: center;
             margin-top: 20px;
-            font-size: 11px;
+            font-size: 8px;
             font-weight: 500;
           }
           @media print {
@@ -113,3 +113,4 @@ export const printReceipt = (elementId: string) => {
     }, 500);
   }
 };
+

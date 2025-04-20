@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -48,7 +47,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   
   const orderNumber = Date.now().toString().slice(-6);
 
-  // Define the separator string for receipt formatting
   const separatorLine = '-'.repeat(28);
 
   const handleConfirmOrder = async () => {
@@ -67,7 +65,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           return;
         }
         
-        // Use browser printing only if explicitly enabled or if no config exists
         const shouldUseBrowserPrinting = printConfig === null || 
                                         printConfig.browser_printing_enabled !== false;
                                         
@@ -185,8 +182,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       hour12: false
     });
     
-    const lineWidth = 32; // Increased line width for better formatting
-
+    const lineWidth = 32;
+    
     const centerText = (text: string) => {
       const padding = Math.max(0, lineWidth - text.length) / 2;
       return ' '.repeat(Math.floor(padding)) + text;
@@ -203,7 +200,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     let receipt = '';
     
-    // Slightly adjusted formatting to be more compact
     receipt += centerText(restaurant?.name || 'Restaurant') + '\n';
     if (restaurant?.location) {
       receipt += centerText(restaurant.location) + '\n';
@@ -220,7 +216,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     receipt += separatorLine + '\n';
     
     cart.forEach(item => {
-      // More compact item formatting
       receipt += formatItemWithPrice(
         `${item.quantity}x ${item.menuItem.name}`, 
         `${parseFloat(item.itemPrice.toString()).toFixed(2)} €`
@@ -228,12 +223,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       
       const options = getFormattedOptions(item).split(', ').filter(Boolean);
       options.forEach(option => {
-        receipt += `+ ${option}\n`;
+        receipt += `    + ${option}\n`;
       });
       
       const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
       toppings.forEach(topping => {
-        receipt += `+ ${topping}\n`;
+        receipt += `    + ${topping}\n`;
       });
     });
     
