@@ -77,12 +77,12 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     
     const options = getFormattedOptions(item).split(', ').filter(Boolean);
     options.forEach(option => {
-      receipt += formatText(`  + ${option}`, ESCPOS.FONT_NORMAL + ESCPOS.FONT_LARGE) + addLineFeed();
+      receipt += formatText(`  + ${option}`, ESCPOS.FONT_NORMAL) + addLineFeed();
     });
     
     const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
     toppings.forEach(topping => {
-      receipt += formatText(`  + ${topping}`, ESCPOS.FONT_NORMAL + ESCPOS.FONT_LARGE) + addLineFeed();
+      receipt += formatText(`  + ${topping}`, ESCPOS.FONT_NORMAL) + addLineFeed();
     });
   });
   
