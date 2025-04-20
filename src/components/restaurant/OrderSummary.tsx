@@ -202,28 +202,30 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     const lineWidth = 32;
     
-    const centerText = (text: string) => {
+    const ESC = '\x1B';
+    const FONT_LARGE = `${ESC}!0x20`; // Double height
+    const FONT_NORMAL = `${ESC}!0x00`; // Normal size
+    const FONT_BOLD = `${ESC}E1`;      // Bold on
+    const FONT_BOLD_OFF = `${ESC}E0`;  // Bold off
+    
+    const centerText = (text: string, large = false) => {
       const padding = Math.max(0, lineWidth - text.length) / 2;
-      return ' '.repeat(Math.floor(padding)) + text;
+      return `${large ? FONT_LARGE : FONT_NORMAL}${' '.repeat(Math.floor(padding))}${text}`;
     };
     
-    const rightAlignPrice = (label: string, price: string) => {
+    const rightAlignPrice = (label: string, price: string, bold = false) => {
       const padding = Math.max(0, lineWidth - label.length - price.length);
-      return label + ' '.repeat(padding) + price;
-    };
-    
-    const formatItemWithPrice = (item: string, price: string) => {
-      return rightAlignPrice(item, price);
+      return `${bold ? FONT_BOLD : ''}${label}${' '.repeat(padding)}${price}${bold ? FONT_BOLD_OFF : ''}`;
     };
     
     let receipt = '';
     
-    receipt += centerText(restaurant?.name || 'Restaurant') + '\n';
+    receipt += centerText(restaurant?.name || 'Restaurant', true) + '\n';
     if (restaurant?.location) {
       receipt += centerText(restaurant.location) + '\n';
     }
     receipt += centerText(`${date} ${time}`) + '\n';
-    receipt += centerText(`Commande #${orderNumber}`) + '\n';
+    receipt += `${FONT_BOLD}` + centerText(`Commande #${orderNumber}`) + `${FONT_BOLD_OFF}\n`;
     
     if (orderType === 'takeaway') {
       receipt += centerText('À Emporter') + '\n';
@@ -231,13 +233,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       receipt += centerText(`Table: ${tableNumber}`) + '\n';
     }
     
-    receipt += separatorLine + '\n';
+    receipt += '-'.repeat(lineWidth) + '\n';
     
     cart.forEach(item => {
-      receipt += formatItemWithPrice(
+      receipt += `${FONT_BOLD}${rightAlignPrice(
         `${item.quantity}x ${item.menuItem.name}`, 
         `${parseFloat(item.itemPrice.toString()).toFixed(2)} €`
-      ) + '\n';
+      )}${FONT_BOLD_OFF}\n`;
       
       const options = getFormattedOptions(item).split(', ').filter(Boolean);
       options.forEach(option => {
@@ -250,16 +252,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       });
     });
     
-    receipt += separatorLine + '\n';
+    receipt += '-'.repeat(lineWidth) + '\n';
     
-    receipt += rightAlignPrice('Sous-total', `${orderData.subtotal.toFixed(2)} €`) + '\n';
-    receipt += rightAlignPrice('TVA (10%)', `${orderData.tax.toFixed(2)} €`) + '\n';
-    receipt += separatorLine + '\n';
-    receipt += rightAlignPrice('TOTAL', `${orderData.total.toFixed(2)} €`) + '\n';
+    receipt += rightAlignPrice('Sous-total', `${subtotal.toFixed(2)} €`) + '\n';
+    receipt += rightAlignPrice('TVA (10%)', `${tax.toFixed(2)} €`) + '\n';
+    receipt += '-'.repeat(lineWidth) + '\n';
+    receipt += rightAlignPrice('TOTAL', `${total.toFixed(2)} €`, true) + '\n';
     
-    receipt += separatorLine + '\n';
+    receipt += '-'.repeat(lineWidth) + '\n\n';
     
-    receipt += '\n' + centerText('Merci de votre visite!') + '\n';
+    receipt += centerText('Merci de votre visite!') + '\n';
     receipt += centerText('A bientôt!') + '\n';
     
     return receipt;
