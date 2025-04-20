@@ -5,6 +5,28 @@ import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store } fro
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ReactNode } from "react";
+
+// Define proper types for our API responses
+interface PopularItem {
+  name: string;
+  price: number;
+  restaurant_name: string;
+  order_count: number;
+}
+
+interface PopularRestaurant {
+  name: string;
+  total_revenue: number;
+}
+
+interface StatCardProps {
+  title: string;
+  value: ReactNode; // Change to ReactNode to accept loading skeletons
+  description: string;
+  icon: React.ElementType;
+  trend?: { value: string; positive: boolean };
+}
 
 const StatCard = ({
   title,
@@ -12,13 +34,7 @@ const StatCard = ({
   description,
   icon: Icon,
   trend
-}: {
-  title: string;
-  value: string | number;
-  description: string;
-  icon: React.ElementType;
-  trend?: { value: string; positive: boolean };
-}) => (
+}: StatCardProps) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2">
       <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
@@ -86,37 +102,38 @@ const fetchStats = async () => {
   };
 };
 
-const fetchPopularItems = async () => {
+const fetchPopularItems = async (): Promise<PopularItem[]> => {
   // Top 5 items by sales (uses db function)
   const { data, error } = await supabase.rpc("get_popular_items", { limit_count: 5 });
   if (error) throw error;
-  // Ensure array and fields present
-  return (data ?? []).map((item: any) => ({
-    name: item.name,
-    price: item.price,
-    restaurant: item.restaurant_name,
-    orders: item.order_count
-  }));
+  
+  // Handle the case when data might be null or not an array
+  if (!data) return [];
+  
+  // Properly cast the JSON data to our type
+  const typedData = (typeof data === 'string' ? JSON.parse(data) : data) as PopularItem[];
+  return Array.isArray(typedData) ? typedData : [];
 };
 
-const fetchPopularRestaurants = async () => {
+const fetchPopularRestaurants = async (): Promise<PopularRestaurant[]> => {
   // Top 5 restaurants by revenue (uses db function)
   const { data, error } = await supabase.rpc("get_popular_restaurants", { limit_count: 5 });
   if (error) throw error;
-  // Ensure array and fields present
-  return (data ?? []).map((item: any) => ({
-    name: item.name,
-    total_revenue: item.total_revenue
-  }));
+  
+  // Handle the case when data might be null or not an array
+  if (!data) return [];
+  
+  // Properly cast the JSON data to our type
+  const typedData = (typeof data === 'string' ? JSON.parse(data) : data) as PopularRestaurant[];
+  return Array.isArray(typedData) ? typedData : [];
 };
 
-const PopularItems = ({
-  items,
-  isLoading
-}: {
-  items: { name: string; price: number; restaurant: string; orders: number }[] | undefined;
+interface PopularItemsProps {
+  items: PopularItem[] | undefined;
   isLoading: boolean;
-}) => (
+}
+
+const PopularItems = ({ items, isLoading }: PopularItemsProps) => (
   <Card className="col-span-2">
     <CardHeader>
       <CardTitle>Popular Items</CardTitle>
@@ -148,12 +165,12 @@ const PopularItems = ({
                   </div>
                   <div>
                     <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">{item.restaurant}</p>
+                    <p className="text-sm text-muted-foreground">{item.restaurant_name}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="font-medium">${parseFloat(item.price.toString()).toFixed(2)}</p>
-                  <p className="text-sm text-muted-foreground">{item.orders} orders</p>
+                  <p className="text-sm text-muted-foreground">{item.order_count} orders</p>
                 </div>
               </div>
             ))}
@@ -162,13 +179,12 @@ const PopularItems = ({
   </Card>
 );
 
-const PopularRestaurants = ({
-  data,
-  isLoading
-}: {
-  data: { name: string; total_revenue: number }[] | undefined;
+interface PopularRestaurantsProps {
+  data: PopularRestaurant[] | undefined;
   isLoading: boolean;
-}) => (
+}
+
+const PopularRestaurants = ({ data, isLoading }: PopularRestaurantsProps) => (
   <Card>
     <CardHeader>
       <CardTitle>Popular Restaurants</CardTitle>
