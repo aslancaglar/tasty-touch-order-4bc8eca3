@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -41,11 +41,25 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   orderType = null,
   tableNumber = null,
 }) => {
+  const [orderNumber, setOrderNumber] = useState<number>(0);
   const total = cart.reduce((sum, item) => sum + (item.itemPrice * item.quantity), 0);
   const tva = total * 0.1;
   const subtotal = total - tva;
-  
-  const orderNumber = Date.now().toString().slice(-6);
+
+  useEffect(() => {
+    const fetchOrderCount = async () => {
+      if (restaurant?.id) {
+        const { count } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('restaurant_id', restaurant.id);
+        
+        setOrderNumber((count || 0) + 1);
+      }
+    };
+
+    fetchOrderCount();
+  }, [restaurant?.id]);
 
   const separatorLine = '-'.repeat(28);
 
@@ -328,7 +342,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       <OrderReceipt
         restaurant={restaurant}
         cart={cart}
-        orderNumber={orderNumber}
+        orderNumber={orderNumber.toString()}
         tableNumber={tableNumber}
         orderType={orderType}
         getFormattedOptions={getFormattedOptions}
