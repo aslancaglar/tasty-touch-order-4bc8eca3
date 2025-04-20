@@ -9,6 +9,7 @@ import { printReceipt, ESCPOS, formatText, centerText, rightAlignText, formatLin
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { generateStandardReceipt } from "@/utils/receipt-templates";
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -187,77 +188,18 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     tax: number;
     total: number;
   }): string => {
-    const { restaurant, cart, orderNumber, tableNumber, orderType, subtotal, tax, total } = orderData;
-    const now = new Date();
-    const date = now.toLocaleDateString('fr-FR', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
+    return generateStandardReceipt({
+      restaurant,
+      cart,
+      orderNumber,
+      tableNumber,
+      orderType,
+      subtotal,
+      tax,
+      total,
+      getFormattedOptions,
+      getFormattedToppings
     });
-    const time = now.toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    
-    let receipt = '';
-    
-    // Restaurant header with large font
-    receipt += centerText(restaurant?.name || 'Restaurant', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
-    
-    if (restaurant?.location) {
-      receipt += centerText(restaurant.location) + addLineFeed();
-    }
-    
-    receipt += centerText(`${date} ${time}`) + addLineFeed();
-    receipt += centerText(`Commande #${orderNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
-    
-    if (orderType === 'takeaway') {
-      receipt += centerText('À Emporter', ESCPOS.FONT_BOLD) + addLineFeed();
-    } else if (orderType === 'dine-in' && tableNumber) {
-      receipt += centerText(`Table: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
-    }
-    
-    receipt += createDivider(32) + addLineFeed();
-    
-    // Items section
-    cart.forEach(item => {
-      // Item name and price with bold
-      receipt += formatText(`${item.quantity}x ${item.menuItem.name}`, ESCPOS.FONT_BOLD) + 
-                 rightAlignText(`${parseFloat(item.itemPrice.toString()).toFixed(2)} €`) + 
-                 addLineFeed();
-      
-      // Options with small font
-      const options = getFormattedOptions(item).split(', ').filter(Boolean);
-      options.forEach(option => {
-        receipt += formatText(`+ ${option}`, ESCPOS.FONT_SMALL) + addLineFeed();
-      });
-      
-      // Toppings with small font
-      const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
-      toppings.forEach(topping => {
-        receipt += formatText(`+ ${topping}`, ESCPOS.FONT_SMALL) + addLineFeed();
-      });
-    });
-    
-    receipt += createDivider(32) + addLineFeed();
-    
-    // Totals section
-    receipt += formatLine('Sous-total', `${orderData.subtotal.toFixed(2)} €`) + addLineFeed();
-    receipt += formatLine('TVA (10%)', `${orderData.tax.toFixed(2)} €`) + addLineFeed();
-    receipt += createDivider(32) + addLineFeed();
-    receipt += formatLine('TOTAL', `${orderData.total.toFixed(2)} €`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
-    
-    receipt += createDivider(32) + addLineFeed(2);
-    
-    // Footer
-    receipt += centerText('Merci de votre visite!') + addLineFeed();
-    receipt += centerText('A bientôt!') + addLineFeed();
-    
-    // Add paper cut command
-    receipt += ESCPOS.CUT_PAPER;
-    
-    return receipt;
   };
 
   return (
