@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 /**
@@ -11,7 +10,7 @@ export const ESCPOS = {
   FONT_LARGE: '\x1D\x21\x11',  // Double height and width
   FONT_LARGE_BOLD: '\x1B\x21\x30', // Large and bold
   FONT_SMALL: '\x1B\x21\x01',  // Small text
-  FONT_1_5X_WIDTH: '\x1D\x21\x01', // 1.5x wider text
+  FONT_1_5X_WIDTH: '\x1D\x21\x00', // 0.5x wider text
   
   // Line feeds and positioning
   LINE_FEED: '\x0A',           // New line
