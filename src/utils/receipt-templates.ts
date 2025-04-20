@@ -47,8 +47,8 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   
   let receipt = '';
   
-  // Header with emojis and restaurant info
-  receipt += centerText(`🍽 ${restaurant?.name || 'Restaurant'} 🍽`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
+  // Header without emojis, centered
+  receipt += centerText(`${restaurant?.name || 'Restaurant'}`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
   
   if (restaurant?.location) {
     receipt += centerText(restaurant.location, ESCPOS.FONT_NORMAL) + addLineFeed();
@@ -60,19 +60,19 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   if (orderType === 'takeaway') {
     receipt += centerText('À Emporter', ESCPOS.FONT_BOLD) + addLineFeed();
   } else if (orderType === 'dine-in' && tableNumber) {
-    receipt += centerText(`Table: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += centerText(`Sur Place - Table: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
   }
   
-  // Divider line (32 characters)
+  // Divider line
   receipt += createDivider(32) + addLineFeed();
   
   // Items section
   cart.forEach(item => {
     const itemPrice = parseFloat(item.itemPrice.toString()).toFixed(2);
     const itemText = `${item.quantity}x ${item.menuItem.name}`;
-    const spaces = 32 - itemText.length - itemPrice.length - 2; // -2 for "€ " at the end
+    const spaces = 32 - itemText.length - itemPrice.length - 4; // -4 for "EUR " at the end
     
-    receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + itemPrice + ' €', ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + itemPrice + ' EUR', ESCPOS.FONT_BOLD) + addLineFeed();
     
     // Options and toppings with small font and indentation
     const options = getFormattedOptions(item).split(', ').filter(Boolean);
@@ -86,19 +86,19 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     });
   });
   
-  // Totals section with aligned prices
+  // Totals section with right-aligned prices
   receipt += createDivider(32) + addLineFeed();
   
-  const subtotalLine = `Sous-total${' '.repeat(Math.max(0, 21 - subtotal.toFixed(2).length))}${subtotal.toFixed(2)} €`;
-  receipt += formatText(subtotalLine, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText('Sous-total:', ESCPOS.FONT_NORMAL) + 
+             rightAlignText(`${subtotal.toFixed(2)} EUR`, ESCPOS.FONT_NORMAL) + addLineFeed();
   
-  const taxLine = `TVA (10%)${' '.repeat(Math.max(0, 22 - tax.toFixed(2).length))}${tax.toFixed(2)} €`;
-  receipt += formatText(taxLine, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText('TVA (10%):', ESCPOS.FONT_NORMAL) + 
+             rightAlignText(`${tax.toFixed(2)} EUR`, ESCPOS.FONT_NORMAL) + addLineFeed();
   
   receipt += createDivider(32) + addLineFeed();
   
-  const totalLine = `TOTAL${' '.repeat(Math.max(0, 25 - total.toFixed(2).length))}${total.toFixed(2)} €`;
-  receipt += formatText(totalLine, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
+  receipt += formatText('TOTAL:', ESCPOS.FONT_LARGE_BOLD) + 
+             rightAlignText(`${total.toFixed(2)} EUR`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
   
   receipt += createDivider(32) + addLineFeed(2);
   
