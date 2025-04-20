@@ -1,4 +1,4 @@
-import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
+import { ESCPOS, formatText, addLineFeed, createDivider } from './print-utils';
 import { CartItem } from '@/types/database-types';
 
 interface ReceiptData {
@@ -93,8 +93,13 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   const formatTotalLine = (label: string, amount: string, isGrandTotal: boolean = false) => {
     const command = isGrandTotal ? ESCPOS.FONT_LARGE_BOLD : ESCPOS.FONT_NORMAL;
     const receiptWidth = 48;
-    const totalSpaces = receiptWidth - label.length - amount.length - 4; // -4 for "EUR " at the end
-    return formatText(label + ' '.repeat(Math.max(0, totalSpaces)) + amount + ' EUR', command) + addLineFeed();
+    
+    // Center the total line by calculating appropriate padding
+    const totalText = `${label} ${amount} EUR`;
+    const paddingLength = Math.floor((receiptWidth - totalText.length) / 2);
+    const padding = ' '.repeat(Math.max(0, paddingLength));
+    
+    return formatText(padding + totalText, command) + addLineFeed();
   };
 
   receipt += formatTotalLine('Sous-total:', subtotal.toFixed(2));
