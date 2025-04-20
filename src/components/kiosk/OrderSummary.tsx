@@ -8,6 +8,7 @@ import OrderReceipt from "./OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   tableNumber = null,
 }) => {
   const [orderNumber, setOrderNumber] = useState<number>(0);
+  const isMobile = useIsMobile();
   
   const total = calculateSubtotal();
   const subtotal = calculatePriceWithoutTax(total);
@@ -81,8 +83,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           return;
         }
         
-        const shouldUseBrowserPrinting = printConfig === null || 
-                                        printConfig.browser_printing_enabled !== false;
+        const shouldUseBrowserPrinting = !isMobile && 
+          (printConfig === null || printConfig.browser_printing_enabled !== false);
                                         
         if (shouldUseBrowserPrinting) {
           console.log("Using browser printing for receipt");
@@ -90,7 +92,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             printReceipt('receipt-content');
           }, 500);
         } else {
-          console.log("Browser printing disabled for this restaurant");
+          console.log("Browser printing disabled for this device or restaurant");
         }
         
         if (printConfig?.api_key && printConfig?.configured_printers) {
