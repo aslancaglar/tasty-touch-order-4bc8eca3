@@ -32,6 +32,9 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     getFormattedToppings = () => ''
   } = data;
   
+  const firstItem = cart[0];
+  const vat = firstItem?.menuItem?.tax_percentage ?? 10;
+
   const now = new Date();
   const date = now.toLocaleDateString('fr-FR', { 
     day: '2-digit', 
@@ -74,12 +77,12 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     
     const options = getFormattedOptions(item).split(', ').filter(Boolean);
     options.forEach(option => {
-      receipt += formatText(`  + ${option}`, ESCPOS.FONT_NORMAL + ESCPOS.FONT_1_5X_WIDTH) + addLineFeed();
+      receipt += formatText(`  + ${option}`, ESCPOS.FONT_NORMAL + ESCPOS.FONT_LARGE) + addLineFeed();
     });
     
     const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
     toppings.forEach(topping => {
-      receipt += formatText(`  + ${topping}`, ESCPOS.FONT_NORMAL + ESCPOS.FONT_1_5X_WIDTH) + addLineFeed();
+      receipt += formatText(`  + ${topping}`, ESCPOS.FONT_NORMAL + ESCPOS.FONT_LARGE) + addLineFeed();
     });
   });
   
@@ -87,7 +90,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   
   receipt += ESCPOS.ALIGN_RIGHT;
   receipt += formatText('Sous-total: ' + subtotal.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText('TVA (10%): ' + tax.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`TVA (${vat}%): ` + tax.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
   receipt += createDivider(48) + addLineFeed();
   
   receipt += ESCPOS.ALIGN_RIGHT;

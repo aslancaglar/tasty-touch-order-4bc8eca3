@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,6 +39,10 @@ const formSchema = z.object({
   }).optional(),
   image: z.string().optional(),
   topping_categories: z.array(z.string()).optional(),
+  tax_percentage: z.string().refine((val) => 
+    val === "" || (!isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100),
+    { message: "Enter a valid VAT rate (0-100%)" }
+  ).optional(),
 });
 
 type MenuItemFormValues = z.infer<typeof formSchema>;
@@ -53,6 +56,7 @@ interface MenuItemFormProps {
     promotion_price?: string;
     image?: string;
     topping_categories?: string[];
+    tax_percentage?: string;
   };
   isLoading?: boolean;
   restaurantId?: string;
@@ -72,13 +76,13 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
       promotion_price: initialValues?.promotion_price || "",
       image: initialValues?.image || "",
       topping_categories: initialValues?.topping_categories || [],
+      tax_percentage: initialValues?.tax_percentage || "10",
     },
   });
 
   useEffect(() => {
     const fetchToppingCategories = async () => {
       if (!restaurantId) return;
-      
       try {
         setLoadingToppingCategories(true);
         const data = await getToppingCategoriesByRestaurantId(restaurantId);
@@ -144,7 +148,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price ($)</FormLabel>
+                <FormLabel>Price (€ VAT incl.)</FormLabel>
                 <FormControl>
                   <Input placeholder="9.99" {...field} />
                 </FormControl>
@@ -158,7 +162,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
             name="promotion_price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Promotional Price ($)</FormLabel>
+                <FormLabel>Promotional Price (€ VAT incl.)</FormLabel>
                 <FormControl>
                   <Input placeholder="7.99" {...field} value={field.value || ""} />
                 </FormControl>
@@ -167,6 +171,28 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="tax_percentage"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>VAT (%)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  placeholder="10"
+                  {...field}
+                  value={field.value ?? "10"}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
@@ -204,36 +230,34 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
                       key={category.id}
                       control={form.control}
                       name="topping_categories"
-                      render={({ field }) => {
-                        return (
-                          <FormItem
-                            key={category.id}
-                            className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
-                          >
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.includes(category.id)}
-                                onCheckedChange={(checked) => {
-                                  const currentValues = field.value || [];
-                                  return checked
-                                    ? field.onChange([...currentValues, category.id])
-                                    : field.onChange(
-                                        currentValues.filter((value) => value !== category.id)
-                                      );
-                                }}
-                              />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                              <FormLabel className="cursor-pointer">{category.name}</FormLabel>
-                              {category.description && (
-                                <p className="text-sm text-muted-foreground">
-                                  {category.description}
-                                </p>
-                              )}
-                            </div>
-                          </FormItem>
-                        );
-                      }}
+                      render={({ field }) => (
+                        <FormItem
+                          key={category.id}
+                          className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(category.id)}
+                              onCheckedChange={(checked) => {
+                                const currentValues = field.value || [];
+                                return checked
+                                  ? field.onChange([...currentValues, category.id])
+                                  : field.onChange(
+                                      currentValues.filter((value) => value !== category.id)
+                                    );
+                              }}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="cursor-pointer">{category.name}</FormLabel>
+                            {category.description && (
+                              <p className="text-sm text-muted-foreground">
+                                {category.description}
+                              </p>
+                            )}
+                          </div>
+                        </FormItem>
+                      )}
                     />
                   ))}
                 </div>

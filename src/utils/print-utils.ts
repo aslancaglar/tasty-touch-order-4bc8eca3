@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 /**
@@ -10,14 +11,14 @@ export const ESCPOS = {
   FONT_LARGE: '\x1D\x21\x11',  // Double height and width
   FONT_LARGE_BOLD: '\x1B\x21\x30', // Large and bold
   FONT_SMALL: '\x1B\x21\x01',  // Small text
-  FONT_1_5X_WIDTH: '\x1D\x21\x00', // 0.5x wider text
-  
+  FONT_0_5X_BIGGER: '\x1D\x21\x01', // 0.5x bigger text (Width multiplier=1)
+
   // Line feeds and positioning
   LINE_FEED: '\x0A',           // New line
   ALIGN_LEFT: '\x1B\x61\x00',  // Left align
   ALIGN_CENTER: '\x1B\x61\x01', // Center align
   ALIGN_RIGHT: '\x1B\x61\x02', // Right align
-  
+
   // Paper cutting - changed to full cut with feed
   CUT_PAPER: '\x1D\x56\x00',   // Full cut without feed
 };

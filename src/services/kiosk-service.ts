@@ -208,12 +208,16 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
 
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
   console.log("Creating menu item with data:", item);
-  
-  const { topping_categories, ...menuItemData } = item as any;
-  
+
+  const { topping_categories, tax_percentage, ...menuItemData } = item as any;
+
+  const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
+    ? (Number(tax_percentage) || 10)
+    : 10;
+
   const { data, error } = await supabase
     .from("menu_items")
-    .insert(menuItemData)
+    .insert({ ...menuItemData, tax_percentage: taxValue })
     .select()
     .single();
 
@@ -245,12 +249,15 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
 
 export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
   console.log("Updating menu item:", id, "with data:", updates);
-  
-  const { topping_categories, ...menuItemData } = updates as any;
-  
+
+  const { topping_categories, tax_percentage, ...menuItemData } = updates as any;
+  const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
+    ? (Number(tax_percentage) || 10)
+    : 10;
+
   const { data, error } = await supabase
     .from("menu_items")
-    .update(menuItemData)
+    .update({ ...menuItemData, tax_percentage: taxValue })
     .eq("id", id)
     .select()
     .single();

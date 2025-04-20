@@ -31,9 +31,14 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   calculateSubtotal,
   calculateTax,
 }) => {
+  // Sum taxes for all items by their individual VAT, fallback to 10%
   const total = calculateSubtotal();
-  const subtotal = calculatePriceWithoutTax(total);
-  const tax = calculateTaxAmount(total);
+  const firstItem = cart[0];
+  // If all items have the same VAT, use it, else use a note or pick item wise (simple for now)
+  const vat = firstItem?.menuItem.tax_percentage ?? 10;
+
+  const subtotal = calculatePriceWithoutTax(total, vat);
+  const tax = calculateTaxAmount(total, vat);
   const currentDate = format(new Date(), "dd/MM/yyyy HH:mm");
 
   return (
@@ -105,4 +110,3 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
 };
 
 export default OrderReceipt;
-
