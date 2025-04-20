@@ -1,4 +1,3 @@
-
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
 
@@ -47,64 +46,64 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   
   let receipt = '';
   
-  // Header without emojis, centered
-  receipt += centerText(`${restaurant?.name || 'Restaurant'}`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
+  // Header without emojis, centered with proper encoding
+  receipt += ESCPOS.ALIGN_CENTER;
+  receipt += formatText(restaurant?.name || 'Restaurant', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
   
   if (restaurant?.location) {
-    receipt += centerText(restaurant.location, ESCPOS.FONT_NORMAL) + addLineFeed();
+    receipt += formatText(restaurant.location, ESCPOS.FONT_NORMAL) + addLineFeed();
   }
   
-  receipt += centerText(`${date} ${time}`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += centerText(`Commande #${orderNumber}`, ESCPOS.FONT_BOLD) + addLineFeed(2);
+  receipt += formatText(date, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`Commande #${orderNumber}`, ESCPOS.FONT_BOLD) + addLineFeed(2);
   
   if (orderType === 'takeaway') {
-    receipt += centerText('À Emporter', ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText('À Emporter', ESCPOS.FONT_BOLD) + addLineFeed();
   } else if (orderType === 'dine-in' && tableNumber) {
-    receipt += centerText(`Sur Place - Table: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText(`Sur Place - Table: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
   }
+  receipt += ESCPOS.ALIGN_LEFT;
   
-  // Divider line
-  receipt += createDivider(32) + addLineFeed();
+  // Divider line (48 characters for 80mm paper)
+  receipt += createDivider(48) + addLineFeed();
   
-  // Items section
+  // Items section with proper spacing for 80mm
   cart.forEach(item => {
     const itemPrice = parseFloat(item.itemPrice.toString()).toFixed(2);
     const itemText = `${item.quantity}x ${item.menuItem.name}`;
-    const spaces = 32 - itemText.length - itemPrice.length - 4; // -4 for "EUR " at the end
+    const spaces = 48 - itemText.length - itemPrice.length - 4; // -4 for "EUR " at the end
     
     receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + itemPrice + ' EUR', ESCPOS.FONT_BOLD) + addLineFeed();
     
     // Options and toppings with small font and indentation
     const options = getFormattedOptions(item).split(', ').filter(Boolean);
     options.forEach(option => {
-      receipt += formatText(`+ ${option}`, ESCPOS.FONT_SMALL) + addLineFeed();
+      receipt += formatText(`  + ${option}`, ESCPOS.FONT_SMALL) + addLineFeed();
     });
     
     const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
     toppings.forEach(topping => {
-      receipt += formatText(`+ ${topping}`, ESCPOS.FONT_SMALL) + addLineFeed();
+      receipt += formatText(`  + ${topping}`, ESCPOS.FONT_SMALL) + addLineFeed();
     });
   });
   
   // Totals section with right-aligned prices
-  receipt += createDivider(32) + addLineFeed();
+  receipt += createDivider(48) + addLineFeed();
   
-  receipt += formatText('Sous-total:', ESCPOS.FONT_NORMAL) + 
-             rightAlignText(`${subtotal.toFixed(2)} EUR`, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += ESCPOS.ALIGN_RIGHT;
+  receipt += formatText(`Sous-total: ${subtotal.toFixed(2)} EUR`, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`TVA (10%): ${tax.toFixed(2)} EUR`, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += createDivider(48) + addLineFeed();
+  receipt += formatText(`TOTAL: ${total.toFixed(2)} EUR`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
+  receipt += ESCPOS.ALIGN_LEFT;
   
-  receipt += formatText('TVA (10%):', ESCPOS.FONT_NORMAL) + 
-             rightAlignText(`${tax.toFixed(2)} EUR`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  
-  receipt += createDivider(32) + addLineFeed();
-  
-  receipt += formatText('TOTAL:', ESCPOS.FONT_LARGE_BOLD) + 
-             rightAlignText(`${total.toFixed(2)} EUR`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
-  
-  receipt += createDivider(32) + addLineFeed(2);
+  receipt += createDivider(48) + addLineFeed(2);
   
   // Footer
-  receipt += centerText('Merci de votre visite!', ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += centerText('À bientôt!', ESCPOS.FONT_NORMAL) + addLineFeed(2);
+  receipt += ESCPOS.ALIGN_CENTER;
+  receipt += formatText('Merci de votre visite!', ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText('À bientôt!', ESCPOS.FONT_NORMAL) + addLineFeed(2);
+  receipt += ESCPOS.ALIGN_LEFT;
   
   // Cut paper
   receipt += ESCPOS.CUT_PAPER;
@@ -112,7 +111,6 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   return receipt;
 };
 
-// Helper function to format options (moved from OrderSummary)
 const getFormattedOptions = (item: CartItem): string => {
   if (!item.selectedOptions) return '';
   
@@ -137,7 +135,6 @@ const getFormattedOptions = (item: CartItem): string => {
     .join(', ');
 };
 
-// Helper function to format toppings (moved from OrderSummary)
 const getFormattedToppings = (item: CartItem): string => {
   if (!item.selectedToppings) return '';
   
