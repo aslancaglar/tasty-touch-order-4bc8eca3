@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 /**
@@ -18,8 +17,8 @@ export const ESCPOS = {
   ALIGN_CENTER: '\x1B\x61\x01', // Center align
   ALIGN_RIGHT: '\x1B\x61\x02', // Right align
   
-  // Paper cutting
-  CUT_PAPER: '\x1D\x56\x41',   // Cut paper
+  // Paper cutting - changed to full cut with feed
+  CUT_PAPER: '\x1D\x56\x00',   // Full cut without feed
 };
 
 /**

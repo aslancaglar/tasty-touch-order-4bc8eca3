@@ -102,10 +102,13 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   // Footer
   receipt += ESCPOS.ALIGN_CENTER;
   receipt += formatText('Merci de votre visite!', ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText('A bientot!', ESCPOS.FONT_NORMAL) + addLineFeed(2);
+  receipt += formatText('A bientot!', ESCPOS.FONT_NORMAL) + addLineFeed(3);
   receipt += ESCPOS.ALIGN_LEFT;
   
-  // Explicitly add the cut paper command
+  // Add extra line feeds before cutting to ensure the full receipt is printed
+  receipt += addLineFeed(5);
+  
+  // Explicitly add the cut paper command with full feed
   receipt += ESCPOS.CUT_PAPER;
   
   return receipt;
