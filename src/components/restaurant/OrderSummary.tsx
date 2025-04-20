@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -44,7 +43,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<number>(0);
   
-  // Use the provided calculation functions for consistent totals
   const subtotal = calculateSubtotal();
   const tax = calculateTax();
   const total = subtotal + tax;
@@ -112,7 +110,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 tableNumber,
                 orderType,
                 subtotal,
-                tax: tva,
+                tax: tax,
                 total
               }
             );
