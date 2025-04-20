@@ -1,7 +1,5 @@
 
-/**
- * Utility functions for printing receipts
- */
+import React from 'react';
 
 /**
  * Prints the content of a specified element for a thermal printer
@@ -31,7 +29,7 @@ export const printReceipt = (elementId: string) => {
             width: 72mm; /* Accounting for printer margins */
             margin: 0 auto;
             padding: 5mm 0;
-            font-size: 8px;
+            font-size: 14px;  // Updated from 8px to 14px
             line-height: 1.2;
             font-weight: 500;
           }
@@ -44,7 +42,7 @@ export const printReceipt = (elementId: string) => {
             font-weight: 600;
           }
           .logo {
-            font-size: 14px;
+            font-size: 16px;  // Slightly larger to maintain hierarchy
             font-weight: 700;
             margin-bottom: 5px;
           }
@@ -60,7 +58,7 @@ export const printReceipt = (elementId: string) => {
           }
           .item-details {
             padding-left: 15px;
-            font-size: 8px;
+            font-size: 14px;  // Updated from 8px to 14px
             font-weight: 600;
           }
           .total-section {
@@ -74,12 +72,12 @@ export const printReceipt = (elementId: string) => {
           }
           .grand-total {
             font-weight: 700;
-            font-size: 10px;
+            font-size: 16px;
           }
           .footer {
             text-align: center;
             margin-top: 20px;
-            font-size: 8px;
+            font-size: 14px;  // Updated from 8px to 14px
             font-weight: 500;
           }
           @media print {
@@ -113,4 +111,3 @@ export const printReceipt = (elementId: string) => {
     }, 500);
   }
 };
-

@@ -237,12 +237,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       
       const options = getFormattedOptions(item).split(', ').filter(Boolean);
       options.forEach(option => {
-        receipt += `    + ${option}\n`;
+        receipt += `+ ${option}\n`;
       });
       
       const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
       toppings.forEach(topping => {
-        receipt += `    + ${topping}\n`;
+        receipt += `+ ${topping}\n`;
       });
     });
     
