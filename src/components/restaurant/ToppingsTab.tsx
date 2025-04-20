@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Restaurant, 
@@ -22,6 +21,7 @@ import {
 import { getIconComponent } from "@/utils/icon-mapping";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import ToppingForm from "@/components/forms/ToppingForm";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface ToppingsTabProps {
   restaurant: Restaurant;
@@ -32,14 +32,12 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
   const [toppings, setToppings] = useState<Record<string, Topping[]>>({});
   const [loading, setLoading] = useState(true);
   
-  // Topping category state
   const [isAddingToppingCategory, setIsAddingToppingCategory] = useState(false);
   const [savingToppingCategory, setSavingToppingCategory] = useState(false);
   const [isEditingToppingCategory, setIsEditingToppingCategory] = useState<string | null>(null);
   const [toppingCategoryToDelete, setToppingCategoryToDelete] = useState<string | null>(null);
   const [isDeletingToppingCategory, setIsDeletingToppingCategory] = useState(false);
   
-  // Topping item state
   const [isAddingTopping, setIsAddingTopping] = useState(false);
   const [selectedCategoryForTopping, setSelectedCategoryForTopping] = useState<string | null>(null);
   const [isEditingTopping, setIsEditingTopping] = useState<string | null>(null);
@@ -183,11 +181,21 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
       setToppingCategoryToDelete(null);
     } catch (error) {
       console.error("Error deleting topping category:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete the topping category. Please try again.",
-        variant: "destructive"
-      });
+      
+      const errorObj = error as any;
+      if (errorObj?.code === "23503" && errorObj?.message?.includes("order_item_toppings")) {
+        toast({
+          title: "Cannot Delete Category",
+          description: "This category cannot be deleted because some of its toppings are used in existing orders.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the topping category. Please try again.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsDeletingToppingCategory(false);
     }
@@ -288,11 +296,21 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
       setToppingToDelete(null);
     } catch (error) {
       console.error("Error deleting topping:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete the topping. Please try again.",
-        variant: "destructive"
-      });
+      
+      const errorObj = error as any;
+      if (errorObj?.code === "23503" && errorObj?.message?.includes("order_item_toppings")) {
+        toast({
+          title: "Cannot Delete Topping",
+          description: "This topping cannot be deleted because it is used in existing orders.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the topping. Please try again.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsDeletingTopping(false);
     }
@@ -389,10 +407,19 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                       <DialogTitle>Delete Topping Category</DialogTitle>
+                      <DialogDescription>
+                        This action cannot be undone. This will permanently delete the category and all its toppings.
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
+                      <Alert className="mb-4" variant="warning">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Warning</AlertTitle>
+                        <AlertDescription>
+                          This category cannot be deleted if any of its toppings are used in existing orders.
+                        </AlertDescription>
+                      </Alert>
                       <p>Are you sure you want to delete the category <strong>{category.name}</strong>?</p>
-                      <p className="text-sm text-muted-foreground mt-2">This will also delete all toppings in this category.</p>
                     </div>
                     <div className="flex justify-end space-x-2">
                       <Button variant="outline" onClick={() => setToppingCategoryToDelete(null)}>
@@ -549,8 +576,18 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
                               <DialogContent className="sm:max-w-[425px]">
                                 <DialogHeader>
                                   <DialogTitle>Delete Topping</DialogTitle>
+                                  <DialogDescription>
+                                    This action cannot be undone. This will permanently delete the topping.
+                                  </DialogDescription>
                                 </DialogHeader>
                                 <div className="py-4">
+                                  <Alert className="mb-4" variant="warning">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertTitle>Warning</AlertTitle>
+                                    <AlertDescription>
+                                      This topping cannot be deleted if it is used in existing orders.
+                                    </AlertDescription>
+                                  </Alert>
                                   <p>Are you sure you want to delete <strong>{topping.name}</strong>?</p>
                                 </div>
                                 <div className="flex justify-end space-x-2">
@@ -586,7 +623,6 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         </>
       )}
 
-      {/* Add Topping Dialog */}
       <Dialog open={isAddingTopping} onOpenChange={(open) => {
         setIsAddingTopping(open);
         if (!open) setSelectedCategoryForTopping(null);
