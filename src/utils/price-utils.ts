@@ -1,4 +1,6 @@
 
+import { CartItem } from "@/types/database-types";
+
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
   if (percentage === null || percentage === undefined) percentage = 10;
   return totalPrice / (1 + percentage / 100);

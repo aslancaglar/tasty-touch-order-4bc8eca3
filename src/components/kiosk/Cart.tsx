@@ -6,6 +6,7 @@ import { CartItem } from "@/types/database-types";
 import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { calculateCartTotals } from "@/utils/price-utils";
 
 interface CartProps {
   cart: CartItem[];

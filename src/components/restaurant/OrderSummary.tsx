@@ -7,7 +7,7 @@ import { CartItem } from "@/types/database-types";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
-import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
+import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt } from "@/utils/receipt-templates";
 
@@ -47,9 +47,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
   
-  const total = calculateSubtotal();
-  const subtotal = calculatePriceWithoutTax(total);
-  const tax = calculateTaxAmount(total);
+  const { total, subtotal, tax } = calculateCartTotals(cart);
 
   useEffect(() => {
     const fetchOrderCount = async () => {
@@ -297,8 +295,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         orderType={orderType}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
-        calculateSubtotal={calculateSubtotal}
-        calculateTax={calculateTax}
       />
     </Dialog>
   );
