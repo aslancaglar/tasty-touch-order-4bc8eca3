@@ -1,4 +1,3 @@
-
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
@@ -52,7 +51,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
             </div>
             
             {(getFormattedOptions(item) || getFormattedToppings(item)) && (
-              <div className="item-details text-[0.5em]"> {/* Reduced font size to 0.5em */}
+              <div className="item-details text-xs"> {/* Slightly increased font size */}
                 {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                   <div key={`${item.id}-option-${idx}`} className="item">
                     <span>+ {option}</span>
@@ -99,4 +98,3 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
 };
 
 export default OrderReceipt;
-
