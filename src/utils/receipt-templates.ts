@@ -18,6 +18,34 @@ interface ReceiptData {
   getFormattedToppings?: (item: CartItem) => string;
 }
 
+type GroupedToppings = Array<{
+  category: string;
+  toppings: string[];
+}>;
+
+const getGroupedToppings = (item: CartItem): GroupedToppings => {
+  if (!item.selectedToppings) return [];
+  const groups: GroupedToppings = [];
+
+  item.selectedToppings.forEach(toppingGroup => {
+    const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingGroup.categoryId);
+    if (!category) return;
+
+    const selectedToppingNames = category.toppings
+      .filter(topping => toppingGroup.toppingIds.includes(topping.id))
+      .map(topping => topping.name);
+
+    if (selectedToppingNames.length) {
+      groups.push({
+        category: category.name,
+        toppings: selectedToppingNames,
+      });
+    }
+  });
+
+  return groups;
+};
+
 export const generateStandardReceipt = (data: ReceiptData): string => {
   const { 
     restaurant, 
@@ -29,7 +57,6 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     tax, 
     total,
     getFormattedOptions = () => '',
-    getFormattedToppings = () => ''
   } = data;
   
   const firstItem = cart[0];
@@ -79,10 +106,13 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     options.forEach(option => {
       receipt += formatText(`  + ${option}`, ESCPOS.FONT_NORMAL) + addLineFeed();
     });
-    
-    const toppings = getFormattedToppings(item).split(', ').filter(Boolean);
-    toppings.forEach(topping => {
-      receipt += formatText(`  + ${topping}`, ESCPOS.FONT_NORMAL) + addLineFeed();
+
+    const groupedToppings = getGroupedToppings(item);
+    groupedToppings.forEach(group => {
+      receipt += formatText(`  ${group.category}:`, ESCPOS.FONT_NORMAL) + addLineFeed();
+      group.toppings.forEach(topping => {
+        receipt += formatText(`    + ${topping}`, ESCPOS.FONT_NORMAL) + addLineFeed();
+      });
     });
   });
   
@@ -148,3 +178,5 @@ const getFormattedToppings = (item: CartItem): string => {
   
   return allToppings.join(', ');
 };
+
+export { getGroupedToppings };

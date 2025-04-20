@@ -1,7 +1,9 @@
+
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
 import { calculateCartTotals } from "@/utils/price-utils";
+import { getGroupedToppings } from "@/utils/receipt-templates";
 
 interface OrderReceiptProps {
   restaurant: {
@@ -51,18 +53,25 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
             </div>
             
             {(getFormattedOptions(item) || getFormattedToppings(item)) && (
-              <div className="item-details text-xs"> {/* Slightly increased font size */}
+              <div className="item-details text-xs">
+                {/* Options */}
                 {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                   <div key={`${item.id}-option-${idx}`} className="item">
                     <span>+ {option}</span>
                     <span></span>
                   </div>
                 ))}
-                
-                {getFormattedToppings(item).split(', ').filter(Boolean).map((topping, idx) => (
-                  <div key={`${item.id}-topping-${idx}`} className="item">
-                    <span>+ {topping}</span>
-                    <span></span>
+
+                {/* Grouped toppings by category */}
+                {getGroupedToppings(item).map((group, groupIdx) => (
+                  <div key={`${item.id}-cat-${groupIdx}`}>
+                    <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
+                    {group.toppings.map((topping, topIdx) => (
+                      <div key={`${item.id}-cat-${groupIdx}-topping-${topIdx}`} className="item">
+                        <span style={{ paddingLeft: 6 }}>+ {topping}</span>
+                        <span></span>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
