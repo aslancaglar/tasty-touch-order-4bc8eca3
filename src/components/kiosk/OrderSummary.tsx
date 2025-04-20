@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
-import { printReceipt } from "@/utils/print-utils";
+import { printReceipt, ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
