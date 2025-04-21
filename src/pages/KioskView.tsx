@@ -129,6 +129,7 @@ const KioskView = () => {
         console.error("Erreur lors du chargement des détails des catégories de toppings:", categoriesError);
         return [];
       }
+      
       const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
         const {
           data: toppings,
@@ -142,7 +143,9 @@ const KioskView = () => {
             min_selections: category.min_selections || 0,
             max_selections: category.max_selections || 0,
             required: category.min_selections ? category.min_selections > 0 : false,
-            toppings: []
+            toppings: [],
+            show_if_selection_id: category.show_if_selection_id,
+            show_if_selection_type: category.show_if_selection_type
           };
         }
         return {
@@ -156,9 +159,12 @@ const KioskView = () => {
             name: topping.name,
             price: topping.price,
             tax_percentage: topping.tax_percentage || 0
-          }))
+          })),
+          show_if_selection_id: category.show_if_selection_id,
+          show_if_selection_type: category.show_if_selection_type
         };
       }));
+      
       return toppingCategoriesWithToppings;
     } catch (error) {
       console.error("Erreur lors de la récupération des catégories de toppings:", error);
@@ -350,6 +356,7 @@ const KioskView = () => {
 
   const handleAddToCart = () => {
     if (!selectedItem) return;
+    
     const isOptionsValid = selectedItem.options?.every(option => {
       if (!option.required) return true;
       const selected = selectedOptions.find(o => o.optionId === option.id);
@@ -500,6 +507,20 @@ const KioskView = () => {
 
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
+  };
+
+  const shouldShowToppingCategory = (category: ToppingCategory) => {
+    if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
+      return true;
+    }
+    
+    const allConditionsMet = category.show_if_selection_id.every(toppingId => {
+      return selectedToppings.some(catSelection => 
+        catSelection.toppingIds.includes(toppingId)
+      );
+    });
+    
+    return allConditionsMet;
   };
 
   if (loading && !restaurant) {
@@ -674,7 +695,9 @@ const KioskView = () => {
                 </div>
               )}
 
-              {selectedItem.toppingCategories && selectedItem.toppingCategories.map(category => (
+              {selectedItem.toppingCategories && selectedItem.toppingCategories
+                .filter(category => shouldShowToppingCategory(category))
+                .map(category => (
                 <div key={category.id} className="space-y-3">
                   <div className="font-medium flex items-center">
                     {category.name} 
