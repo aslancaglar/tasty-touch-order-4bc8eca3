@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -115,13 +114,13 @@ const Cart: React.FC<CartProps> = ({
     onPlaceOrder();
     setShowOrderSummary(false);
   };
+
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
   const { total, subtotal, tax } = calculateCartTotals(cart);
   const reversedCart = [...cart].reverse();
 
-  // Translation function
   const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
 
   return (
@@ -257,6 +256,7 @@ const Cart: React.FC<CartProps> = ({
         restaurant={restaurant}
         orderType={orderType}
         tableNumber={tableNumber}
+        uiLanguage={uiLanguage}
       />
     </>
   );

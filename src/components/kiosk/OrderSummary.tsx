@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,14 @@ const translations = {
     totalTTC: "Total TTC:",
     confirm: "CONFIRMER LA COMMANDE",
     back: "Retour",
+    printing: "Impression",
+    printingPreparation: "Préparation de l'impression du reçu...",
+    printError: "Erreur d'impression",
+    printErrorDesc: "Impossible d'imprimer le reçu. Vérifiez les paramètres de votre navigateur.",
+    error: "Erreur",
+    errorPrinting: "Une erreur est survenue lors de l'impression",
+    options: "Options",
+    toppings: "Garnitures",
   },
   en: {
     orderSummary: "ORDER SUMMARY",
@@ -32,6 +41,14 @@ const translations = {
     totalTTC: "TOTAL:",
     confirm: "CONFIRM ORDER",
     back: "Back",
+    printing: "Printing",
+    printingPreparation: "Preparing receipt for printing...",
+    printError: "Print Error",
+    printErrorDesc: "Unable to print receipt. Check your browser settings.",
+    error: "Error",
+    errorPrinting: "An error occurred during printing",
+    options: "Options",
+    toppings: "Toppings",
   },
   tr: {
     orderSummary: "SİPARİŞ ÖZETİ",
@@ -42,6 +59,14 @@ const translations = {
     totalTTC: "TOPLAM:",
     confirm: "SİPARİŞİ ONAYLA",
     back: "Geri",
+    printing: "Yazdırma",
+    printingPreparation: "Makbuz yazdırılmaya hazırlanıyor...",
+    printError: "Yazdırma Hatası",
+    printErrorDesc: "Makbuz yazdırılamıyor. Tarayıcı ayarlarınızı kontrol edin.",
+    error: "Hata",
+    errorPrinting: "Yazdırma sırasında bir hata oluştu",
+    options: "Seçenekler",
+    toppings: "Malzemeler",
   }
 };
 
@@ -123,8 +148,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         if (shouldUseBrowserPrinting) {
           console.log("Using browser printing for receipt");
           toast({
-            title: "Impression",
-            description: "Préparation de l'impression du reçu..."
+            title: t("printing"),
+            description: t("printingPreparation")
           });
           setTimeout(() => {
             try {
@@ -133,8 +158,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             } catch (printError) {
               console.error("Error during browser printing:", printError);
               toast({
-                title: "Erreur d'impression",
-                description: "Impossible d'imprimer le reçu. Vérifiez les paramètres de votre navigateur.",
+                title: t("printError"),
+                description: t("printErrorDesc"),
                 variant: "destructive"
               });
             }
@@ -174,8 +199,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       } catch (error) {
         console.error("Error during receipt printing:", error);
         toast({
-          title: "Erreur",
-          description: "Une erreur est survenue lors de l'impression",
+          title: t("error"),
+          description: t("errorPrinting"),
           variant: "destructive"
         });
       }
@@ -358,6 +383,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         orderType={orderType}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
+        uiLanguage={uiLanguage}
       />
     </Dialog>
   );

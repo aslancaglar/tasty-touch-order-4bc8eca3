@@ -5,6 +5,39 @@ import { format } from "date-fns";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings } from "@/utils/receipt-templates";
 
+const translations = {
+  fr: {
+    order: "Commande",
+    table: "Table",
+    takeaway: "À Emporter",
+    subtotal: "Sous-total",
+    vat: "TVA",
+    total: "TOTAL",
+    thanks: "Merci de votre visite!",
+    seeYouSoon: "A bientôt!"
+  },
+  en: {
+    order: "Order",
+    table: "Table",
+    takeaway: "Takeaway",
+    subtotal: "Subtotal",
+    vat: "VAT",
+    total: "TOTAL",
+    thanks: "Thank you for your visit!",
+    seeYouSoon: "See you soon!"
+  },
+  tr: {
+    order: "Sipariş",
+    table: "Masa",
+    takeaway: "Paket Servisi",
+    subtotal: "Ara Toplam",
+    vat: "KDV",
+    total: "TOPLAM",
+    thanks: "Ziyaretiniz için teşekkürler!",
+    seeYouSoon: "Tekrar görüşmek üzere!"
+  }
+};
+
 interface OrderReceiptProps {
   restaurant: {
     id?: string;
@@ -17,6 +50,7 @@ interface OrderReceiptProps {
   orderType: "dine-in" | "takeaway" | null;
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
+  uiLanguage?: "fr" | "en" | "tr";
 }
 
 const OrderReceipt: React.FC<OrderReceiptProps> = ({
@@ -27,9 +61,13 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   orderType,
   getFormattedOptions,
   getFormattedToppings,
+  uiLanguage = "fr",
 }) => {
   const { total, subtotal, tax } = calculateCartTotals(cart);
   const currentDate = format(new Date(), "dd/MM/yyyy HH:mm");
+  
+  const t = (key: keyof typeof translations["en"]) => 
+    translations[uiLanguage]?.[key] ?? translations.fr[key];
   
   return (
     <div id="receipt-content" className="receipt" style={{ display: "none" }}>
@@ -37,9 +75,9 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         <div className="logo">{restaurant.name}</div>
         {restaurant.location && <div>{restaurant.location}</div>}
         <div>{currentDate}</div>
-        <div>Commande #{orderNumber}</div>
-        {orderType === "dine-in" && tableNumber && <div>Table: {tableNumber}</div>}
-        {orderType === "takeaway" && <div>À Emporter</div>}
+        <div>{t("order")} #{orderNumber}</div>
+        {orderType === "dine-in" && tableNumber && <div>{t("table")}: {tableNumber}</div>}
+        {orderType === "takeaway" && <div>{t("takeaway")}</div>}
       </div>
 
       <div className="divider"></div>
@@ -87,23 +125,23 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
 
       <div className="total-section">
         <div className="total-line">
-          <span>Sous-total</span>
+          <span>{t("subtotal")}</span>
           <span>{subtotal.toFixed(2)} €</span>
         </div>
         <div className="total-line">
-          <span>TVA</span>
+          <span>{t("vat")}</span>
           <span>{tax.toFixed(2)} €</span>
         </div>
         <div className="divider"></div>
         <div className="total-line grand-total">
-          <span>TOTAL</span>
+          <span>{t("total")}</span>
           <span>{total.toFixed(2)} €</span>
         </div>
       </div>
 
       <div className="footer">
-        <p>Merci de votre visite!</p>
-        <p>A bientôt!</p>
+        <p>{t("thanks")}</p>
+        <p>{t("seeYouSoon")}</p>
       </div>
     </div>
   );
