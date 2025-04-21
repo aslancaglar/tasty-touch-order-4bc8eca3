@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -63,7 +62,6 @@ const RestaurantManage = () => {
     fetchRestaurant();
   }, [id, toast]);
 
-  // Handle restaurant updates from SettingsTab
   const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
     console.log("Restaurant updated:", updatedRestaurant);
     setRestaurant(updatedRestaurant);
@@ -102,8 +100,8 @@ const RestaurantManage = () => {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">{restaurant.name}</h1>
-          <p className="text-muted-foreground">{restaurant.location || "Aucun emplacement défini"}</p>
+          <h1 className="text-3xl font-bold">{restaurant?.name}</h1>
+          <p className="text-muted-foreground">{restaurant?.location || "Aucun emplacement défini"}</p>
         </div>
       </div>
       

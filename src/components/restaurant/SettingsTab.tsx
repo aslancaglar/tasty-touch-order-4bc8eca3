@@ -264,13 +264,20 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     try {
       console.log("Saving UI language:", uiLanguage);
       
+      const updatedData = {
+        ui_language: uiLanguage
+      };
+      
       const { data, error } = await supabase
         .from("restaurants")
-        .update({ ui_language: uiLanguage })
+        .update(updatedData)
         .eq("id", restaurant.id)
         .select();
       
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+      
       console.log("Language update response:", data);
 
       toast({
@@ -349,7 +356,10 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 <select
                   id="uiLanguage"
                   value={uiLanguage}
-                  onChange={e => setUiLanguage(e.target.value)}
+                  onChange={e => {
+                    console.log("Language selected:", e.target.value);
+                    setUiLanguage(e.target.value);
+                  }}
                   className="w-full px-3 py-2 border rounded-md bg-white"
                 >
                   {languageOptions.map(option => (

@@ -15,6 +15,7 @@ import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection, { OrderType } from "@/components/kiosk/OrderTypeSelection";
 import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
+import OrderReceipt from "@/components/kiosk/OrderReceipt";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -53,9 +54,74 @@ const KioskView = () => {
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+
+  const translations = {
+    fr: {
+      restaurantNotFound: "Restaurant introuvable",
+      sorryNotFound: "Désolé, nous n'avons pas pu trouver ce restaurant.",
+      backToHome: "Retour à l'accueil",
+      open: "Ouvert maintenant",
+      dineIn: "Sur Place",
+      table: "Table",
+      takeaway: "À Emporter",
+      menu: "Menu",
+      addToCart: "Ajouter au panier",
+      selectionsRequired: "Sélections requises",
+      pleaseSelectRequired: "Veuillez faire toutes les sélections requises avant d'ajouter au panier",
+      addedToCart: "Ajouté au panier",
+      added: "ajouté à votre commande",
+      quantity: "Quantité",
+      multipleSelection: "Sélection multiple",
+      selectUpTo: "Sélectionnez jusqu'à",
+      maxSelectionsReached: "Nombre maximum de sélections atteint",
+      maxSelectionsMessage: "Vous ne pouvez sélectionner que {max} éléments dans cette catégorie."
+    },
+    en: {
+      restaurantNotFound: "Restaurant not found",
+      sorryNotFound: "Sorry, we couldn't find this restaurant.",
+      backToHome: "Back to home",
+      open: "Now open",
+      dineIn: "Dine In",
+      table: "Table",
+      takeaway: "Takeaway",
+      menu: "Menu",
+      addToCart: "Add to cart",
+      selectionsRequired: "Selections required",
+      pleaseSelectRequired: "Please make all required selections before adding to cart",
+      addedToCart: "Added to cart",
+      added: "added to your order",
+      quantity: "Quantity",
+      multipleSelection: "Multiple selection",
+      selectUpTo: "Select up to",
+      maxSelectionsReached: "Maximum selections reached",
+      maxSelectionsMessage: "You can only select {max} items in this category."
+    },
+    tr: {
+      restaurantNotFound: "Restoran bulunamadı",
+      sorryNotFound: "Üzgünüz, bu restoranı bulamadık.",
+      backToHome: "Ana sayfaya dön",
+      open: "Şimdi açık",
+      dineIn: "Yerinde Yeme",
+      table: "Masa",
+      takeaway: "Paket Servis",
+      menu: "Menü",
+      addToCart: "Sepete ekle",
+      selectionsRequired: "Gerekli seçimler",
+      pleaseSelectRequired: "Sepete eklemeden önce lütfen tüm gerekli seçimleri yapın",
+      addedToCart: "Sepete eklendi",
+      added: "siparişinize eklendi",
+      quantity: "Miktar",
+      multipleSelection: "Çoklu seçim",
+      selectUpTo: "En fazla seçin",
+      maxSelectionsReached: "Maksimum seçimlere ulaşıldı",
+      maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz."
+    }
+  };
+
+  const t = (key: keyof typeof translations.en) => {
+    return translations[uiLanguage][key];
+  };
 
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
@@ -68,8 +134,8 @@ const KioskView = () => {
         const restaurantData = await getRestaurantBySlug(restaurantSlug);
         if (!restaurantData) {
           toast({
-            title: "Restaurant introuvable",
-            description: "Désolé, nous n'avons pas pu trouver ce restaurant.",
+            title: t("restaurantNotFound"),
+            description: t("sorryNotFound"),
             variant: "destructive"
           });
           navigate('/');
@@ -77,14 +143,14 @@ const KioskView = () => {
         }
         setRestaurant(restaurantData);
 
-        // Set UI language from restaurant settings, fallback to French
-        setUiLanguage(
-          restaurantData.ui_language === "en"
-            ? "en"
-            : restaurantData.ui_language === "tr"
-            ? "tr"
-            : "fr"
-        );
+        const lang = restaurantData.ui_language === "en" 
+          ? "en" 
+          : restaurantData.ui_language === "tr" 
+            ? "tr" 
+            : "fr";
+            
+        console.log("Setting UI language from restaurant:", lang, restaurantData.ui_language);
+        setUiLanguage(lang);
 
         const menuData = await getMenuForRestaurant(restaurantData.id);
         setCategories(menuData);
@@ -95,8 +161,8 @@ const KioskView = () => {
       } catch (error) {
         console.error("Erreur lors du chargement du restaurant et du menu:", error);
         toast({
-          title: "Erreur",
-          description: "Un problème est survenu lors du chargement du menu. Veuillez réessayer.",
+          title: t("restaurantNotFound"),
+          description: t("sorryNotFound"),
           variant: "destructive"
         });
         setLoading(false);
@@ -104,8 +170,6 @@ const KioskView = () => {
     };
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
-
-  // (Optional: In the future, you can use uiLanguage to show the right translations.)
 
   const handleStartOrder = () => {
     setShowWelcome(false);
@@ -199,7 +263,6 @@ const KioskView = () => {
       }
       const toppingCategories = await fetchToppingCategories(item.id);
 
-      // IMPORTANT: reorder fetched toppingCategories to match menu item's topping_categories order
       let sortedToppingCategories = toppingCategories;
       if (item.topping_categories && item.topping_categories.length > 1) {
         sortedToppingCategories = [...toppingCategories].sort((a, b) => {
@@ -300,12 +363,9 @@ const KioskView = () => {
         if (selectedItem?.toppingCategories) {
           const toppingCategory = selectedItem.toppingCategories.find(c => c.id === categoryId);
           if (toppingCategory && toppingCategory.max_selections > 0) {
-            // Special logic for max_selections === 1
             if (toppingCategory.max_selections === 1) {
-              // Just select this one (replace any previous selection)
               newToppingIds = [toppingId];
             } else if (category.toppingIds.length >= toppingCategory.max_selections) {
-              // For max_selections > 1, show notification if limit exceeded
               toast({
                 title: "Nombre maximum de sélections atteint",
                 description: `Vous ne pouvez sélectionner que ${toppingCategory.max_selections} éléments dans cette catégorie.`
@@ -405,8 +465,8 @@ const KioskView = () => {
     
     if (!isOptionsValid || !isToppingsValid) {
       toast({
-        title: "Sélections requises",
-        description: "Veuillez faire toutes les sélections requises avant d'ajouter au panier",
+        title: t("selectionsRequired"),
+        description: t("pleaseSelectRequired"),
         variant: "destructive"
       });
       return;
@@ -426,8 +486,8 @@ const KioskView = () => {
     setCart(prev => [newItem, ...prev]);
     setSelectedItem(null);
     toast({
-      title: "Ajouté au panier",
-      description: `${quantity}x ${selectedItem.name} ajouté à votre commande`
+      title: t("addedToCart"),
+      description: `${quantity}x ${selectedItem.name} ${t("added")}`
     });
   };
 
@@ -563,11 +623,11 @@ const KioskView = () => {
   if (!restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Restaurant introuvable</h1>
-          <p className="text-gray-500 mb-4">Le restaurant que vous recherchez n'existe pas.</p>
+          <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
+          <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
           <Button onClick={() => navigate('/')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour à l'accueil
+            {t("backToHome")}
           </Button>
         </div>
       </div>;
@@ -606,13 +666,13 @@ const KioskView = () => {
               <h1 className="text-white text-3xl font-bold">{restaurant.name}</h1>
               <div className="flex items-center text-white text-sm mt-1">
                 <Clock className="h-4 w-4 mr-1" />
-                <span>{restaurant.location || 'Ouvert maintenant'}</span>
+                <span>{restaurant.location || t("open")}</span>
               </div>
               {orderType && <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center">
                   {orderType === 'dine-in' ? <>
-                      <span className="mr-1">Sur Place</span>
-                      {tableNumber && <span>- Table {tableNumber}</span>}
-                    </> : <span>À Emporter</span>}
+                      <span className="mr-1">{t("dineIn")}</span>
+                      {tableNumber && <span>- {t("table")} {tableNumber}</span>}
+                    </> : <span>{t("takeaway")}</span>}
                 </div>}
             </div>
           </div>
@@ -640,7 +700,7 @@ const KioskView = () => {
         <div className="flex-1 overflow-y-auto pb-24">
           <div className="p-6">
             <h2 className="text-xl font-bold mb-4">
-              {categories.find(c => c.id === activeCategory)?.name || 'Menu'}
+              {categories.find(c => c.id === activeCategory)?.name || t("menu")}
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -655,7 +715,7 @@ const KioskView = () => {
                     </div>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                     <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
-                      Ajouter au panier
+                      {t("addToCart")}
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
@@ -668,24 +728,24 @@ const KioskView = () => {
       {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} />}
 
       <Cart 
-      cart={cart} 
-      isOpen={isCartOpen} 
-      onToggleOpen={toggleCart} 
-      onUpdateQuantity={handleUpdateCartItemQuantity} 
-      onRemoveItem={handleRemoveCartItem} 
-      onClearCart={() => setCart([])} 
-      onPlaceOrder={handlePlaceOrder} 
-      placingOrder={placingOrder} 
-      orderPlaced={orderPlaced} 
-      calculateSubtotal={calculateSubtotal} 
-      calculateTax={calculateTax} 
-      getFormattedOptions={getFormattedOptions} 
-      getFormattedToppings={getFormattedToppings} 
-      restaurant={restaurant} 
-      orderType={orderType} 
-      tableNumber={tableNumber}
-      showOrderSummaryOnly={false}
-    />
+        cart={cart} 
+        isOpen={isCartOpen} 
+        onToggleOpen={toggleCart} 
+        onUpdateQuantity={handleUpdateCartItemQuantity} 
+        onRemoveItem={handleRemoveCartItem} 
+        onClearCart={() => setCart([])} 
+        onPlaceOrder={handlePlaceOrder} 
+        placingOrder={placingOrder} 
+        orderPlaced={orderPlaced} 
+        calculateSubtotal={calculateSubtotal} 
+        calculateTax={calculateTax} 
+        getFormattedOptions={getFormattedOptions} 
+        getFormattedToppings={getFormattedToppings} 
+        restaurant={restaurant} 
+        orderType={orderType} 
+        tableNumber={tableNumber}
+        showOrderSummaryOnly={false}
+      />
 
       {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
           <DialogContent className="w-[95vw] max-w-[95vw] md:w-[85vw] md:max-w-[85vw]">
@@ -700,7 +760,7 @@ const KioskView = () => {
                   <Label className="font-medium">
                     {option.name}
                     {option.required && <span className="text-red-500 ml-1">*</span>}
-                    {option.multiple && <span className="text-sm text-gray-500 ml-2">(Sélection multiple)</span>}
+                    {option.multiple && <span className="text-sm text-gray-500 ml-2">({t("multipleSelection")})</span>}
                   </Label>
                   <div className="space-y-2">
                     {option.choices.map(choice => {
@@ -735,8 +795,8 @@ const KioskView = () => {
                     {category.required && <span className="text-red-500 ml-1">*</span>}
                     <span className="text-sm text-gray-500 ml-2">
                       {category.max_selections > 0 
-                        ? `(Sélectionnez jusqu'à ${category.max_selections})` 
-                        : "(Sélection multiple)"}
+                        ? `(${t("selectUpTo")} ${category.max_selections})` 
+                        : `(${t("multipleSelection")})`}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -770,7 +830,7 @@ const KioskView = () => {
               ))}
 
               <div>
-                <Label className="font-medium">Quantité</Label>
+                <Label className="font-medium">{t("quantity")}</Label>
                 <div className="flex items-center space-x-4 mt-2">
                   <Button variant="outline" size="icon" onClick={() => quantity > 1 && setQuantity(quantity - 1)}>
                     <MinusCircle className="h-4 w-4" />
@@ -786,7 +846,7 @@ const KioskView = () => {
             <DialogFooter>
               <div className="w-full">
                 <Button className="w-full bg-kiosk-primary" onClick={handleAddToCart}>
-                  Ajouter au panier - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
+                  {t("addToCart")} - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
                 </Button>
               </div>
             </DialogFooter>
