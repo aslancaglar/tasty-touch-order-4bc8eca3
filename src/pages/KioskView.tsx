@@ -56,42 +56,6 @@ const KioskView = () => {
     toast
   } = useToast();
 
-  const shouldShowToppingCategory = (
-    category: ToppingCategory,
-    selectedToppings: {
-      optionId: string;
-      choiceIds: string[];
-    }[],
-    toppingCategories: (ToppingCategory & { toppings?: any[] })[] | undefined
-  ) => {
-    const MAIN_CATEGORY_NAME = "simple - with fries - menu";
-    const PAID_DRINK = "Paid drink or side dish";
-    const FREE_DRINK = "Free drink or side dish";
-
-    if (!toppingCategories) return true;
-
-    const mainCat = toppingCategories.find(
-      (c) => (c.name ?? "").toLowerCase().includes(MAIN_CATEGORY_NAME)
-    );
-    if (!mainCat) return true;
-
-    const mainSelected = selectedToppings.find((o) => o.optionId === mainCat.id);
-    const mainSelections =
-      (mainCat.toppings && mainSelected
-        ? mainCat.toppings
-            .filter((t: any) => mainSelected.choiceIds.includes(t.id))
-            .map((t: any) => (t.name ?? "").toLowerCase())
-        : []);
-
-    if (category.name === PAID_DRINK) {
-      return mainSelections.includes("simple");
-    }
-    if (category.name === FREE_DRINK) {
-      return mainSelections.includes("menu");
-    }
-    return category.name !== PAID_DRINK && category.name !== FREE_DRINK;
-  };
-
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -671,8 +635,7 @@ const KioskView = () => {
       showOrderSummaryOnly={false}
     />
 
-      {selectedItem && (
-        <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
+      {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
           <DialogContent className="w-[95vw] max-w-[95vw] md:w-[85vw] md:max-w-[85vw]">
             <DialogHeader>
               <DialogTitle>{selectedItem.name}</DialogTitle>
@@ -711,57 +674,46 @@ const KioskView = () => {
                 </div>
               )}
 
-              {selectedItem.toppingCategories && selectedItem.toppingCategories
-                .filter(category =>
-                  shouldShowToppingCategory(
-                    category,
-                    selectedToppings.map(t => ({
-                      optionId: t.categoryId,
-                      choiceIds: t.toppingIds
-                    })),
-                    selectedItem.toppingCategories
-                  )
-                )
-                .map(category => (
-                  <div key={category.id} className="space-y-3">
-                    <div className="font-medium flex items-center">
-                      {category.name} 
-                      {category.required && <span className="text-red-500 ml-1">*</span>}
-                      <span className="text-sm text-gray-500 ml-2">
-                        {category.max_selections > 0 
-                          ? `(Sélectionnez jusqu'à ${category.max_selections})` 
-                          : "(Sélection multiple)"}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {category.toppings.map(topping => {
-                        const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
-                        const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
-                        return (
-                          <div 
-                            key={topping.id} 
-                            className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300"
-                          >
-                            <span>{topping.name}</span>
-                            <div className="flex items-center gap-2">
-                              {topping.price > 0 && (
-                                <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} €</span>
-                              )}
-                              <Button 
-                                variant="outline" 
-                                size="icon" 
-                                className={`h-8 w-8 rounded-full ${isSelected ? 'bg-kiosk-primary text-white border-kiosk-primary' : ''}`} 
-                                onClick={() => handleToggleTopping(category.id, topping.id)}
-                              >
-                                {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+              {selectedItem.toppingCategories && selectedItem.toppingCategories.map(category => (
+                <div key={category.id} className="space-y-3">
+                  <div className="font-medium flex items-center">
+                    {category.name} 
+                    {category.required && <span className="text-red-500 ml-1">*</span>}
+                    <span className="text-sm text-gray-500 ml-2">
+                      {category.max_selections > 0 
+                        ? `(Sélectionnez jusqu'à ${category.max_selections})` 
+                        : "(Sélection multiple)"}
+                    </span>
                   </div>
-                ))}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {category.toppings.map(topping => {
+                      const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
+                      const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
+                      return (
+                        <div 
+                          key={topping.id} 
+                          className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300"
+                        >
+                          <span>{topping.name}</span>
+                          <div className="flex items-center gap-2">
+                            {topping.price > 0 && (
+                              <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} €</span>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className={`h-8 w-8 rounded-full ${isSelected ? 'bg-kiosk-primary text-white border-kiosk-primary' : ''}`} 
+                              onClick={() => handleToggleTopping(category.id, topping.id)}
+                            >
+                              {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
 
               <div>
                 <Label className="font-medium">Quantité</Label>
@@ -785,8 +737,7 @@ const KioskView = () => {
               </div>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      )}
+        </Dialog>}
     </div>
   );
 };
