@@ -9,9 +9,6 @@ import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ImageUpload from "@/components/ImageUpload";
-import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 
 const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -19,7 +16,6 @@ const toppingCategorySchema = z.object({
   icon: z.string().optional(),
   min_selections: z.coerce.number().min(0, "Must be 0 or greater"),
   max_selections: z.coerce.number().min(0, "Must be 0 or greater"),
-  show_if_selection_type: z.array(z.string()).optional(),
 });
 
 type ToppingCategoryFormValues = z.infer<typeof toppingCategorySchema>;
@@ -30,15 +26,7 @@ interface ToppingCategoryFormProps {
   isLoading?: boolean;
 }
 
-// These represent the option values that will trigger showing specific topping categories
-const AVAILABLE_SELECTIONS = [
-  { value: "simple", label: "Simple" },
-  { value: "menu", label: "Menu" },
-  { value: "with fries", label: "With fries" },
-];
-
 const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: ToppingCategoryFormProps) => {
-  const { toast } = useToast();
   const form = useForm<ToppingCategoryFormValues>({
     resolver: zodResolver(toppingCategorySchema),
     defaultValues: {
@@ -47,16 +35,11 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
       icon: initialValues?.icon || "",
       min_selections: initialValues?.min_selections ?? 0,
       max_selections: initialValues?.max_selections ?? 0,
-      show_if_selection_type: initialValues?.show_if_selection_type ?? [],
     },
   });
 
   const handleSubmit = (values: ToppingCategoryFormValues) => {
     onSubmit(values);
-    toast({
-      title: "Category saved",
-      description: "Your topping category has been saved successfully.",
-    });
   };
 
   return (
@@ -75,6 +58,7 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
             </FormItem>
           )}
         />
+        
         <FormField
           control={form.control}
           name="description"
@@ -84,52 +68,10 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
               <FormControl>
                 <Textarea 
                   placeholder="Describe this topping category..." 
-                  className="resize-none"
-                  {...field}
+                  className="resize-none" 
+                  {...field} 
                   value={field.value || ""}
                 />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        {/* Selection conditions for when to show this category */}
-        <FormField
-          control={form.control}
-          name="show_if_selection_type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                Show this category only when these options are selected
-              </FormLabel>
-              <FormControl>
-                <div className="bg-white border rounded p-2 space-y-2">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Leave empty to always show this category. Select multiple options to display this category when any of them are selected.
-                  </p>
-                  {AVAILABLE_SELECTIONS.map((option) => (
-                    <div key={option.value} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`option-${option.value}`}
-                        checked={field.value?.includes(option.value)}
-                        onCheckedChange={(checked) => {
-                          const currentValues = field.value || [];
-                          const newValues = checked 
-                            ? [...currentValues, option.value]
-                            : currentValues.filter(value => value !== option.value);
-                          field.onChange(newValues);
-                        }}
-                      />
-                      <label 
-                        htmlFor={`option-${option.value}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {option.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -159,6 +101,7 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
               </FormItem>
             )}
           />
+          
           <FormField
             control={form.control}
             name="max_selections"
@@ -182,6 +125,7 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
             )}
           />
         </div>
+        
         <Button type="submit" className="w-full bg-kiosk-primary" disabled={isLoading}>
           {isLoading ? (
             <>

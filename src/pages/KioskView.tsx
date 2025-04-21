@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
@@ -27,111 +26,142 @@ type SelectedToppingCategory = {
 };
 
 const KioskView = () => {
-  const [loading, setLoading] = useState(true);
+  const {
+    restaurantSlug
+  } = useParams<{
+    restaurantSlug: string;
+  }>();
+  const navigate = useNavigate();
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
+  const [orderType, setOrderType] = useState<OrderType>(null);
+  const [tableNumber, setTableNumber] = useState<string | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<CategoryWithItems[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [specialInstructions, setSpecialInstructions] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<{
     optionId: string;
     choiceIds: string[];
   }[]>([]);
   const [selectedToppings, setSelectedToppings] = useState<SelectedToppingCategory[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [specialInstructions, setSpecialInstructions] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
-  const [orderType, setOrderType] = useState<OrderType | null>(null);
-  const [tableNumber, setTableNumber] = useState<string | null>(null);
-  const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
-  const { toast } = useToast();
-  const { slug } = useParams();
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const {
+    toast
+  } = useToast();
 
   useEffect(() => {
-    const fetchRestaurant = async () => {
+    const fetchRestaurantAndMenu = async () => {
+      if (!restaurantSlug) {
+        navigate('/');
+        return;
+      }
       try {
-        const result = await getRestaurantBySlug(slug);
-        if (!result || result.error) {
+        setLoading(true);
+        const restaurantData = await getRestaurantBySlug(restaurantSlug);
+        if (!restaurantData) {
           toast({
-            title: "Erreur",
-            description: "Le restaurant que vous recherchez n'existe pas.",
+            title: "Restaurant introuvable",
+            description: "Désolé, nous n'avons pas pu trouver ce restaurant.",
             variant: "destructive"
           });
+          navigate('/');
           return;
         }
-        setRestaurant(result);
+        setRestaurant(restaurantData);
+        const menuData = await getMenuForRestaurant(restaurantData.id);
+        setCategories(menuData);
+        if (menuData.length > 0) {
+          setActiveCategory(menuData[0].id);
+        }
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching restaurant:", error);
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
         toast({
           title: "Erreur",
-          description: "Une erreur s'est produite lors du chargement du restaurant.",
+          description: "Un problème est survenu lors du chargement du menu. Veuillez réessayer.",
           variant: "destructive"
         });
+        setLoading(false);
       }
     };
+    fetchRestaurantAndMenu();
+  }, [restaurantSlug, navigate, toast]);
 
-    const fetchCategories = async () => {
-      if (!restaurant?.id) return;
-      
-      try {
-        const result = await getMenuForRestaurant(restaurant.id);
-        if (!result || result.error) {
-          toast({
-            title: "Erreur",
-            description: "Impossible de charger le menu.",
-            variant: "destructive"
-          });
-          return;
-        }
-        setCategories(result);
-        setActiveCategory(result[0]?.id || null);
-      } catch (error) {
-        console.error("Error fetching menu categories:", error);
-        toast({
-          title: "Erreur",
-          description: "Une erreur s'est produite lors du chargement du menu.",
-          variant: "destructive"
-        });
-      }
-    };
+  const handleStartOrder = () => {
+    setShowWelcome(false);
+    setShowOrderTypeSelection(true);
+  };
 
-    fetchRestaurant();
-    if (restaurant?.id) {
-      fetchCategories();
+  const handleOrderTypeSelected = (type: OrderType, table?: string) => {
+    setOrderType(type);
+    if (table) {
+      setTableNumber(table);
     }
-  }, [slug, restaurant?.id, toast]);
+    setShowOrderTypeSelection(false);
+  };
 
-  // Function to fetch topping categories for a menu item
-  const fetchToppingCategories = async (menuItemId: string): Promise<any[]> => {
+  const fetchToppingCategories = async (menuItemId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('menu_item_topping_categories')
-        .select(`
-          topping_category_id,
-          topping_categories:topping_category_id(
-            id, name, min_selections, max_selections, icon, description, show_if_selection_type,
-            toppings(id, name, price, tax_percentage)
-          )
-        `)
-        .eq('menu_item_id', menuItemId);
-      
-      if (error) {
-        console.error("Error fetching topping categories:", error);
+      const {
+        data: menuItemToppingCategories,
+        error: toppingCategoriesError
+      } = await supabase.from('menu_item_topping_categories').select('topping_category_id').eq('menu_item_id', menuItemId);
+      if (toppingCategoriesError) {
+        console.error("Erreur lors du chargement des catégories de toppings:", toppingCategoriesError);
         return [];
       }
-      
-      return data.map(item => ({
-        ...item.topping_categories,
-        required: item.topping_categories.min_selections > 0
+      if (!menuItemToppingCategories.length) {
+        return [];
+      }
+      const toppingCategoryIds = menuItemToppingCategories.map(mtc => mtc.topping_category_id);
+      const {
+        data: toppingCategories,
+        error: categoriesError
+      } = await supabase.from('topping_categories').select('*').in('id', toppingCategoryIds);
+      if (categoriesError) {
+        console.error("Erreur lors du chargement des détails des catégories de toppings:", categoriesError);
+        return [];
+      }
+      const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
+        const {
+          data: toppings,
+          error: toppingsError
+        } = await supabase.from('toppings').select('*').eq('category_id', category.id);
+        if (toppingsError) {
+          console.error(`Erreur lors du chargement des ingrédients pour la catégorie ${category.id}:`, toppingsError);
+          return {
+            id: category.id,
+            name: category.name,
+            min_selections: category.min_selections || 0,
+            max_selections: category.max_selections || 0,
+            required: category.min_selections ? category.min_selections > 0 : false,
+            toppings: []
+          };
+        }
+        return {
+          id: category.id,
+          name: category.name,
+          min_selections: category.min_selections || 0,
+          max_selections: category.max_selections || 0,
+          required: category.min_selections ? category.min_selections > 0 : false,
+          toppings: toppings.map(topping => ({
+            id: topping.id,
+            name: topping.name,
+            price: topping.price,
+            tax_percentage: topping.tax_percentage || 0
+          }))
+        };
       }));
+      return toppingCategoriesWithToppings;
     } catch (error) {
-      console.error("Error in fetchToppingCategories:", error);
+      console.error("Erreur lors de la récupération des catégories de toppings:", error);
       return [];
     }
   };
@@ -148,10 +178,10 @@ const KioskView = () => {
         });
         return;
       }
-      const fetchedToppingCategories = await fetchToppingCategories(item.id);
+      const toppingCategories = await fetchToppingCategories(item.id);
       const itemWithToppings: MenuItemWithOptions = {
         ...(itemWithOptions as MenuItemWithOptions),
-        toppingCategories: fetchedToppingCategories
+        toppingCategories
       };
       setSelectedItem(itemWithToppings);
       setQuantity(1);
@@ -173,8 +203,8 @@ const KioskView = () => {
       } else {
         setSelectedOptions([]);
       }
-      if (fetchedToppingCategories.length > 0) {
-        const initialToppings = fetchedToppingCategories.map(category => ({
+      if (toppingCategories.length > 0) {
+        const initialToppings = toppingCategories.map(category => ({
           categoryId: category.id,
           toppingIds: []
         }));
@@ -318,35 +348,6 @@ const KioskView = () => {
     }).filter(Boolean).join(", ");
   };
 
-  const shouldShowToppingCategory = (category: any): boolean => {
-    // If no conditional display is specified, always show the category
-    if (!category.show_if_selection_type || category.show_if_selection_type.length === 0) {
-      return true;
-    }
-
-    if (!selectedItem || !selectedItem.options) {
-      return false;
-    }
-
-    const selectedChoiceNames: string[] = [];
-    
-    selectedItem.options.forEach(option => {
-      const selectedOption = selectedOptions.find(o => o.optionId === option.id);
-      if (selectedOption) {
-        selectedOption.choiceIds.forEach(choiceId => {
-          const choice = option.choices.find(c => c.id === choiceId);
-          if (choice) {
-            selectedChoiceNames.push(choice.name.toLowerCase());
-          }
-        });
-      }
-    });
-
-    return category.show_if_selection_type.some((requiredType: string) => 
-      selectedChoiceNames.includes(requiredType.toLowerCase())
-    );
-  };
-
   const handleAddToCart = () => {
     if (!selectedItem) return;
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -422,17 +423,6 @@ const KioskView = () => {
 
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
-  };
-
-  const handleStartOrder = () => {
-    setShowWelcome(false);
-    setShowOrderTypeSelection(true);
-  };
-
-  const handleOrderTypeSelected = (type: OrderType, table?: string) => {
-    setOrderType(type);
-    setTableNumber(table || null);
-    setShowOrderTypeSelection(false);
   };
 
   const handlePlaceOrder = async () => {
@@ -684,49 +674,59 @@ const KioskView = () => {
                 </div>
               )}
 
-              {selectedItem.toppingCategories &&
-                selectedItem.toppingCategories
-                  .filter(category => shouldShowToppingCategory(category))
-                  .map(category => (
-                    <div key={category.id} className="space-y-3">
-                      <div className="font-medium flex items-center">
-                        {category.name} 
-                        {category.min_selections > 0 && <span className="text-red-500 ml-1">*</span>}
-                        <span className="text-sm text-gray-500 ml-2">
-                          {category.max_selections > 0 
-                            ? `(Sélectionnez jusqu'à ${category.max_selections})` 
-                            : "(Sélection multiple)"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {category.toppings.map(topping => {
-                          const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
-                          const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
-                          return (
-                            <div 
-                              key={topping.id} 
-                              className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300"
+              {selectedItem.toppingCategories && selectedItem.toppingCategories.map(category => (
+                <div key={category.id} className="space-y-3">
+                  <div className="font-medium flex items-center">
+                    {category.name} 
+                    {category.required && <span className="text-red-500 ml-1">*</span>}
+                    <span className="text-sm text-gray-500 ml-2">
+                      {category.max_selections > 0 
+                        ? `(Sélectionnez jusqu'à ${category.max_selections})` 
+                        : "(Sélection multiple)"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {category.toppings.map(topping => {
+                      const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
+                      const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
+                      return (
+                        <div 
+                          key={topping.id} 
+                          className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300"
+                        >
+                          <span>{topping.name}</span>
+                          <div className="flex items-center gap-2">
+                            {topping.price > 0 && (
+                              <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} €</span>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className={`h-8 w-8 rounded-full ${isSelected ? 'bg-kiosk-primary text-white border-kiosk-primary' : ''}`} 
+                              onClick={() => handleToggleTopping(category.id, topping.id)}
                             >
-                              <span>{topping.name}</span>
-                              <div className="flex items-center gap-2">
-                                {topping.price > 0 && (
-                                  <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} €</span>
-                                )}
-                                <Button 
-                                  variant="outline" 
-                                  size="icon" 
-                                  className={`h-8 w-8 rounded-full ${isSelected ? 'bg-kiosk-primary text-white border-kiosk-primary' : ''}`} 
-                                  onClick={() => handleToggleTopping(category.id, topping.id)}
-                                >
-                                  {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                              {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              <div>
+                <Label className="font-medium">Quantité</Label>
+                <div className="flex items-center space-x-4 mt-2">
+                  <Button variant="outline" size="icon" onClick={() => quantity > 1 && setQuantity(quantity - 1)}>
+                    <MinusCircle className="h-4 w-4" />
+                  </Button>
+                  <span className="font-medium text-lg">{quantity}</span>
+                  <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
             
             <DialogFooter>
