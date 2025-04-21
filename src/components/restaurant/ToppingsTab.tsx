@@ -94,11 +94,6 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
     fetchToppings();
   }, [toppingCategories]);
 
-  const toppingCategoryOptions = toppingCategories.map(c => ({
-    id: c.id,
-    name: c.name
-  }));
-
   const handleAddToppingCategory = async (values: any) => {
     try {
       setSavingToppingCategory(true);
@@ -145,8 +140,7 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         description: values.description || null,
         icon: values.icon || "cherry",
         min_selections: values.min_selections || 0,
-        max_selections: values.max_selections || 0,
-        show_if_category_id: (values.show_if_category_id ?? null)
+        max_selections: values.max_selections || 0
       });
       
       setToppingCategories(toppingCategories.map(cat => 
@@ -337,10 +331,9 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
             <DialogHeader>
               <DialogTitle>Add Topping Category</DialogTitle>
             </DialogHeader>
-            <ToppingCategoryForm
+            <ToppingCategoryForm 
               onSubmit={handleAddToppingCategory}
               isLoading={savingToppingCategory}
-              availableCategories={toppingCategoryOptions}
             />
           </DialogContent>
         </Dialog>
@@ -392,19 +385,16 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
                     <DialogHeader>
                       <DialogTitle>Edit Topping Category</DialogTitle>
                     </DialogHeader>
-                    <ToppingCategoryForm
+                    <ToppingCategoryForm 
                       onSubmit={(values) => handleEditToppingCategory(category.id, values)}
                       initialValues={{
                         name: category.name,
                         description: category.description || "",
                         icon: category.icon || "",
                         min_selections: category.min_selections || 0,
-                        max_selections: category.max_selections || 0,
-                        show_if_category_id: (category as any).show_if_category_id ?? null
+                        max_selections: category.max_selections || 0
                       }}
                       isLoading={savingToppingCategory}
-                      availableCategories={toppingCategoryOptions}
-                      currentCategoryId={category.id}
                     />
                   </DialogContent>
                 </Dialog>
@@ -468,10 +458,9 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
               <DialogHeader>
                 <DialogTitle>Add Topping Category</DialogTitle>
               </DialogHeader>
-              <ToppingCategoryForm
+              <ToppingCategoryForm 
                 onSubmit={handleAddToppingCategory}
                 isLoading={savingToppingCategory}
-                availableCategories={toppingCategoryOptions}
               />
             </DialogContent>
           </Dialog>
@@ -490,10 +479,9 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
               <DialogHeader>
                 <DialogTitle>Add Your First Topping Category</DialogTitle>
               </DialogHeader>
-              <ToppingCategoryForm
+              <ToppingCategoryForm 
                 onSubmit={handleAddToppingCategory}
                 isLoading={savingToppingCategory}
-                availableCategories={toppingCategoryOptions}
               />
             </DialogContent>
           </Dialog>
