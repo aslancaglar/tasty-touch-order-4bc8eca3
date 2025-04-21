@@ -43,6 +43,8 @@ export const createRestaurant = async (restaurant: Omit<Restaurant, 'id' | 'crea
 };
 
 export const updateRestaurant = async (id: string, updates: Partial<Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>>): Promise<Restaurant> => {
+  console.log("Updating restaurant:", id, "with data:", updates);
+  
   const { data, error } = await supabase
     .from("restaurants")
     .update(updates)
@@ -55,6 +57,7 @@ export const updateRestaurant = async (id: string, updates: Partial<Omit<Restaur
     throw error;
   }
 
+  console.log("Restaurant updated successfully:", data);
   return data;
 };
 

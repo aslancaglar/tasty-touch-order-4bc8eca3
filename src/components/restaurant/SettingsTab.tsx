@@ -61,6 +61,19 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const testTax = calculateTaxAmount(testTotal);
 
   useEffect(() => {
+    setName(restaurant.name);
+    setLocation(restaurant.location || "");
+    setImage(restaurant.image_url || "");
+    setUiLanguage(restaurant.ui_language || "fr");
+    console.log("Settings updated from restaurant props:", { 
+      name: restaurant.name, 
+      location: restaurant.location, 
+      image: restaurant.image_url,
+      uiLanguage: restaurant.ui_language
+    });
+  }, [restaurant]);
+
+  useEffect(() => {
     const fetchPrintSettings = async () => {
       try {
         const { data, error } = await supabase
@@ -86,13 +99,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     fetchPrintSettings();
   }, [restaurant.id]);
 
-  useEffect(() => {
-    setName(restaurant.name);
-    setLocation(restaurant.location || "");
-    setImage(restaurant.image_url || "");
-    setUiLanguage(restaurant.ui_language || "fr");
-  }, [restaurant]);
-
   const handleSaveRestaurantInfo = async () => {
     if (!name.trim()) {
       toast({
@@ -110,6 +116,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         name,
         location,
         image_url: image,
+        ui_language: uiLanguage,
       });
       
       toast({
@@ -255,19 +262,29 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const handleSaveLanguage = async () => {
     setIsSavingLanguage(true);
     try {
-      const { error } = await supabase
+      console.log("Saving UI language:", uiLanguage);
+      
+      const { data, error } = await supabase
         .from("restaurants")
         .update({ ui_language: uiLanguage })
-        .eq("id", restaurant.id);
+        .eq("id", restaurant.id)
+        .select();
+      
       if (error) throw error;
+      console.log("Language update response:", data);
 
       toast({
         title: "Langue enregistrée",
         description: "La langue de l'interface a été mise à jour.",
       });
 
-      if (onRestaurantUpdated) {
-        onRestaurantUpdated({ ...restaurant, ui_language: uiLanguage });
+      if (onRestaurantUpdated && data && data.length > 0) {
+        const updatedRestaurant = {
+          ...restaurant,
+          ui_language: uiLanguage
+        };
+        onRestaurantUpdated(updatedRestaurant);
+        console.log("Updated restaurant with new language:", updatedRestaurant);
       }
     } catch (error) {
       console.error("Error updating language:", error);
@@ -328,18 +345,40 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
             
             <div>
               <Label htmlFor="uiLanguage">Langue de l'interface Kiosk</Label>
-              <select
-                id="uiLanguage"
-                value={uiLanguage}
-                onChange={e => setUiLanguage(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-md bg-white"
-              >
-                {languageOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-2">
+                <select
+                  id="uiLanguage"
+                  value={uiLanguage}
+                  onChange={e => setUiLanguage(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-white"
+                >
+                  {languageOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-2">
+                  <Button
+                    onClick={handleSaveLanguage}
+                    disabled={isSavingLanguage}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isSavingLanguage ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sauvegarde...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Enregistrer la langue
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
           

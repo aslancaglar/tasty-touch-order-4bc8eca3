@@ -39,6 +39,7 @@ const RestaurantManage = () => {
         const foundRestaurant = restaurants.find(r => r.id === id);
         
         if (foundRestaurant) {
+          console.log("Restaurant found:", foundRestaurant);
           setRestaurant(foundRestaurant);
         } else {
           toast({
@@ -64,6 +65,7 @@ const RestaurantManage = () => {
 
   // Handle restaurant updates from SettingsTab
   const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
+    console.log("Restaurant updated:", updatedRestaurant);
     setRestaurant(updatedRestaurant);
   };
 
@@ -110,7 +112,7 @@ const RestaurantManage = () => {
           <div className="flex items-center justify-between">
             <CardTitle>Gestion du Restaurant</CardTitle>
             <Button variant="outline" asChild>
-              <Link to={`/r/${restaurant.slug}`} target="_blank">
+              <Link to={`/r/${restaurant?.slug}`} target="_blank">
                 Voir Kiosk
               </Link>
             </Button>
@@ -150,10 +152,12 @@ const RestaurantManage = () => {
             </TabsContent>
             
             <TabsContent value="settings">
-              <SettingsTab 
-                restaurant={restaurant} 
-                onRestaurantUpdated={handleRestaurantUpdated} 
-              />
+              {restaurant && (
+                <SettingsTab 
+                  restaurant={restaurant} 
+                  onRestaurantUpdated={handleRestaurantUpdated} 
+                />
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
