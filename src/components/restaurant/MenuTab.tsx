@@ -95,6 +95,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
     try {
       const updates = categories.map((category, index) => ({
         id: category.id,
+        name: category.name,
+        restaurant_id: category.restaurant_id,
         display_order: index
       }));
 
