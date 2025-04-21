@@ -599,7 +599,7 @@ const KioskView = () => {
                     </div>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                     <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
-                      Ajouter à la commande
+                      Ajouter au panier
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
