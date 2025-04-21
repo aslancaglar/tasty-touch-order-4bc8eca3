@@ -29,6 +29,55 @@ function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
 
+// Add the missing translations object
+const translations = {
+  fr: {
+    orderSummary: "Résumé de la commande",
+    orderedItems: "Articles commandés",
+    totalHT: "Total HT",
+    vatWithRate: "TVA (20%)",
+    vat: "TVA",
+    totalTTC: "TOTAL TTC",
+    confirm: "Confirmer la commande",
+    printing: "Impression",
+    printingPreparation: "Préparation de l'impression...",
+    printError: "Erreur d'impression",
+    printErrorDesc: "Impossible d'imprimer le reçu. Veuillez réessayer.",
+    error: "Erreur",
+    errorPrinting: "Une erreur s'est produite lors de l'impression du reçu."
+  },
+  en: {
+    orderSummary: "Order Summary",
+    orderedItems: "Ordered Items",
+    totalHT: "Subtotal",
+    vatWithRate: "VAT (20%)",
+    vat: "VAT",
+    totalTTC: "TOTAL",
+    confirm: "Confirm Order",
+    printing: "Printing",
+    printingPreparation: "Preparing to print...",
+    printError: "Print Error",
+    printErrorDesc: "Unable to print receipt. Please try again.",
+    error: "Error",
+    errorPrinting: "An error occurred while printing the receipt."
+  },
+  tr: {
+    orderSummary: "Sipariş Özeti",
+    orderedItems: "Sipariş Edilen Ürünler",
+    totalHT: "Ara Toplam",
+    vatWithRate: "KDV (20%)",
+    vat: "KDV",
+    totalTTC: "TOPLAM",
+    confirm: "Siparişi Onayla",
+    printing: "Yazdırılıyor",
+    printingPreparation: "Yazdırma hazırlanıyor...",
+    printError: "Yazdırma Hatası",
+    printErrorDesc: "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
+    error: "Hata",
+    errorPrinting: "Fiş yazdırılırken bir hata oluştu."
+  }
+};
+
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
