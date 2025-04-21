@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,6 @@ import {
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import TablesTab from "./TablesTab";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
@@ -79,6 +79,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     fetchPrintSettings();
   }, [restaurant.id]);
 
+  // Update state when restaurant prop changes
   useEffect(() => {
     setName(restaurant.name);
     setLocation(restaurant.location || "");
@@ -109,6 +110,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         description: "Restaurant information updated successfully",
       });
 
+      // Call the callback to update parent component state
       if (onRestaurantUpdated && updatedRestaurant) {
         onRestaurantUpdated(updatedRestaurant);
       }
@@ -135,6 +137,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         description: "Restaurant deleted successfully",
       });
       
+      // Redirect to restaurants page
       navigate("/restaurants");
     } catch (error) {
       console.error("Error deleting restaurant:", error);
@@ -151,6 +154,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     setIsSavingPrintSettings(true);
     
     try {
+      // Check if config exists for this restaurant
       const { data: existingConfig, error: checkError } = await supabase
         .from('restaurant_print_config')
         .select('id')
@@ -164,6 +168,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       let result;
       
       if (existingConfig) {
+        // Update existing config
         result = await supabase
           .from('restaurant_print_config')
           .update({ browser_printing_enabled: browserPrintEnabled })
@@ -171,6 +176,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
           
         console.log("Updated browser printing setting:", browserPrintEnabled);
       } else {
+        // Create new config
         result = await supabase
           .from('restaurant_print_config')
           .insert({ 
@@ -203,11 +209,14 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   const handleTestPrint = () => {
     if (browserPrintEnabled) {
+      // Generate a test receipt
       const testReceipt = document.getElementById("receipt-content");
       if (testReceipt) {
         console.log("Testing browser printing");
+        // Make it visible for printing
         testReceipt.style.display = "block";
         
+        // Print using browser
         try {
           printReceipt("receipt-content");
           
@@ -224,6 +233,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
           });
         }
         
+        // Hide it again after printing
         setTimeout(() => {
           testReceipt.style.display = "none";
         }, 500);
@@ -250,7 +260,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         <TabsList>
           <TabsTrigger value="basic">Informations</TabsTrigger>
           <TabsTrigger value="print">Impression</TabsTrigger>
-          <TabsTrigger value="tables">Tables</TabsTrigger>
         </TabsList>
         
         <TabsContent value="basic" className="space-y-6">
@@ -451,10 +460,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               <p>Merci de votre visite!</p>
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="tables" className="space-y-6">
-          <TablesTab restaurantId={restaurant.id} />
         </TabsContent>
       </Tabs>
     </div>

@@ -446,7 +446,6 @@ export type Database = {
           configured_printers: Json | null
           created_at: string | null
           id: string
-          require_table_selection: boolean | null
           restaurant_id: string | null
           updated_at: string | null
         }
@@ -456,7 +455,6 @@ export type Database = {
           configured_printers?: Json | null
           created_at?: string | null
           id?: string
-          require_table_selection?: boolean | null
           restaurant_id?: string | null
           updated_at?: string | null
         }
@@ -466,7 +464,6 @@ export type Database = {
           configured_printers?: Json | null
           created_at?: string | null
           id?: string
-          require_table_selection?: boolean | null
           restaurant_id?: string | null
           updated_at?: string | null
         }
@@ -523,41 +520,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "restaurant_printers_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      restaurant_tables: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          restaurant_id: string
-          table_number: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          restaurant_id: string
-          table_number: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          restaurant_id?: string
-          table_number?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "restaurant_tables_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
