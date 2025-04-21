@@ -108,7 +108,9 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         icon: values.icon || "cherry",
         min_selections: values.min_selections || 0,
         max_selections: values.max_selections || 0,
-        restaurant_id: restaurant.id
+        restaurant_id: restaurant.id,
+        show_if_selection_id: values.conditionToppingIds && values.conditionToppingIds.length > 0 ? 
+          values.conditionToppingIds : null
       });
       
       setToppingCategories(prevCategories => [...prevCategories, newCategory]);
@@ -140,7 +142,9 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         description: values.description || null,
         icon: values.icon || "cherry",
         min_selections: values.min_selections || 0,
-        max_selections: values.max_selections || 0
+        max_selections: values.max_selections || 0,
+        show_if_selection_id: values.conditionToppingIds && values.conditionToppingIds.length > 0 ? 
+          values.conditionToppingIds : null
       });
       
       setToppingCategories(toppingCategories.map(cat => 
@@ -392,9 +396,11 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
                         description: category.description || "",
                         icon: category.icon || "",
                         min_selections: category.min_selections || 0,
-                        max_selections: category.max_selections || 0
+                        max_selections: category.max_selections || 0,
+                        show_if_selection_id: category.show_if_selection_id || []
                       }}
                       isLoading={savingToppingCategory}
+                      restaurantId={restaurant.id}
                     />
                   </DialogContent>
                 </Dialog>
@@ -461,6 +467,7 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
               <ToppingCategoryForm 
                 onSubmit={handleAddToppingCategory}
                 isLoading={savingToppingCategory}
+                restaurantId={restaurant.id}
               />
             </DialogContent>
           </Dialog>
@@ -482,6 +489,7 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
               <ToppingCategoryForm 
                 onSubmit={handleAddToppingCategory}
                 isLoading={savingToppingCategory}
+                restaurantId={restaurant.id}
               />
             </DialogContent>
           </Dialog>

@@ -59,6 +59,8 @@ const ToppingCategoryForm = ({
       
       setLoadingToppings(true);
       try {
+        console.log("Fetching toppings for restaurant:", restaurantId);
+        
         // First get all topping categories for this restaurant
         const { data: categories, error: categoriesError } = await supabase
           .from('topping_categories')
@@ -67,16 +69,22 @@ const ToppingCategoryForm = ({
           
         if (categoriesError) {
           console.error('Error fetching topping categories:', categoriesError);
+          setLoadingToppings(false);
           return;
         }
         
+        console.log("Fetched categories:", categories);
+        
         if (!categories || categories.length === 0) {
+          console.log("No categories found");
           setLoadingToppings(false);
           return;
         }
         
         // Then get all toppings from these categories
         const categoryIds = categories.map(cat => cat.id);
+        console.log("Fetching toppings for categories:", categoryIds);
+        
         const { data, error } = await supabase
           .from('toppings')
           .select('*')
@@ -85,10 +93,11 @@ const ToppingCategoryForm = ({
         if (error) {
           console.error('Error fetching toppings:', error);
         } else {
+          console.log("Fetched toppings:", data);
           setToppings(data || []);
         }
       } catch (error) {
-        console.error('Error fetching toppings:', error);
+        console.error('Error in fetchToppings:', error);
       } finally {
         setLoadingToppings(false);
       }
@@ -98,6 +107,8 @@ const ToppingCategoryForm = ({
   }, [restaurantId]);
 
   const handleSubmit = (values: ToppingCategoryFormValues) => {
+    console.log("Submitting form with values:", values);
+    console.log("Selected toppings:", selectedToppings);
     onSubmit({
       ...values,
       conditionToppingIds: selectedToppings
