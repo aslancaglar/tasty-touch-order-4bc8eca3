@@ -575,27 +575,15 @@ export const getToppingCategoriesByRestaurantId = async (restaurantId: string): 
   return data;
 };
 
-export const createToppingCategory = async (category: Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>): Promise<ToppingCategory> => {
-  console.log("Creating topping category with data:", category);
-  const { data, error } = await supabase
-    .from("topping_categories")
-    .insert(category)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error creating topping category:", error);
-    throw error;
-  }
-
-  return data;
-};
-
 export const updateToppingCategory = async (id: string, updates: Partial<Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<ToppingCategory> => {
   console.log("Updating topping category:", id, "with data:", updates);
+  
+  // Filter out conditional fields that aren't in the database yet
+  const { show_if_selection_id, show_if_selection_type, ...databaseUpdates } = updates;
+  
   const { data, error } = await supabase
     .from("topping_categories")
-    .update(updates)
+    .update(databaseUpdates)
     .eq("id", id)
     .select()
     .single();
@@ -605,7 +593,38 @@ export const updateToppingCategory = async (id: string, updates: Partial<Omit<To
     throw error;
   }
 
-  return data;
+  // Return the data with the conditionals as part of the response
+  // even though they're not saved to the database yet
+  return {
+    ...data,
+    show_if_selection_id: show_if_selection_id || null,
+    show_if_selection_type: show_if_selection_type || null
+  };
+};
+
+export const createToppingCategory = async (category: Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>): Promise<ToppingCategory> => {
+  console.log("Creating topping category with data:", category);
+  
+  // Filter out conditional fields that aren't in the database yet
+  const { show_if_selection_id, show_if_selection_type, ...databaseCategory } = category;
+  
+  const { data, error } = await supabase
+    .from("topping_categories")
+    .insert(databaseCategory)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating topping category:", error);
+    throw error;
+  }
+
+  // Return the data with the conditionals as part of the response
+  return {
+    ...data,
+    show_if_selection_id: show_if_selection_id || null,
+    show_if_selection_type: show_if_selection_type || null
+  };
 };
 
 export const deleteToppingCategory = async (id: string): Promise<void> => {

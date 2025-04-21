@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ImageUpload from "@/components/ImageUpload";
+import { useToast } from "@/hooks/use-toast";
 
 const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -36,6 +38,11 @@ const ToppingCategoryForm = ({
   toppingCategories = [],
   toppingsByCategory = {},
 }: ToppingCategoryFormProps) => {
+  const { toast } = useToast();
+  const [conditionalDisplayEnabled, setConditionalDisplayEnabled] = useState(
+    !!initialValues?.show_if_selection_id
+  );
+  
   const form = useForm<z.infer<typeof toppingCategorySchema>>({
     resolver: zodResolver(toppingCategorySchema),
     defaultValues: {
@@ -50,7 +57,7 @@ const ToppingCategoryForm = ({
   });
 
   const handleSubmit = (values: z.infer<typeof toppingCategorySchema>) => {
-    if (!values.show_if_selection_id) {
+    if (!conditionalDisplayEnabled || !values.show_if_selection_id) {
       values.show_if_selection_id = "";
       values.show_if_selection_type = "";
     }
@@ -122,26 +129,44 @@ const ToppingCategoryForm = ({
           )}
         />
         <FormItem>
-          <FormLabel>Show this category IF user selected:</FormLabel>
-          <FormControl>
-            <select
-              className="w-full px-3 py-2 border rounded-md"
-              onChange={handleConditionChange}
-              value={form.getValues("show_if_selection_id") && form.getValues("show_if_selection_type")
-                ? `${form.getValues("show_if_selection_type")}|${form.getValues("show_if_selection_id")}`
-                : ""}
-            >
-              {dropdownOptions.map(opt => (
-                <option key={(opt.type === "category" && !opt.id) ? "default" : `${opt.type}|${opt.id}`} value={opt.id ? `${opt.type}|${opt.id}` : ""}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </FormControl>
-          <FormMessage />
-          <div className="text-xs text-muted-foreground mt-1">
-            This category will only be displayed if the user has selected the specified other toppings category or specific topping. Leave blank to always show.
+          <div className="flex items-center space-x-2 mb-2">
+            <input 
+              type="checkbox" 
+              id="enable-condition"
+              checked={conditionalDisplayEnabled}
+              onChange={(e) => setConditionalDisplayEnabled(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+            />
+            <FormLabel htmlFor="enable-condition" className="cursor-pointer">Enable conditional display</FormLabel>
           </div>
+          
+          {conditionalDisplayEnabled && (
+            <>
+              <FormLabel>Show this category IF user selected:</FormLabel>
+              <FormControl>
+                <select
+                  className="w-full px-3 py-2 border rounded-md"
+                  onChange={handleConditionChange}
+                  value={form.getValues("show_if_selection_id") && form.getValues("show_if_selection_type")
+                    ? `${form.getValues("show_if_selection_type")}|${form.getValues("show_if_selection_id")}`
+                    : ""}
+                >
+                  {dropdownOptions.map(opt => (
+                    <option key={(opt.type === "category" && !opt.id) ? "default" : `${opt.type}|${opt.id}`} value={opt.id ? `${opt.type}|${opt.id}` : ""}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </FormControl>
+              <FormMessage />
+              <div className="text-xs text-muted-foreground mt-1">
+                This category will only be displayed if the user has selected the specified other toppings category or specific topping. Leave blank to always show.
+              </div>
+              <div className="text-xs text-yellow-500 font-medium mt-1">
+                Note: This feature requires a database update and is currently stored locally only.
+              </div>
+            </>
+          )}
         </FormItem>
         <div className="grid grid-cols-2 gap-4">
           <FormField
