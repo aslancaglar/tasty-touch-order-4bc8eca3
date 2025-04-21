@@ -185,9 +185,20 @@ const KioskView = () => {
         return;
       }
       const toppingCategories = await fetchToppingCategories(item.id);
+
+      // IMPORTANT: reorder fetched toppingCategories to match menu item's topping_categories order
+      let sortedToppingCategories = toppingCategories;
+      if (item.topping_categories && item.topping_categories.length > 1) {
+        sortedToppingCategories = [...toppingCategories].sort((a, b) => {
+          const indexA = item.topping_categories.indexOf(a.id);
+          const indexB = item.topping_categories.indexOf(b.id);
+          return indexA - indexB;
+        });
+      }
+
       const itemWithToppings: MenuItemWithOptions = {
         ...(itemWithOptions as MenuItemWithOptions),
-        toppingCategories
+        toppingCategories: sortedToppingCategories
       };
       setSelectedItem(itemWithToppings);
       setQuantity(1);
@@ -209,8 +220,8 @@ const KioskView = () => {
       } else {
         setSelectedOptions([]);
       }
-      if (toppingCategories.length > 0) {
-        const initialToppings = toppingCategories.map(category => ({
+      if (sortedToppingCategories.length > 0) {
+        const initialToppings = sortedToppingCategories.map(category => ({
           categoryId: category.id,
           toppingIds: []
         }));
