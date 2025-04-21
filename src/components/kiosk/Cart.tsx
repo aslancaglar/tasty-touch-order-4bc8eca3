@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -29,7 +30,44 @@ interface CartProps {
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
   showOrderSummaryOnly?: boolean;
+  uiLanguage?: "fr" | "en" | "tr";
 }
+
+const translations = {
+  fr: {
+    yourOrder: "VOTRE COMMANDE",
+    totalHT: "Total HT:",
+    vat: "TVA:",
+    totalTTC: "TOTAL TTC:",
+    cancel: "ANNULER",
+    seeOrder: "VOIR MA COMMANDE",
+    confirmed: "CONFIRMÉE",
+    processing: "EN COURS...",
+    empty: "Aucun article",
+  },
+  en: {
+    yourOrder: "YOUR ORDER",
+    totalHT: "Subtotal:",
+    vat: "Tax:",
+    totalTTC: "TOTAL:",
+    cancel: "CANCEL",
+    seeOrder: "SEE MY ORDER",
+    confirmed: "CONFIRMED",
+    processing: "PROCESSING...",
+    empty: "No items",
+  },
+  tr: {
+    yourOrder: "SİPARİŞİNİZ",
+    totalHT: "Ara Toplam:",
+    vat: "KDV:",
+    totalTTC: "TOPLAM:",
+    cancel: "İPTAL",
+    seeOrder: "SİPARİŞİMİ GÖR",
+    confirmed: "ONAYLANDI",
+    processing: "İŞLENİYOR...",
+    empty: "Ürün yok",
+  }
+};
 
 const Cart: React.FC<CartProps> = ({
   cart,
@@ -49,6 +87,7 @@ const Cart: React.FC<CartProps> = ({
   orderType = null,
   tableNumber = null,
   showOrderSummaryOnly = false,
+  uiLanguage = "fr",
 }) => {
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
@@ -60,7 +99,6 @@ const Cart: React.FC<CartProps> = ({
         onToggleOpen();
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
@@ -70,23 +108,21 @@ const Cart: React.FC<CartProps> = ({
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
   };
-
   const handleCloseOrderSummary = () => {
     setShowOrderSummary(false);
   };
-
   const handlePlaceOrder = () => {
     onPlaceOrder();
     setShowOrderSummary(false);
   };
-
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
-
   const { total, subtotal, tax } = calculateCartTotals(cart);
-
   const reversedCart = [...cart].reverse();
+
+  // Translation function
+  const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
 
   return (
     <>
@@ -98,7 +134,7 @@ const Cart: React.FC<CartProps> = ({
         <div className="w-full">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center">
-              <h2 className="text-xl font-bold">VOTRE COMMANDE ({cartItemCount})</h2>
+              <h2 className="text-xl font-bold">{t("yourOrder")} ({cartItemCount})</h2>
             </div>
             <Button variant="ghost" size="icon" onClick={onToggleOpen}>
               <ChevronDown className="h-5 w-5" />
@@ -114,7 +150,9 @@ const Cart: React.FC<CartProps> = ({
               className="w-full"
             >
               <CarouselContent className="-ml-2">
-                {reversedCart.map(item => (
+                {reversedCart.length === 0 ? (
+                  <div className="p-4 text-gray-400 text-center">{t("empty")}</div>
+                ) : reversedCart.map(item => (
                   <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
                     <div className="border border-gray-200 rounded-lg p-3 relative">
                       <Button 
@@ -169,23 +207,23 @@ const Cart: React.FC<CartProps> = ({
           <div className="px-4 pb-4">
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Total HT:</span>
+                <span className="text-gray-600">{t("totalHT")}</span>
                 <span className="font-medium">{subtotal.toFixed(2)} €</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">TVA:</span>
+                <span className="text-gray-600">{t("vat")}</span>
                 <span className="font-medium">{tax.toFixed(2)} €</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between text-lg font-bold">
-                <span>TOTAL TTC:</span>
+                <span>{t("totalTTC")}</span>
                 <span>{total.toFixed(2)} €</span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-6">
               <Button variant="destructive" className="py-6" onClick={onClearCart}>
-                ANNULER
+                {t("cancel")}
               </Button>
               <Button 
                 className="bg-green-800 hover:bg-green-900 text-white py-6"
@@ -194,7 +232,11 @@ const Cart: React.FC<CartProps> = ({
               >
                 {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {orderPlaced && <Check className="h-4 w-4 mr-2" />}
-                {orderPlaced ? "CONFIRMÉE" : placingOrder ? "EN COURS..." : "VOIR MA COMMANDE"}
+                {orderPlaced
+                  ? t("confirmed")
+                  : placingOrder
+                    ? t("processing")
+                    : t("seeOrder")}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>

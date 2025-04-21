@@ -757,6 +757,7 @@ const KioskView = () => {
         orderType={orderType} 
         tableNumber={tableNumber}
         showOrderSummaryOnly={false}
+        uiLanguage={uiLanguage}
       />
 
       {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
