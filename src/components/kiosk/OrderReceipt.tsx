@@ -4,6 +4,7 @@ import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings } from "@/utils/receipt-templates";
+import currencyCodes from "currency-codes";
 
 const translations = {
   fr: {
@@ -43,6 +44,7 @@ interface OrderReceiptProps {
     id?: string;
     name: string;
     location?: string;
+    currency?: string;
   };
   cart: CartItem[];
   orderNumber: string;
@@ -52,6 +54,12 @@ interface OrderReceiptProps {
   getFormattedToppings: (item: CartItem) => string;
   uiLanguage?: "fr" | "en" | "tr";
 }
+
+// Helper function to get currency symbol
+const getCurrencySymbol = (currencyCode: string): string => {
+  const entry = currencyCodes.code(currencyCode || 'EUR');
+  return (entry && entry.symbol) ? entry.symbol : currencyCode || '€';
+};
 
 const OrderReceipt: React.FC<OrderReceiptProps> = ({
   restaurant,
@@ -68,6 +76,8 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   
   const t = (key: keyof typeof translations["en"]) => 
     translations[uiLanguage]?.[key] ?? translations.fr[key];
+  
+  const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
   
   return (
     <div id="receipt-content" className="receipt" style={{ display: "none" }}>
@@ -87,7 +97,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
           <div key={item.id} style={{ marginBottom: "8px" }}>
             <div className="item">
               <span>{item.quantity}x {item.menuItem.name}</span>
-              <span>{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
+              <span>{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
             </div>
             {(getFormattedOptions(item) || getFormattedToppings(item)) && (
               <div className="item-details text-xs">
@@ -109,7 +119,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                       return (
                         <div key={`${item.id}-cat-${groupIdx}-topping-${topIdx}`} className="item">
                           <span style={{ paddingLeft: 6 }}>+ {topping}</span>
-                          <span>{price > 0 ? price.toFixed(2) + " €" : ""}</span>
+                          <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
                         </div>
                       )
                     })}
@@ -126,16 +136,16 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
       <div className="total-section">
         <div className="total-line">
           <span>{t("subtotal")}</span>
-          <span>{subtotal.toFixed(2)} €</span>
+          <span>{subtotal.toFixed(2)} {currencySymbol}</span>
         </div>
         <div className="total-line">
           <span>{t("vat")}</span>
-          <span>{tax.toFixed(2)} €</span>
+          <span>{tax.toFixed(2)} {currencySymbol}</span>
         </div>
         <div className="divider"></div>
         <div className="total-line grand-total">
           <span>{t("total")}</span>
-          <span>{total.toFixed(2)} €</span>
+          <span>{total.toFixed(2)} {currencySymbol}</span>
         </div>
       </div>
 

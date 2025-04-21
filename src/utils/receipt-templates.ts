@@ -1,3 +1,4 @@
+
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
 import currencyCodes from "currency-codes";
@@ -146,6 +147,10 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
 
   const firstItem = cart[0];
   const vat = firstItem?.menuItem?.tax_percentage ?? 10;
+  
+  // Get currency symbol
+  const currencyCode = restaurant?.currency || 'EUR';
+  const currencySymbol = getCurrencySymbol(currencyCode);
 
   const now = new Date();
   const date = now.toLocaleDateString(uiLanguage === "en" ? "en-GB" : (uiLanguage === "tr" ? "tr-TR" : "fr-FR"), { 
@@ -183,9 +188,9 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   cart.forEach(item => {
     const itemPrice = parseFloat(item.itemPrice.toString()).toFixed(2);
     const itemText = `${item.quantity}x ${encodeSpecialChars(item.menuItem.name)}`;
-    const spaces = 48 - itemText.length - itemPrice.length - 2 - symbol.length;
+    const spaces = 48 - itemText.length - itemPrice.length - 2 - currencySymbol.length;
 
-    receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + itemPrice + ' ' + symbol, ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + itemPrice + ' ' + currencySymbol, ESCPOS.FONT_BOLD) + addLineFeed();
 
     const options = getFormattedOptions(item).split(', ').filter(Boolean);
     options.forEach(option => {
@@ -198,7 +203,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
       group.toppings.forEach(topping => {
         const price = getToppingPrice(item, group.category, topping);
         let line = `    + ${encodeSpecialChars(topping)}`;
-        if (price > 0) line += ` (${price.toFixed(2)} ${symbol})`;
+        if (price > 0) line += ` (${price.toFixed(2)} ${currencySymbol})`;
         receipt += formatText(line, ESCPOS.FONT_NORMAL) + addLineFeed();
       });
     });
@@ -207,12 +212,12 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   receipt += createDivider(48) + addLineFeed();
 
   receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText(`${t("subtotal")}: ` + subtotal.toFixed(2) + ' ' + symbol, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(`${t("vat")}: ` + tax.toFixed(2) + ' ' + symbol, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`${t("subtotal")}: ` + subtotal.toFixed(2) + ' ' + currencySymbol, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`${t("vat")}: ` + tax.toFixed(2) + ' ' + currencySymbol, ESCPOS.FONT_NORMAL) + addLineFeed();
   receipt += createDivider(48) + addLineFeed();
 
   receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText(`${t("total")}: ` + total.toFixed(2) + ' ' + symbol, ESCPOS.FONT_LARGE_BOLD) + addLineFeed(2);
+  receipt += formatText(`${t("total")}: ` + total.toFixed(2) + ' ' + currencySymbol, ESCPOS.FONT_LARGE_BOLD) + addLineFeed(2);
 
   receipt += ESCPOS.ALIGN_CENTER;
   receipt += formatText(t("thanks"), ESCPOS.FONT_NORMAL) + addLineFeed();

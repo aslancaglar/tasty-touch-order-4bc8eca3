@@ -43,12 +43,15 @@ const languageOptions = [
 ];
 
 const currencyOptions = currencyCodes.data
-  .filter(c => c.code && c.currency && c.symbol)
-  .map(c => ({
-    value: c.code,
-    label: `${c.code} (${c.currency})${c.symbol ? ` ${c.symbol}` : ""}`,
-    symbol: c.symbol
-  }))
+  .filter(c => c.code && c.currency)
+  .map(c => {
+    const symbol = c.symbol || c.code;
+    return {
+      value: c.code,
+      label: `${c.code} (${c.currency})${symbol ? ` ${symbol}` : ""}`,
+      symbol: symbol
+    };
+  })
   .sort((a, b) => {
     const prefer = ["EUR", "USD", "TRY", "GBP"];
     const aPref = prefer.indexOf(a.value);
@@ -357,6 +360,9 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     }
   };
 
+  const selectedCurrencyOption = currencyOptions.find(opt => opt.value === currency);
+  const currencySymbol = selectedCurrencyOption?.symbol || currency;
+
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -610,7 +616,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               <div style={{ marginBottom: "8px" }}>
                 <div className="item">
                   <span>1x Article Test</span>
-                  <span>10.00 €</span>
+                  <span>10.00 {currencySymbol}</span>
                 </div>
                 
                 <div className="item-details">
@@ -627,16 +633,16 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
             <div className="total-section">
               <div className="total-line">
                 <span>Sous-total</span>
-                <span>{testSubtotal.toFixed(2)} €</span>
+                <span>{testSubtotal.toFixed(2)} {currencySymbol}</span>
               </div>
               <div className="total-line">
                 <span>TVA (10%)</span>
-                <span>{testTax.toFixed(2)} €</span>
+                <span>{testTax.toFixed(2)} {currencySymbol}</span>
               </div>
               <div className="divider"></div>
               <div className="total-line grand-total">
                 <span>TOTAL</span>
-                <span>{testTotal.toFixed(2)} €</span>
+                <span>{testTotal.toFixed(2)} {currencySymbol}</span>
               </div>
             </div>
 
