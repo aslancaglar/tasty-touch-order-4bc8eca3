@@ -70,8 +70,8 @@ const encodeSpecialChars = (text: string): string => {
     'é': 'e', 'É': 'E', 'è': 'e', 'È': 'E', 'ê': 'e', 'Ê': 'E',
     'ë': 'e', 'Ë': 'E', 'à': 'a', 'À': 'A', 'â': 'a', 'Â': 'A',
     'î': 'i', 'Î': 'I', 'ï': 'i', 'Ï': 'I', 'ô': 'o', 'Ô': 'O',
-    'ù': 'u', 'Ù': 'U', 'û': 'u', 'Û': 'U', 'ü': 'u', 'Ü': 'U',
-    'ÿ': 'y', 'Ÿ': 'Y', 'ç': 'c', 'Ç': 'C',
+    'ù': 'u', 'Ù': 'U', 'û': 'u', 'Û': 'U',
+    'ÿ': 'y', 'Ÿ': 'Y'
   };
 
   // Use Windows-1252 encoding for better compatibility with thermal printers
