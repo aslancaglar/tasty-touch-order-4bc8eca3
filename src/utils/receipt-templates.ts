@@ -1,4 +1,3 @@
-
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
 
@@ -59,6 +58,34 @@ type GroupedToppings = Array<{
   toppings: string[];
 }>;
 
+// Helper function to ensure special characters are correctly encoded for ESC/POS
+const encodeSpecialChars = (text: string): string => {
+  // Map special characters to their closest ASCII equivalent if needed
+  // This is a simplified approach - for a complete solution, you may need a more comprehensive mapping
+  const charMap: Record<string, string> = {
+    // Turkish special characters
+    'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I',
+    'ö': 'o', 'Ö': 'O', 'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U',
+    // French special characters
+    'é': 'e', 'É': 'E', 'è': 'e', 'È': 'E', 'ê': 'e', 'Ê': 'E',
+    'ë': 'e', 'Ë': 'E', 'à': 'a', 'À': 'A', 'â': 'a', 'Â': 'A',
+    'î': 'i', 'Î': 'I', 'ï': 'i', 'Ï': 'I', 'ô': 'o', 'Ô': 'O',
+    'ù': 'u', 'Ù': 'U', 'û': 'u', 'Û': 'U', 'ü': 'u', 'Ü': 'U',
+    'ÿ': 'y', 'Ÿ': 'Y', 'ç': 'c', 'Ç': 'C',
+  };
+
+  // Use Windows-1252 encoding for better compatibility with thermal printers
+  // This is important as many thermal printers use codepage 850 or similar
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    // If the character is in our map, replace it, otherwise keep it as is
+    result += charMap[char] || char;
+  }
+  
+  return result;
+}
+
 const getGroupedToppings = (item: CartItem): GroupedToppings => {
   if (!item.selectedToppings) return [];
   const groups: GroupedToppings = [];
@@ -103,7 +130,11 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   } = data;
 
   // Pick translation function
-  const t = (k: keyof typeof translations["en"]) => translations[uiLanguage]?.[k] ?? translations.fr[k];
+  const t = (k: keyof typeof translations["en"]) => {
+    const translation = translations[uiLanguage]?.[k] ?? translations.fr[k];
+    // Apply special character encoding to ensure proper printing
+    return encodeSpecialChars(translation);
+  };
 
   const firstItem = cart[0];
   const vat = firstItem?.menuItem?.tax_percentage ?? 10;
@@ -123,10 +154,10 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   let receipt = '';
 
   receipt += ESCPOS.ALIGN_CENTER;
-  receipt += formatText(restaurant?.name || 'Restaurant', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
+  receipt += formatText(encodeSpecialChars(restaurant?.name || 'Restaurant'), ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
 
   if (restaurant?.location) {
-    receipt += formatText(restaurant.location, ESCPOS.FONT_NORMAL) + addLineFeed();
+    receipt += formatText(encodeSpecialChars(restaurant.location), ESCPOS.FONT_NORMAL) + addLineFeed();
   }
 
   receipt += formatText(`${date} ${time}`, ESCPOS.FONT_NORMAL) + addLineFeed();
@@ -143,22 +174,22 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
 
   cart.forEach(item => {
     const itemPrice = parseFloat(item.itemPrice.toString()).toFixed(2);
-    const itemText = `${item.quantity}x ${item.menuItem.name}`;
+    const itemText = `${item.quantity}x ${encodeSpecialChars(item.menuItem.name)}`;
     const spaces = 48 - itemText.length - itemPrice.length - 4;
 
     receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + itemPrice + ' EUR', ESCPOS.FONT_BOLD) + addLineFeed();
 
     const options = getFormattedOptions(item).split(', ').filter(Boolean);
     options.forEach(option => {
-      receipt += formatText(`  + ${option}`, ESCPOS.FONT_NORMAL) + addLineFeed();
+      receipt += formatText(`  + ${encodeSpecialChars(option)}`, ESCPOS.FONT_NORMAL) + addLineFeed();
     });
 
     const groupedToppings = getGroupedToppings(item);
     groupedToppings.forEach(group => {
-      receipt += formatText(`  ${group.category}:`, ESCPOS.FONT_NORMAL) + addLineFeed();
+      receipt += formatText(`  ${encodeSpecialChars(group.category)}:`, ESCPOS.FONT_NORMAL) + addLineFeed();
       group.toppings.forEach(topping => {
         const price = getToppingPrice(item, group.category, topping);
-        let line = `    + ${topping}`;
+        let line = `    + ${encodeSpecialChars(topping)}`;
         if (price > 0) line += ` (${price.toFixed(2)} EUR)`;
         receipt += formatText(line, ESCPOS.FONT_NORMAL) + addLineFeed();
       });
