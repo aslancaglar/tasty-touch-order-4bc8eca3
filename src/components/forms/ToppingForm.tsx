@@ -18,7 +18,7 @@ const toppingSchema = z.object({
   }),
 });
 
-type ToppingFormValues = z.infer<typeof toppingSchema>;
+export type ToppingFormValues = z.infer<typeof toppingSchema>;
 
 interface ToppingFormProps {
   onSubmit: (values: ToppingFormValues) => void;

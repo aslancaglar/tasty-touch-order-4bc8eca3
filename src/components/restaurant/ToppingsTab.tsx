@@ -530,16 +530,18 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
           <DialogHeader>
             <DialogTitle>Modifier le complément</DialogTitle>
           </DialogHeader>
-          <ToppingForm
-            onSubmit={(values) => selectedTopping && handleUpdateTopping(selectedTopping.id, values)}
-            initialValues={{
-              name: selectedTopping?.name || "",
-              price: selectedTopping?.price?.toString() || "0",
-              tax_percentage: selectedTopping?.tax_percentage?.toString() || "10",
-            }}
-            isLoading={isUpdatingTopping}
-            currency={restaurant.currency}
-          />
+          {selectedTopping && (
+            <ToppingForm
+              onSubmit={(values) => handleUpdateTopping(selectedTopping.id, values)}
+              initialValues={{
+                name: selectedTopping.name,
+                price: selectedTopping.price?.toString() || "0",
+                tax_percentage: selectedTopping.tax_percentage?.toString() || "10",
+              }}
+              isLoading={isUpdatingTopping}
+              currency={restaurant.currency}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
