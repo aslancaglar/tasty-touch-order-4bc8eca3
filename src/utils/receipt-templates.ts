@@ -16,7 +16,6 @@ interface ReceiptData {
   total: number;
   getFormattedOptions?: (item: CartItem) => string;
   getFormattedToppings?: (item: CartItem) => string;
-  requireTableSelection?: boolean;
 }
 
 type GroupedToppings = Array<{
@@ -58,7 +57,6 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     tax, 
     total,
     getFormattedOptions = () => '',
-    requireTableSelection = true,
   } = data;
   
   const firstItem = cart[0];
@@ -90,10 +88,8 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   
   if (orderType === 'takeaway') {
     receipt += formatText("A EMPORTER", ESCPOS.FONT_BOLD) + addLineFeed();
-  } else if (orderType === 'dine-in' && requireTableSelection && tableNumber) {
+  } else if (orderType === 'dine-in' && tableNumber) {
     receipt += formatText(`SUR PLACE - TABLE: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
-  } else if (orderType === 'dine-in') {
-    receipt += formatText("SUR PLACE", ESCPOS.FONT_BOLD) + addLineFeed();
   }
   receipt += ESCPOS.ALIGN_LEFT;
   

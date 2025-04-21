@@ -10,15 +10,26 @@ import ImageUpload from "@/components/ImageUpload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
+import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { printReceipt } from "@/utils/print-utils";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 import { updateRestaurant, deleteRestaurant } from "@/services/kiosk-service";
 import { useNavigate } from "react-router-dom";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger 
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
@@ -34,8 +45,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [requireTableSelection, setRequireTableSelection] = useState(true);
-
+  
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -48,27 +58,28 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       try {
         const { data, error } = await supabase
           .from('restaurant_print_config')
-          .select('browser_printing_enabled, require_table_selection')
+          .select('browser_printing_enabled')
           .eq('restaurant_id', restaurant.id)
-          .maybeSingle();
-
+          .single();
+          
         if (error) {
           console.error("Error fetching print settings:", error);
           return;
         }
-
+        
         if (data) {
-          setBrowserPrintEnabled(data.browser_printing_enabled ?? true);
-          setRequireTableSelection(data.require_table_selection ?? true);
+          setBrowserPrintEnabled(data.browser_printing_enabled !== false);
+          console.log("Browser printing enabled:", data.browser_printing_enabled !== false);
         }
       } catch (error) {
         console.error("Error in fetchPrintSettings:", error);
       }
     };
-
+    
     fetchPrintSettings();
   }, [restaurant.id]);
 
+  // Update state when restaurant prop changes
   useEffect(() => {
     setName(restaurant.name);
     setLocation(restaurant.location || "");
@@ -86,19 +97,20 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     }
 
     setIsSaving(true);
-
+    
     try {
       const updatedRestaurant = await updateRestaurant(restaurant.id, {
         name,
         location,
         image_url: image,
       });
-
+      
       toast({
         title: "Success",
         description: "Restaurant information updated successfully",
       });
 
+      // Call the callback to update parent component state
       if (onRestaurantUpdated && updatedRestaurant) {
         onRestaurantUpdated(updatedRestaurant);
       }
@@ -116,15 +128,16 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   const handleDeleteRestaurant = async () => {
     setIsDeleting(true);
-
+    
     try {
       await deleteRestaurant(restaurant.id);
-
+      
       toast({
         title: "Success",
         description: "Restaurant deleted successfully",
       });
-
+      
+      // Redirect to restaurants page
       navigate("/restaurants");
     } catch (error) {
       console.error("Error deleting restaurant:", error);
@@ -139,42 +152,45 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   const handleSavePrintSettings = async () => {
     setIsSavingPrintSettings(true);
-
+    
     try {
+      // Check if config exists for this restaurant
       const { data: existingConfig, error: checkError } = await supabase
         .from('restaurant_print_config')
         .select('id')
         .eq('restaurant_id', restaurant.id)
-        .maybeSingle();
-
+        .single();
+      
       if (checkError && checkError.code !== 'PGRST116') {
         throw checkError;
       }
-
+      
       let result;
-
+      
       if (existingConfig) {
+        // Update existing config
         result = await supabase
           .from('restaurant_print_config')
-          .update({ 
-            browser_printing_enabled: browserPrintEnabled,
-            require_table_selection: requireTableSelection,
-          })
+          .update({ browser_printing_enabled: browserPrintEnabled })
           .eq('restaurant_id', restaurant.id);
+          
+        console.log("Updated browser printing setting:", browserPrintEnabled);
       } else {
+        // Create new config
         result = await supabase
           .from('restaurant_print_config')
           .insert({ 
             restaurant_id: restaurant.id,
-            browser_printing_enabled: browserPrintEnabled,
-            require_table_selection: requireTableSelection,
+            browser_printing_enabled: browserPrintEnabled 
           });
+          
+        console.log("Created new print config with browser printing:", browserPrintEnabled);
       }
-
+      
       if (result.error) {
         throw result.error;
       }
-
+      
       toast({
         title: "Paramètres sauvegardés",
         description: "Les paramètres d'impression ont été mis à jour"
@@ -193,14 +209,17 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   const handleTestPrint = () => {
     if (browserPrintEnabled) {
+      // Generate a test receipt
       const testReceipt = document.getElementById("receipt-content");
       if (testReceipt) {
         console.log("Testing browser printing");
+        // Make it visible for printing
         testReceipt.style.display = "block";
-
+        
+        // Print using browser
         try {
           printReceipt("receipt-content");
-
+          
           toast({
             title: "Test d'Impression",
             description: "Impression du reçu de test via le navigateur"
@@ -213,7 +232,8 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
             variant: "destructive"
           });
         }
-
+        
+        // Hide it again after printing
         setTimeout(() => {
           testReceipt.style.display = "none";
         }, 500);
@@ -241,12 +261,12 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
           <TabsTrigger value="basic">Informations</TabsTrigger>
           <TabsTrigger value="print">Impression</TabsTrigger>
         </TabsList>
-
+        
         <TabsContent value="basic" className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Paramètres du Restaurant</h3>
           </div>
-
+          
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="restaurantName">Nom du Restaurant</Label>
@@ -257,7 +277,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 className="mt-1"
               />
             </div>
-
+            
             <div>
               <Label htmlFor="restaurantLocation">Emplacement</Label>
               <Input 
@@ -267,7 +287,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 className="mt-1"
               />
             </div>
-
+            
             <div className="sm:col-span-2">
               <Label>Image du Restaurant</Label>
               <div className="mt-1">
@@ -279,7 +299,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               </div>
             </div>
           </div>
-
+          
           <div className="flex flex-col space-y-4">
             <div className="flex justify-end">
               <Button
@@ -297,13 +317,13 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 )}
               </Button>
             </div>
-
+            
             <Alert variant="destructive" className="mt-6">
               <AlertTitle className="text-red-600">Zone de danger</AlertTitle>
               <AlertDescription className="text-red-600">
                 Supprimer ce restaurant effacera définitivement toutes les informations associées - menus, suppléments, commandes, etc.
               </AlertDescription>
-
+              
               <div className="mt-4">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -315,13 +335,13 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                         </>
                       ) : (
                         <>
-                          <XCircle className="mr-2 h-4 w-4" />
+                          <Trash2 className="mr-2 h-4 w-4" />
                           Supprimer ce restaurant
                         </>
                       )}
                     </Button>
                   </AlertDialogTrigger>
-
+                  
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Êtes-vous absolument sûr?</AlertDialogTitle>
@@ -329,7 +349,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                         Cette action supprimera définitivement le restaurant <strong>{restaurant.name}</strong> et toutes ses données associées. Cette action ne peut pas être annulée.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-
+                    
                     <AlertDialogFooter>
                       <AlertDialogCancel>Annuler</AlertDialogCancel>
                       <AlertDialogAction 
@@ -345,7 +365,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
             </Alert>
           </div>
         </TabsContent>
-
+        
         <TabsContent value="print" className="space-y-6">
           <Card>
             <CardHeader>
@@ -365,24 +385,13 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                   onCheckedChange={setBrowserPrintEnabled}
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="require-table-selection">Sélection de table obligatoire pour "Sur place"</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Si désactivé, la sélection de table ne sera pas proposée à la commande.
-                  </p>
-                </div>
-                <Switch
-                  id="require-table-selection"
-                  checked={requireTableSelection}
-                  onCheckedChange={setRequireTableSelection}
-                />
-              </div>
+              
               <div className="flex justify-between">
                 <Button onClick={handleTestPrint} className="bg-kiosk-primary">
                   <Printer className="mr-2 h-4 w-4" />
                   Tester l'Impression Navigateur
                 </Button>
+                
                 <Button 
                   onClick={handleSavePrintSettings} 
                   className="bg-green-600 hover:bg-green-700"
@@ -398,9 +407,9 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               </div>
             </CardContent>
           </Card>
-
+          
           <PrintNodeIntegration restaurantId={restaurant.id} />
-
+          
           <div id="receipt-content" className="receipt" style={{ display: "none" }}>
             <div className="header">
               <div className="logo">{restaurant.name}</div>
@@ -418,7 +427,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                   <span>1x Article Test</span>
                   <span>10.00 €</span>
                 </div>
-
+                
                 <div className="item-details">
                   <div className="item">
                     <span>+ Option Test</span>
@@ -458,4 +467,3 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 };
 
 export default SettingsTab;
-

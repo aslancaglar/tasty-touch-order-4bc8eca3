@@ -1,10 +1,9 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import TableSelection from "./TableSelection";
-import { supabase } from "@/integrations/supabase/client";
 
 export type OrderType = "dine-in" | "takeaway" | null;
 
@@ -12,50 +11,15 @@ interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectOrderType: (type: OrderType, tableNumber?: string) => void;
-  restaurantId?: string;
 }
 
-const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType, restaurantId }: OrderTypeSelectionProps) => {
+const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType }: OrderTypeSelectionProps) => {
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [showTableSelection, setShowTableSelection] = useState(false);
-  const [requireTableSelection, setRequireTableSelection] = useState(true);
-
-  useEffect(() => {
-    const fetchRequireTableSelection = async () => {
-      if (!restaurantId) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from("restaurant_print_config")
-          .select("require_table_selection")
-          .eq("restaurant_id", restaurantId)
-          .maybeSingle();
-
-        // Only set to false if we explicitly get data with require_table_selection set to false
-        if (!error && data) {
-          setRequireTableSelection(data.require_table_selection !== false);
-        }
-        
-        console.log("Table selection requirement:", data?.require_table_selection, "Setting to:", data?.require_table_selection !== false);
-      } catch (error) {
-        console.error("Error fetching table selection setting:", error);
-      }
-    };
-    
-    fetchRequireTableSelection();
-  }, [restaurantId]);
 
   const handleSelectDineIn = () => {
     setOrderType("dine-in");
-    
-    // If table selection is not required, directly select dine-in without table
-    if (!requireTableSelection) {
-      console.log("Table selection not required, bypassing table selection");
-      onSelectOrderType("dine-in", undefined);
-    } else {
-      console.log("Table selection required, showing table selection modal");
-      setShowTableSelection(true);
-    }
+    setShowTableSelection(true);
   };
 
   const handleSelectTakeaway = () => {
@@ -96,6 +60,7 @@ const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType, restaurantId }
           </div>
         </DialogContent>
       </Dialog>
+
       <TableSelection 
         isOpen={showTableSelection} 
         onClose={() => setShowTableSelection(false)}
