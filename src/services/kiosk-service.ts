@@ -166,6 +166,7 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
   return data;
 };
 
+// Modify this function to get menu items with their topping categories in the correct order
 export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
   const { data, error } = await supabase
     .from("menu_items")
@@ -202,6 +203,7 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
   };
 };
 
+// Update this function to correctly handle topping categories with their order when creating menu items
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
   console.log("Creating menu item with data:", item);
 
@@ -223,9 +225,10 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
   }
 
   if (topping_categories && topping_categories.length > 0) {
-    const toppingCategoryRelations = topping_categories.map((categoryId: string) => ({
+    const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
       menu_item_id: data.id,
-      topping_category_id: categoryId
+      topping_category_id: categoryId,
+      display_order: index
     }));
 
     const { error: relationError } = await supabase
@@ -243,6 +246,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
   };
 };
 
+// Update this function to handle updating menu items with their topping categories in the correct order
 export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
   console.log("Updating menu item:", id, "with data:", updates);
 
@@ -686,14 +690,6 @@ export const getToppingsForRestaurant = async (restaurantId: string) => {
 // Update this function for menu item topping category ordering
 export const updateMenuItemToppingCategoryOrder = async (menuItemId: string, orderedCategories: string[]): Promise<void> => {
   try {
-    // Get existing relations
-    const { data: existingRelations, error: fetchError } = await supabase
-      .from('menu_item_topping_categories')
-      .select('*')
-      .eq('menu_item_id', menuItemId);
-    
-    if (fetchError) throw fetchError;
-    
     // Delete existing relationships
     const { error: deleteError } = await supabase
       .from('menu_item_topping_categories')

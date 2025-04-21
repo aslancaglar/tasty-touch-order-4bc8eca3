@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +26,6 @@ import ImageUpload from "@/components/ImageUpload";
 import { Loader2 } from "lucide-react";
 import { ToppingCategory } from "@/types/database-types";
 import { getToppingCategoriesByRestaurantId } from "@/services/kiosk-service";
-import { supabase } from "@/integrations/supabase/client";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -99,6 +99,22 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
     fetchToppingCategories();
   }, [restaurantId]);
   
+  // Update form when initialValues change
+  useEffect(() => {
+    if (initialValues) {
+      form.reset({
+        name: initialValues.name || "",
+        description: initialValues.description || "",
+        price: initialValues.price || "",
+        promotion_price: initialValues.promotion_price || "",
+        image: initialValues.image || "",
+        topping_categories: initialValues.topping_categories || [],
+        tax_percentage: initialValues.tax_percentage || "10",
+      });
+      setImageUrl(initialValues.image || "");
+    }
+  }, [initialValues, form]);
+  
   const handleImageChange = (url: string) => {
     setImageUrl(url);
     form.setValue("image", url);
@@ -113,56 +129,10 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
     form.setValue("topping_categories", updated);
   };
 
-  const updateMenuItemToppingCategoryOrder = async (itemId: string, orderedCategories: string[]) => {
-    if (!itemId || orderedCategories.length === 0) return;
-    
-    try {
-      // Get existing relations
-      const { data: existingRelations } = await supabase
-        .from('menu_item_topping_categories')
-        .select('*')
-        .eq('menu_item_id', itemId);
-      
-      if (!existingRelations) return;
-
-      // Create updates with new display_order values
-      const updates = orderedCategories.map((categoryId, index) => ({
-        id: existingRelations.find(rel => rel.topping_category_id === categoryId)?.id,
-        menu_item_id: itemId,
-        topping_category_id: categoryId,
-        display_order: index
-      }));
-
-      // Update all relations with new order
-      const { error } = await supabase
-        .from('menu_item_topping_categories')
-        .upsert(updates);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error updating topping category order:', error);
-      throw error;
-    }
-  };
-
-  const updateToppingCategoryOrder = async (itemId: string, orderedCategories: string[]) => {
-    if (!itemId || orderedCategories.length === 0) return;
-    
-    try {
-      await updateMenuItemToppingCategoryOrder(itemId, orderedCategories);
-    } catch (error) {
-      console.error('Error updating topping category order:', error);
-      throw error;
-    }
-  };
-
   const handleSubmit = async (values: MenuItemFormValues) => {
     try {
-      if (values.topping_categories && menuItemId) {
-        // Update the junction table with ordered categories - this step is now handled in updateMenuItem
-        // await updateToppingCategoryOrder(menuItemId, values.topping_categories);
-      }
-      
+      // No need to manually update the display order here
+      // updateMenuItem in kiosk-service now handles this automatically
       onSubmit(values);
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -351,7 +321,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
                       Display Order:
                     </div>
                     <ol className="list-decimal list-inside text-sm">
-                      {selectedToppingCategories.map((cat: ToppingCategory, i) =>
+                      {selectedToppingCategories.map((cat: ToppingCategory) =>
                         <li key={cat.id}>{cat.name}</li>
                       )}
                     </ol>
