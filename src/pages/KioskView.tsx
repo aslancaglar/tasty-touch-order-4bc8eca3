@@ -120,7 +120,25 @@ const KioskView = () => {
       if (!menuItemToppingCategories.length) {
         return [];
       }
+      
       const toppingCategoryIds = menuItemToppingCategories.map(mtc => mtc.topping_category_id);
+      
+      // Get the topping categories order if it exists
+      const {
+        data: menuItemData,
+        error: menuItemError
+      } = await supabase.from('menu_items').select('topping_categories_order').eq('id', menuItemId).single();
+      
+      let orderedCategoryIds = toppingCategoryIds;
+      if (!menuItemError && menuItemData && menuItemData.topping_categories_order) {
+        // Create an ordered list from the saved order
+        orderedCategoryIds = menuItemData.topping_categories_order.filter(id => toppingCategoryIds.includes(id));
+        
+        // Add any categories that aren't in the order
+        const missingIds = toppingCategoryIds.filter(id => !orderedCategoryIds.includes(id));
+        orderedCategoryIds = [...orderedCategoryIds, ...missingIds];
+      }
+      
       const {
         data: toppingCategories,
         error: categoriesError
@@ -130,7 +148,12 @@ const KioskView = () => {
         return [];
       }
       
-      const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
+      // Sort the topping categories according to the ordered IDs
+      const sortedToppingCategories = orderedCategoryIds.map(
+        id => toppingCategories.find(category => category.id === id)
+      ).filter(Boolean);
+      
+      const toppingCategoriesWithToppings = await Promise.all(sortedToppingCategories.map(async category => {
         const {
           data: toppings,
           error: toppingsError
@@ -763,14 +786,4 @@ const KioskView = () => {
             <DialogFooter>
               <div className="w-full">
                 <Button className="w-full bg-kiosk-primary" onClick={handleAddToCart}>
-                  Ajouter au panier - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
-                </Button>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>}
-    </div>
-  );
-};
-
-export default KioskView;
+                  Ajouter au panier - {(calculateItemPrice(selectedItem,

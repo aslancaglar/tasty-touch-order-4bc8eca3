@@ -34,6 +34,7 @@ export type MenuItem = {
   updated_at: string;
   topping_categories?: string[];
   tax_percentage?: number | null;
+  topping_categories_order?: string[];
 };
 
 export type MenuItemOption = {
