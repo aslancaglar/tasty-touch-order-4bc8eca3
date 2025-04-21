@@ -5,11 +5,30 @@ import { Button } from "@/components/ui/button";
 import { UtensilsCrossed } from "lucide-react";
 
 interface WelcomePageProps {
-  restaurant: Restaurant;
+  restaurant: Restaurant | null;
   onStart: () => void;
 }
 
 const WelcomePage = ({ restaurant, onStart }: WelcomePageProps) => {
+  if (!restaurant) {
+    // Fallback when restaurant data isn't loaded yet
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/70">
+        <div className="mb-8 text-center">
+          <h1 className="text-white text-5xl font-bold mb-2">Bienvenue</h1>
+          <p className="text-white text-xl">Chargement du restaurant...</p>
+        </div>
+        <Button 
+          onClick={onStart}
+          className="bg-white hover:bg-white/90 text-black hover:text-black/90 w-100 h-24 text-2xl font-bold rounded-full shadow-lg"
+        >
+          <UtensilsCrossed className="mr-2 h-6 w-6" />
+          TOUCHEZ POUR CONTINUER
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div 
       className="fixed inset-0 flex flex-col items-center justify-center bg-cover bg-center"
