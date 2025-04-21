@@ -1,3 +1,4 @@
+
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
 import currencyCodes from "currency-codes";
@@ -122,6 +123,12 @@ const getToppingPrice = (item: CartItem, groupCategory: string, toppingName: str
   return toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
 };
 
+const getToppingTaxPercentage = (item: CartItem, groupCategory: string, toppingName: string): number => {
+  const cat = item.menuItem.toppingCategories?.find(c => c.name === groupCategory);
+  const toppingObj = cat?.toppings.find(t => t.name === toppingName);
+  return toppingObj?.tax_percentage ?? (item.menuItem.tax_percentage ?? 10);
+};
+
 const getCurrencyAbbreviation = (currencyCode: string) => {
   const code = (currencyCode || "EUR").toUpperCase();
   return code;
@@ -153,7 +160,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   };
 
   const firstItem = cart[0];
-  const vat = firstItem?.menuItem?.tax_percentage ?? 10;
+  const defaultVat = firstItem?.menuItem?.tax_percentage ?? 10;
   
   const currencyCode = restaurant?.currency || "EUR";
   const currencyDisplay = useCurrencyCode
@@ -211,10 +218,16 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
       receipt += formatText(`  ${encodeSpecialChars(group.category)}:`, ESCPOS.FONT_NORMAL) + addLineFeed();
       group.toppings.forEach(topping => {
         const price = getToppingPrice(item, group.category, topping);
+        const toppingTaxPercentage = getToppingTaxPercentage(item, group.category, topping);
         let line = `    + ${encodeSpecialChars(topping)}`;
         if (price > 0) {
           const formattedToppingPrice = `${price.toFixed(2)} ${currencyDisplay}`;
-          line += ` (${formattedToppingPrice})`;
+          // Include tax percentage if different from default
+          if (toppingTaxPercentage !== defaultVat) {
+            line += ` (${formattedToppingPrice}, TVA ${toppingTaxPercentage}%)`;
+          } else {
+            line += ` (${formattedToppingPrice})`;
+          }
         }
         receipt += formatText(line, ESCPOS.FONT_NORMAL) + addLineFeed();
       });

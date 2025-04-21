@@ -343,9 +343,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                           const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
                           const toppingRef = category?.toppings.find(t => t.name === toppingObj);
                           const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                          const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
+                          
                           return (
                             <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                              <span style={{ paddingLeft: 6 }}>+ {toppingObj}</span>
+                              <span style={{ paddingLeft: 6 }}>
+                                + {toppingObj}
+                                {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && 
+                                  <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>
+                                }
+                              </span>
                               <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
                             </div>
                           )
