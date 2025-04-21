@@ -1,27 +1,19 @@
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Loader2, AlertCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  Restaurant, 
-  ToppingCategory, 
-  Topping 
-} from "@/types/database-types";
-import { 
-  getToppingCategoriesByRestaurantId,
-  getToppingsByCategory,
-  createToppingCategory,
-  updateToppingCategory,
-  deleteToppingCategory,
-  createTopping,
-  updateTopping,
-  deleteTopping
-} from "@/services/kiosk-service";
-import { getIconComponent } from "@/utils/icon-mapping";
-import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
+import { toast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Plus, Pencil, Trash } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import ToppingForm from "@/components/forms/ToppingForm";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Topping, ToppingCategory } from "@/types/database-types";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -36,647 +28,528 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   RUB: "₽"
 };
 
-function getCurrencySymbol(currency: string) {
-  const code = currency?.toUpperCase() || "EUR";
-  return CURRENCY_SYMBOLS[code] || code;
+interface ToppingFormData {
+  name: string;
+  price: string;
+  tax_percentage?: string;
 }
 
 interface ToppingsTabProps {
-  restaurant: Restaurant;
+  restaurant: {
+    id: string;
+    name: string;
+    currency?: string;
+  };
 }
 
-const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
-  const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
-  const [toppings, setToppings] = useState<Record<string, Topping[]>>({});
-  const [loading, setLoading] = useState(true);
-  
-  const [isAddingToppingCategory, setIsAddingToppingCategory] = useState(false);
-  const [savingToppingCategory, setSavingToppingCategory] = useState(false);
-  const [isEditingToppingCategory, setIsEditingToppingCategory] = useState<string | null>(null);
-  const [toppingCategoryToDelete, setToppingCategoryToDelete] = useState<string | null>(null);
-  const [isDeletingToppingCategory, setIsDeletingToppingCategory] = useState(false);
-  
-  const [isAddingTopping, setIsAddingTopping] = useState(false);
-  const [selectedCategoryForTopping, setSelectedCategoryForTopping] = useState<string | null>(null);
-  const [isEditingTopping, setIsEditingTopping] = useState<string | null>(null);
-  const [toppingToDelete, setToppingToDelete] = useState<string | null>(null);
+const getCurrencySymbol = (currencyCode: string): string => {
+  const code = (currencyCode || "EUR").toUpperCase();
+  return CURRENCY_SYMBOLS[code] || code;
+};
+
+const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
+  const [categories, setCategories] = useState<ToppingCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<ToppingCategory | null>(null);
+  const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false);
+  const [showUpdateCategoryDialog, setShowUpdateCategoryDialog] = useState(false);
+  const [showDeleteCategoryDialog, setShowDeleteCategoryDialog] = useState(false);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+  const [categoryName, setCategoryName] = useState("");
+  const [categoryDescription, setCategoryDescription] = useState("");
+  const [selectedCategoryToDelete, setSelectedCategoryToDelete] = useState<ToppingCategory | null>(null);
+
+  const [toppings, setToppings] = useState<Topping[]>([]);
+  const [selectedTopping, setSelectedTopping] = useState<Topping | null>(null);
+  const [showCreateToppingDialog, setShowCreateToppingDialog] = useState(false);
+  const [showUpdateToppingDialog, setShowUpdateToppingDialog] = useState(false);
+  const [showDeleteToppingDialog, setShowDeleteToppingDialog] = useState(false);
+  const [isCreatingTopping, setIsCreatingTopping] = useState(false);
+  const [isUpdatingTopping, setIsUpdatingTopping] = useState(false);
   const [isDeletingTopping, setIsDeletingTopping] = useState(false);
-  const [savingTopping, setSavingTopping] = useState(false);
 
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchToppingCategories = async () => {
-      if (!restaurant?.id) return;
-      
-      try {
-        setLoading(true);
-        const data = await getToppingCategoriesByRestaurantId(restaurant.id);
-        setToppingCategories(data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching topping categories:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load topping categories. Please try again.",
-          variant: "destructive"
-        });
-        setLoading(false);
-      }
-    };
-
-    fetchToppingCategories();
-  }, [restaurant, toast]);
+  const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
 
   useEffect(() => {
-    const fetchToppings = async () => {
-      if (toppingCategories.length === 0) return;
-      
-      try {
-        setLoading(true);
-        const toppingsByCategory: Record<string, Topping[]> = {};
-        
-        for (const category of toppingCategories) {
-          const items = await getToppingsByCategory(category.id);
-          toppingsByCategory[category.id] = items;
-        }
-        
-        setToppings(toppingsByCategory);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching toppings:", error);
-        setLoading(false);
-      }
-    };
+    fetchCategories();
+  }, [restaurant.id]);
 
+  useEffect(() => {
     fetchToppings();
-  }, [toppingCategories]);
+  }, [selectedCategory?.id]);
 
-  const handleAddToppingCategory = async (values: any) => {
+  const fetchCategories = async () => {
     try {
-      setSavingToppingCategory(true);
-      
-      if (!restaurant?.id) {
-        throw new Error("Restaurant ID is missing");
-      }
-      
-      const newCategory = await createToppingCategory({
-        name: values.name,
-        description: values.description || null,
-        icon: values.icon || "cherry",
-        min_selections: values.min_selections || 0,
-        max_selections: values.max_selections || 0,
-        restaurant_id: restaurant.id,
-        show_if_selection_id: values.conditionToppingIds && values.conditionToppingIds.length > 0 ? 
-          values.conditionToppingIds : null
-      });
-      
-      setToppingCategories(prevCategories => [...prevCategories, newCategory]);
-      
-      toast({
-        title: "Topping Category Added",
-        description: `${values.name} has been added to your topping categories.`,
-      });
-      
-      setIsAddingToppingCategory(false);
+      const { data, error } = await supabase
+        .from('topping_categories')
+        .select('*')
+        .eq('restaurant_id', restaurant.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      setCategories(data || []);
     } catch (error) {
-      console.error("Error adding topping category:", error);
+      console.error('Error fetching topping categories:', error);
       toast({
-        title: "Error",
-        description: "Failed to add the topping category. Please try again.",
-        variant: "destructive"
+        title: "Erreur",
+        description: "Impossible de charger les catégories de compléments",
+        variant: "destructive",
       });
-    } finally {
-      setSavingToppingCategory(false);
     }
   };
 
-  const handleEditToppingCategory = async (categoryId: string, values: any) => {
-    try {
-      setSavingToppingCategory(true);
-      
-      const updatedCategory = await updateToppingCategory(categoryId, {
-        name: values.name,
-        description: values.description || null,
-        icon: values.icon || "cherry",
-        min_selections: values.min_selections || 0,
-        max_selections: values.max_selections || 0,
-        show_if_selection_id: values.conditionToppingIds && values.conditionToppingIds.length > 0 ? 
-          values.conditionToppingIds : null
-      });
-      
-      setToppingCategories(toppingCategories.map(cat => 
-        cat.id === categoryId ? updatedCategory : cat
-      ));
-      
-      toast({
-        title: "Topping Category Updated",
-        description: `${values.name} has been updated.`,
-      });
-      
-      setIsEditingToppingCategory(null);
-    } catch (error) {
-      console.error("Error updating topping category:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update the topping category. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSavingToppingCategory(false);
-    }
-  };
+  const fetchToppings = async () => {
+    if (!selectedCategory?.id) return;
 
-  const handleDeleteToppingCategory = async (categoryId: string) => {
     try {
-      setIsDeletingToppingCategory(true);
-      
-      await deleteToppingCategory(categoryId);
-      
-      setToppingCategories(toppingCategories.filter(cat => cat.id !== categoryId));
-      
-      toast({
-        title: "Topping Category Deleted",
-        description: "The topping category has been deleted.",
-      });
-      
-      setToppingCategoryToDelete(null);
-    } catch (error) {
-      console.error("Error deleting topping category:", error);
-      
-      const errorObj = error as any;
-      if (errorObj?.code === "23503" && errorObj?.message?.includes("order_item_toppings")) {
-        toast({
-          title: "Cannot Delete Category",
-          description: "This category cannot be deleted because some of its toppings are used in existing orders.",
-          variant: "destructive"
-        });
+      const { data, error } = await supabase
+        .from('toppings')
+        .select('*')
+        .eq('category_id', selectedCategory.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      if (data) {
+        // Convert tax_percentage to number if it's not already
+        const updatedToppings = data.map(topping => ({
+          ...topping,
+          tax_percentage: typeof topping.tax_percentage === 'string' ? parseFloat(topping.tax_percentage) : topping.tax_percentage
+        }));
+        setToppings(updatedToppings);
+        setSelectedCategory(prev => prev ? { ...prev, toppings: updatedToppings } : prev);
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to delete the topping category. Please try again.",
-          variant: "destructive"
-        });
+        setToppings([]);
+        setSelectedCategory(prev => prev ? { ...prev, toppings: [] } : prev);
       }
-    } finally {
-      setIsDeletingToppingCategory(false);
-    }
-  };
-
-  const handleAddTopping = async (categoryId: string, values: any) => {
-    try {
-      setSavingTopping(true);
-      
-      if (!restaurant?.id) {
-        throw new Error("Restaurant ID is missing");
-      }
-      
-      const newTopping = await createTopping({
-        name: values.name,
-        price: Number(values.price),
-        category_id: categoryId,
-        tax_percentage: 10 // Default tax
-      });
-      
-      setToppings(prev => ({
-        ...prev,
-        [categoryId]: [...(prev[categoryId] || []), newTopping]
-      }));
-      
-      toast({
-        title: "Topping Added",
-        description: `${values.name} has been added to the menu.`,
-      });
-      
-      setIsAddingTopping(false);
-      setSelectedCategoryForTopping(null);
     } catch (error) {
-      console.error("Error adding topping:", error);
+      console.error('Error fetching toppings:', error);
       toast({
-        title: "Error",
-        description: "Failed to add the topping. Please try again.",
-        variant: "destructive"
+        title: "Erreur",
+        description: "Impossible de charger les compléments",
+        variant: "destructive",
       });
-    } finally {
-      setSavingTopping(false);
     }
   };
 
-  const handleEditTopping = async (toppingId: string, values: any) => {
+  const handleCreateCategory = async () => {
     try {
-      setSavingTopping(true);
-      
-      const updatedTopping = await updateTopping(toppingId, {
-        name: values.name,
-        price: Number(values.price)
-      });
-      
-      setToppings(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(categoryId => {
-          newState[categoryId] = newState[categoryId].map(item => 
-            item.id === toppingId ? updatedTopping : item
-          );
-        });
-        return newState;
-      });
-      
+      setIsCreatingCategory(true);
+      const { data, error } = await supabase
+        .from('topping_categories')
+        .insert([
+          {
+            name: categoryName,
+            description: categoryDescription,
+            restaurant_id: restaurant.id,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
       toast({
-        title: "Topping Updated",
-        description: `${values.name} has been updated.`,
+        title: "Succès",
+        description: "Catégorie créée avec succès",
       });
-      
-      setIsEditingTopping(null);
+
+      fetchCategories();
+      setShowCreateCategoryDialog(false);
+      setCategoryName("");
+      setCategoryDescription("");
     } catch (error) {
-      console.error("Error updating topping:", error);
+      console.error('Error creating topping category:', error);
       toast({
-        title: "Error",
-        description: "Failed to update the topping. Please try again.",
-        variant: "destructive"
+        title: "Erreur",
+        description: "Impossible de créer la catégorie",
+        variant: "destructive",
       });
     } finally {
-      setSavingTopping(false);
+      setIsCreatingCategory(false);
     }
   };
 
-  const handleDeleteTopping = async (categoryId: string, toppingId: string) => {
+  const handleUpdateCategory = async () => {
+    if (!selectedCategory?.id) return;
+
+    try {
+      setIsUpdatingCategory(true);
+      const { error } = await supabase
+        .from('topping_categories')
+        .update({
+          name: categoryName,
+          description: categoryDescription,
+        })
+        .eq('id', selectedCategory.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Catégorie mise à jour avec succès",
+      });
+
+      fetchCategories();
+      setShowUpdateCategoryDialog(false);
+      setCategoryName("");
+      setCategoryDescription("");
+    } catch (error) {
+      console.error('Error updating topping category:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour la catégorie",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!selectedCategoryToDelete?.id) return;
+
+    try {
+      setIsDeletingCategory(true);
+      const { error } = await supabase
+        .from('topping_categories')
+        .delete()
+        .eq('id', selectedCategoryToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Catégorie supprimée avec succès",
+      });
+
+      fetchCategories();
+      setShowDeleteCategoryDialog(false);
+    } catch (error) {
+      console.error('Error deleting topping category:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la catégorie",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingCategory(false);
+    }
+  };
+
+  const handleCreateTopping = async (formData: ToppingFormData) => {
+    try {
+      setIsCreatingTopping(true);
+      const { data: newTopping, error } = await supabase
+        .from('toppings')
+        .insert([
+          {
+            name: formData.name,
+            price: parseFloat(formData.price),
+            tax_percentage: parseFloat(formData.tax_percentage || "10"),
+            category_id: selectedCategory?.id,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Complément créé avec succès",
+      });
+
+      // Refresh toppings list
+      fetchToppings();
+      setShowCreateToppingDialog(false);
+    } catch (error) {
+      console.error('Error creating topping:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le complément",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingTopping(false);
+    }
+  };
+
+  const handleUpdateTopping = async (toppingId: string, formData: ToppingFormData) => {
+    try {
+      setIsUpdatingTopping(true);
+      const { error } = await supabase
+        .from('toppings')
+        .update({
+          name: formData.name,
+          price: parseFloat(formData.price),
+          tax_percentage: parseFloat(formData.tax_percentage || "10"),
+        })
+        .eq('id', toppingId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Complément mis à jour avec succès",
+      });
+
+      // Refresh toppings list
+      fetchToppings();
+      setShowUpdateToppingDialog(false);
+    } catch (error) {
+      console.error('Error updating topping:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le complément",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingTopping(false);
+    }
+  };
+
+  const handleDeleteTopping = async () => {
+    if (!selectedTopping?.id) return;
+
     try {
       setIsDeletingTopping(true);
-      
-      await deleteTopping(toppingId);
-      
-      setToppings(prev => ({
-        ...prev,
-        [categoryId]: prev[categoryId].filter(item => item.id !== toppingId)
-      }));
-      
+      const { error } = await supabase
+        .from('toppings')
+        .delete()
+        .eq('id', selectedTopping.id);
+
+      if (error) throw error;
+
       toast({
-        title: "Topping Deleted",
-        description: "The topping has been deleted.",
+        title: "Succès",
+        description: "Complément supprimé avec succès",
       });
-      
-      setToppingToDelete(null);
+
+      fetchToppings();
+      setShowDeleteToppingDialog(false);
     } catch (error) {
-      console.error("Error deleting topping:", error);
-      
-      const errorObj = error as any;
-      if (errorObj?.code === "23503" && errorObj?.message?.includes("order_item_toppings")) {
-        toast({
-          title: "Cannot Delete Topping",
-          description: "This topping cannot be deleted because it is used in existing orders.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to delete the topping. Please try again.",
-          variant: "destructive"
-        });
-      }
+      console.error('Error deleting topping:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le complément",
+        variant: "destructive",
+      });
     } finally {
       setIsDeletingTopping(false);
     }
   };
 
-  const currencySymbol = getCurrencySymbol(restaurant.currency || "EUR");
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Topping Categories</h3>
-        <Dialog open={isAddingToppingCategory} onOpenChange={setIsAddingToppingCategory}>
-          <DialogTrigger asChild>
-            <Button className="bg-kiosk-primary">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Category
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add Topping Category</DialogTitle>
-            </DialogHeader>
-            <ToppingCategoryForm 
-              onSubmit={handleAddToppingCategory}
-              isLoading={savingToppingCategory}
-            />
-          </DialogContent>
-        </Dialog>
+      <div>
+        <h2 className="text-2xl font-bold">Catégories de compléments</h2>
+        <p className="text-muted-foreground">
+          Gérer les catégories de compléments disponibles dans votre restaurant.
+        </p>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-40">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-        </div>
-      ) : toppingCategories.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {toppingCategories.map((category) => (
-            <div 
-              key={category.id} 
-              className="flex items-center justify-between p-4 border rounded-lg"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary/10 rounded-md">
-                  {category.icon && getIconComponent(category.icon)}
-                </div>
-                <div>
-                  <span className="font-medium">{category.name}</span>
-                  {category.description && (
-                    <p className="text-xs text-muted-foreground">{category.description}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {category.min_selections === 0 && category.max_selections === 0 ? (
-                      "Optional"
-                    ) : (
-                      <>
-                        Select {category.min_selections || 0} 
-                        {category.max_selections && category.max_selections > 0 ? 
-                          ` to ${category.max_selections}` : 
-                          "+"
-                        }
-                      </>
-                    )}
-                  </p>
+      <Button onClick={() => setShowCreateCategoryDialog(true)} className="bg-kiosk-primary">
+        <Plus className="mr-2 h-4 w-4" />
+        Ajouter une catégorie
+      </Button>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {categories.map((category) => (
+          <div
+            key={category.id}
+            className={`border rounded-md p-4 cursor-pointer ${selectedCategory?.id === category.id ? 'border-kiosk-primary' : 'border-gray-200'}`}
+            onClick={() => setSelectedCategory(category)}
+          >
+            <h3 className="font-medium">{category.name}</h3>
+            <p className="text-sm text-muted-foreground">{category.description || "Aucune description"}</p>
+            <div className="flex justify-end mt-2 space-x-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedCategory(category);
+                  setCategoryName(category.name);
+                  setCategoryDescription(category.description || "");
+                  setShowUpdateCategoryDialog(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedCategoryToDelete(category);
+                  setShowDeleteCategoryDialog(true);
+                }}
+              >
+                <Trash className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Separator />
+
+      {selectedCategory && (
+        <div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Compléments - {selectedCategory.name}</h2>
+              <p className="text-muted-foreground">
+                Gérer les compléments disponibles dans la catégorie sélectionnée.
+              </p>
+            </div>
+            <Button onClick={() => setShowCreateToppingDialog(true)} className="bg-kiosk-primary">
+              <Plus className="mr-2 h-4 w-4" />
+              Ajouter un complément
+            </Button>
+          </div>
+
+          {selectedCategory?.toppings?.map((topping) => (
+            <div key={topping.id} className="flex items-center justify-between py-2">
+              <div>
+                <p className="font-medium">{topping.name}</p>
+                <div className="text-sm font-medium text-muted-foreground">
+                  <span>{currencySymbol}{parseFloat(topping.price.toString()).toFixed(2)}</span>
+                  <span className="ml-2">TVA: {topping.tax_percentage || 10}%</span>
                 </div>
               </div>
-              <div className="flex space-x-1">
-                <Dialog open={isEditingToppingCategory === category.id} onOpenChange={(open) => setIsEditingToppingCategory(open ? category.id : null)}>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Edit Topping Category</DialogTitle>
-                    </DialogHeader>
-                    <ToppingCategoryForm 
-                      onSubmit={(values) => handleEditToppingCategory(category.id, values)}
-                      initialValues={{
-                        name: category.name,
-                        description: category.description || "",
-                        icon: category.icon || "",
-                        min_selections: category.min_selections || 0,
-                        max_selections: category.max_selections || 0,
-                        show_if_selection_id: category.show_if_selection_id || []
-                      }}
-                      isLoading={savingToppingCategory}
-                      restaurantId={restaurant.id}
-                    />
-                  </DialogContent>
-                </Dialog>
-                <Dialog open={toppingCategoryToDelete === category.id} onOpenChange={(open) => setToppingCategoryToDelete(open ? category.id : null)}>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Delete Topping Category</DialogTitle>
-                      <DialogDescription>
-                        This action cannot be undone. This will permanently delete the category and all its toppings.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                      <Alert className="mb-4" variant="warning">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Warning</AlertTitle>
-                        <AlertDescription>
-                          This category cannot be deleted if any of its toppings are used in existing orders.
-                        </AlertDescription>
-                      </Alert>
-                      <p>Are you sure you want to delete the category <strong>{category.name}</strong>?</p>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setToppingCategoryToDelete(null)}>
-                        Cancel
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        onClick={() => handleDeleteToppingCategory(category.id)}
-                        disabled={isDeletingToppingCategory}
-                      >
-                        {isDeletingToppingCategory ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Deleting...
-                          </>
-                        ) : (
-                          "Delete"
-                        )}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+              <div className="space-x-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedTopping(topping);
+                    setShowUpdateToppingDialog(true);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedTopping(topping);
+                    setShowDeleteToppingDialog(true);
+                  }}
+                >
+                  <Trash className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}
-          <Dialog open={isAddingToppingCategory} onOpenChange={setIsAddingToppingCategory}>
-            <DialogTrigger asChild>
-              <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Topping Category
-                </Button>
-              </div>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add Topping Category</DialogTitle>
-              </DialogHeader>
-              <ToppingCategoryForm 
-                onSubmit={handleAddToppingCategory}
-                isLoading={savingToppingCategory}
-                restaurantId={restaurant.id}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground mb-4">No topping categories found for this restaurant</p>
-          <Dialog open={isAddingToppingCategory} onOpenChange={setIsAddingToppingCategory}>
-            <DialogTrigger asChild>
-              <Button className="bg-kiosk-primary">
-                <Plus className="mr-2 h-4 w-4" />
-                Add First Topping Category
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add Your First Topping Category</DialogTitle>
-              </DialogHeader>
-              <ToppingCategoryForm 
-                onSubmit={handleAddToppingCategory}
-                isLoading={savingToppingCategory}
-                restaurantId={restaurant.id}
-              />
-            </DialogContent>
-          </Dialog>
         </div>
       )}
 
-      {toppingCategories.length > 0 && (
-        <>
-          <div className="flex items-center justify-between mt-8">
-            <h3 className="text-lg font-medium">Toppings</h3>
-            <Button 
-              className="bg-kiosk-primary"
-              onClick={() => {
-                setSelectedCategoryForTopping(toppingCategories[0].id);
-                setIsAddingTopping(true);
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Topping
-            </Button>
-          </div>
-          
-          {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {toppingCategories.map((category) => {
-                const categoryToppings = toppings[category.id] || [];
-                
-                if (categoryToppings.length === 0) {
-                  return (
-                    <div key={category.id} className="text-center py-4 border rounded-lg">
-                      <p className="text-muted-foreground mb-4">No toppings in {category.name}</p>
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedCategoryForTopping(category.id);
-                          setIsAddingTopping(true);
-                        }}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Topping to {category.name}
-                      </Button>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div key={category.id} className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">{category.name}</h4>
-                    <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                      {categoryToppings.map(topping => (
-                        <div 
-                          key={topping.id} 
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div>
-                            <p className="font-medium">{topping.name}</p>
-                            <p className="text-sm font-medium text-muted-foreground">
-                              {currencySymbol}{parseFloat(topping.price.toString()).toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="flex">
-                            <Dialog open={isEditingTopping === topping.id} onOpenChange={(open) => setIsEditingTopping(open ? topping.id : null)}>
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="sm:max-w-[425px]">
-                                <DialogHeader>
-                                  <DialogTitle>Edit Topping</DialogTitle>
-                                </DialogHeader>
-                                <ToppingForm 
-                                  onSubmit={(values) => handleEditTopping(topping.id, values)}
-                                  initialValues={{
-                                    name: topping.name,
-                                    price: topping.price.toString()
-                                  }}
-                                  isLoading={savingTopping}
-                                />
-                              </DialogContent>
-                            </Dialog>
-                            <Dialog open={toppingToDelete === topping.id} onOpenChange={(open) => setToppingToDelete(open ? topping.id : null)}>
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Trash2 className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="sm:max-w-[425px]">
-                                <DialogHeader>
-                                  <DialogTitle>Delete Topping</DialogTitle>
-                                  <DialogDescription>
-                                    This action cannot be undone. This will permanently delete the topping.
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <div className="py-4">
-                                  <Alert className="mb-4" variant="warning">
-                                    <AlertCircle className="h-4 w-4" />
-                                    <AlertTitle>Warning</AlertTitle>
-                                    <AlertDescription>
-                                      This topping cannot be deleted if it is used in existing orders.
-                                    </AlertDescription>
-                                  </Alert>
-                                  <p>Are you sure you want to delete <strong>{topping.name}</strong>?</p>
-                                </div>
-                                <div className="flex justify-end space-x-2">
-                                  <Button variant="outline" onClick={() => setToppingToDelete(null)}>
-                                    Cancel
-                                  </Button>
-                                  <Button 
-                                    variant="destructive" 
-                                    onClick={() => handleDeleteTopping(category.id, topping.id)}
-                                    disabled={isDeletingTopping}
-                                  >
-                                    {isDeletingTopping ? (
-                                      <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Deleting...
-                                      </>
-                                    ) : (
-                                      "Delete"
-                                    )}
-                                  </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
-
-      <Dialog open={isAddingTopping} onOpenChange={(open) => {
-        setIsAddingTopping(open);
-        if (!open) setSelectedCategoryForTopping(null);
-      }}>
-        <DialogContent className="sm:max-w-[425px]">
+      <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Topping</DialogTitle>
+            <DialogTitle>Créer une catégorie</DialogTitle>
           </DialogHeader>
-          {selectedCategoryForTopping && (
-            <div className="mb-4">
-              <label className="text-sm font-medium mb-1 block">Category</label>
-              <select 
-                className="w-full px-3 py-2 border rounded-md"
-                value={selectedCategoryForTopping}
-                onChange={(e) => setSelectedCategoryForTopping(e.target.value)}
-              >
-                {toppingCategories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nom
+              </Label>
+              <Input id="name" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} className="col-span-3" />
             </div>
-          )}
-          <ToppingForm 
-            onSubmit={(values) => selectedCategoryForTopping && handleAddTopping(selectedCategoryForTopping, values)}
-            isLoading={savingTopping}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">
+                Description
+              </Label>
+              <Input id="description" value={categoryDescription} onChange={(e) => setCategoryDescription(e.target.value)} className="col-span-3" />
+            </div>
+          </div>
+          <Button onClick={handleCreateCategory} className="bg-kiosk-primary" disabled={isCreatingCategory}>
+            {isCreatingCategory ? "Création..." : "Créer"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showUpdateCategoryDialog} onOpenChange={setShowUpdateCategoryDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier la catégorie</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nom
+              </Label>
+              <Input id="name" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">
+                Description
+              </Label>
+              <Input id="description" value={categoryDescription} onChange={(e) => setCategoryDescription(e.target.value)} className="col-span-3" />
+            </div>
+          </div>
+          <Button onClick={handleUpdateCategory} className="bg-kiosk-primary" disabled={isUpdatingCategory}>
+            {isUpdatingCategory ? "Mise à jour..." : "Mettre à jour"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteCategoryDialog} onOpenChange={setShowDeleteCategoryDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer la catégorie</DialogTitle>
+          </DialogHeader>
+          <p>Êtes-vous sûr de vouloir supprimer la catégorie "{selectedCategoryToDelete?.name}" ?</p>
+          <Button onClick={handleDeleteCategory} className="bg-red-500 text-white" disabled={isDeletingCategory}>
+            {isDeletingCategory ? "Suppression..." : "Supprimer"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateToppingDialog} onOpenChange={setShowCreateToppingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Créer un complément</DialogTitle>
+          </DialogHeader>
+          <ToppingForm
+            onSubmit={handleCreateTopping}
+            isLoading={isCreatingTopping}
+            currency={restaurant.currency}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showUpdateToppingDialog} onOpenChange={setShowUpdateToppingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le complément</DialogTitle>
+          </DialogHeader>
+          <ToppingForm
+            onSubmit={(values) => selectedTopping && handleUpdateTopping(selectedTopping.id, values)}
+            initialValues={{
+              name: selectedTopping?.name || "",
+              price: selectedTopping?.price.toString() || "0",
+              tax_percentage: selectedTopping?.tax_percentage?.toString() || "10",
+            }}
+            isLoading={isUpdatingTopping}
+            currency={restaurant.currency}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteToppingDialog} onOpenChange={setShowDeleteToppingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer le complément</DialogTitle>
+          </DialogHeader>
+          <p>Êtes-vous sûr de vouloir supprimer le complément "{selectedTopping?.name}" ?</p>
+          <Button onClick={handleDeleteTopping} className="bg-red-500 text-white" disabled={isDeletingTopping}>
+            {isDeletingTopping ? "Suppression..." : "Supprimer"}
+          </Button>
         </DialogContent>
       </Dialog>
     </div>

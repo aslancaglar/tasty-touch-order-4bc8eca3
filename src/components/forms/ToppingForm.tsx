@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,9 @@ const toppingSchema = z.object({
   price: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
     message: "Le prix doit être un nombre valide supérieur ou égal à 0",
   }),
+  tax_percentage: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100, {
+    message: "La TVA doit être un pourcentage entre 0 et 100",
+  }),
 });
 
 type ToppingFormValues = z.infer<typeof toppingSchema>;
@@ -21,6 +25,7 @@ interface ToppingFormProps {
   initialValues?: {
     name: string;
     price: string;
+    tax_percentage?: string;
   };
   isLoading?: boolean;
   currency?: string;
@@ -37,6 +42,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
     defaultValues: {
       name: initialValues?.name || "",
       price: initialValues?.price || "0",
+      tax_percentage: initialValues?.tax_percentage || "10",
     },
   });
 
@@ -66,9 +72,23 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Prix ({currencySymbol})</FormLabel>
+              <FormLabel>Prix TTC ({currencySymbol})</FormLabel>
               <FormControl>
                 <Input placeholder="0.75" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="tax_percentage"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>TVA (%)</FormLabel>
+              <FormControl>
+                <Input placeholder="10" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
