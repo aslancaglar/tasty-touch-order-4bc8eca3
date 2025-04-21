@@ -754,6 +754,7 @@ const KioskView = () => {
           total={calculateCartTotal()}
           onClick={toggleCart}
           uiLanguage={uiLanguage}
+          currency={restaurant.currency}
         />
       )}
 
