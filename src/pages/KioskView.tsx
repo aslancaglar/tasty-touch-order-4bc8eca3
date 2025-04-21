@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
@@ -28,7 +29,7 @@ type SelectedToppingCategory = {
 const KioskView = () => {
   const [loading, setLoading] = useState(true);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -46,42 +47,94 @@ const KioskView = () => {
   const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
   const [orderType, setOrderType] = useState<OrderType | null>(null);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
-  const [toast, toastActions] = useToast();
+  const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
+  const { toast } = useToast();
   const { slug } = useParams();
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRestaurant = async () => {
-      const { data, error } = await getRestaurantBySlug(slug);
-      if (error) {
+      try {
+        const result = await getRestaurantBySlug(slug);
+        if (!result || result.error) {
+          toast({
+            title: "Erreur",
+            description: "Le restaurant que vous recherchez n'existe pas.",
+            variant: "destructive"
+          });
+          return;
+        }
+        setRestaurant(result);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching restaurant:", error);
         toast({
           title: "Erreur",
-          description: "Le restaurant que vous recherchez n'existe pas.",
+          description: "Une erreur s'est produite lors du chargement du restaurant.",
           variant: "destructive"
         });
-        return;
       }
-      setRestaurant(data);
-      setLoading(false);
     };
 
     const fetchCategories = async () => {
-      const { data, error } = await getMenuForRestaurant(restaurant?.id || "");
-      if (error) {
+      if (!restaurant?.id) return;
+      
+      try {
+        const result = await getMenuForRestaurant(restaurant.id);
+        if (!result || result.error) {
+          toast({
+            title: "Erreur",
+            description: "Impossible de charger le menu.",
+            variant: "destructive"
+          });
+          return;
+        }
+        setCategories(result);
+        setActiveCategory(result[0]?.id || null);
+      } catch (error) {
+        console.error("Error fetching menu categories:", error);
         toast({
           title: "Erreur",
-          description: "Impossible de charger le menu.",
+          description: "Une erreur s'est produite lors du chargement du menu.",
           variant: "destructive"
         });
-        return;
       }
-      setCategories(data);
-      setActiveCategory(data[0]?.id || null);
     };
 
     fetchRestaurant();
-    fetchCategories();
-  }, [slug, toast]);
+    if (restaurant?.id) {
+      fetchCategories();
+    }
+  }, [slug, restaurant?.id, toast]);
+
+  // Function to fetch topping categories for a menu item
+  const fetchToppingCategories = async (menuItemId: string): Promise<any[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('menu_item_topping_categories')
+        .select(`
+          topping_category_id,
+          topping_categories:topping_category_id(
+            id, name, min_selections, max_selections, icon, description, show_if_selection_type,
+            toppings(id, name, price, tax_percentage)
+          )
+        `)
+        .eq('menu_item_id', menuItemId);
+      
+      if (error) {
+        console.error("Error fetching topping categories:", error);
+        return [];
+      }
+      
+      return data.map(item => ({
+        ...item.topping_categories,
+        required: item.topping_categories.min_selections > 0
+      }));
+    } catch (error) {
+      console.error("Error in fetchToppingCategories:", error);
+      return [];
+    }
+  };
 
   const handleSelectItem = async (item: MenuItem) => {
     try {
@@ -95,10 +148,10 @@ const KioskView = () => {
         });
         return;
       }
-      const toppingCategories = await fetchToppingCategories(item.id);
+      const fetchedToppingCategories = await fetchToppingCategories(item.id);
       const itemWithToppings: MenuItemWithOptions = {
         ...(itemWithOptions as MenuItemWithOptions),
-        toppingCategories
+        toppingCategories: fetchedToppingCategories
       };
       setSelectedItem(itemWithToppings);
       setQuantity(1);
@@ -120,8 +173,8 @@ const KioskView = () => {
       } else {
         setSelectedOptions([]);
       }
-      if (toppingCategories.length > 0) {
-        const initialToppings = toppingCategories.map(category => ({
+      if (fetchedToppingCategories.length > 0) {
+        const initialToppings = fetchedToppingCategories.map(category => ({
           categoryId: category.id,
           toppingIds: []
         }));
@@ -265,7 +318,8 @@ const KioskView = () => {
     }).filter(Boolean).join(", ");
   };
 
-  const shouldShowToppingCategory = (category: ToppingCategory): boolean => {
+  const shouldShowToppingCategory = (category: any): boolean => {
+    // If no conditional display is specified, always show the category
     if (!category.show_if_selection_type || category.show_if_selection_type.length === 0) {
       return true;
     }
@@ -288,7 +342,7 @@ const KioskView = () => {
       }
     });
 
-    return category.show_if_selection_type.some(requiredType => 
+    return category.show_if_selection_type.some((requiredType: string) => 
       selectedChoiceNames.includes(requiredType.toLowerCase())
     );
   };
@@ -368,6 +422,17 @@ const KioskView = () => {
 
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
+  };
+
+  const handleStartOrder = () => {
+    setShowWelcome(false);
+    setShowOrderTypeSelection(true);
+  };
+
+  const handleOrderTypeSelected = (type: OrderType, table?: string) => {
+    setOrderType(type);
+    setTableNumber(table || null);
+    setShowOrderTypeSelection(false);
   };
 
   const handlePlaceOrder = async () => {
