@@ -56,7 +56,6 @@ const KioskView = () => {
     toast
   } = useToast();
 
-  // Helper function to filter topping categories based on option choices
   function getVisibleToppingCategories(
     toppingCategories: {
       id: string;
@@ -77,16 +76,11 @@ const KioskView = () => {
       choiceIds: string[];
     }[]
   ) {
-    // Flatten all selected choice ids from all selected options
     const allSelectedChoiceIds = selectedOptions.flatMap(opt => opt.choiceIds);
-
-    // Filter topping categories based on their show_if_selection_id property
     return toppingCategories.filter(category => {
-      // If no show_if_selection_id property, show this category (it's not conditional)
       if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
         return true;
       }
-      // Otherwise, check if at least one of the show_if_selection_id values is selected
       return category.show_if_selection_id.some(showId => allSelectedChoiceIds.includes(showId));
     });
   }
@@ -129,5 +123,11 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
-  // ... rest of the code remains the same ...
+  return (
+    <div>
+      {/* Component content */}
+    </div>
+  );
 };
+
+export default KioskView;
