@@ -32,6 +32,7 @@ import { Restaurant, MenuCategory, MenuItem, ToppingCategory } from "@/types/dat
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
+import MenuItemToppingCategories from "@/components/forms/MenuItemToppingCategories";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -49,6 +50,7 @@ const MenuPage = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [savingMenuItem, setSavingMenuItem] = useState(false);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<MenuItem | null>(null);
+  const [showUpdateItemDialog, setShowUpdateItemDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -258,7 +260,6 @@ const MenuPage = () => {
         price: parseFloat(values.price),
         promotion_price: values.promotion_price ? parseFloat(values.promotion_price) : null,
         image: values.image || null,
-        topping_categories: values.topping_categories || [],
         tax_percentage: values.tax_percentage
       });
       
@@ -274,12 +275,12 @@ const MenuPage = () => {
         };
       });
       
+      setShowUpdateItemDialog(true);
+      
       toast({
         title: "Success",
         description: `${values.name} has been updated.`,
       });
-      
-      setEditingMenuItem(null);
     } catch (error) {
       console.error("Error updating menu item:", error);
       toast({
@@ -537,7 +538,7 @@ const MenuPage = () => {
                                     <DialogDescription>Make changes to this menu item.</DialogDescription>
                                   </DialogHeader>
                                   {editingMenuItem && (
-                                    <MenuItemForm 
+                                    <MenuItemForm
                                       onSubmit={handleEditMenuItem}
                                       initialValues={{
                                         name: editingMenuItem.name,
@@ -545,7 +546,6 @@ const MenuPage = () => {
                                         price: editingMenuItem.price.toString(),
                                         promotion_price: editingMenuItem.promotion_price ? editingMenuItem.promotion_price.toString() : "",
                                         image: editingMenuItem.image || "",
-                                        topping_categories: editingMenuItem.topping_categories || [],
                                         tax_percentage: editingMenuItem.tax_percentage?.toString() || "10"
                                       }}
                                       isLoading={savingMenuItem}
@@ -622,6 +622,62 @@ const MenuPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showUpdateItemDialog} onOpenChange={setShowUpdateItemDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Menu Item</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="details">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="toppings">Toppings</TabsTrigger>
+            </TabsList>
+            <TabsContent value="details">
+              {editingMenuItem && (
+                <MenuItemForm
+                  onSubmit={handleEditMenuItem}
+                  initialValues={{
+                    name: editingMenuItem.name,
+                    description: editingMenuItem.description || "",
+                    price: editingMenuItem.price.toString(),
+                    promotion_price: editingMenuItem.promotion_price ? editingMenuItem.promotion_price.toString() : "",
+                    image: editingMenuItem.image || "",
+                    tax_percentage: editingMenuItem.tax_percentage?.toString() || "10"
+                  }}
+                  isLoading={savingMenuItem}
+                  restaurantId={selectedRestaurant || ""}
+                  menuItemId={editingMenuItem.id}
+                />
+              )}
+            </TabsContent>
+            <TabsContent value="toppings">
+              {editingMenuItem && selectedRestaurant && (
+                <MenuItemToppingCategories
+                  restaurantId={selectedRestaurant}
+                  menuItemId={editingMenuItem.id}
+                  selectedCategories={editingMenuItem.topping_categories || []}
+                  onSave={(categories) => {
+                    setMenuItems(prev => {
+                      const categoryId = editingMenuItem.category_id;
+                      const updatedItems = prev[categoryId]?.map(item => 
+                        item.id === editingMenuItem.id 
+                          ? { ...item, topping_categories: categories }
+                          : item
+                      ) || [];
+                      
+                      return {
+                        ...prev,
+                        [categoryId]: updatedItems
+                      };
+                    });
+                  }}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
