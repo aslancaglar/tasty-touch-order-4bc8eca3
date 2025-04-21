@@ -9,6 +9,7 @@ export type Restaurant = {
   created_at: string;
   updated_at: string;
   ui_language?: string;
+  currency?: string; // NEW: ISO 4217 code, e.g. "EUR", "USD", ...
 };
 
 export type MenuCategory = {

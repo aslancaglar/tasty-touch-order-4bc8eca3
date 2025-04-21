@@ -568,6 +568,7 @@ export type Database = {
       restaurants: {
         Row: {
           created_at: string
+          currency: string
           id: string
           image_url: string | null
           location: string | null
@@ -578,6 +579,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          currency?: string
           id?: string
           image_url?: string | null
           location?: string | null
@@ -588,6 +590,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          currency?: string
           id?: string
           image_url?: string | null
           location?: string | null

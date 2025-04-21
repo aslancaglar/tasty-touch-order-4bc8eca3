@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 import { updateRestaurant, deleteRestaurant } from "@/services/kiosk-service";
 import { useNavigate } from "react-router-dom";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -26,9 +26,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger 
+  AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import currencyCodes from "currency-codes";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
@@ -41,6 +42,23 @@ const languageOptions = [
   { value: "tr", label: "Türkçe" },
 ];
 
+const currencyOptions = currencyCodes.data
+  .filter(c => c.code && c.currency && c.symbol)
+  .map(c => ({
+    value: c.code,
+    label: `${c.code} (${c.currency})${c.symbol ? ` ${c.symbol}` : ""}`,
+    symbol: c.symbol
+  }))
+  .sort((a, b) => {
+    const prefer = ["EUR", "USD", "TRY", "GBP"];
+    const aPref = prefer.indexOf(a.value);
+    const bPref = prefer.indexOf(b.value);
+    if (aPref !== -1 && bPref !== -1) return aPref - bPref;
+    if (aPref !== -1) return -1;
+    if (bPref !== -1) return 1;
+    return a.label.localeCompare(b.label);
+  });
+
 const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [activeTab, setActiveTab] = useState("basic");
   const [name, setName] = useState(restaurant.name);
@@ -52,7 +70,9 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [uiLanguage, setUiLanguage] = useState(restaurant.ui_language || "fr");
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
-  
+  const [currency, setCurrency] = useState(restaurant.currency || "EUR");
+  const [isSavingCurrency, setIsSavingCurrency] = useState(false);
+
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -65,12 +85,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     setLocation(restaurant.location || "");
     setImage(restaurant.image_url || "");
     setUiLanguage(restaurant.ui_language || "fr");
-    console.log("Settings updated from restaurant props:", { 
-      name: restaurant.name, 
-      location: restaurant.location, 
-      image: restaurant.image_url,
-      uiLanguage: restaurant.ui_language
-    });
+    setCurrency(restaurant.currency || "EUR");
   }, [restaurant]);
 
   useEffect(() => {
@@ -117,6 +132,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         location,
         image_url: image,
         ui_language: uiLanguage,
+        currency,
       });
       
       toast({
@@ -136,6 +152,42 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveCurrency = async () => {
+    setIsSavingCurrency(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from("restaurants")
+        .update({ currency })
+        .eq("id", restaurant.id)
+        .select();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Devise enregistrée",
+        description: "La devise du restaurant a été mise à jour.",
+      });
+
+      if (onRestaurantUpdated && data && data.length > 0) {
+        const updatedRestaurant = {
+          ...restaurant,
+          currency,
+        };
+        onRestaurantUpdated(updatedRestaurant);
+      }
+    } catch (error) {
+      console.error("Error updating currency:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de changer la devise.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingCurrency(false);
     }
   };
 
@@ -387,6 +439,47 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                       </>
                     )}
                   </Button>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="currency">Devise du Restaurant</Label>
+              <div className="mt-2">
+                <select
+                  id="currency"
+                  value={currency}
+                  onChange={e => setCurrency(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-white"
+                >
+                  {currencyOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-2">
+                  <Button
+                    onClick={handleSaveCurrency}
+                    disabled={isSavingCurrency}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isSavingCurrency ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sauvegarde...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Enregistrer la devise
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  La devise sera affichée sur tous les reçus et dans l'interface Kiosk.
                 </div>
               </div>
             </div>
