@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -118,7 +117,6 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
       if (error) throw error;
 
       if (data) {
-        // Convert tax_percentage to number if it's not already
         const updatedToppings = data.map(topping => ({
           ...topping,
           tax_percentage: typeof topping.tax_percentage === 'string' ? parseFloat(topping.tax_percentage) : topping.tax_percentage
@@ -267,7 +265,6 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
         description: "Complément créé avec succès",
       });
 
-      // Refresh toppings list
       fetchToppings();
       setShowCreateToppingDialog(false);
     } catch (error) {
@@ -301,7 +298,6 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
         description: "Complément mis à jour avec succès",
       });
 
-      // Refresh toppings list
       fetchToppings();
       setShowUpdateToppingDialog(false);
     } catch (error) {
@@ -538,7 +534,7 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
             onSubmit={(values) => selectedTopping && handleUpdateTopping(selectedTopping.id, values)}
             initialValues={{
               name: selectedTopping?.name || "",
-              price: selectedTopping?.price.toString() || "0",
+              price: selectedTopping?.price?.toString() || "0",
               tax_percentage: selectedTopping?.tax_percentage?.toString() || "10",
             }}
             isLoading={isUpdatingTopping}
