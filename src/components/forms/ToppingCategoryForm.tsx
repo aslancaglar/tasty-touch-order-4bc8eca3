@@ -35,8 +35,8 @@ const ToppingCategoryForm = ({
   onSubmit,
   initialValues,
   isLoading = false,
-  availableCategories,
-  availableSelectionTypes,
+  availableCategories = [],
+  availableSelectionTypes = [],
 }: ToppingCategoryFormProps) => {
   const form = useForm<ToppingCategoryFormValues>({
     resolver: zodResolver(toppingCategorySchema),
@@ -164,20 +164,25 @@ const ToppingCategoryForm = ({
                     <FormControl>
                       <select
                         multiple
-                        className="w-full border rounded p-2 min-h-[36px]"
+                        className="w-full border rounded p-2 min-h-[100px]"
                         value={field.value || []}
                         onChange={(e) => {
                           const options = Array.from(e.target.selectedOptions).map(opt => opt.value);
                           field.onChange(options);
                         }}
                       >
-                        {availableCategories?.map(option => (
+                        {availableCategories.map(option => (
                           <option key={option.id} value={option.id}>
                             {option.name}
                           </option>
                         ))}
                       </select>
                     </FormControl>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {availableCategories.length === 0 ? 
+                        "No menu categories available" : 
+                        "Hold CTRL/CMD to select multiple categories"}
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -194,20 +199,25 @@ const ToppingCategoryForm = ({
                     <FormControl>
                       <select
                         multiple
-                        className="w-full border rounded p-2 min-h-[36px]"
+                        className="w-full border rounded p-2 min-h-[80px]"
                         value={field.value || []}
                         onChange={(e) => {
                           const options = Array.from(e.target.selectedOptions).map(opt => opt.value);
                           field.onChange(options);
                         }}
                       >
-                        {availableSelectionTypes?.map(type => (
+                        {availableSelectionTypes.map(type => (
                           <option key={type} value={type}>
                             {type}
                           </option>
                         ))}
                       </select>
                     </FormControl>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {availableSelectionTypes.length === 0 ? 
+                        "No order types available" : 
+                        "Hold CTRL/CMD to select multiple types"}
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -232,4 +242,3 @@ const ToppingCategoryForm = ({
 };
 
 export default ToppingCategoryForm;
-
