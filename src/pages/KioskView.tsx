@@ -509,7 +509,7 @@ const KioskView = () => {
     setIsCartOpen(!isCartOpen);
   };
 
-  const shouldShowToppingCategory = (category: ToppingCategory) => {
+  const shouldShowToppingCategory = (category: MenuItemWithOptions['toppingCategories'][0]) => {
     if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
       return true;
     }

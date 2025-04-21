@@ -137,6 +137,8 @@ export interface MenuItemWithOptions extends MenuItem {
       price: number;
       tax_percentage: number;
     }[];
+    show_if_selection_id?: string[] | null;
+    show_if_selection_type?: string[] | null;
   }[];
 }
 
