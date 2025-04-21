@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -42,6 +43,10 @@ interface ToppingsTabProps {
   };
 }
 
+interface ToppingCategoryWithToppings extends ToppingCategory {
+  toppings?: Topping[];
+}
+
 const getCurrencySymbol = (currencyCode: string): string => {
   const code = (currencyCode || "EUR").toUpperCase();
   return CURRENCY_SYMBOLS[code] || code;
@@ -49,7 +54,7 @@ const getCurrencySymbol = (currencyCode: string): string => {
 
 const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
   const [categories, setCategories] = useState<ToppingCategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<ToppingCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<ToppingCategoryWithToppings | null>(null);
   const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false);
   const [showUpdateCategoryDialog, setShowUpdateCategoryDialog] = useState(false);
   const [showDeleteCategoryDialog, setShowDeleteCategoryDialog] = useState(false);
@@ -412,6 +417,7 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
             </Button>
           </div>
 
+          {/* Displaying toppings */}
           {selectedCategory?.toppings?.map((topping) => (
             <div key={topping.id} className="flex items-center justify-between py-2">
               <div>
