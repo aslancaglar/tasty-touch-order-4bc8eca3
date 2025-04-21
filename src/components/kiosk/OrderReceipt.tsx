@@ -1,4 +1,3 @@
-
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
@@ -55,16 +54,22 @@ interface OrderReceiptProps {
   uiLanguage?: "fr" | "en" | "tr";
 }
 
-// Helper function to get currency symbol
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
+};
+
 const getCurrencySymbol = (currencyCode: string): string => {
-  try {
-    const entry = currencyCodes.code(currencyCode || 'EUR');
-    // Use a safer way to get symbol or fall back to currency code
-    return (entry && entry.code) ? (entry.code) : currencyCode || '€';
-  } catch (error) {
-    console.error("Error getting currency symbol:", error);
-    return currencyCode || '€';
-  }
+  const code = (currencyCode || "EUR").toUpperCase();
+  return CURRENCY_SYMBOLS[code] || code;
 };
 
 const OrderReceipt: React.FC<OrderReceiptProps> = ({

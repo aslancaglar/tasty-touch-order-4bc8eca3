@@ -12,62 +12,22 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 
-const translations = {
-  fr: {
-    orderSummary: "RÉSUMÉ DE COMMANDE",
-    orderedItems: "ARTICLES COMMANDÉS",
-    totalHT: "Total HT:",
-    vat: "TVA:",
-    vatWithRate: "TVA (10%):",
-    totalTTC: "Total TTC:",
-    confirm: "CONFIRMER LA COMMANDE",
-    back: "Retour",
-    printing: "Impression",
-    printingPreparation: "Préparation de l'impression du reçu...",
-    printError: "Erreur d'impression",
-    printErrorDesc: "Impossible d'imprimer le reçu. Vérifiez les paramètres de votre navigateur.",
-    error: "Erreur",
-    errorPrinting: "Une erreur est survenue lors de l'impression",
-    options: "Options",
-    toppings: "Garnitures",
-  },
-  en: {
-    orderSummary: "ORDER SUMMARY",
-    orderedItems: "ORDERED ITEMS",
-    totalHT: "Subtotal:",
-    vat: "Tax:",
-    vatWithRate: "Tax (10%):",
-    totalTTC: "TOTAL:",
-    confirm: "CONFIRM ORDER",
-    back: "Back",
-    printing: "Printing",
-    printingPreparation: "Preparing receipt for printing...",
-    printError: "Print Error",
-    printErrorDesc: "Unable to print receipt. Check your browser settings.",
-    error: "Error",
-    errorPrinting: "An error occurred during printing",
-    options: "Options",
-    toppings: "Toppings",
-  },
-  tr: {
-    orderSummary: "SİPARİŞ ÖZETİ",
-    orderedItems: "SİPARİŞ EDİLEN ÜRÜNLER",
-    totalHT: "Ara Toplam:",
-    vat: "KDV:",
-    vatWithRate: "KDV (10%):",
-    totalTTC: "TOPLAM:",
-    confirm: "SİPARİŞİ ONAYLA",
-    back: "Geri",
-    printing: "Yazdırma",
-    printingPreparation: "Makbuz yazdırılmaya hazırlanıyor...",
-    printError: "Yazdırma Hatası",
-    printErrorDesc: "Makbuz yazdırılamıyor. Tarayıcı ayarlarınızı kontrol edin.",
-    error: "Hata",
-    errorPrinting: "Yazdırma sırasında bir hata oluştu",
-    options: "Seçenekler",
-    toppings: "Malzemeler",
-  }
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
 };
+
+function getCurrencySymbol(currency: string) {
+  return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
+}
 
 interface OrderSummaryProps {
   isOpen: boolean;
@@ -83,6 +43,7 @@ interface OrderSummaryProps {
     id?: string;
     name: string;
     location?: string;
+    currency?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
@@ -225,7 +186,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     try {
       const receiptContent = generatePrintNodeReceipt(orderData);
       
-      // Fix: Properly encode special characters for UTF-8
       const textEncoder = new TextEncoder();
       const encodedBytes = textEncoder.encode(receiptContent);
       const encodedContent = btoa(
@@ -291,6 +251,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     });
   };
 
+  const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md md:max-w-lg p-0">
@@ -314,31 +276,28 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <span className="font-medium mr-2">{item.quantity}x</span>
                     <span className="font-medium">{item.menuItem.name}</span>
                   </div>
-                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
+                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
                 
                 {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
                   <div className="pl-6 space-y-1 text-sm text-gray-600">
-                    {/* Options */}
                     {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                       <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
-                        <span>0.00 €</span>
+                        <span>0.00 {currencySymbol}</span>
                       </div>
                     ))}
-                    {/* Grouped toppings by category, show price if > 0 */}
                     {getGroupedToppings(item).map((group, groupIdx) => (
                       <div key={`${item.id}-cat-summary-${groupIdx}`}>
                         <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
-                          // Get topping reference and price
                           const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
                           const toppingRef = category?.toppings.find(t => t.name === toppingObj);
                           const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
                           return (
                             <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
                               <span style={{ paddingLeft: 6 }}>+ {toppingObj}</span>
-                              <span>{price > 0 ? price.toFixed(2) + " €" : ""}</span>
+                              <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
                             </div>
                           )
                         })}
@@ -355,16 +314,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
               <span>{t("totalHT")}</span>
-              <span>{subtotal.toFixed(2)} €</span>
+              <span>{subtotal.toFixed(2)} {currencySymbol}</span>
             </div>
             <div className="flex justify-between text-gray-600">
               <span>{uiLanguage === "fr" ? t("vatWithRate") : t("vat")}</span>
-              <span>{tax.toFixed(2)} €</span>
+              <span>{tax.toFixed(2)} {currencySymbol}</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
               <span>{t("totalTTC")}</span>
-              <span>{total.toFixed(2)} €</span>
+              <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
           </div>
         </div>

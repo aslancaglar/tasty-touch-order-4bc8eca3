@@ -1,27 +1,43 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
+
+// Place this helper at the top after imports
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
+};
+
+function getCurrencySymbol(currency: string) {
+  const code = currency?.toUpperCase() || "EUR";
+  return CURRENCY_SYMBOLS[code] || code;
+}
 
 interface CartButtonProps {
   itemCount: number;
   total: number;
   onClick: () => void;
   uiLanguage?: "fr" | "en" | "tr";
+  currency?: string; // ADD THIS PROP
 }
 
 const translations = {
   fr: {
     viewCart: "Voir le panier",
-    currency: "€"
   },
   en: {
     viewCart: "View Cart",
-    currency: "€"
   },
   tr: {
     viewCart: "Sepeti Görüntüle",
-    currency: "₺"
   }
 };
 
@@ -29,7 +45,8 @@ const CartButton: React.FC<CartButtonProps> = ({
   itemCount,
   total,
   onClick,
-  uiLanguage = "fr"
+  uiLanguage = "fr",
+  currency = "EUR"
 }) => {
   if (itemCount === 0) return null;
 
@@ -44,7 +61,7 @@ const CartButton: React.FC<CartButtonProps> = ({
         <ShoppingCart className="h-6 w-6 mr-2" />
         <span className="font-bold">{itemCount}</span>
         <span className="mx-2">|</span>
-        <span className="font-bold">{total.toFixed(2)} {t("currency")}</span>
+        <span className="font-bold">{total.toFixed(2)} {getCurrencySymbol(currency)}</span>
         <span className="ml-3 font-semibold">{t("viewCart")}</span>
       </Button>
     </div>
@@ -52,4 +69,3 @@ const CartButton: React.FC<CartButtonProps> = ({
 };
 
 export default CartButton;
-

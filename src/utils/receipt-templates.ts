@@ -2,6 +2,19 @@ import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivid
 import { CartItem } from '@/types/database-types';
 import currencyCodes from "currency-codes";
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
+};
+
 const translations = {
   fr: {
     order: "COMMANDE",
@@ -109,13 +122,8 @@ const getToppingPrice = (item: CartItem, groupCategory: string, toppingName: str
 };
 
 const getCurrencySymbol = (currencyCode: string) => {
-  try {
-    const entry = currencyCodes.code(currencyCode);
-    return (entry && entry.code) ? entry.code : currencyCode;
-  } catch (error) {
-    console.error("Error getting currency symbol:", error);
-    return currencyCode;
-  }
+  const code = (currencyCode || "EUR").toUpperCase();
+  return CURRENCY_SYMBOLS[code] || code;
 };
 
 export const generateStandardReceipt = (data: ReceiptData): string => {
@@ -140,7 +148,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   const firstItem = cart[0];
   const vat = firstItem?.menuItem?.tax_percentage ?? 10;
   
-  const currencyCode = restaurant?.currency || 'EUR';
+  const currencyCode = restaurant?.currency || "EUR";
   const currencySymbol = getCurrencySymbol(currencyCode);
 
   const now = new Date();

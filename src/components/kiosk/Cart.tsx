@@ -25,11 +25,29 @@ interface CartProps {
   restaurant?: {
     name: string;
     location?: string;
+    currency?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
   showOrderSummaryOnly?: boolean;
   uiLanguage?: "fr" | "en" | "tr";
+}
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
+};
+
+function getCurrencySymbol(currency: string) {
+  return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
 
 const translations = {
@@ -118,10 +136,13 @@ const Cart: React.FC<CartProps> = ({
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
+
   const { total, subtotal, tax } = calculateCartTotals(cart);
   const reversedCart = [...cart].reverse();
 
   const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
+
+  const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
 
   return (
     <>
@@ -172,7 +193,7 @@ const Cart: React.FC<CartProps> = ({
                         <div className="flex flex-col">
                           <h3 className="font-bold">{item.menuItem.name}</h3>
                           <p className="text-gray-700 font-medium">
-                            {parseFloat(item.itemPrice.toString()).toFixed(2)} €
+                            {parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}
                           </p>
                           
                           <div className="flex items-center mt-2">
@@ -207,16 +228,16 @@ const Cart: React.FC<CartProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">{t("totalHT")}</span>
-                <span className="font-medium">{subtotal.toFixed(2)} €</span>
+                <span className="font-medium">{subtotal.toFixed(2)} {currencySymbol}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">{t("vat")}</span>
-                <span className="font-medium">{tax.toFixed(2)} €</span>
+                <span className="font-medium">{tax.toFixed(2)} {currencySymbol}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between text-lg font-bold">
                 <span>{t("totalTTC")}</span>
-                <span>{total.toFixed(2)} €</span>
+                <span>{total.toFixed(2)} {currencySymbol}</span>
               </div>
             </div>
 
