@@ -8,7 +8,13 @@ import { ArrowLeft, ShoppingCart, Coffee } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { getRestaurantBySlug, getMenuCategoriesByRestaurant, getMenuItemsByCategory, getToppingCategories, getToppingsByCategory } from "@/services/kiosk-service";
+import { 
+  getRestaurantBySlug, 
+  getCategoriesByRestaurantId, 
+  getMenuItemsByCategory, 
+  getToppingsByCategory,
+  getToppingCategoriesByRestaurantId 
+} from "@/services/kiosk-service";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
 import TableSelection from "@/components/kiosk/TableSelection";
@@ -121,7 +127,7 @@ const KioskView: React.FC = () => {
         if (fetchedRestaurant) {
           setRestaurant(fetchedRestaurant);
           
-          const categories = await getMenuCategoriesByRestaurant(fetchedRestaurant.id);
+          const categories = await getCategoriesByRestaurantId(fetchedRestaurant.id);
           setMenuCategories(categories);
           
           const initialMenuItems: Record<string, MenuItem[]> = {};
@@ -131,7 +137,7 @@ const KioskView: React.FC = () => {
           }
           setMenuItems(initialMenuItems);
 
-          const toppingCategoriesData = await getToppingCategories(fetchedRestaurant.id);
+          const toppingCategoriesData = await getToppingCategoriesByRestaurantId(fetchedRestaurant.id);
           setToppingCategories(toppingCategoriesData);
 
           const initialToppings: Record<string, Topping[]> = {};
@@ -180,7 +186,7 @@ const KioskView: React.FC = () => {
       };
 
       // Fetch topping categories and toppings
-      const toppingCategoriesData = await getToppingCategories(restaurant.id);
+      const toppingCategoriesData = await getToppingCategoriesByRestaurantId(restaurant.id);
       const toppingCategoriesWithToppings = await Promise.all(
         toppingCategoriesData.map(async (category) => {
           const toppingsForCategory = await getToppingsByCategory(category.id);
@@ -370,6 +376,8 @@ const KioskView: React.FC = () => {
       
       {welcomePhase === "orderType" && (
         <OrderTypeSelection
+          isOpen={welcomePhase === "orderType"}
+          onClose={() => setWelcomePhase("welcome")}
           onSelectOrderType={(type) => {
             setOrderType(type);
             if (type === "dine-in") {
@@ -383,11 +391,13 @@ const KioskView: React.FC = () => {
       
       {welcomePhase === "tableSelection" && (
         <TableSelection
-          restaurant={restaurant}
+          isOpen={welcomePhase === "tableSelection"}
+          onClose={() => setWelcomePhase("orderType")}
           onSelectTable={(tableNum) => {
             setTableNumber(tableNum);
             setWelcomePhase("menu");
           }}
+          restaurant={restaurant}
         />
       )}
       

@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { Restaurant } from "@/types/database-types";
 
 interface TableSelectionProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (tableNumber: string) => void;
+  onSelectTable: (tableNumber: string) => void;
+  restaurant: Restaurant | null;
 }
 
-const TableSelection = ({ isOpen, onClose, onSelect }: TableSelectionProps) => {
+const TableSelection = ({ isOpen, onClose, onSelectTable, restaurant }: TableSelectionProps) => {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [tables, setTables] = useState([
     { id: "1", name: "Table 1" },
@@ -24,21 +26,43 @@ const TableSelection = ({ isOpen, onClose, onSelect }: TableSelectionProps) => {
     { id: "7", name: "Table 7" },
     { id: "8", name: "Table 8" },
   ]);
-  
-  useEffect(() => {
-    // This component is now only shown through direct invocation, not through OrderTypeSelection
-    // Force close if shown - this is a safety measure
-    onClose();
-  }, [isOpen, onClose]);
 
   const handleConfirm = () => {
     if (selectedTable) {
-      onSelect(selectedTable);
+      onSelectTable(selectedTable);
+      onClose();
     }
   };
 
-  // Never render the component - this ensures it won't show up
-  return null;
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Choisissez votre table</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <RadioGroup value={selectedTable || ""} onValueChange={setSelectedTable}>
+            <div className="grid grid-cols-2 gap-4">
+              {tables.map((table) => (
+                <div key={table.id} className="flex items-center space-x-2">
+                  <RadioGroupItem value={table.id} id={`table-${table.id}`} />
+                  <Label htmlFor={`table-${table.id}`}>{table.name}</Label>
+                </div>
+              ))}
+            </div>
+          </RadioGroup>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" onClick={handleConfirm} disabled={!selectedTable}>
+            Confirmer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 export default TableSelection;
