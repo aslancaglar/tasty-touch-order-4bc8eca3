@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -281,7 +280,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       tax: orderData.tax,
       total: orderData.total,
       getFormattedOptions: orderData.getFormattedOptions,
-      getFormattedToppings: orderData.getFormattedToppings
+      getFormattedToppings: orderData.getFormattedToppings,
+      uiLanguage
     });
   };
 
