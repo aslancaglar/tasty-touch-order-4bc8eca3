@@ -58,51 +58,38 @@ const KioskView = () => {
 
   const shouldShowToppingCategory = (
     category: ToppingCategory,
-    selectedOptions: {
+    selectedToppings: {
       optionId: string;
       choiceIds: string[];
     }[],
-    toppingCategories: ToppingCategory[] | undefined
+    toppingCategories: (ToppingCategory & { toppings?: any[] })[] | undefined
   ) => {
-    const mainCategoryName = "simple - with fries - menu";
-    const paidDrinkCategory = "Paid drink or side dish";
-    const freeDrinkCategory = "Free drink or side dish";
+    const MAIN_CATEGORY_NAME = "simple - with fries - menu";
+    const PAID_DRINK = "Paid drink or side dish";
+    const FREE_DRINK = "Free drink or side dish";
 
     if (!toppingCategories) return true;
 
-    const mainCategory = toppingCategories.find(
-      (tc) => tc.name?.toLowerCase().includes(mainCategoryName)
+    const mainCat = toppingCategories.find(
+      (c) => (c.name ?? "").toLowerCase().includes(MAIN_CATEGORY_NAME)
     );
-    if (!mainCategory) {
-      return true;
-    }
+    if (!mainCat) return true;
 
-    if (
-      category.name !== paidDrinkCategory &&
-      category.name !== freeDrinkCategory
-    ) {
-      return true;
-    }
+    const mainSelected = selectedToppings.find((o) => o.optionId === mainCat.id);
+    const mainSelections =
+      (mainCat.toppings && mainSelected
+        ? mainCat.toppings
+            .filter((t: any) => mainSelected.choiceIds.includes(t.id))
+            .map((t: any) => (t.name ?? "").toLowerCase())
+        : []);
 
-    const mainSelectedOption = selectedOptions.find(o => o.optionId === mainCategory.id);
-    const selectedOptionNames: string[] =
-      mainCategory.toppings
-        .filter(topping => (mainSelectedOption?.choiceIds ?? []).includes(topping.id))
-        .map(t => t.name?.toLowerCase() ?? "");
-
-    if (
-      category.name === paidDrinkCategory &&
-      selectedOptionNames.includes("simple")
-    ) {
-      return true;
+    if (category.name === PAID_DRINK) {
+      return mainSelections.includes("simple");
     }
-    if (
-      category.name === freeDrinkCategory &&
-      selectedOptionNames.includes("menu")
-    ) {
-      return true;
+    if (category.name === FREE_DRINK) {
+      return mainSelections.includes("menu");
     }
-    return false;
+    return category.name !== PAID_DRINK && category.name !== FREE_DRINK;
   };
 
   useEffect(() => {
