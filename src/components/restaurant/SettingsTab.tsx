@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,26 +10,15 @@ import ImageUpload from "@/components/ImageUpload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 import { printReceipt } from "@/utils/print-utils";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 import { updateRestaurant, deleteRestaurant } from "@/services/kiosk-service";
 import { useNavigate } from "react-router-dom";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger 
-} from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
@@ -45,7 +35,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [requireTableSelection, setRequireTableSelection] = useState(true);
-  
+
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -60,22 +50,22 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
           .from('restaurant_print_config')
           .select('browser_printing_enabled, require_table_selection')
           .eq('restaurant_id', restaurant.id)
-          .single();
-          
+          .maybeSingle();
+
         if (error) {
           console.error("Error fetching print settings:", error);
           return;
         }
-        
+
         if (data) {
-          setBrowserPrintEnabled(data.browser_printing_enabled !== false);
-          setRequireTableSelection(data.require_table_selection !== false);
+          setBrowserPrintEnabled(data.browser_printing_enabled ?? true);
+          setRequireTableSelection(data.require_table_selection ?? true);
         }
       } catch (error) {
         console.error("Error in fetchPrintSettings:", error);
       }
     };
-    
+
     fetchPrintSettings();
   }, [restaurant.id]);
 
@@ -96,14 +86,14 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     }
 
     setIsSaving(true);
-    
+
     try {
       const updatedRestaurant = await updateRestaurant(restaurant.id, {
         name,
         location,
         image_url: image,
       });
-      
+
       toast({
         title: "Success",
         description: "Restaurant information updated successfully",
@@ -126,15 +116,15 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   const handleDeleteRestaurant = async () => {
     setIsDeleting(true);
-    
+
     try {
       await deleteRestaurant(restaurant.id);
-      
+
       toast({
         title: "Success",
         description: "Restaurant deleted successfully",
       });
-      
+
       navigate("/restaurants");
     } catch (error) {
       console.error("Error deleting restaurant:", error);
@@ -149,20 +139,20 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   const handleSavePrintSettings = async () => {
     setIsSavingPrintSettings(true);
-    
+
     try {
       const { data: existingConfig, error: checkError } = await supabase
         .from('restaurant_print_config')
         .select('id')
         .eq('restaurant_id', restaurant.id)
-        .single();
-      
+        .maybeSingle();
+
       if (checkError && checkError.code !== 'PGRST116') {
         throw checkError;
       }
-      
+
       let result;
-      
+
       if (existingConfig) {
         result = await supabase
           .from('restaurant_print_config')
@@ -180,11 +170,11 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
             require_table_selection: requireTableSelection,
           });
       }
-      
+
       if (result.error) {
         throw result.error;
       }
-      
+
       toast({
         title: "Paramètres sauvegardés",
         description: "Les paramètres d'impression ont été mis à jour"
@@ -207,10 +197,10 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       if (testReceipt) {
         console.log("Testing browser printing");
         testReceipt.style.display = "block";
-        
+
         try {
           printReceipt("receipt-content");
-          
+
           toast({
             title: "Test d'Impression",
             description: "Impression du reçu de test via le navigateur"
@@ -223,7 +213,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
             variant: "destructive"
           });
         }
-        
+
         setTimeout(() => {
           testReceipt.style.display = "none";
         }, 500);
@@ -251,12 +241,12 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
           <TabsTrigger value="basic">Informations</TabsTrigger>
           <TabsTrigger value="print">Impression</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="basic" className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Paramètres du Restaurant</h3>
           </div>
-          
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="restaurantName">Nom du Restaurant</Label>
@@ -267,7 +257,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 className="mt-1"
               />
             </div>
-            
+
             <div>
               <Label htmlFor="restaurantLocation">Emplacement</Label>
               <Input 
@@ -277,7 +267,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 className="mt-1"
               />
             </div>
-            
+
             <div className="sm:col-span-2">
               <Label>Image du Restaurant</Label>
               <div className="mt-1">
@@ -289,7 +279,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               </div>
             </div>
           </div>
-          
+
           <div className="flex flex-col space-y-4">
             <div className="flex justify-end">
               <Button
@@ -307,13 +297,13 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 )}
               </Button>
             </div>
-            
+
             <Alert variant="destructive" className="mt-6">
               <AlertTitle className="text-red-600">Zone de danger</AlertTitle>
               <AlertDescription className="text-red-600">
                 Supprimer ce restaurant effacera définitivement toutes les informations associées - menus, suppléments, commandes, etc.
               </AlertDescription>
-              
+
               <div className="mt-4">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -325,13 +315,13 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                         </>
                       ) : (
                         <>
-                          <Trash2 className="mr-2 h-4 w-4" />
+                          <XCircle className="mr-2 h-4 w-4" />
                           Supprimer ce restaurant
                         </>
                       )}
                     </Button>
                   </AlertDialogTrigger>
-                  
+
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Êtes-vous absolument sûr?</AlertDialogTitle>
@@ -339,7 +329,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                         Cette action supprimera définitivement le restaurant <strong>{restaurant.name}</strong> et toutes ses données associées. Cette action ne peut pas être annulée.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    
+
                     <AlertDialogFooter>
                       <AlertDialogCancel>Annuler</AlertDialogCancel>
                       <AlertDialogAction 
@@ -355,7 +345,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
             </Alert>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="print" className="space-y-6">
           <Card>
             <CardHeader>
@@ -408,9 +398,9 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               </div>
             </CardContent>
           </Card>
-          
+
           <PrintNodeIntegration restaurantId={restaurant.id} />
-          
+
           <div id="receipt-content" className="receipt" style={{ display: "none" }}>
             <div className="header">
               <div className="logo">{restaurant.name}</div>
@@ -428,7 +418,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                   <span>1x Article Test</span>
                   <span>10.00 €</span>
                 </div>
-                
+
                 <div className="item-details">
                   <div className="item">
                     <span>+ Option Test</span>
@@ -468,3 +458,4 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 };
 
 export default SettingsTab;
+

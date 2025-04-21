@@ -27,9 +27,10 @@ const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType, restaurantId }
         .from("restaurant_print_config")
         .select("require_table_selection")
         .eq("restaurant_id", restaurantId)
-        .single();
+        .maybeSingle();
+
       if (!error && data) {
-        setRequireTableSelection(data.require_table_selection !== false);
+        setRequireTableSelection(data.require_table_selection ?? true);
       }
     };
     fetchRequireTableSelection();

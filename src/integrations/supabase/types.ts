@@ -446,6 +446,7 @@ export type Database = {
           configured_printers: Json | null
           created_at: string | null
           id: string
+          require_table_selection: boolean | null
           restaurant_id: string | null
           updated_at: string | null
         }
@@ -455,6 +456,7 @@ export type Database = {
           configured_printers?: Json | null
           created_at?: string | null
           id?: string
+          require_table_selection?: boolean | null
           restaurant_id?: string | null
           updated_at?: string | null
         }
@@ -464,6 +466,7 @@ export type Database = {
           configured_printers?: Json | null
           created_at?: string | null
           id?: string
+          require_table_selection?: boolean | null
           restaurant_id?: string | null
           updated_at?: string | null
         }
