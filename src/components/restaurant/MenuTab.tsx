@@ -50,6 +50,24 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
 
   const { toast } = useToast();
 
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    TRY: "₺",
+    JPY: "¥",
+    CAD: "$",
+    AUD: "$",
+    CHF: "Fr.",
+    CNY: "¥",
+    RUB: "₽"
+  };
+
+  const getCurrencySymbol = (currency: string) => {
+    const code = currency?.toUpperCase() || "EUR";
+    return CURRENCY_SYMBOLS[code] || code;
+  };
+
   useEffect(() => {
     const fetchCategories = async () => {
       if (!restaurant?.id) return;
@@ -495,53 +513,25 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         </div>
       )}
 
-      {categories.length > 0 && (
-        <>
-          <div className="flex items-center justify-between mt-8">
-            <h3 className="text-lg font-medium">Menu Items</h3>
-            <Button 
-              className="bg-kiosk-primary"
-              onClick={() => {
-                setSelectedCategoryForItem(categories[0].id);
-                setIsAddingMenuItem(true);
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Item
-            </Button>
-          </div>
-          
-          {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {categories.map((category) => {
-                const items = menuItems[category.id] || [];
-                
-                if (items.length === 0) {
-                  return (
-                    <div key={category.id} className="text-center py-4 border rounded-lg">
-                      <p className="text-muted-foreground mb-4">No items in {category.name}</p>
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedCategoryForItem(category.id);
-                          setIsAddingMenuItem(true);
-                        }}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Item to {category.name}
-                      </Button>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div key={category.id} className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">{category.name}</h4>
-                    {items.map(item => (
+      <Card>
+        <CardHeader>
+          <CardTitle>Menu Items</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {categories.length > 0 ? (
+            <Tabs defaultValue={categories[0].id}>
+              <TabsList className="flex space-x-2">
+                {categories.map((category) => (
+                  <TabsTrigger key={category.id} value={category.id}>
+                    {category.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              
+              {categories.map((category) => (
+                <TabsContent key={category.id} value={category.id}>
+                  <div className="space-y-4">
+                    {menuItems[category.id]?.map(item => (
                       <div 
                         key={item.id} 
                         className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
@@ -559,10 +549,10 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                             <p className="text-sm text-muted-foreground">{item.description}</p>
                             <div className="flex flex-wrap items-center mt-1">
                               <p className="text-sm font-medium">
-                                ${parseFloat(item.price.toString()).toFixed(2)}
+                                {getCurrencySymbol(restaurant.currency)}{parseFloat(item.price.toString()).toFixed(2)}
                                 {item.promotion_price && (
                                   <span className="ml-2 line-through text-muted-foreground">
-                                    ${parseFloat(item.promotion_price.toString()).toFixed(2)}
+                                    {getCurrencySymbol(restaurant.currency)}{parseFloat(item.promotion_price.toString()).toFixed(2)}
                                   </span>
                                 )}
                               </p>
@@ -645,43 +635,46 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                         </div>
                       </div>
                     ))}
+                    <Dialog open={isAddingMenuItem} onOpenChange={(open) => {
+                      setIsAddingMenuItem(open);
+                      if (!open) setSelectedCategoryForItem(null);
+                    }}>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Add Menu Item</DialogTitle>
+                        </DialogHeader>
+                        {selectedCategoryForItem && (
+                          <div className="mb-4">
+                            <label className="text-sm font-medium mb-1 block">Category</label>
+                            <select 
+                              className="w-full px-3 py-2 border rounded-md"
+                              value={selectedCategoryForItem}
+                              onChange={(e) => setSelectedCategoryForItem(e.target.value)}
+                            >
+                              {categories.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        <MenuItemForm 
+                          onSubmit={(values) => selectedCategoryForItem && handleAddMenuItem(selectedCategoryForItem, values)}
+                          isLoading={savingMenuItem}
+                          restaurantId={restaurant.id}
+                        />
+                      </DialogContent>
+                    </Dialog>
                   </div>
-                );
-              })}
+                </TabsContent>
+              ))}
+            </Tabs>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">No items found for this restaurant</p>
             </div>
           )}
-        </>
-      )}
-
-      <Dialog open={isAddingMenuItem} onOpenChange={(open) => {
-        setIsAddingMenuItem(open);
-        if (!open) setSelectedCategoryForItem(null);
-      }}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add Menu Item</DialogTitle>
-          </DialogHeader>
-          {selectedCategoryForItem && (
-            <div className="mb-4">
-              <label className="text-sm font-medium mb-1 block">Category</label>
-              <select 
-                className="w-full px-3 py-2 border rounded-md"
-                value={selectedCategoryForItem}
-                onChange={(e) => setSelectedCategoryForItem(e.target.value)}
-              >
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          <MenuItemForm 
-            onSubmit={(values) => selectedCategoryForItem && handleAddMenuItem(selectedCategoryForItem, values)}
-            isLoading={savingMenuItem}
-            restaurantId={restaurant.id}
-          />
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
     </div>
   );
 };
