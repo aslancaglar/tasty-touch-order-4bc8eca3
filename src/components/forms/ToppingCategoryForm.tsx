@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -10,24 +9,24 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ImageUpload from "@/components/ImageUpload";
 
-// Add new Zod field for conditional category showing
 const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
   description: z.string().optional(),
   icon: z.string().optional(),
   min_selections: z.coerce.number().min(0, "Must be 0 or greater"),
   max_selections: z.coerce.number().min(0, "Must be 0 or greater"),
-  show_if_category_id: z.string().optional(), // New field: conditionally show this category if this one is selected
+  show_if_selection_id: z.string().optional(),
+  show_if_selection_type: z.enum(["category", "topping", ""]).optional(),
 });
 
 type ToppingCategoryFormValues = z.infer<typeof toppingCategorySchema>;
 
-// Accept toppingCategories for the dropdown
 interface ToppingCategoryFormProps {
-  onSubmit: (values: ToppingCategoryFormValues) => void;
-  initialValues?: Partial<ToppingCategoryFormValues>;
+  onSubmit: (values: any) => void;
+  initialValues?: Partial<z.infer<typeof toppingCategorySchema>>;
   isLoading?: boolean;
-  toppingCategories?: { id: string; name: string }[]; // for conditional logic dropdown
+  toppingCategories?: { id: string; name: string }[];
+  toppingsByCategory?: Record<string, {id: string, name: string}[]>;
 }
 
 const ToppingCategoryForm = ({
@@ -35,8 +34,9 @@ const ToppingCategoryForm = ({
   initialValues,
   isLoading = false,
   toppingCategories = [],
+  toppingsByCategory = {},
 }: ToppingCategoryFormProps) => {
-  const form = useForm<ToppingCategoryFormValues>({
+  const form = useForm<z.infer<typeof toppingCategorySchema>>({
     resolver: zodResolver(toppingCategorySchema),
     defaultValues: {
       name: initialValues?.name || "",
@@ -44,12 +44,47 @@ const ToppingCategoryForm = ({
       icon: initialValues?.icon || "",
       min_selections: initialValues?.min_selections ?? 0,
       max_selections: initialValues?.max_selections ?? 0,
-      show_if_category_id: initialValues?.show_if_category_id || "",
+      show_if_selection_id: initialValues?.show_if_selection_id || "",
+      show_if_selection_type: initialValues?.show_if_selection_type || "",
     },
   });
 
-  const handleSubmit = (values: ToppingCategoryFormValues) => {
+  const handleSubmit = (values: z.infer<typeof toppingCategorySchema>) => {
+    if (!values.show_if_selection_id) {
+      values.show_if_selection_id = "";
+      values.show_if_selection_type = "";
+    }
     onSubmit(values);
+  };
+
+  const dropdownOptions = [
+    { type: "category", id: "", label: "(Always show this category)" },
+    ...toppingCategories.map(cat => ({
+      type: "category" as const,
+      id: cat.id,
+      label: `Category: ${cat.name}`,
+    })),
+    ...Object.entries(toppingsByCategory).flatMap(([catId, tops]) =>
+      tops.map(top => ({
+        type: "topping" as const,
+        id: top.id,
+        label: `Topping: ${top.name} (in ${toppingCategories.find(tc => tc.id === catId)?.name || "category"})`
+      }))
+    )
+  ];
+
+  const fieldWatch = form.watch(["show_if_selection_type", "show_if_selection_id"]);
+
+  const handleConditionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (!value) {
+      form.setValue("show_if_selection_id", "");
+      form.setValue("show_if_selection_type", "");
+      return;
+    }
+    const [type, id] = value.split("|");
+    form.setValue("show_if_selection_type", type as "category" | "topping");
+    form.setValue("show_if_selection_id", id);
   };
 
   return (
@@ -68,7 +103,6 @@ const ToppingCategoryForm = ({
             </FormItem>
           )}
         />
-        
         <FormField
           control={form.control}
           name="description"
@@ -87,41 +121,28 @@ const ToppingCategoryForm = ({
             </FormItem>
           )}
         />
-
-        <FormField
-          control={form.control}
-          name="show_if_category_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Show this category IF user selected:</FormLabel>
-              <FormControl>
-                <select
-                  className="w-full px-3 py-2 border rounded-md"
-                  {...field}
-                  value={field.value || ""}
-                >
-                  <option value="">(Always show this category)</option>
-                  {toppingCategories
-                    // Don't allow self referential option in edit!
-                    .filter(cat =>
-                      !initialValues?.name ||
-                      cat.name !== initialValues.name
-                    )
-                    .map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                </select>
-              </FormControl>
-              <FormMessage />
-              <div className="text-xs text-muted-foreground mt-1">
-                This category will only be displayed to the user if they have selected the specified other toppings category. Leave blank to always show.
-              </div>
-            </FormItem>
-          )}
-        />
-
+        <FormItem>
+          <FormLabel>Show this category IF user selected:</FormLabel>
+          <FormControl>
+            <select
+              className="w-full px-3 py-2 border rounded-md"
+              onChange={handleConditionChange}
+              value={form.getValues("show_if_selection_id") && form.getValues("show_if_selection_type")
+                ? `${form.getValues("show_if_selection_type")}|${form.getValues("show_if_selection_id")}`
+                : ""}
+            >
+              {dropdownOptions.map(opt => (
+                <option key={(opt.type === "category" && !opt.id) ? "default" : `${opt.type}|${opt.id}`} value={opt.id ? `${opt.type}|${opt.id}` : ""}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </FormControl>
+          <FormMessage />
+          <div className="text-xs text-muted-foreground mt-1">
+            This category will only be displayed if the user has selected the specified other toppings category or specific topping. Leave blank to always show.
+          </div>
+        </FormItem>
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -145,7 +166,6 @@ const ToppingCategoryForm = ({
               </FormItem>
             )}
           />
-          
           <FormField
             control={form.control}
             name="max_selections"
@@ -169,7 +189,6 @@ const ToppingCategoryForm = ({
             )}
           />
         </div>
-        
         <Button type="submit" className="w-full bg-kiosk-primary" disabled={isLoading}>
           {isLoading ? (
             <>
