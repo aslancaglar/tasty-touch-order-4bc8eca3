@@ -674,78 +674,7 @@ const KioskView = () => {
                 </div>
               )}
 
-              {/* ---------------------------------------------------------- */}
-              {/* HOOK: getVisibleToppingCategories */}
-              {/* ---------------------------------------------------------- */}
-              function getVisibleToppingCategories(
-                allToppingCategories: any[] | undefined,
-                selectedOptions: { optionId: string; choiceIds: string[]; }[]
-              ) {
-                if (!allToppingCategories) return [];
-
-                // Find the main conditional category by name
-                const mainCategory = allToppingCategories.find(
-                  (cat) =>
-                    typeof cat.name === "string" &&
-                    cat.name.trim().toLowerCase() === "simple - with fries - menu"
-                );
-                // Get the selected option inside the main category
-                let selectedChoice: string | null = null;
-                if (mainCategory) {
-                  // Find the selection for this category among topping selections
-                  const selectedCat = selectedToppings.find(
-                    (t) => t.categoryId === mainCategory.id
-                  );
-
-                  // If there are toppings selected in the main category, map to their names
-                  if (selectedCat && selectedCat.toppingIds.length > 0) {
-                    const matchedToppings = mainCategory.toppings.filter((t) =>
-                      selectedCat.toppingIds.includes(t.id)
-                    );
-                    if (matchedToppings.length > 0) {
-                      // Take the name of the first selected topping (assuming single-selection for logic)
-                      selectedChoice = matchedToppings[0].name?.toLowerCase();
-                    }
-                  }
-                }
-
-                // Now, build the visible categories list
-                return allToppingCategories.filter((category) => {
-                  // Always show the main category
-                  if (
-                    category.name?.toLowerCase() === "simple - with fries - menu"
-                  ) {
-                    return true;
-                  }
-                  // Show Free drink/side dish only if selectedChoice === 'menu'
-                  if (
-                    category.name?.toLowerCase() === "free drink or side dish"
-                  ) {
-                    return selectedChoice === "menu";
-                  }
-                  // Show Paid drink/side dish only if selectedChoice === 'simple'
-                  if (
-                    category.name?.toLowerCase() === "paid drink or side dish"
-                  ) {
-                    return selectedChoice === "simple";
-                  }
-                  // Hide these categories if 'with fries' or no selection
-                  if (
-                    ["free drink or side dish", "paid drink or side dish"].includes(
-                      category.name?.toLowerCase() || ""
-                    )
-                  ) {
-                    return false;
-                  }
-                  // Show all other categories (if any)
-                  return true;
-                });
-              }
-
-              {getVisibleToppingCategories(
-                selectedItem.toppingCategories,
-                selectedOptions
-              ).map(category => (
+              {selectedItem.toppingCategories && selectedItem.toppingCategories.map(category => (
                 <div key={category.id} className="space-y-3">
                   <div className="font-medium flex items-center">
                     {category.name} 
@@ -793,4 +722,24 @@ const KioskView = () => {
                     <MinusCircle className="h-4 w-4" />
                   </Button>
                   <span className="font-medium text-lg">{quantity}</span>
-                  <Button variant="outline" size="icon" onClick={() => setQuantity
+                  <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <div className="w-full">
+                <Button className="w-full bg-kiosk-primary" onClick={handleAddToCart}>
+                  Ajouter au panier - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>}
+    </div>
+  );
+};
+
+export default KioskView;
