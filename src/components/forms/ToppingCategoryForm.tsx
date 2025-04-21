@@ -16,6 +16,8 @@ const toppingCategorySchema = z.object({
   icon: z.string().optional(),
   min_selections: z.coerce.number().min(0, "Must be 0 or greater"),
   max_selections: z.coerce.number().min(0, "Must be 0 or greater"),
+  // New: allow the array of option names or IDs
+  show_if_selection_type: z.array(z.string()).optional(),
 });
 
 type ToppingCategoryFormValues = z.infer<typeof toppingCategorySchema>;
@@ -26,6 +28,13 @@ interface ToppingCategoryFormProps {
   isLoading?: boolean;
 }
 
+const AVAILABLE_SELECTIONS = [
+  // This can be dynamic but for demo, hardcode
+  { value: "simple", label: "Simple" },
+  { value: "menu", label: "Menu" },
+  { value: "with fries", label: "With fries" },
+];
+
 const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: ToppingCategoryFormProps) => {
   const form = useForm<ToppingCategoryFormValues>({
     resolver: zodResolver(toppingCategorySchema),
@@ -35,6 +44,7 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
       icon: initialValues?.icon || "",
       min_selections: initialValues?.min_selections ?? 0,
       max_selections: initialValues?.max_selections ?? 0,
+      show_if_selection_type: initialValues?.show_if_selection_type ?? [],
     },
   });
 
@@ -58,7 +68,6 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
             </FormItem>
           )}
         />
-        
         <FormField
           control={form.control}
           name="description"
@@ -68,8 +77,8 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
               <FormControl>
                 <Textarea 
                   placeholder="Describe this topping category..." 
-                  className="resize-none" 
-                  {...field} 
+                  className="resize-none"
+                  {...field}
                   value={field.value || ""}
                 />
               </FormControl>
@@ -77,7 +86,42 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
             </FormItem>
           )}
         />
-        
+        {/* --- Conditional display fields --- */}
+        <FormField
+          control={form.control}
+          name="show_if_selection_type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Show this category only if one or more options are selected
+              </FormLabel>
+              <FormControl>
+                <select
+                  multiple
+                  className="w-full border rounded p-2"
+                  value={field.value || []}
+                  onChange={e => {
+                    const selected = Array.from(e.target.selectedOptions).map(
+                      option => option.value
+                    );
+                    field.onChange(selected);
+                  }}
+                >
+                  {AVAILABLE_SELECTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </FormControl>
+              <FormMessage />
+              <span className="text-xs text-muted-foreground">
+                Leave empty to always show this category. Hold Ctrl/Command to select multiple.
+              </span>
+            </FormItem>
+          )}
+        />
+        {/* --- End conditional display fields --- */}
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -101,7 +145,6 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
               </FormItem>
             )}
           />
-          
           <FormField
             control={form.control}
             name="max_selections"
@@ -125,7 +168,6 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
             )}
           />
         </div>
-        
         <Button type="submit" className="w-full bg-kiosk-primary" disabled={isLoading}>
           {isLoading ? (
             <>
@@ -142,3 +184,4 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
 };
 
 export default ToppingCategoryForm;
+
