@@ -14,6 +14,21 @@ import { Plus, Pencil, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import SortableCategory from "./SortableCategory";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -75,6 +90,13 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
 
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   useEffect(() => {
     fetchCategories();
   }, [restaurant.id]);
@@ -89,7 +111,7 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
         .from('topping_categories')
         .select('*')
         .eq('restaurant_id', restaurant.id)
-        .order('created_at', { ascending: true });
+        .order('display_order', { ascending: true });
 
       if (error) throw error;
 
@@ -343,6 +365,50 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
     }
   };
 
+  const handleToppingCategoryDragEnd = async (event: any) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      setCategories((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        const newCategories = arrayMove(items, oldIndex, newIndex);
+        
+        // Update the order in the database
+        handleUpdateToppingCategoryOrder(newCategories);
+        
+        return newCategories;
+      });
+    }
+  };
+
+  const handleUpdateToppingCategoryOrder = async (orderedCategories: ToppingCategory[]) => {
+    try {
+      const updates = orderedCategories.map((category, index) => ({
+        id: category.id,
+        display_order: index
+      }));
+
+      const { error } = await supabase
+        .from('topping_categories')
+        .upsert(updates);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Category order updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating category order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update category order",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -357,44 +423,37 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
         Ajouter une catégorie
       </Button>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((category) => (
-          <div
-            key={category.id}
-            className={`border rounded-md p-4 cursor-pointer ${selectedCategory?.id === category.id ? 'border-kiosk-primary' : 'border-gray-200'}`}
-            onClick={() => setSelectedCategory(category)}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleToppingCategoryDragEnd}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SortableContext
+            items={categories}
+            strategy={verticalListSortingStrategy}
           >
-            <h3 className="font-medium">{category.name}</h3>
-            <p className="text-sm text-muted-foreground">{category.description || "Aucune description"}</p>
-            <div className="flex justify-end mt-2 space-x-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation();
+            {categories.map((category) => (
+              <SortableCategory
+                key={category.id}
+                category={category}
+                isSelected={selectedCategory?.id === category.id}
+                onSelect={() => setSelectedCategory(category)}
+                onEdit={() => {
                   setSelectedCategory(category);
                   setCategoryName(category.name);
                   setCategoryDescription(category.description || "");
                   setShowUpdateCategoryDialog(true);
                 }}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation();
+                onDelete={() => {
                   setSelectedCategoryToDelete(category);
                   setShowDeleteCategoryDialog(true);
                 }}
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
+              />
+            ))}
+          </SortableContext>
+        </div>
+      </DndContext>
 
       <Separator />
 

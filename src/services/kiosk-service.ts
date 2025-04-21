@@ -184,7 +184,8 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
   const { data: toppingCategoryRelations, error: relationsError } = await supabase
     .from("menu_item_topping_categories")
     .select("topping_category_id")
-    .eq("menu_item_id", id);
+    .eq("menu_item_id", id)
+    .order('display_order', { ascending: true });
 
   if (relationsError) {
     console.error("Error fetching menu item topping category relations:", relationsError);
@@ -676,4 +677,34 @@ export const getToppingsForRestaurant = async (restaurantId: string) => {
   );
 
   return categoriesWithToppings;
+};
+
+const handleUpdateMenuItemToppingCategoryOrder = async (menuItemId: string, orderedToppingCategories: string[]) => {
+  try {
+    // Get existing relations
+    const { data: existingRelations } = await supabase
+      .from('menu_item_topping_categories')
+      .select('*')
+      .eq('menu_item_id', menuItemId);
+    
+    if (!existingRelations) return;
+
+    // Create updates with new display_order values
+    const updates = orderedToppingCategories.map((categoryId, index) => ({
+      id: existingRelations.find(rel => rel.topping_category_id === categoryId)?.id,
+      menu_item_id: menuItemId,
+      topping_category_id: categoryId,
+      display_order: index
+    }));
+
+    // Update all relations with new order
+    const { error } = await supabase
+      .from('menu_item_topping_categories')
+      .upsert(updates);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error updating topping category order:', error);
+    throw error;
+  }
 };
