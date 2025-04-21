@@ -16,6 +16,7 @@ import OrderTypeSelection, { OrderType } from "@/components/kiosk/OrderTypeSelec
 import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
+import { UtensilsCrossed } from "lucide-react";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -705,17 +706,35 @@ const KioskView = () => {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-4">
-            
             <div className="space-y-1">
-              {categories.map(category => <button key={category.id} onClick={() => setActiveCategory(category.id)} className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${activeCategory === category.id ? 'bg-kiosk-primary text-white' : 'hover:bg-gray-100'}`}>
+              {categories.map(category => (
+                <button
+                  key={category.id}
+                  onClick={() => setActiveCategory(category.id)}
+                  className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${
+                    activeCategory === category.id ? 'bg-kiosk-primary text-white' : 'hover:bg-gray-100'
+                  }`}
+                >
                   <span className="mr-3">
-                    {getIconComponent(category.icon, {
-                  size: 20,
-                  className: activeCategory === category.id ? 'text-white' : 'text-kiosk-primary'
-                })}
+                    {category.icon ? (
+                      <img
+                        src={category.icon}
+                        alt={category.name}
+                        className={`w-5 h-5 object-cover rounded ${
+                          activeCategory === category.id ? 'brightness-0 invert' : ''
+                        }`}
+                      />
+                    ) : (
+                      <UtensilsCrossed
+                        className={`h-5 w-5 ${
+                          activeCategory === category.id ? 'text-white' : 'text-kiosk-primary'
+                        }`}
+                      />
+                    )}
                   </span>
                   <span className="font-medium">{category.name}</span>
-                </button>)}
+                </button>
+              ))}
             </div>
           </div>
         </div>
