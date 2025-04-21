@@ -572,18 +572,29 @@ export const getToppingCategoriesByRestaurantId = async (restaurantId: string): 
     throw error;
   }
 
-  return data;
+  return data.map((row: any) => ({
+    ...row,
+    show_if_selection_id: row.show_if_selection_id ?? [],
+    show_if_selection_type: row.show_if_selection_type ?? [],
+  }));
 };
 
 export const updateToppingCategory = async (id: string, updates: Partial<Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<ToppingCategory> => {
   console.log("Updating topping category:", id, "with data:", updates);
-  
-  // Filter out conditional fields that aren't in the database yet
+
+  // Only pass the columns that exist in the db
   const { show_if_selection_id, show_if_selection_type, ...databaseUpdates } = updates;
-  
+
+  // pass arrays for show_if_selection_id/type (new columns)
+  const dbPayload = {
+    ...databaseUpdates,
+    show_if_selection_id: show_if_selection_id ?? [],
+    show_if_selection_type: show_if_selection_type ?? [],
+  };
+
   const { data, error } = await supabase
     .from("topping_categories")
-    .update(databaseUpdates)
+    .update(dbPayload)
     .eq("id", id)
     .select()
     .single();
@@ -593,24 +604,28 @@ export const updateToppingCategory = async (id: string, updates: Partial<Omit<To
     throw error;
   }
 
-  // Return the data with the conditionals as part of the response
-  // even though they're not saved to the database yet
   return {
     ...data,
-    show_if_selection_id: show_if_selection_id || null,
-    show_if_selection_type: show_if_selection_type || null
+    show_if_selection_id: show_if_selection_id ?? [],
+    show_if_selection_type: show_if_selection_type ?? []
   };
 };
 
 export const createToppingCategory = async (category: Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>): Promise<ToppingCategory> => {
   console.log("Creating topping category with data:", category);
-  
-  // Filter out conditional fields that aren't in the database yet
+
   const { show_if_selection_id, show_if_selection_type, ...databaseCategory } = category;
-  
+
+  // pass arrays for show_if_selection_id/type (new columns)
+  const dbPayload = {
+    ...databaseCategory,
+    show_if_selection_id: show_if_selection_id ?? [],
+    show_if_selection_type: show_if_selection_type ?? [],
+  };
+
   const { data, error } = await supabase
     .from("topping_categories")
-    .insert(databaseCategory)
+    .insert(dbPayload)
     .select()
     .single();
 
@@ -619,11 +634,10 @@ export const createToppingCategory = async (category: Omit<ToppingCategory, 'id'
     throw error;
   }
 
-  // Return the data with the conditionals as part of the response
   return {
     ...data,
-    show_if_selection_id: show_if_selection_id || null,
-    show_if_selection_type: show_if_selection_type || null
+    show_if_selection_id: show_if_selection_id ?? [],
+    show_if_selection_type: show_if_selection_type ?? []
   };
 };
 

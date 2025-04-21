@@ -115,8 +115,8 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         min_selections: values.min_selections || 0,
         max_selections: values.max_selections || 0,
         restaurant_id: restaurant.id,
-        show_if_selection_id: values.show_if_selection_id || null,
-        show_if_selection_type: values.show_if_selection_type || null,
+        show_if_selection_id: values.show_if_selection_id || [],
+        show_if_selection_type: values.show_if_selection_type || [],
       });
       setToppingCategories(prevCategories => [...prevCategories, newCategory]);
       toast({
@@ -145,8 +145,8 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         icon: values.icon || "cherry",
         min_selections: values.min_selections || 0,
         max_selections: values.max_selections || 0,
-        show_if_selection_id: values.show_if_selection_id || null,
-        show_if_selection_type: values.show_if_selection_type || null,
+        show_if_selection_id: values.show_if_selection_id || [],
+        show_if_selection_type: values.show_if_selection_type || [],
       });
       setToppingCategories(toppingCategories.map(cat => 
         cat.id === categoryId ? updatedCategory : cat
@@ -398,8 +398,8 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
                         icon: category.icon || "",
                         min_selections: category.min_selections || 0,
                         max_selections: category.max_selections || 0,
-                        show_if_selection_id: category.show_if_selection_id || "",
-                        show_if_selection_type: category.show_if_selection_type || "",
+                        show_if_selection_id: category.show_if_selection_id || [],
+                        show_if_selection_type: category.show_if_selection_type || [],
                       }}
                       isLoading={savingToppingCategory}
                       toppingCategories={simpleToppingCategories}
