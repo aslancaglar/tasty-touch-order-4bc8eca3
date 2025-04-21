@@ -524,14 +524,11 @@ const KioskView = () => {
     if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
       return true;
     }
-    
-    const allConditionsMet = category.show_if_selection_id.every(toppingId => {
-      return selectedToppings.some(catSelection => 
+    return category.show_if_selection_id.some(toppingId =>
+      selectedToppings.some(catSelection =>
         catSelection.toppingIds.includes(toppingId)
-      );
-    });
-    
-    return allConditionsMet;
+      )
+    );
   };
 
   if (loading && !restaurant) {
