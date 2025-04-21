@@ -156,36 +156,14 @@ export const deleteCategory = async (id: string): Promise<void> => {
 
 // Menu Item services
 export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuItem[]> => {
-  const { data: menuItems, error } = await supabase
-    .from("menu_items")
-    .select("*")
-    .eq("category_id", categoryId);
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('*')
+    .eq('category_id', categoryId)
+    .order('display_order', { ascending: true });
 
-  if (error) {
-    console.error("Error fetching menu items:", error);
-    throw error;
-  }
-
-  const menuItemsWithToppingCategories = await Promise.all(
-    menuItems.map(async (item) => {
-      const { data: toppingCategoryRelations, error: relationsError } = await supabase
-        .from("menu_item_topping_categories")
-        .select("topping_category_id")
-        .eq("menu_item_id", item.id);
-
-      if (relationsError) {
-        console.error("Error fetching menu item topping category relations:", relationsError);
-        return { ...item, topping_categories: [] };
-      }
-
-      return {
-        ...item,
-        topping_categories: toppingCategoryRelations.map(tc => tc.topping_category_id)
-      };
-    })
-  );
-
-  return menuItemsWithToppingCategories;
+  if (error) throw error;
+  return data;
 };
 
 export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
