@@ -292,6 +292,17 @@ const KioskView = () => {
         ...category,
         toppingIds: newToppingIds
       };
+      
+      setTimeout(() => {
+        if (selectedItem) {
+          const updatedItem = {...selectedItem};
+          setSelectedItem(null);
+          setTimeout(() => {
+            setSelectedItem(updatedItem);
+          }, 0);
+        }
+      }, 0);
+      
       return newToppings;
     });
   };
