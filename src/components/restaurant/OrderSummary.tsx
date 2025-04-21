@@ -259,7 +259,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       total: orderData.total,
       getFormattedOptions: orderData.getFormattedOptions,
       getFormattedToppings: orderData.getFormattedToppings,
-      uiLanguage, // <--- Pass current UI language!
+      uiLanguage
     });
   };
 
@@ -360,7 +360,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         orderType={orderType}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
-        uiLanguage={uiLanguage} {/* <--- Pass UI language here! */}
+        uiLanguage={uiLanguage}
       />
     </Dialog>
   );
