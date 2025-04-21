@@ -23,25 +23,38 @@ const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType, restaurantId }
   useEffect(() => {
     const fetchRequireTableSelection = async () => {
       if (!restaurantId) return;
-      const { data, error } = await supabase
-        .from("restaurant_print_config")
-        .select("require_table_selection")
-        .eq("restaurant_id", restaurantId)
-        .maybeSingle();
+      
+      try {
+        const { data, error } = await supabase
+          .from("restaurant_print_config")
+          .select("require_table_selection")
+          .eq("restaurant_id", restaurantId)
+          .maybeSingle();
 
-      if (!error && data) {
-        setRequireTableSelection(data.require_table_selection ?? true);
+        // Only set to false if we explicitly get data with require_table_selection set to false
+        if (!error && data) {
+          setRequireTableSelection(data.require_table_selection !== false);
+        }
+        
+        console.log("Table selection requirement:", data?.require_table_selection, "Setting to:", data?.require_table_selection !== false);
+      } catch (error) {
+        console.error("Error fetching table selection setting:", error);
       }
     };
+    
     fetchRequireTableSelection();
   }, [restaurantId]);
 
   const handleSelectDineIn = () => {
     setOrderType("dine-in");
-    if (requireTableSelection) {
-      setShowTableSelection(true);
-    } else {
+    
+    // If table selection is not required, directly select dine-in without table
+    if (!requireTableSelection) {
+      console.log("Table selection not required, bypassing table selection");
       onSelectOrderType("dine-in", undefined);
+    } else {
+      console.log("Table selection required, showing table selection modal");
+      setShowTableSelection(true);
     }
   };
 
@@ -93,4 +106,3 @@ const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType, restaurantId }
 };
 
 export default OrderTypeSelection;
-
