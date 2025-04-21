@@ -13,6 +13,39 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 
+const translations = {
+  fr: {
+    orderSummary: "RÉSUMÉ DE COMMANDE",
+    orderedItems: "ARTICLES COMMANDÉS",
+    totalHT: "Total HT:",
+    vat: "TVA:",
+    vatWithRate: "TVA (10%):",
+    totalTTC: "Total TTC:",
+    confirm: "CONFIRMER LA COMMANDE",
+    back: "Retour",
+  },
+  en: {
+    orderSummary: "ORDER SUMMARY",
+    orderedItems: "ORDERED ITEMS",
+    totalHT: "Subtotal:",
+    vat: "Tax:",
+    vatWithRate: "Tax (10%):",
+    totalTTC: "TOTAL:",
+    confirm: "CONFIRM ORDER",
+    back: "Back",
+  },
+  tr: {
+    orderSummary: "SİPARİŞ ÖZETİ",
+    orderedItems: "SİPARİŞ EDİLEN ÜRÜNLER",
+    totalHT: "Ara Toplam:",
+    vat: "KDV:",
+    vatWithRate: "KDV (10%):",
+    totalTTC: "TOPLAM:",
+    confirm: "SİPARİŞİ ONAYLA",
+    back: "Geri",
+  }
+};
+
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -30,6 +63,7 @@ interface OrderSummaryProps {
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
+  uiLanguage?: "fr" | "en" | "tr";
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -45,6 +79,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   restaurant = { name: "Restaurant" },
   orderType = null,
   tableNumber = null,
+  uiLanguage = "fr",
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
@@ -52,55 +87,46 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   
   const { total, subtotal, tax } = calculateCartTotals(cart);
 
+  const t = (key: keyof typeof translations["en"]) =>
+    translations[uiLanguage]?.[key] ?? translations.fr[key];
+
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
-    
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
         const { count } = await supabase
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('restaurant_id', restaurant.id);
-        
         setOrderNumber(((count || 0) + 1).toString());
       }
     };
-
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
 
-  const separatorLine = '-'.repeat(28);
-
   const handleConfirmOrder = async () => {
     onPlaceOrder();
-    
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
-        
         const { data: printConfig, error } = await supabase
           .from('restaurant_print_config')
           .select('api_key, configured_printers, browser_printing_enabled')
           .eq('restaurant_id', restaurant.id)
           .single();
-          
         if (error) {
           console.error("Error fetching print configuration:", error);
           return;
         }
-        
-        // Only enable browser printing on desktop devices (not mobile or tablet)
         const shouldUseBrowserPrinting = 
           !isMobile && 
           (printConfig === null || printConfig.browser_printing_enabled !== false);
-                                        
         if (shouldUseBrowserPrinting) {
           console.log("Using browser printing for receipt");
           toast({
             title: "Impression",
             description: "Préparation de l'impression du reçu..."
           });
-          
           setTimeout(() => {
             try {
               printReceipt('receipt-content');
@@ -122,14 +148,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             console.log("Browser printing disabled in restaurant settings");
           }
         }
-        
         if (printConfig?.api_key && printConfig?.configured_printers) {
           const printerArray = Array.isArray(printConfig.configured_printers) 
             ? printConfig.configured_printers 
             : [];
-            
           const printerIds = printerArray.map(id => String(id));
-            
           if (printerIds.length > 0) {
             await sendReceiptToPrintNode(
               printConfig.api_key,
@@ -178,17 +201,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   ) => {
     try {
       const receiptContent = generatePrintNodeReceipt(orderData);
-      
       const encodedContent = btoa(
         new TextEncoder().encode(receiptContent)
           .reduce((data, byte) => data + String.fromCharCode(byte), '')
       );
-      
       console.log("Sending receipt to PrintNode printers:", printerIds);
-      
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
-        
         const response = await fetch('https://api.printnode.com/printjobs', {
           method: 'POST',
           headers: {
@@ -203,7 +222,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             source: "Restaurant Kiosk"
           })
         });
-        
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`PrintNode API error: ${response.status}`, errorText);
@@ -251,12 +269,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <DialogTitle className="text-xl font-bold">RÉSUMÉ DE COMMANDE</DialogTitle>
+            <DialogTitle className="text-xl font-bold">{t("orderSummary")}</DialogTitle>
           </div>
         </DialogHeader>
         
         <div className="p-6">
-          <h3 className="font-bold text-lg mb-4">ARTICLES COMMANDÉS</h3>
+          <h3 className="font-bold text-lg mb-4">{t("orderedItems")}</h3>
           
           <div className="space-y-6 mb-6">
             {cart.map((item) => (
@@ -305,16 +323,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           
           <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
-              <span>Total HT:</span>
+              <span>{t("totalHT")}</span>
               <span>{subtotal.toFixed(2)} €</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>TVA (10%):</span>
+              <span>{uiLanguage === "fr" ? t("vatWithRate") : t("vat")}</span>
               <span>{tax.toFixed(2)} €</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
-              <span>Total TTC:</span>
+              <span>{t("totalTTC")}</span>
               <span>{total.toFixed(2)} €</span>
             </div>
           </div>
@@ -327,7 +345,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             disabled={placingOrder}
           >
             <Check className="mr-2 h-5 w-5" />
-            CONFIRMER LA COMMANDE
+            {t("confirm")}
           </Button>
         </div>
       </DialogContent>
@@ -346,3 +364,4 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 };
 
 export default OrderSummary;
+
