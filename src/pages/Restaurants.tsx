@@ -21,6 +21,24 @@ import ImageUpload from "@/components/ImageUpload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
+};
+
+function getCurrencySymbol(currency: string) {
+  const code = currency?.toUpperCase() || "EUR";
+  return CURRENCY_SYMBOLS[code] || code;
+}
+
 const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => void }) => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -185,6 +203,8 @@ const RestaurantCard = ({
   stats: RestaurantStats | undefined;
   loadingStats: boolean;
 }) => {
+  const currencySymbol = getCurrencySymbol(restaurant.currency || "EUR");
+  
   return (
     <Card className="overflow-hidden">
       <div className="h-40 w-full overflow-hidden">
@@ -214,7 +234,7 @@ const RestaurantCard = ({
               <Skeleton className="h-6 w-20" />
             ) : (
               <p className="font-medium">
-                €{stats?.revenue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
+                {currencySymbol}{stats?.revenue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
               </p>
             )}
           </div>
