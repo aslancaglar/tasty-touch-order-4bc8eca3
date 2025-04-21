@@ -51,7 +51,6 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
               <span>{item.quantity}x {item.menuItem.name}</span>
               <span>{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
             </div>
-            
             {(getFormattedOptions(item) || getFormattedToppings(item)) && (
               <div className="item-details text-xs">
                 {/* Options */}
@@ -61,17 +60,21 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                     <span></span>
                   </div>
                 ))}
-
-                {/* Grouped toppings by category */}
+                {/* Grouped toppings by category, show price if > 0 */}
                 {getGroupedToppings(item).map((group, groupIdx) => (
                   <div key={`${item.id}-cat-${groupIdx}`}>
                     <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
-                    {group.toppings.map((topping, topIdx) => (
-                      <div key={`${item.id}-cat-${groupIdx}-topping-${topIdx}`} className="item">
-                        <span style={{ paddingLeft: 6 }}>+ {topping}</span>
-                        <span></span>
-                      </div>
-                    ))}
+                    {group.toppings.map((topping, topIdx) => {
+                      const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                      const toppingRef = category?.toppings.find(t => t.name === topping);
+                      const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                      return (
+                        <div key={`${item.id}-cat-${groupIdx}-topping-${topIdx}`} className="item">
+                          <span style={{ paddingLeft: 6 }}>+ {topping}</span>
+                          <span>{price > 0 ? price.toFixed(2) + " €" : ""}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 ))}
               </div>

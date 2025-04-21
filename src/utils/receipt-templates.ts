@@ -46,6 +46,12 @@ const getGroupedToppings = (item: CartItem): GroupedToppings => {
   return groups;
 };
 
+const getToppingPrice = (item: CartItem, groupCategory: string, toppingName: string): number => {
+  const cat = item.menuItem.toppingCategories?.find(c => c.name === groupCategory);
+  const toppingObj = cat?.toppings.find(t => t.name === toppingName);
+  return toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
+};
+
 export const generateStandardReceipt = (data: ReceiptData): string => {
   const { 
     restaurant, 
@@ -111,7 +117,10 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     groupedToppings.forEach(group => {
       receipt += formatText(`  ${group.category}:`, ESCPOS.FONT_NORMAL) + addLineFeed();
       group.toppings.forEach(topping => {
-        receipt += formatText(`    + ${topping}`, ESCPOS.FONT_NORMAL) + addLineFeed();
+        const price = getToppingPrice(item, group.category, topping);
+        let line = `    + ${topping}`;
+        if (price > 0) line += ` (${price.toFixed(2)} EUR)`;
+        receipt += formatText(line, ESCPOS.FONT_NORMAL) + addLineFeed();
       });
     });
   });

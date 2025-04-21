@@ -271,22 +271,28 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 
                 {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
                   <div className="pl-6 space-y-1 text-sm text-gray-600">
+                    {/* Options */}
                     {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                       <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
                         <span>0.00 €</span>
                       </div>
                     ))}
-
+                    {/* Grouped toppings by category, show price if > 0 */}
                     {getGroupedToppings(item).map((group, groupIdx) => (
                       <div key={`${item.id}-cat-summary-${groupIdx}`}>
                         <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
-                        {group.toppings.map((topping, topIdx) => (
-                          <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                            <span style={{ paddingLeft: 6 }}>+ {topping}</span>
-                            <span>0.00 €</span>
-                          </div>
-                        ))}
+                        {group.toppings.map((toppingObj, topIdx) => {
+                          const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                          const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                          const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                          return (
+                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                              <span style={{ paddingLeft: 6 }}>+ {toppingObj}</span>
+                              <span>{price > 0 ? price.toFixed(2) + " €" : ""}</span>
+                            </div>
+                          )
+                        })}
                       </div>
                     ))}
                   </div>
