@@ -605,6 +605,8 @@ export type Database = {
           min_selections: number | null
           name: string
           restaurant_id: string
+          show_if_selection_id: string[] | null
+          show_if_selection_type: string[] | null
           updated_at: string
         }
         Insert: {
@@ -616,6 +618,8 @@ export type Database = {
           min_selections?: number | null
           name: string
           restaurant_id: string
+          show_if_selection_id?: string[] | null
+          show_if_selection_type?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -627,6 +631,8 @@ export type Database = {
           min_selections?: number | null
           name?: string
           restaurant_id?: string
+          show_if_selection_id?: string[] | null
+          show_if_selection_type?: string[] | null
           updated_at?: string
         }
         Relationships: [
