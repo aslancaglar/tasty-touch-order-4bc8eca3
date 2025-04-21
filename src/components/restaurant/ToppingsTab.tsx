@@ -384,16 +384,23 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
 
   const handleUpdateToppingCategoryOrder = async (orderedCategories: ToppingCategory[]) => {
     try {
+      // Create an array with only the necessary fields for the update
       const updates = orderedCategories.map((category, index) => ({
         id: category.id,
+        restaurant_id: restaurant.id,
+        name: category.name, // Include required fields
         display_order: index
       }));
 
-      const { error } = await supabase
-        .from('topping_categories')
-        .upsert(updates);
+      // Use .upsert() for each item individually to avoid the type error
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('topping_categories')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       toast({
         title: "Success",

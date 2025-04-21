@@ -679,7 +679,8 @@ export const getToppingsForRestaurant = async (restaurantId: string) => {
   return categoriesWithToppings;
 };
 
-const handleUpdateMenuItemToppingCategoryOrder = async (menuItemId: string, orderedToppingCategories: string[]) => {
+// Add or update this function to properly handle menu item topping category ordering
+export const updateMenuItemToppingCategoryOrder = async (menuItemId: string, orderedToppingCategories: string[]) => {
   try {
     // Get existing relations
     const { data: existingRelations } = await supabase
