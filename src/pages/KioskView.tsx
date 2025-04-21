@@ -26,7 +26,62 @@ type SelectedToppingCategory = {
 };
 
 const KioskView = () => {
-  // ... (rest of the code remains unchanged until Dialog section) ...
+  const [loading, setLoading] = useState(true);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [specialInstructions, setSpecialInstructions] = useState("");
+  const [selectedOptions, setSelectedOptions] = useState<{
+    optionId: string;
+    choiceIds: string[];
+  }[]>([]);
+  const [selectedToppings, setSelectedToppings] = useState<SelectedToppingCategory[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
+  const [orderType, setOrderType] = useState<OrderType | null>(null);
+  const [tableNumber, setTableNumber] = useState<string | null>(null);
+  const [toast, toastActions] = useToast();
+  const { slug } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchRestaurant = async () => {
+      const { data, error } = await getRestaurantBySlug(slug);
+      if (error) {
+        toast({
+          title: "Erreur",
+          description: "Le restaurant que vous recherchez n'existe pas.",
+          variant: "destructive"
+        });
+        return;
+      }
+      setRestaurant(data);
+      setLoading(false);
+    };
+
+    const fetchCategories = async () => {
+      const { data, error } = await getMenuForRestaurant(restaurant?.id || "");
+      if (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger le menu.",
+          variant: "destructive"
+        });
+        return;
+      }
+      setCategories(data);
+      setActiveCategory(data[0]?.id || null);
+    };
+
+    fetchRestaurant();
+    fetchCategories();
+  }, [slug, toast]);
 
   const handleSelectItem = async (item: MenuItem) => {
     try {
@@ -208,6 +263,34 @@ const KioskView = () => {
         return topping ? topping.name : "";
       });
     }).filter(Boolean).join(", ");
+  };
+
+  const shouldShowToppingCategory = (category: ToppingCategory): boolean => {
+    if (!category.show_if_selection_type || category.show_if_selection_type.length === 0) {
+      return true;
+    }
+
+    if (!selectedItem || !selectedItem.options) {
+      return false;
+    }
+
+    const selectedChoiceNames: string[] = [];
+    
+    selectedItem.options.forEach(option => {
+      const selectedOption = selectedOptions.find(o => o.optionId === option.id);
+      if (selectedOption) {
+        selectedOption.choiceIds.forEach(choiceId => {
+          const choice = option.choices.find(c => c.id === choiceId);
+          if (choice) {
+            selectedChoiceNames.push(choice.name.toLowerCase());
+          }
+        });
+      }
+    });
+
+    return category.show_if_selection_type.some(requiredType => 
+      selectedChoiceNames.includes(requiredType.toLowerCase())
+    );
   };
 
   const handleAddToCart = () => {
@@ -538,30 +621,12 @@ const KioskView = () => {
 
               {selectedItem.toppingCategories &&
                 selectedItem.toppingCategories
-                  .filter(category => {
-                    if (!category.show_if_selection_type || category.show_if_selection_type.length === 0) return true;
-
-                    const optionsGroup = selectedItem.options?.find(
-                      o => o.name.toLowerCase().includes("simple") && o.name.toLowerCase().includes("fries") && o.name.toLowerCase().includes("menu")
-                    );
-                    if (!optionsGroup) return false;
-
-                    const selectedGroup = selectedOptions.find(sel => sel.optionId === optionsGroup.id);
-                    if (!selectedGroup) return false;
-
-                    const selectedLabels = (optionsGroup.choices || [])
-                      .filter(choice => selectedGroup.choiceIds.includes(choice.id))
-                      .map(choice => (choice.name || "").toLowerCase());
-
-                    return category.show_if_selection_type.some(required =>
-                      selectedLabels.includes(required.toLowerCase())
-                    );
-                  })
+                  .filter(category => shouldShowToppingCategory(category))
                   .map(category => (
                     <div key={category.id} className="space-y-3">
                       <div className="font-medium flex items-center">
                         {category.name} 
-                        {category.required && <span className="text-red-500 ml-1">*</span>}
+                        {category.min_selections > 0 && <span className="text-red-500 ml-1">*</span>}
                         <span className="text-sm text-gray-500 ml-2">
                           {category.max_selections > 0 
                             ? `(Sélectionnez jusqu'à ${category.max_selections})` 
