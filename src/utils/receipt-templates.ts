@@ -1,4 +1,3 @@
-
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
 import currencyCodes from "currency-codes";
@@ -66,6 +65,7 @@ interface ReceiptData {
   getFormattedOptions?: (item: CartItem) => string;
   getFormattedToppings?: (item: CartItem) => string;
   uiLanguage?: "fr" | "en" | "tr";
+  useCurrencyCode?: boolean;
 }
 
 type GroupedToppings = Array<{
@@ -122,6 +122,11 @@ const getToppingPrice = (item: CartItem, groupCategory: string, toppingName: str
   return toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
 };
 
+const getCurrencyAbbreviation = (currencyCode: string) => {
+  const code = (currencyCode || "EUR").toUpperCase();
+  return code;
+};
+
 const getCurrencySymbol = (currencyCode: string) => {
   const code = (currencyCode || "EUR").toUpperCase();
   return CURRENCY_SYMBOLS[code] || code;
@@ -139,6 +144,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     total,
     getFormattedOptions = () => '',
     uiLanguage = "fr",
+    useCurrencyCode = false,
   } = data;
 
   const t = (k: keyof typeof translations["en"]) => {
@@ -150,7 +156,9 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   const vat = firstItem?.menuItem?.tax_percentage ?? 10;
   
   const currencyCode = restaurant?.currency || "EUR";
-  const currencySymbol = getCurrencySymbol(currencyCode);
+  const currencyDisplay = useCurrencyCode
+    ? getCurrencyAbbreviation(currencyCode)
+    : getCurrencySymbol(currencyCode);
 
   const now = new Date();
   const date = now.toLocaleDateString(uiLanguage === "en" ? "en-GB" : (uiLanguage === "tr" ? "tr-TR" : "fr-FR"), { 
@@ -188,7 +196,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   cart.forEach(item => {
     const itemPrice = parseFloat(item.itemPrice.toString()).toFixed(2);
     const itemText = `${item.quantity}x ${encodeSpecialChars(item.menuItem.name)}`;
-    const formattedPrice = `${itemPrice} ${currencySymbol}`;
+    const formattedPrice = `${itemPrice} ${currencyDisplay}`;
     const spaces = 48 - itemText.length - formattedPrice.length;
 
     receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + formattedPrice, ESCPOS.FONT_BOLD) + addLineFeed();
@@ -205,7 +213,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
         const price = getToppingPrice(item, group.category, topping);
         let line = `    + ${encodeSpecialChars(topping)}`;
         if (price > 0) {
-          const formattedToppingPrice = `${price.toFixed(2)} ${currencySymbol}`;
+          const formattedToppingPrice = `${price.toFixed(2)} ${currencyDisplay}`;
           line += ` (${formattedToppingPrice})`;
         }
         receipt += formatText(line, ESCPOS.FONT_NORMAL) + addLineFeed();
@@ -216,12 +224,12 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   receipt += createDivider(48) + addLineFeed();
 
   receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText(`${t("subtotal")}: ${subtotal.toFixed(2)} ${currencySymbol}`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(`${t("vat")}: ${tax.toFixed(2)} ${currencySymbol}`, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`${t("subtotal")}: ${subtotal.toFixed(2)} ${currencyDisplay}`, ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`${t("vat")}: ${tax.toFixed(2)} ${currencyDisplay}`, ESCPOS.FONT_NORMAL) + addLineFeed();
   receipt += createDivider(48) + addLineFeed();
 
   receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText(`${t("total")}: ${total.toFixed(2)} ${currencySymbol}`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed(2);
+  receipt += formatText(`${t("total")}: ${total.toFixed(2)} ${currencyDisplay}`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed(2);
 
   receipt += ESCPOS.ALIGN_CENTER;
   receipt += formatText(t("thanks"), ESCPOS.FONT_NORMAL) + addLineFeed();

@@ -252,7 +252,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     getFormattedOptions: (item: CartItem) => string;
     getFormattedToppings: (item: CartItem) => string;
   }): string => {
-    // Pass uiLanguage so PrintNode and print template are localized
+    // Pass uiLanguage and useCurrencyCode: true so PrintNode template is formatted accordingly
     return generateStandardReceipt({
       restaurant: orderData.restaurant,
       cart: orderData.cart,
@@ -264,7 +264,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       total: orderData.total,
       getFormattedOptions: orderData.getFormattedOptions,
       getFormattedToppings: orderData.getFormattedToppings,
-      uiLanguage
+      uiLanguage,
+      useCurrencyCode: true // <-- show ISO code for PrintNode
     });
   };
 

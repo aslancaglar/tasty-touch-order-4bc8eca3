@@ -29,7 +29,6 @@ function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
 
-// Add the missing translations object
 const translations = {
   fr: {
     orderSummary: "Résumé de la commande",
@@ -296,7 +295,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       total: orderData.total,
       getFormattedOptions: orderData.getFormattedOptions,
       getFormattedToppings: orderData.getFormattedToppings,
-      uiLanguage
+      uiLanguage,
+      useCurrencyCode: true
     });
   };
 
