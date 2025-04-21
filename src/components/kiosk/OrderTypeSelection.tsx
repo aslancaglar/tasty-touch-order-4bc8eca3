@@ -1,9 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import TableSelection from "./TableSelection";
+import { supabase } from "@/integrations/supabase/client";
 
 export type OrderType = "dine-in" | "takeaway" | null;
 
@@ -11,15 +12,36 @@ interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectOrderType: (type: OrderType, tableNumber?: string) => void;
+  restaurantId?: string;
 }
 
-const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType }: OrderTypeSelectionProps) => {
+const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType, restaurantId }: OrderTypeSelectionProps) => {
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [showTableSelection, setShowTableSelection] = useState(false);
+  const [requireTableSelection, setRequireTableSelection] = useState(true);
+
+  useEffect(() => {
+    const fetchRequireTableSelection = async () => {
+      if (!restaurantId) return;
+      const { data, error } = await supabase
+        .from("restaurant_print_config")
+        .select("require_table_selection")
+        .eq("restaurant_id", restaurantId)
+        .single();
+      if (!error && data) {
+        setRequireTableSelection(data.require_table_selection !== false);
+      }
+    };
+    fetchRequireTableSelection();
+  }, [restaurantId]);
 
   const handleSelectDineIn = () => {
     setOrderType("dine-in");
-    setShowTableSelection(true);
+    if (requireTableSelection) {
+      setShowTableSelection(true);
+    } else {
+      onSelectOrderType("dine-in", undefined);
+    }
   };
 
   const handleSelectTakeaway = () => {
@@ -60,7 +82,6 @@ const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType }: OrderTypeSel
           </div>
         </DialogContent>
       </Dialog>
-
       <TableSelection 
         isOpen={showTableSelection} 
         onClose={() => setShowTableSelection(false)}
@@ -71,3 +92,4 @@ const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType }: OrderTypeSel
 };
 
 export default OrderTypeSelection;
+

@@ -1,4 +1,3 @@
-
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
@@ -38,7 +37,9 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         {restaurant.location && <div>{restaurant.location}</div>}
         <div>{currentDate}</div>
         <div>Commande #{orderNumber}</div>
-        {orderType === "dine-in" && tableNumber && <div>Table: {tableNumber}</div>}
+        {orderType === "dine-in" && tableNumber && (
+          <div>Table: {tableNumber}</div>
+        )}
         {orderType === "takeaway" && <div>À Emporter</div>}
       </div>
 

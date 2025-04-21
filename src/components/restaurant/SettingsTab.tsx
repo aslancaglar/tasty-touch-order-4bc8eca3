@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +44,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [requireTableSelection, setRequireTableSelection] = useState(true);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -58,7 +58,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       try {
         const { data, error } = await supabase
           .from('restaurant_print_config')
-          .select('browser_printing_enabled')
+          .select('browser_printing_enabled, require_table_selection')
           .eq('restaurant_id', restaurant.id)
           .single();
           
@@ -69,7 +69,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         
         if (data) {
           setBrowserPrintEnabled(data.browser_printing_enabled !== false);
-          console.log("Browser printing enabled:", data.browser_printing_enabled !== false);
+          setRequireTableSelection(data.require_table_selection !== false);
         }
       } catch (error) {
         console.error("Error in fetchPrintSettings:", error);
@@ -79,7 +79,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     fetchPrintSettings();
   }, [restaurant.id]);
 
-  // Update state when restaurant prop changes
   useEffect(() => {
     setName(restaurant.name);
     setLocation(restaurant.location || "");
@@ -110,7 +109,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         description: "Restaurant information updated successfully",
       });
 
-      // Call the callback to update parent component state
       if (onRestaurantUpdated && updatedRestaurant) {
         onRestaurantUpdated(updatedRestaurant);
       }
@@ -137,7 +135,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         description: "Restaurant deleted successfully",
       });
       
-      // Redirect to restaurants page
       navigate("/restaurants");
     } catch (error) {
       console.error("Error deleting restaurant:", error);
@@ -154,7 +151,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     setIsSavingPrintSettings(true);
     
     try {
-      // Check if config exists for this restaurant
       const { data: existingConfig, error: checkError } = await supabase
         .from('restaurant_print_config')
         .select('id')
@@ -168,23 +164,21 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       let result;
       
       if (existingConfig) {
-        // Update existing config
         result = await supabase
           .from('restaurant_print_config')
-          .update({ browser_printing_enabled: browserPrintEnabled })
+          .update({ 
+            browser_printing_enabled: browserPrintEnabled,
+            require_table_selection: requireTableSelection,
+          })
           .eq('restaurant_id', restaurant.id);
-          
-        console.log("Updated browser printing setting:", browserPrintEnabled);
       } else {
-        // Create new config
         result = await supabase
           .from('restaurant_print_config')
           .insert({ 
             restaurant_id: restaurant.id,
-            browser_printing_enabled: browserPrintEnabled 
+            browser_printing_enabled: browserPrintEnabled,
+            require_table_selection: requireTableSelection,
           });
-          
-        console.log("Created new print config with browser printing:", browserPrintEnabled);
       }
       
       if (result.error) {
@@ -209,14 +203,11 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   const handleTestPrint = () => {
     if (browserPrintEnabled) {
-      // Generate a test receipt
       const testReceipt = document.getElementById("receipt-content");
       if (testReceipt) {
         console.log("Testing browser printing");
-        // Make it visible for printing
         testReceipt.style.display = "block";
         
-        // Print using browser
         try {
           printReceipt("receipt-content");
           
@@ -233,7 +224,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
           });
         }
         
-        // Hide it again after printing
         setTimeout(() => {
           testReceipt.style.display = "none";
         }, 500);
@@ -385,13 +375,24 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                   onCheckedChange={setBrowserPrintEnabled}
                 />
               </div>
-              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="require-table-selection">Sélection de table obligatoire pour "Sur place"</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Si désactivé, la sélection de table ne sera pas proposée à la commande.
+                  </p>
+                </div>
+                <Switch
+                  id="require-table-selection"
+                  checked={requireTableSelection}
+                  onCheckedChange={setRequireTableSelection}
+                />
+              </div>
               <div className="flex justify-between">
                 <Button onClick={handleTestPrint} className="bg-kiosk-primary">
                   <Printer className="mr-2 h-4 w-4" />
                   Tester l'Impression Navigateur
                 </Button>
-                
                 <Button 
                   onClick={handleSavePrintSettings} 
                   className="bg-green-600 hover:bg-green-700"

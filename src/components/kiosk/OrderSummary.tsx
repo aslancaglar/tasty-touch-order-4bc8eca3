@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -47,6 +46,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   tableNumber = null,
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
+  const [requireTableSelection, setRequireTableSelection] = useState(true);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -67,6 +67,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
 
     fetchOrderCount();
+
+    const fetchRequireTableSelection = async () => {
+      if (!restaurant?.id) return;
+      const { data, error } = await supabase
+        .from('restaurant_print_config')
+        .select('require_table_selection')
+        .eq('restaurant_id', restaurant.id)
+        .single();
+      if (!error && data) {
+        setRequireTableSelection(data.require_table_selection !== false);
+      } else {
+        setRequireTableSelection(true); // default to true if not found
+      }
+    };
+    fetchRequireTableSelection();
   }, [restaurant?.id, isMobile]);
 
   const separatorLine = '-'.repeat(28);
@@ -323,6 +338,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <Check className="mr-2 h-5 w-5" />
             CONFIRMER LA COMMANDE
           </Button>
+          {orderType === "dine-in" && requireTableSelection && tableNumber && (
+            <div className="mt-2 text-center text-sm text-gray-600">
+              Table: {tableNumber}
+            </div>
+          )}
         </div>
       </DialogContent>
 
@@ -330,7 +350,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         restaurant={restaurant}
         cart={cart}
         orderNumber={orderNumber}
-        tableNumber={tableNumber}
+        tableNumber={requireTableSelection ? tableNumber : undefined}
         orderType={orderType}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
