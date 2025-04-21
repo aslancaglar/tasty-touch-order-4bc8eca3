@@ -139,7 +139,9 @@ const KioskView = () => {
           return {
             ...category,
             toppings: [],
-            required: category.min_selections ? category.min_selections > 0 : false
+            required: category.min_selections ? category.min_selections > 0 : false,
+            show_if_selection_id: Array.isArray(category.show_if_selection_id) ? category.show_if_selection_id : [],
+            show_if_selection_type: Array.isArray(category.show_if_selection_type) ? category.show_if_selection_type : []
           };
         }
         return {
@@ -153,7 +155,9 @@ const KioskView = () => {
             created_at: topping.created_at,
             updated_at: topping.updated_at
           })),
-          required: category.min_selections ? category.min_selections > 0 : false
+          required: category.min_selections ? category.min_selections > 0 : false,
+          show_if_selection_id: Array.isArray(category.show_if_selection_id) ? category.show_if_selection_id : [],
+          show_if_selection_type: Array.isArray(category.show_if_selection_type) ? category.show_if_selection_type : []
         };
       }));
       return toppingCategoriesWithToppings;

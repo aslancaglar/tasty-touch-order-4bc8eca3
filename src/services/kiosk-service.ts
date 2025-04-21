@@ -574,22 +574,31 @@ export const getToppingCategoriesByRestaurantId = async (restaurantId: string): 
 
   return data.map((row: any) => ({
     ...row,
-    show_if_selection_id: row.show_if_selection_id ?? [],
-    show_if_selection_type: row.show_if_selection_type ?? [],
+    show_if_selection_id: Array.isArray(row.show_if_selection_id) ? row.show_if_selection_id : [],
+    show_if_selection_type: Array.isArray(row.show_if_selection_type) ? row.show_if_selection_type : [],
   }));
 };
 
 export const updateToppingCategory = async (id: string, updates: Partial<Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<ToppingCategory> => {
   console.log("Updating topping category:", id, "with data:", updates);
 
+  // Convert non-array values to arrays if needed
+  const show_if_selection_id = Array.isArray(updates.show_if_selection_id) 
+    ? updates.show_if_selection_id 
+    : (updates.show_if_selection_id ? [updates.show_if_selection_id] : []);
+    
+  const show_if_selection_type = Array.isArray(updates.show_if_selection_type) 
+    ? updates.show_if_selection_type 
+    : (updates.show_if_selection_type ? [updates.show_if_selection_type] : []);
+
   // Only pass the columns that exist in the db
-  const { show_if_selection_id, show_if_selection_type, ...databaseUpdates } = updates;
+  const { ...databaseUpdates } = updates;
 
   // pass arrays for show_if_selection_id/type (new columns)
   const dbPayload = {
     ...databaseUpdates,
-    show_if_selection_id: show_if_selection_id ?? [],
-    show_if_selection_type: show_if_selection_type ?? [],
+    show_if_selection_id,
+    show_if_selection_type,
   };
 
   const { data, error } = await supabase
@@ -606,21 +615,31 @@ export const updateToppingCategory = async (id: string, updates: Partial<Omit<To
 
   return {
     ...data,
-    show_if_selection_id: show_if_selection_id ?? [],
-    show_if_selection_type: show_if_selection_type ?? []
+    show_if_selection_id: Array.isArray(data.show_if_selection_id) ? data.show_if_selection_id : [],
+    show_if_selection_type: Array.isArray(data.show_if_selection_type) ? data.show_if_selection_type : []
   };
 };
 
 export const createToppingCategory = async (category: Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>): Promise<ToppingCategory> => {
   console.log("Creating topping category with data:", category);
 
-  const { show_if_selection_id, show_if_selection_type, ...databaseCategory } = category;
+  // Convert non-array values to arrays if needed
+  const show_if_selection_id = Array.isArray(category.show_if_selection_id) 
+    ? category.show_if_selection_id 
+    : (category.show_if_selection_id ? [category.show_if_selection_id] : []);
+    
+  const show_if_selection_type = Array.isArray(category.show_if_selection_type) 
+    ? category.show_if_selection_type 
+    : (category.show_if_selection_type ? [category.show_if_selection_type] : []);
 
-  // pass arrays for show_if_selection_id/type (new columns)
+  // Extract the rest without modifying
+  const { ...databaseCategory } = category;
+
+  // Construct payload with proper array types
   const dbPayload = {
     ...databaseCategory,
-    show_if_selection_id: show_if_selection_id ?? [],
-    show_if_selection_type: show_if_selection_type ?? [],
+    show_if_selection_id,
+    show_if_selection_type,
   };
 
   const { data, error } = await supabase
@@ -636,8 +655,8 @@ export const createToppingCategory = async (category: Omit<ToppingCategory, 'id'
 
   return {
     ...data,
-    show_if_selection_id: show_if_selection_id ?? [],
-    show_if_selection_type: show_if_selection_type ?? []
+    show_if_selection_id: Array.isArray(data.show_if_selection_id) ? data.show_if_selection_id : [],
+    show_if_selection_type: Array.isArray(data.show_if_selection_type) ? data.show_if_selection_type : []
   };
 };
 

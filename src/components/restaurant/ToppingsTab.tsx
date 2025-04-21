@@ -108,6 +108,15 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
     try {
       setSavingToppingCategory(true);
       if (!restaurant?.id) throw new Error("Restaurant ID is missing");
+      
+      const show_if_selection_id = Array.isArray(values.show_if_selection_id) 
+        ? values.show_if_selection_id 
+        : [];
+        
+      const show_if_selection_type = Array.isArray(values.show_if_selection_type) 
+        ? values.show_if_selection_type 
+        : [];
+      
       const newCategory = await createToppingCategory({
         name: values.name,
         description: values.description || null,
@@ -115,9 +124,10 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         min_selections: values.min_selections || 0,
         max_selections: values.max_selections || 0,
         restaurant_id: restaurant.id,
-        show_if_selection_id: values.show_if_selection_id || [],
-        show_if_selection_type: values.show_if_selection_type || [],
+        show_if_selection_id,
+        show_if_selection_type,
       });
+      
       setToppingCategories(prevCategories => [...prevCategories, newCategory]);
       toast({
         title: "Topping Category Added",
@@ -139,18 +149,29 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
   const handleEditToppingCategory = async (categoryId: string, values: any) => {
     try {
       setSavingToppingCategory(true);
+      
+      const show_if_selection_id = Array.isArray(values.show_if_selection_id) 
+        ? values.show_if_selection_id 
+        : [];
+        
+      const show_if_selection_type = Array.isArray(values.show_if_selection_type) 
+        ? values.show_if_selection_type 
+        : [];
+      
       const updatedCategory = await updateToppingCategory(categoryId, {
         name: values.name,
         description: values.description || null,
         icon: values.icon || "cherry",
         min_selections: values.min_selections || 0,
         max_selections: values.max_selections || 0,
-        show_if_selection_id: values.show_if_selection_id || [],
-        show_if_selection_type: values.show_if_selection_type || [],
+        show_if_selection_id,
+        show_if_selection_type,
       });
+      
       setToppingCategories(toppingCategories.map(cat => 
         cat.id === categoryId ? updatedCategory : cat
       ));
+      
       toast({
         title: "Topping Category Updated",
         description: `${values.name} has been updated.`,
