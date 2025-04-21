@@ -52,7 +52,9 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
 
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
@@ -140,14 +142,7 @@ const KioskView = () => {
             min_selections: category.min_selections || 0,
             max_selections: category.max_selections || 0,
             required: category.min_selections ? category.min_selections > 0 : false,
-            toppings: [],
-            restaurant_id: category.restaurant_id,
-            description: category.description,
-            icon: category.icon,
-            created_at: category.created_at,
-            updated_at: category.updated_at,
-            show_if_selection_type: category.show_if_selection_type,
-            show_if_selection_id: category.show_if_selection_id
+            toppings: []
           };
         }
         return {
@@ -161,14 +156,7 @@ const KioskView = () => {
             name: topping.name,
             price: topping.price,
             tax_percentage: topping.tax_percentage || 0
-          })),
-          restaurant_id: category.restaurant_id,
-          description: category.description,
-          icon: category.icon,
-          created_at: category.created_at,
-          updated_at: category.updated_at,
-          show_if_selection_type: category.show_if_selection_type,
-          show_if_selection_id: category.show_if_selection_id
+          }))
         };
       }));
       return toppingCategoriesWithToppings;
@@ -512,33 +500,6 @@ const KioskView = () => {
 
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
-  };
-
-  const shouldShowToppingCategory = (category: ToppingCategory): boolean => {
-    if (!category.show_if_selection_type || !category.show_if_selection_id || 
-        category.show_if_selection_type.length === 0 || 
-        category.show_if_selection_id.length === 0) {
-      return true;
-    }
-
-    for (let i = 0; i < category.show_if_selection_type.length; i++) {
-      const type = category.show_if_selection_type[i];
-      const id = category.show_if_selection_id[i];
-
-      if (type === 'topping') {
-        const isSelected = selectedToppings.some(selectedCategory => 
-          selectedCategory.toppingIds.includes(id)
-        );
-        if (isSelected) return true;
-      } else if (type === 'option') {
-        const isSelected = selectedOptions.some(selectedOption => 
-          selectedOption.choiceIds.includes(id)
-        );
-        if (isSelected) return true;
-      }
-    }
-
-    return false;
   };
 
   if (loading && !restaurant) {
