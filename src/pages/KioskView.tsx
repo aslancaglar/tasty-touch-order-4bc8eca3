@@ -730,7 +730,14 @@ const KioskView = () => {
         </div>
       </div>
 
-      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} />}
+      {!isCartOpen && !cartIsEmpty && (
+        <CartButton
+          itemCount={cartItemCount}
+          total={calculateCartTotal()}
+          onClick={toggleCart}
+          uiLanguage={uiLanguage}
+        />
+      )}
 
       <Cart 
         cart={cart} 

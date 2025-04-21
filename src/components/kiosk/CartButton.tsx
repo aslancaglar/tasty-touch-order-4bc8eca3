@@ -7,15 +7,34 @@ interface CartButtonProps {
   itemCount: number;
   total: number;
   onClick: () => void;
+  uiLanguage?: "fr" | "en" | "tr";
 }
+
+const translations = {
+  fr: {
+    viewCart: "Voir le panier",
+    currency: "€"
+  },
+  en: {
+    viewCart: "View Cart",
+    currency: "€"
+  },
+  tr: {
+    viewCart: "Sepeti Görüntüle",
+    currency: "₺"
+  }
+};
 
 const CartButton: React.FC<CartButtonProps> = ({
   itemCount,
   total,
-  onClick
+  onClick,
+  uiLanguage = "fr"
 }) => {
   if (itemCount === 0) return null;
-  
+
+  const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
+
   return (
     <div className="fixed bottom-4 right-4 z-40">
       <Button 
@@ -25,10 +44,12 @@ const CartButton: React.FC<CartButtonProps> = ({
         <ShoppingCart className="h-6 w-6 mr-2" />
         <span className="font-bold">{itemCount}</span>
         <span className="mx-2">|</span>
-        <span className="font-bold">{total.toFixed(2)} €</span>
+        <span className="font-bold">{total.toFixed(2)} {t("currency")}</span>
+        <span className="ml-3 font-semibold">{t("viewCart")}</span>
       </Button>
     </div>
   );
 };
 
 export default CartButton;
+
