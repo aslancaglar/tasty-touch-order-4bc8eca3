@@ -4,8 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { getRestaurantTables } from "@/services/kiosk-service";
+import { getRestaurantTables, getRestaurantPrintConfig } from "@/services/kiosk-service";
 
+/**
+ * Props for TableSelection modal.
+ */
 interface TableSelectionProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,7 +19,9 @@ interface TableSelectionProps {
 const TableSelection = ({ isOpen, onClose, onSelect, restaurantId }: TableSelectionProps) => {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [tables, setTables] = useState<{ id: string; table_number: string }[]>([]);
+  const [tableSelectionEnabled, setTableSelectionEnabled] = useState(true);
 
+  // Fetch tables for the restaurant
   useEffect(() => {
     const fetchTables = async () => {
       if (!restaurantId) return;
@@ -30,11 +35,41 @@ const TableSelection = ({ isOpen, onClose, onSelect, restaurantId }: TableSelect
     if (isOpen && restaurantId) fetchTables();
   }, [isOpen, restaurantId]);
 
+  // Fetch table selection setting
+  useEffect(() => {
+    const fetchTableSelectionSetting = async () => {
+      if (!restaurantId) {
+        setTableSelectionEnabled(true);
+        return;
+      }
+      try {
+        const config = await getRestaurantPrintConfig(restaurantId);
+        setTableSelectionEnabled(config?.require_table_selection !== false);
+      } catch {
+        setTableSelectionEnabled(true);
+      }
+    };
+    if (isOpen && restaurantId) {
+      fetchTableSelectionSetting();
+    }
+  }, [isOpen, restaurantId]);
+
+  // If table selection becomes disabled while modal is open, close modal
+  useEffect(() => {
+    if (isOpen && !tableSelectionEnabled) {
+      onClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableSelectionEnabled, isOpen]);
+
   const handleConfirm = () => {
     if (selectedTable) {
       onSelect(selectedTable);
     }
   };
+
+  // Don't render if table selection feature is disabled
+  if (!tableSelectionEnabled) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
