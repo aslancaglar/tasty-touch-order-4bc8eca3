@@ -728,7 +728,7 @@ const KioskView = () => {
             <DialogFooter>
               <div className="w-full">
                 <Button className="w-full bg-kiosk-primary" onClick={handleAddToCart}>
-                  Ajouter - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
+                  Ajouter à la commande - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
                 </Button>
               </div>
             </DialogFooter>
