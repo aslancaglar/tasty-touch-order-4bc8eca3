@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -25,10 +26,11 @@ import {
   getToppingCategoriesByRestaurantId
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, ToppingCategory } from "@/types/database-types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const MenuPage = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -238,6 +240,7 @@ const MenuPage = () => {
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Add Menu Category</DialogTitle>
+                <DialogDescription>Create a new menu category for your restaurant.</DialogDescription>
               </DialogHeader>
               <CategoryForm 
                 onSubmit={handleAddCategory}
@@ -297,6 +300,7 @@ const MenuPage = () => {
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                       <DialogTitle>Add Menu Category</DialogTitle>
+                      <DialogDescription>Create a new menu category for your restaurant.</DialogDescription>
                     </DialogHeader>
                     <CategoryForm 
                       onSubmit={handleAddCategory}
@@ -378,6 +382,7 @@ const MenuPage = () => {
                                 <DialogContent className="sm:max-w-[425px]">
                                   <DialogHeader>
                                     <DialogTitle>Edit Menu Item</DialogTitle>
+                                    <DialogDescription>Make changes to this menu item.</DialogDescription>
                                   </DialogHeader>
                                   <MenuItemForm 
                                     onSubmit={(values) => {
@@ -407,13 +412,14 @@ const MenuPage = () => {
                             <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
                               <Button variant="ghost" className="w-full h-full flex items-center justify-center">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Add New Item to {category.name}
+                                Ajouter au panier
                               </Button>
                             </div>
                           </DialogTrigger>
                           <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
                               <DialogTitle>Add Menu Item</DialogTitle>
+                              <DialogDescription>Create a new menu item.</DialogDescription>
                             </DialogHeader>
                             <MenuItemForm 
                               onSubmit={(values) => {
