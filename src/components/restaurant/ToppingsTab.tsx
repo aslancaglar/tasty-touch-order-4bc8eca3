@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Pencil, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import ToppingForm from "@/components/forms/ToppingForm";
+import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -242,7 +242,7 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
     }
   };
 
-  const handleCreateTopping = async (formData: ToppingFormData) => {
+  const handleCreateTopping = async (formData: ToppingFormValues) => {
     try {
       setIsCreatingTopping(true);
       const { data: newTopping, error } = await supabase
@@ -279,7 +279,7 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
     }
   };
 
-  const handleUpdateTopping = async (toppingId: string, formData: ToppingFormData) => {
+  const handleUpdateTopping = async (toppingId: string, formData: ToppingFormValues) => {
     try {
       setIsUpdatingTopping(true);
       const { error } = await supabase
