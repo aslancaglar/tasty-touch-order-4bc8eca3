@@ -1,14 +1,17 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Checkbox } from "@/components/ui/checkbox";
 import ImageUpload from "@/components/ImageUpload";
+import { supabase } from "@/integrations/supabase/client";
+import { Topping } from "@/types/database-types";
 
 const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -21,12 +24,24 @@ const toppingCategorySchema = z.object({
 type ToppingCategoryFormValues = z.infer<typeof toppingCategorySchema>;
 
 interface ToppingCategoryFormProps {
-  onSubmit: (values: ToppingCategoryFormValues) => void;
-  initialValues?: Partial<ToppingCategoryFormValues>;
+  onSubmit: (values: ToppingCategoryFormValues & { conditionToppingIds: string[] }) => void;
+  initialValues?: Partial<ToppingCategoryFormValues> & { show_if_selection_id?: string[] | null };
   isLoading?: boolean;
+  restaurantId?: string;
 }
 
-const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: ToppingCategoryFormProps) => {
+const ToppingCategoryForm = ({ 
+  onSubmit, 
+  initialValues, 
+  isLoading = false,
+  restaurantId 
+}: ToppingCategoryFormProps) => {
+  const [toppings, setToppings] = useState<Topping[]>([]);
+  const [selectedToppings, setSelectedToppings] = useState<string[]>(
+    initialValues?.show_if_selection_id || []
+  );
+  const [loadingToppings, setLoadingToppings] = useState(false);
+
   const form = useForm<ToppingCategoryFormValues>({
     resolver: zodResolver(toppingCategorySchema),
     defaultValues: {
@@ -38,8 +53,65 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
     },
   });
 
+  useEffect(() => {
+    const fetchToppings = async () => {
+      if (!restaurantId) return;
+      
+      setLoadingToppings(true);
+      try {
+        // First get all topping categories for this restaurant
+        const { data: categories, error: categoriesError } = await supabase
+          .from('topping_categories')
+          .select('id')
+          .eq('restaurant_id', restaurantId);
+          
+        if (categoriesError) {
+          console.error('Error fetching topping categories:', categoriesError);
+          return;
+        }
+        
+        if (!categories || categories.length === 0) {
+          setLoadingToppings(false);
+          return;
+        }
+        
+        // Then get all toppings from these categories
+        const categoryIds = categories.map(cat => cat.id);
+        const { data, error } = await supabase
+          .from('toppings')
+          .select('*')
+          .in('category_id', categoryIds);
+          
+        if (error) {
+          console.error('Error fetching toppings:', error);
+        } else {
+          setToppings(data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching toppings:', error);
+      } finally {
+        setLoadingToppings(false);
+      }
+    };
+    
+    fetchToppings();
+  }, [restaurantId]);
+
   const handleSubmit = (values: ToppingCategoryFormValues) => {
-    onSubmit(values);
+    onSubmit({
+      ...values,
+      conditionToppingIds: selectedToppings
+    });
+  };
+
+  const handleToppingToggle = (toppingId: string) => {
+    setSelectedToppings(prev => {
+      if (prev.includes(toppingId)) {
+        return prev.filter(id => id !== toppingId);
+      } else {
+        return [...prev, toppingId];
+      }
+    });
   };
 
   return (
@@ -124,6 +196,41 @@ const ToppingCategoryForm = ({ onSubmit, initialValues, isLoading = false }: Top
               </FormItem>
             )}
           />
+        </div>
+        
+        {/* Condition Section */}
+        <div className="border rounded-md p-4">
+          <h3 className="text-lg font-medium mb-2">Conditions</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Show this category only if the user selects these toppings. Leave empty to always show.
+          </p>
+          
+          {loadingToppings ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="ml-2">Loading toppings...</span>
+            </div>
+          ) : toppings.length === 0 ? (
+            <p className="text-gray-500 italic">No toppings available</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {toppings.map(topping => (
+                <div 
+                  key={topping.id} 
+                  className={`flex items-center space-x-2 p-2 border rounded-md cursor-pointer hover:bg-gray-50 
+                    ${selectedToppings.includes(topping.id) ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200'}`}
+                  onClick={() => handleToppingToggle(topping.id)}
+                >
+                  <div className={`w-5 h-5 rounded-sm flex items-center justify-center 
+                    ${selectedToppings.includes(topping.id) ? 'bg-kiosk-primary text-white' : 'border border-gray-300'}`}
+                  >
+                    {selectedToppings.includes(topping.id) && <Check className="h-3 w-3" />}
+                  </div>
+                  <span className="text-sm">{topping.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         
         <Button type="submit" className="w-full bg-kiosk-primary" disabled={isLoading}>
