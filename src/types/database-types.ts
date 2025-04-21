@@ -1,3 +1,4 @@
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -64,6 +65,8 @@ export type ToppingCategory = {
   max_selections: number | null;
   created_at: string;
   updated_at: string;
+  show_if_selection_id?: string[] | null;
+  show_if_selection_type?: string[] | null;
 };
 
 export type Topping = {
@@ -128,6 +131,8 @@ export interface MenuItemWithOptions extends MenuItem {
     min_selections: number;
     max_selections: number;
     required: boolean;
+    show_if_selection_id?: string[];
+    show_if_selection_type?: string[];
     toppings: {
       id: string;
       name: string;

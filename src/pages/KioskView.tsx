@@ -142,6 +142,8 @@ const KioskView = () => {
             min_selections: category.min_selections || 0,
             max_selections: category.max_selections || 0,
             required: category.min_selections ? category.min_selections > 0 : false,
+            show_if_selection_id: category.show_if_selection_id || [],
+            show_if_selection_type: category.show_if_selection_type || [],
             toppings: []
           };
         }
@@ -151,6 +153,8 @@ const KioskView = () => {
           min_selections: category.min_selections || 0,
           max_selections: category.max_selections || 0,
           required: category.min_selections ? category.min_selections > 0 : false,
+          show_if_selection_id: category.show_if_selection_id || [],
+          show_if_selection_type: category.show_if_selection_type || [],
           toppings: toppings.map(topping => ({
             id: topping.id,
             name: topping.name,
