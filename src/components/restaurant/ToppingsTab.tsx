@@ -23,6 +23,24 @@ import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import ToppingForm from "@/components/forms/ToppingForm";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
+};
+
+function getCurrencySymbol(currency: string) {
+  const code = currency?.toUpperCase() || "EUR";
+  return CURRENCY_SYMBOLS[code] || code;
+}
+
 interface ToppingsTabProps {
   restaurant: Restaurant;
 }
@@ -320,6 +338,8 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
     }
   };
 
+  const currencySymbol = getCurrencySymbol(restaurant.currency || "EUR");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -551,7 +571,7 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
                           <div>
                             <p className="font-medium">{topping.name}</p>
                             <p className="text-sm font-medium text-muted-foreground">
-                              ${parseFloat(topping.price.toString()).toFixed(2)}
+                              {currencySymbol}{parseFloat(topping.price.toString()).toFixed(2)}
                             </p>
                           </div>
                           <div className="flex">

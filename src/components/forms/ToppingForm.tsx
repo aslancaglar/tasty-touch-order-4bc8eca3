@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -24,9 +23,15 @@ interface ToppingFormProps {
     price: string;
   };
   isLoading?: boolean;
+  currency?: string;
 }
 
-const ToppingForm = ({ onSubmit, initialValues, isLoading = false }: ToppingFormProps) => {
+const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "EUR" }: ToppingFormProps) => {
+  const currencySymbol = currency === "EUR" ? "€" : 
+                        currency === "USD" ? "$" : 
+                        currency === "GBP" ? "£" : 
+                        currency;
+
   const form = useForm<ToppingFormValues>({
     resolver: zodResolver(toppingSchema),
     defaultValues: {
@@ -61,7 +66,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false }: ToppingForm
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Prix (€)</FormLabel>
+              <FormLabel>Prix ({currencySymbol})</FormLabel>
               <FormControl>
                 <Input placeholder="0.75" {...field} />
               </FormControl>
