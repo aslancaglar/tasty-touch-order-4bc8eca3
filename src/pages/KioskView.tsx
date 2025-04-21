@@ -56,6 +56,24 @@ const KioskView = () => {
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
   const { toast } = useToast();
 
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    TRY: "₺",
+    JPY: "¥",
+    CAD: "$",
+    AUD: "$",
+    CHF: "Fr.",
+    CNY: "¥",
+    RUB: "₽"
+  };
+
+  const getCurrencySymbol = (currency: string) => {
+    const code = currency?.toUpperCase() || "EUR";
+    return CURRENCY_SYMBOLS[code] || code;
+  };
+
   const translations = {
     fr: {
       restaurantNotFound: "Restaurant introuvable",
@@ -716,7 +734,7 @@ const KioskView = () => {
                   <div className="p-4">
                     <div className="flex justify-between">
                       <h3 className="font-bold text-lg">{item.name}</h3>
-                      <p className="font-bold">{parseFloat(item.price.toString()).toFixed(2)} €</p>
+                      <p className="font-bold">{parseFloat(item.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</p>
                     </div>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                     <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
@@ -792,7 +810,7 @@ const KioskView = () => {
                             </div>
                             <span>{choice.name}</span>
                           </div>
-                          {choice.price && choice.price > 0 && <span>+{parseFloat(choice.price.toString()).toFixed(2)} €</span>}
+                          {choice.price && choice.price > 0 && <span>+{parseFloat(choice.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>}
                         </div>;
               })}
                   </div>
@@ -824,7 +842,7 @@ const KioskView = () => {
                           <span>{topping.name}</span>
                           <div className="flex items-center gap-2">
                             {topping.price > 0 && (
-                              <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} €</span>
+                              <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>
                             )}
                             <Button 
                               variant="outline" 
@@ -859,7 +877,7 @@ const KioskView = () => {
             <DialogFooter>
               <div className="w-full">
                 <Button className="w-full bg-kiosk-primary" onClick={handleAddToCart}>
-                  {t("addToCart")} - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} €
+                  {t("addToCart")} - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} {getCurrencySymbol(restaurant.currency)}
                 </Button>
               </div>
             </DialogFooter>
