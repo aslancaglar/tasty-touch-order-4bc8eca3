@@ -110,6 +110,7 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         min_selections: values.min_selections || 0,
         max_selections: values.max_selections || 0,
         restaurant_id: restaurant.id,
+        show_if_category_id: values.show_if_category_id || null,
       });
       setToppingCategories(prevCategories => [...prevCategories, newCategory]);
       toast({
@@ -138,6 +139,7 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         icon: values.icon || "cherry",
         min_selections: values.min_selections || 0,
         max_selections: values.max_selections || 0,
+        show_if_category_id: values.show_if_category_id || null,
       });
       setToppingCategories(toppingCategories.map(cat => 
         cat.id === categoryId ? updatedCategory : cat

@@ -1,3 +1,4 @@
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -64,6 +65,7 @@ export type ToppingCategory = {
   max_selections: number | null;
   created_at: string;
   updated_at: string;
+  show_if_category_id?: string | null; // Add this property to match the schema
 };
 
 export type Topping = {
