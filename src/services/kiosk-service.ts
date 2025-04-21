@@ -337,7 +337,10 @@ export const getMenuItemOptions = async (menuItemId: string): Promise<MenuItemOp
     throw error;
   }
 
-  return data;
+  return data.map(option => ({
+    ...option,
+    choices: [] // Initialize with empty choices array
+  }));
 };
 
 // Option Choices services
