@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
@@ -288,37 +287,32 @@ const KioskView = () => {
         if (selectedItem?.toppingCategories) {
           const toppingCategory = selectedItem.toppingCategories.find(c => c.id === categoryId);
           if (toppingCategory && toppingCategory.max_selections > 0) {
-            if (category.toppingIds.length >= toppingCategory.max_selections) {
+            // Special logic for max_selections === 1
+            if (toppingCategory.max_selections === 1) {
+              // Just select this one (replace any previous selection)
+              newToppingIds = [toppingId];
+            } else if (category.toppingIds.length >= toppingCategory.max_selections) {
+              // For max_selections > 1, show notification if limit exceeded
               toast({
                 title: "Nombre maximum de sélections atteint",
                 description: `Vous ne pouvez sélectionner que ${toppingCategory.max_selections} éléments dans cette catégorie.`
               });
               return prev;
+            } else {
+              newToppingIds = [...category.toppingIds, toppingId];
             }
+          } else {
+            newToppingIds = [...category.toppingIds, toppingId];
           }
+        } else {
+          newToppingIds = [...category.toppingIds, toppingId];
         }
-        newToppingIds = [...category.toppingIds, toppingId];
       }
       const newToppings = [...prev];
       newToppings[categoryIndex] = {
         ...category,
         toppingIds: newToppingIds
       };
-      
-      // Remove the code that causes the dialog to refresh
-      // This was causing the dialog to close and reopen
-      /*
-      setTimeout(() => {
-        if (selectedItem) {
-          const updatedItem = {...selectedItem};
-          setSelectedItem(null);
-          setTimeout(() => {
-            setSelectedItem(updatedItem);
-          }, 0);
-        }
-      }, 0);
-      */
-      
       return newToppings;
     });
   };
