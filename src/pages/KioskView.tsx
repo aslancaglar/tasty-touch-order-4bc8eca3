@@ -137,26 +137,23 @@ const KioskView = () => {
         if (toppingsError) {
           console.error(`Erreur lors du chargement des ingrédients pour la catégorie ${category.id}:`, toppingsError);
           return {
-            id: category.id,
-            name: category.name,
-            min_selections: category.min_selections || 0,
-            max_selections: category.max_selections || 0,
-            required: category.min_selections ? category.min_selections > 0 : false,
-            toppings: []
+            ...category,
+            toppings: [],
+            required: category.min_selections ? category.min_selections > 0 : false
           };
         }
         return {
-          id: category.id,
-          name: category.name,
-          min_selections: category.min_selections || 0,
-          max_selections: category.max_selections || 0,
-          required: category.min_selections ? category.min_selections > 0 : false,
+          ...category,
           toppings: toppings.map(topping => ({
             id: topping.id,
             name: topping.name,
             price: topping.price,
-            tax_percentage: topping.tax_percentage || 0
-          }))
+            category_id: topping.category_id,
+            tax_percentage: topping.tax_percentage || 0,
+            created_at: topping.created_at,
+            updated_at: topping.updated_at
+          })),
+          required: category.min_selections ? category.min_selections > 0 : false
         };
       }));
       return toppingCategoriesWithToppings;
