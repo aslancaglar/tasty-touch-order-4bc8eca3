@@ -94,28 +94,13 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
     fetchToppings();
   }, [toppingCategories]);
 
-  const simpleToppingCategories = toppingCategories.map(c => ({
-    id: c.id,
-    name: c.name,
-  }));
-
-  const toppingsByCategory: Record<string, {id: string, name: string}[]> = {};
-  Object.entries(toppings).forEach(([catId, tops]) => {
-    toppingsByCategory[catId] = tops.map(t => ({id: t.id, name: t.name}));
-  });
-
   const handleAddToppingCategory = async (values: any) => {
     try {
       setSavingToppingCategory(true);
-      if (!restaurant?.id) throw new Error("Restaurant ID is missing");
       
-      const show_if_selection_id = Array.isArray(values.show_if_selection_id) 
-        ? values.show_if_selection_id 
-        : [];
-        
-      const show_if_selection_type = Array.isArray(values.show_if_selection_type) 
-        ? values.show_if_selection_type 
-        : [];
+      if (!restaurant?.id) {
+        throw new Error("Restaurant ID is missing");
+      }
       
       const newCategory = await createToppingCategory({
         name: values.name,
@@ -123,16 +108,16 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         icon: values.icon || "cherry",
         min_selections: values.min_selections || 0,
         max_selections: values.max_selections || 0,
-        restaurant_id: restaurant.id,
-        show_if_selection_id,
-        show_if_selection_type,
+        restaurant_id: restaurant.id
       });
       
       setToppingCategories(prevCategories => [...prevCategories, newCategory]);
+      
       toast({
         title: "Topping Category Added",
         description: `${values.name} has been added to your topping categories.`,
       });
+      
       setIsAddingToppingCategory(false);
     } catch (error) {
       console.error("Error adding topping category:", error);
@@ -150,22 +135,12 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
     try {
       setSavingToppingCategory(true);
       
-      const show_if_selection_id = Array.isArray(values.show_if_selection_id) 
-        ? values.show_if_selection_id 
-        : [];
-        
-      const show_if_selection_type = Array.isArray(values.show_if_selection_type) 
-        ? values.show_if_selection_type 
-        : [];
-      
       const updatedCategory = await updateToppingCategory(categoryId, {
         name: values.name,
         description: values.description || null,
         icon: values.icon || "cherry",
         min_selections: values.min_selections || 0,
-        max_selections: values.max_selections || 0,
-        show_if_selection_id,
-        show_if_selection_type,
+        max_selections: values.max_selections || 0
       });
       
       setToppingCategories(toppingCategories.map(cat => 
@@ -176,6 +151,7 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
         title: "Topping Category Updated",
         description: `${values.name} has been updated.`,
       });
+      
       setIsEditingToppingCategory(null);
     } catch (error) {
       console.error("Error updating topping category:", error);
@@ -358,8 +334,6 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
             <ToppingCategoryForm 
               onSubmit={handleAddToppingCategory}
               isLoading={savingToppingCategory}
-              toppingCategories={simpleToppingCategories}
-              toppingsByCategory={toppingsByCategory}
             />
           </DialogContent>
         </Dialog>
@@ -418,13 +392,9 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
                         description: category.description || "",
                         icon: category.icon || "",
                         min_selections: category.min_selections || 0,
-                        max_selections: category.max_selections || 0,
-                        show_if_selection_id: category.show_if_selection_id || [],
-                        show_if_selection_type: category.show_if_selection_type || [],
+                        max_selections: category.max_selections || 0
                       }}
                       isLoading={savingToppingCategory}
-                      toppingCategories={simpleToppingCategories}
-                      toppingsByCategory={toppingsByCategory}
                     />
                   </DialogContent>
                 </Dialog>
@@ -491,8 +461,6 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
               <ToppingCategoryForm 
                 onSubmit={handleAddToppingCategory}
                 isLoading={savingToppingCategory}
-                toppingCategories={simpleToppingCategories}
-                toppingsByCategory={toppingsByCategory}
               />
             </DialogContent>
           </Dialog>
@@ -514,8 +482,6 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
               <ToppingCategoryForm 
                 onSubmit={handleAddToppingCategory}
                 isLoading={savingToppingCategory}
-                toppingCategories={simpleToppingCategories}
-                toppingsByCategory={toppingsByCategory}
               />
             </DialogContent>
           </Dialog>

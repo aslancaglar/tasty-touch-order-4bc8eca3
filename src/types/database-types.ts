@@ -1,3 +1,59 @@
+// Types representing our Supabase database entities
+
+export type Restaurant = {
+  id: string;
+  name: string;
+  slug: string;
+  image_url: string | null;
+  location: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MenuCategory = {
+  id: string;
+  name: string;
+  restaurant_id: string;
+  description: string | null;
+  icon: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MenuItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  promotion_price: number | null;
+  image: string | null;
+  category_id: string;
+  created_at: string;
+  updated_at: string;
+  topping_categories?: string[];
+  tax_percentage?: number | null;
+};
+
+export type MenuItemOption = {
+  id: string;
+  menu_item_id: string;
+  name: string;
+  required: boolean | null;
+  multiple: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type OptionChoice = {
+  id: string;
+  option_id: string;
+  name: string;
+  price: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ToppingCategory = {
   id: string;
   name: string;
@@ -8,104 +64,31 @@ export type ToppingCategory = {
   max_selections: number | null;
   created_at: string;
   updated_at: string;
-  show_if_selection_id?: string[] | null; 
-  show_if_selection_type?: ("category" | "topping" | "")[] | null;
 };
 
 export type Topping = {
   id: string;
   name: string;
-  category_id: string;
   price: number;
-  tax_percentage?: number;
-  created_at: string;
-  updated_at: string;
-};
-
-export type Restaurant = {
-  id: string;
-  name: string;
-  slug: string;
-  image_url?: string | null;
-  location?: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type MenuCategory = {
-  id: string;
-  name: string;
-  restaurant_id: string;
-  description?: string | null;
-  image_url?: string | null;
-  icon: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type MenuItem = {
-  id: string;
-  name: string;
   category_id: string;
-  description?: string | null;
-  price: number;
-  promotion_price?: number | null;
-  image?: string | null;
-  tax_percentage?: number;
+  tax_percentage: number | null;
   created_at: string;
   updated_at: string;
-  topping_categories?: string[];
-};
-
-export type MenuItemOption = {
-  id: string;
-  name: string;
-  menu_item_id: string;
-  multiple?: boolean;
-  required?: boolean;
-  created_at: string;
-  updated_at: string;
-  choices: OptionChoice[];
-};
-
-export type OptionChoice = {
-  id: string;
-  name: string;
-  option_id: string;
-  price?: number;
-  created_at: string;
-  updated_at: string;
-};
-
-export type CartItem = {
-  id: string;
-  menuItem: MenuItemWithOptions;
-  quantity: number;
-  selectedOptions: {
-    optionId: string;
-    choiceIds: string[];
-  }[];
-  selectedToppings: {
-    categoryId: string;
-    toppingIds: string[];
-  }[];
-  specialInstructions?: string;
-  itemPrice: number;
 };
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
-export type Order = {
+export interface Order {
   id: string;
   restaurant_id: string;
-  status: OrderStatus;
-  customer_name?: string | null;
-  total: number;
+  customer_id?: string;
+  customer_name?: string;
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at: string;
-  updated_at: string;
-  order_type?: string | null;
-  table_number?: string | null;
-};
+  total: number;
+  order_type?: 'dine-in' | 'takeaway';
+  table_number?: string;
+}
 
 export type OrderItem = {
   id: string;
@@ -113,7 +96,7 @@ export type OrderItem = {
   menu_item_id: string;
   quantity: number;
   price: number;
-  special_instructions?: string | null;
+  special_instructions: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -127,10 +110,45 @@ export type OrderItemOption = {
   updated_at: string;
 };
 
-export type MenuItemWithOptions = MenuItem & {
-  options?: MenuItemOption[];
-  toppingCategories?: Array<ToppingCategory & {
-    toppings: Topping[];
-    required?: boolean;
-  }>;
-};
+export interface MenuItemWithOptions extends MenuItem {
+  options?: {
+    id: string;
+    name: string;
+    required: boolean | null;
+    multiple: boolean | null;
+    choices: {
+      id: string;
+      name: string;
+      price: number | null;
+    }[];
+  }[];
+  toppingCategories?: {
+    id: string;
+    name: string;
+    min_selections: number;
+    max_selections: number;
+    required: boolean;
+    toppings: {
+      id: string;
+      name: string;
+      price: number;
+      tax_percentage: number;
+    }[];
+  }[];
+}
+
+export interface CartItem {
+  id: string;
+  menuItem: MenuItemWithOptions;
+  quantity: number;
+  selectedOptions: {
+    optionId: string;
+    choiceIds: string[];
+  }[];
+  selectedToppings: {
+    categoryId: string;
+    toppingIds: string[];
+  }[];
+  specialInstructions?: string;
+  itemPrice: number;
+}

@@ -337,10 +337,7 @@ export const getMenuItemOptions = async (menuItemId: string): Promise<MenuItemOp
     throw error;
   }
 
-  return data.map(option => ({
-    ...option,
-    choices: [] // Initialize with empty choices array
-  }));
+  return data;
 };
 
 // Option Choices services
@@ -572,49 +569,30 @@ export const getToppingCategoriesByRestaurantId = async (restaurantId: string): 
     throw error;
   }
 
-  return data.map((row: any) => ({
-    ...row,
-    show_if_selection_id: Array.isArray(row.show_if_selection_id) ? row.show_if_selection_id : [],
-    show_if_selection_type: Array.isArray(row.show_if_selection_type) 
-      ? row.show_if_selection_type.map((type: string) => 
-          type === "category" || type === "topping" || type === "" ? type : ""
-        ) as ("category" | "topping" | "")[]
-      : [],
-  }));
+  return data;
+};
+
+export const createToppingCategory = async (category: Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>): Promise<ToppingCategory> => {
+  console.log("Creating topping category with data:", category);
+  const { data, error } = await supabase
+    .from("topping_categories")
+    .insert(category)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating topping category:", error);
+    throw error;
+  }
+
+  return data;
 };
 
 export const updateToppingCategory = async (id: string, updates: Partial<Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<ToppingCategory> => {
   console.log("Updating topping category:", id, "with data:", updates);
-
-  // Convert non-array values to arrays if needed
-  const show_if_selection_id = Array.isArray(updates.show_if_selection_id) 
-    ? updates.show_if_selection_id 
-    : (updates.show_if_selection_id ? [updates.show_if_selection_id] : []);
-    
-  // Ensure all values in the array are valid enum values
-  const show_if_selection_type = Array.isArray(updates.show_if_selection_type) 
-    ? updates.show_if_selection_type.map(type => 
-        type === "category" || type === "topping" || type === "" ? type : ""
-      ) as ("category" | "topping" | "")[]
-    : (updates.show_if_selection_type 
-        ? [updates.show_if_selection_type].map(type => 
-            type === "category" || type === "topping" || type === "" ? type : ""
-          ) as ("category" | "topping" | "")[]
-        : []);
-
-  // Only pass the columns that exist in the db
-  const { ...databaseUpdates } = updates;
-
-  // pass arrays for show_if_selection_id/type (new columns)
-  const dbPayload = {
-    ...databaseUpdates,
-    show_if_selection_id,
-    show_if_selection_type,
-  };
-
   const { data, error } = await supabase
     .from("topping_categories")
-    .update(dbPayload)
+    .update(updates)
     .eq("id", id)
     .select()
     .single();
@@ -624,66 +602,7 @@ export const updateToppingCategory = async (id: string, updates: Partial<Omit<To
     throw error;
   }
 
-  return {
-    ...data,
-    show_if_selection_id: Array.isArray(data.show_if_selection_id) ? data.show_if_selection_id : [],
-    show_if_selection_type: Array.isArray(data.show_if_selection_type) 
-      ? data.show_if_selection_type.map((type: string) => 
-          type === "category" || type === "topping" || type === "" ? type : ""
-        ) as ("category" | "topping" | "")[]
-      : []
-  };
-};
-
-export const createToppingCategory = async (category: Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>): Promise<ToppingCategory> => {
-  console.log("Creating topping category with data:", category);
-
-  // Convert non-array values to arrays if needed
-  const show_if_selection_id = Array.isArray(category.show_if_selection_id) 
-    ? category.show_if_selection_id 
-    : (category.show_if_selection_id ? [category.show_if_selection_id] : []);
-    
-  // Ensure all values in the array are valid enum values
-  const show_if_selection_type = Array.isArray(category.show_if_selection_type) 
-    ? category.show_if_selection_type.map(type => 
-        type === "category" || type === "topping" || type === "" ? type : ""
-      ) as ("category" | "topping" | "")[]
-    : (category.show_if_selection_type 
-        ? [category.show_if_selection_type].map(type => 
-            type === "category" || type === "topping" || type === "" ? type : ""
-          ) as ("category" | "topping" | "")[]
-        : []);
-
-  // Extract the rest without modifying
-  const { ...databaseCategory } = category;
-
-  // Construct payload with proper array types
-  const dbPayload = {
-    ...databaseCategory,
-    show_if_selection_id,
-    show_if_selection_type,
-  };
-
-  const { data, error } = await supabase
-    .from("topping_categories")
-    .insert(dbPayload)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error creating topping category:", error);
-    throw error;
-  }
-
-  return {
-    ...data,
-    show_if_selection_id: Array.isArray(data.show_if_selection_id) ? data.show_if_selection_id : [],
-    show_if_selection_type: Array.isArray(data.show_if_selection_type) 
-      ? data.show_if_selection_type.map((type: string) => 
-          type === "category" || type === "topping" || type === "" ? type : ""
-        ) as ("category" | "topping" | "")[]
-      : []
-  };
+  return data;
 };
 
 export const deleteToppingCategory = async (id: string): Promise<void> => {
