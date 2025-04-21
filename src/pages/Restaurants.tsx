@@ -214,7 +214,7 @@ const RestaurantCard = ({
               <Skeleton className="h-6 w-20" />
             ) : (
               <p className="font-medium">
-                ${stats?.revenue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
+                €{stats?.revenue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
               </p>
             )}
           </div>
