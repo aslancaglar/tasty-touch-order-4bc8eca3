@@ -476,8 +476,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
               initialValues={{
                 name: selectedCategory.name,
                 description: selectedCategory.description || "",
-                image_url: selectedCategory.image_url || "",
-                icon: selectedCategory.icon || "utensils"
+                icon: selectedCategory.icon || ""
               }}
               isLoading={isUpdatingCategory}
             />
