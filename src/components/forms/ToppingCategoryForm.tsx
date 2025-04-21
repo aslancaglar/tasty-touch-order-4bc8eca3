@@ -51,7 +51,9 @@ const ToppingCategoryForm = ({
       min_selections: initialValues?.min_selections ?? 0,
       max_selections: initialValues?.max_selections ?? 0,
       show_if_selection_id: initialValues?.show_if_selection_id || [],
-      show_if_selection_type: initialValues?.show_if_selection_type || [],
+      show_if_selection_type: (initialValues?.show_if_selection_type || []).map(type => 
+        type === "category" || type === "topping" || type === "" ? type : ""
+      ) as ("category" | "topping" | "")[],
     },
   });
 

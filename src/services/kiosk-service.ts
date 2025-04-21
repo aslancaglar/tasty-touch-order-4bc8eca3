@@ -575,7 +575,11 @@ export const getToppingCategoriesByRestaurantId = async (restaurantId: string): 
   return data.map((row: any) => ({
     ...row,
     show_if_selection_id: Array.isArray(row.show_if_selection_id) ? row.show_if_selection_id : [],
-    show_if_selection_type: Array.isArray(row.show_if_selection_type) ? row.show_if_selection_type : [],
+    show_if_selection_type: Array.isArray(row.show_if_selection_type) 
+      ? row.show_if_selection_type.map((type: string) => 
+          type === "category" || type === "topping" || type === "" ? type : ""
+        ) as ("category" | "topping" | "")[]
+      : [],
   }));
 };
 
@@ -587,9 +591,16 @@ export const updateToppingCategory = async (id: string, updates: Partial<Omit<To
     ? updates.show_if_selection_id 
     : (updates.show_if_selection_id ? [updates.show_if_selection_id] : []);
     
+  // Ensure all values in the array are valid enum values
   const show_if_selection_type = Array.isArray(updates.show_if_selection_type) 
-    ? updates.show_if_selection_type as ("category" | "topping" | "")[]
-    : (updates.show_if_selection_type ? [updates.show_if_selection_type] : []);
+    ? updates.show_if_selection_type.map(type => 
+        type === "category" || type === "topping" || type === "" ? type : ""
+      ) as ("category" | "topping" | "")[]
+    : (updates.show_if_selection_type 
+        ? [updates.show_if_selection_type].map(type => 
+            type === "category" || type === "topping" || type === "" ? type : ""
+          ) as ("category" | "topping" | "")[]
+        : []);
 
   // Only pass the columns that exist in the db
   const { ...databaseUpdates } = updates;
@@ -616,7 +627,11 @@ export const updateToppingCategory = async (id: string, updates: Partial<Omit<To
   return {
     ...data,
     show_if_selection_id: Array.isArray(data.show_if_selection_id) ? data.show_if_selection_id : [],
-    show_if_selection_type: Array.isArray(data.show_if_selection_type) ? data.show_if_selection_type : []
+    show_if_selection_type: Array.isArray(data.show_if_selection_type) 
+      ? data.show_if_selection_type.map((type: string) => 
+          type === "category" || type === "topping" || type === "" ? type : ""
+        ) as ("category" | "topping" | "")[]
+      : []
   };
 };
 
@@ -628,9 +643,16 @@ export const createToppingCategory = async (category: Omit<ToppingCategory, 'id'
     ? category.show_if_selection_id 
     : (category.show_if_selection_id ? [category.show_if_selection_id] : []);
     
+  // Ensure all values in the array are valid enum values
   const show_if_selection_type = Array.isArray(category.show_if_selection_type) 
-    ? category.show_if_selection_type as ("category" | "topping" | "")[]
-    : (category.show_if_selection_type ? [category.show_if_selection_type] : []);
+    ? category.show_if_selection_type.map(type => 
+        type === "category" || type === "topping" || type === "" ? type : ""
+      ) as ("category" | "topping" | "")[]
+    : (category.show_if_selection_type 
+        ? [category.show_if_selection_type].map(type => 
+            type === "category" || type === "topping" || type === "" ? type : ""
+          ) as ("category" | "topping" | "")[]
+        : []);
 
   // Extract the rest without modifying
   const { ...databaseCategory } = category;
@@ -656,7 +678,11 @@ export const createToppingCategory = async (category: Omit<ToppingCategory, 'id'
   return {
     ...data,
     show_if_selection_id: Array.isArray(data.show_if_selection_id) ? data.show_if_selection_id : [],
-    show_if_selection_type: Array.isArray(data.show_if_selection_type) ? data.show_if_selection_type : []
+    show_if_selection_type: Array.isArray(data.show_if_selection_type) 
+      ? data.show_if_selection_type.map((type: string) => 
+          type === "category" || type === "topping" || type === "" ? type : ""
+        ) as ("category" | "topping" | "")[]
+      : []
   };
 };
 
