@@ -636,7 +636,7 @@ const KioskView = () => {
     />
 
       {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="w-[95vw] max-w-[95vw] md:w-[85vw] md:max-w-[85vw]">
             <DialogHeader>
               <DialogTitle>{selectedItem.name}</DialogTitle>
               <DialogDescription>{selectedItem.description}</DialogDescription>
@@ -685,7 +685,7 @@ const KioskView = () => {
                         : "(Sélection multiple)"}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {category.toppings.map(topping => {
                       const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
                       const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
