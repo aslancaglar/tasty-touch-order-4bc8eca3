@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +35,12 @@ interface SettingsTabProps {
   onRestaurantUpdated?: (updatedRestaurant: Restaurant) => void;
 }
 
+const languageOptions = [
+  { value: "fr", label: "Français" },
+  { value: "en", label: "English" },
+  { value: "tr", label: "Türkçe" },
+];
+
 const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [activeTab, setActiveTab] = useState("basic");
   const [name, setName] = useState(restaurant.name);
@@ -45,6 +50,8 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [uiLanguage, setUiLanguage] = useState(restaurant.ui_language || "fr");
+  const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -79,11 +86,11 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     fetchPrintSettings();
   }, [restaurant.id]);
 
-  // Update state when restaurant prop changes
   useEffect(() => {
     setName(restaurant.name);
     setLocation(restaurant.location || "");
     setImage(restaurant.image_url || "");
+    setUiLanguage(restaurant.ui_language || "fr");
   }, [restaurant]);
 
   const handleSaveRestaurantInfo = async () => {
@@ -110,7 +117,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         description: "Restaurant information updated successfully",
       });
 
-      // Call the callback to update parent component state
       if (onRestaurantUpdated && updatedRestaurant) {
         onRestaurantUpdated(updatedRestaurant);
       }
@@ -137,7 +143,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         description: "Restaurant deleted successfully",
       });
       
-      // Redirect to restaurants page
       navigate("/restaurants");
     } catch (error) {
       console.error("Error deleting restaurant:", error);
@@ -154,7 +159,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     setIsSavingPrintSettings(true);
     
     try {
-      // Check if config exists for this restaurant
       const { data: existingConfig, error: checkError } = await supabase
         .from('restaurant_print_config')
         .select('id')
@@ -168,7 +172,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       let result;
       
       if (existingConfig) {
-        // Update existing config
         result = await supabase
           .from('restaurant_print_config')
           .update({ browser_printing_enabled: browserPrintEnabled })
@@ -176,7 +179,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
           
         console.log("Updated browser printing setting:", browserPrintEnabled);
       } else {
-        // Create new config
         result = await supabase
           .from('restaurant_print_config')
           .insert({ 
@@ -209,14 +211,11 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   const handleTestPrint = () => {
     if (browserPrintEnabled) {
-      // Generate a test receipt
       const testReceipt = document.getElementById("receipt-content");
       if (testReceipt) {
         console.log("Testing browser printing");
-        // Make it visible for printing
         testReceipt.style.display = "block";
         
-        // Print using browser
         try {
           printReceipt("receipt-content");
           
@@ -233,7 +232,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
           });
         }
         
-        // Hide it again after printing
         setTimeout(() => {
           testReceipt.style.display = "none";
         }, 500);
@@ -251,6 +249,35 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         description: "L'impression via le navigateur est actuellement désactivée",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleSaveLanguage = async () => {
+    setIsSavingLanguage(true);
+    try {
+      const { error } = await supabase
+        .from("restaurants")
+        .update({ ui_language: uiLanguage })
+        .eq("id", restaurant.id);
+      if (error) throw error;
+
+      toast({
+        title: "Langue enregistrée",
+        description: "La langue de l'interface a été mise à jour.",
+      });
+
+      if (onRestaurantUpdated) {
+        onRestaurantUpdated({ ...restaurant, ui_language: uiLanguage });
+      }
+    } catch (error) {
+      console.error("Error updating language:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de changer la langue de l'interface.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingLanguage(false);
     }
   };
 
@@ -297,6 +324,22 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                   label="Télécharger une image..."
                 />
               </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="uiLanguage">Langue de l'interface Kiosk</Label>
+              <select
+                id="uiLanguage"
+                value={uiLanguage}
+                onChange={e => setUiLanguage(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-md bg-white"
+              >
+                {languageOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           

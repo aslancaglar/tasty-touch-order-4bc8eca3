@@ -52,6 +52,7 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
   const {
     toast
   } = useToast();
@@ -75,6 +76,16 @@ const KioskView = () => {
           return;
         }
         setRestaurant(restaurantData);
+
+        // Set UI language from restaurant settings, fallback to French
+        setUiLanguage(
+          restaurantData.ui_language === "en"
+            ? "en"
+            : restaurantData.ui_language === "tr"
+            ? "tr"
+            : "fr"
+        );
+
         const menuData = await getMenuForRestaurant(restaurantData.id);
         setCategories(menuData);
         if (menuData.length > 0) {
@@ -93,6 +104,8 @@ const KioskView = () => {
     };
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
+
+  // (Optional: In the future, you can use uiLanguage to show the right translations.)
 
   const handleStartOrder = () => {
     setShowWelcome(false);
