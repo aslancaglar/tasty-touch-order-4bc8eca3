@@ -482,6 +482,10 @@ const KioskView = () => {
         setIsCartOpen(false);
         setPlacingOrder(false);
         setShowWelcome(true);
+
+        if (categories.length > 0) {
+          setActiveCategory(categories[0].id);
+        }
       }, 3000);
     } catch (error) {
       console.error("Erreur lors de la commande:", error);
