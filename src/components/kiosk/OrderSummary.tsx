@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -224,10 +225,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   ) => {
     try {
       const receiptContent = generatePrintNodeReceipt(orderData);
+      
+      // Fix: Properly encode special characters for UTF-8
+      const textEncoder = new TextEncoder();
+      const encodedBytes = textEncoder.encode(receiptContent);
       const encodedContent = btoa(
-        new TextEncoder().encode(receiptContent)
-          .reduce((data, byte) => data + String.fromCharCode(byte), '')
+        Array.from(encodedBytes)
+          .map(byte => String.fromCharCode(byte))
+          .join('')
       );
+      
       console.log("Sending receipt to PrintNode printers:", printerIds);
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
