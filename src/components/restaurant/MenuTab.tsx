@@ -24,6 +24,8 @@ import { getIconComponent } from "@/utils/icon-mapping";
 import { Badge } from "@/components/ui/badge";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface MenuTabProps {
   restaurant: Restaurant;
