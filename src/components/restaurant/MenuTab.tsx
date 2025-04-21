@@ -1,10 +1,23 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, Loader2, Utensils } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { 
   Restaurant, 
   MenuCategory, 
@@ -22,6 +35,8 @@ import {
 } from "@/services/kiosk-service";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
+import SortableCategory from "./SortableCategory";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MenuTabProps {
   restaurant: Restaurant;
@@ -67,6 +82,49 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
   const getCurrencySymbol = (currency: string) => {
     const code = currency?.toUpperCase() || "EUR";
     return CURRENCY_SYMBOLS[code] || code;
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleUpdateCategoryOrder = async (categories: MenuCategory[]) => {
+    try {
+      const updates = categories.map((category, index) => ({
+        id: category.id,
+        display_order: index
+      }));
+
+      const { error } = await supabase
+        .from('menu_categories')
+        .upsert(updates, { onConflict: 'id' });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating category order:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update category order",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      setCategories((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        const newCategories = arrayMove(items, oldIndex, newIndex);
+        handleUpdateCategoryOrder(newCategories);
+        return newCategories;
+      });
+    }
   };
 
   useEffect(() => {
@@ -330,65 +388,35 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         Add Category
       </Button>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((category) => (
-          <div
-            key={category.id}
-            className={`border rounded-lg p-4 cursor-pointer transition-all ${
-              selectedCategory?.id === category.id 
-                ? 'border-kiosk-primary bg-muted/50' 
-                : 'border-border hover:border-muted-foreground'
-            }`}
-            onClick={() => setSelectedCategory(category)}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SortableContext
+            items={categories}
+            strategy={verticalListSortingStrategy}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary/10 rounded-md w-10 h-10">
-                  {category.icon ? (
-                    <img 
-                      src={category.icon} 
-                      alt={category.name}
-                      className="w-full h-full object-cover rounded"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-muted rounded flex items-center justify-center">
-                      <Utensils className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-medium">{category.name}</h3>
-                  <p className="text-sm text-muted-foreground">{category.description || "No description"}</p>
-                </div>
-              </div>
-              <div className="flex space-x-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedCategory(category);
-                    setShowUpdateCategoryDialog(true);
-                  }}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCategoryToDelete(category);
-                    setShowDeleteCategoryDialog(true);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            {categories.map((category) => (
+              <SortableCategory
+                key={category.id}
+                category={category}
+                isSelected={selectedCategory?.id === category.id}
+                onSelect={() => setSelectedCategory(category)}
+                onEdit={() => {
+                  setSelectedCategory(category);
+                  setShowUpdateCategoryDialog(true);
+                }}
+                onDelete={() => {
+                  setCategoryToDelete(category);
+                  setShowDeleteCategoryDialog(true);
+                }}
+              />
+            ))}
+          </SortableContext>
+        </div>
+      </DndContext>
 
       <Separator />
 

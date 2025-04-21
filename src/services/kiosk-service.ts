@@ -97,7 +97,8 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
   const { data, error } = await supabase
     .from("menu_categories")
     .select("*")
-    .eq("restaurant_id", restaurantId);
+    .eq("restaurant_id", restaurantId)
+    .order('display_order', { ascending: true });  // Order by display_order
 
   if (error) {
     console.error("Error fetching menu categories:", error);
