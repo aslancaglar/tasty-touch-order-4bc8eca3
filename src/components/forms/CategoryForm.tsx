@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import ImageUpload from "@/components/ImageUpload";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { supabase } from "@/integrations/supabase/client";
+import { v4 as uuidv4 } from "uuid";
 
 const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
   description: z.string().optional(),
   icon: z.string().optional(),
-  image_url: z.string().optional(),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -28,6 +28,7 @@ interface CategoryFormProps {
 
 const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFormProps) => {
   const { toast } = useToast();
+  const [uploadingIcon, setUploadingIcon] = useState(false);
   
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
@@ -35,12 +36,63 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
       name: initialValues?.name || "",
       description: initialValues?.description || "",
       icon: initialValues?.icon || "",
-      image_url: initialValues?.image_url || "",
     },
   });
 
   const handleSubmit = (values: CategoryFormValues) => {
     onSubmit(values);
+  };
+
+  const handleIconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploadingIcon(true);
+      
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error("You must select an image to upload.");
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `category-icons/${fileName}`;
+      
+      if (!file.type.startsWith('image/')) {
+        throw new Error("File must be an image.");
+      }
+      
+      if (file.size > 2 * 1024 * 1024) {
+        throw new Error("File size must be less than 2MB.");
+      }
+
+      const { data, error } = await supabase.storage
+        .from('restaurant-images')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('restaurant-images')
+        .getPublicUrl(filePath);
+
+      form.setValue('icon', publicUrlData.publicUrl);
+      
+      toast({
+        title: "Success",
+        description: "Icon uploaded successfully",
+      });
+    } catch (error: any) {
+      console.error("Error uploading icon:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload icon",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingIcon(false);
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
   };
 
   return (
@@ -80,17 +132,46 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
         
         <FormField
           control={form.control}
-          name="image_url"
+          name="icon"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category Image</FormLabel>
-              <FormControl>
-                <ImageUpload
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  label="Category Image"
-                />
-              </FormControl>
+              <FormLabel>Category Icon</FormLabel>
+              <div className="space-y-2">
+                {field.value && (
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden border">
+                    <img
+                      src={field.value}
+                      alt="Category icon"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  disabled={uploadingIcon}
+                  className="relative w-full"
+                >
+                  {uploadingIcon ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Icon
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleIconUpload}
+                    disabled={uploadingIcon}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                </Button>
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -112,3 +193,4 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading = false }: CategoryFo
 };
 
 export default CategoryForm;
+
