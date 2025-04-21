@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ import {
   updateMenuItem,
   deleteMenuItem
 } from "@/services/kiosk-service";
-import { getIconComponent } from "@/utils/icon-mapping";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 
@@ -343,8 +343,18 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary/10 rounded-md">
-                  {getIconComponent(category.icon || 'utensils')}
+                <div className="p-2 bg-primary/10 rounded-md w-10 h-10">
+                  {category.icon ? (
+                    <img 
+                      src={category.icon} 
+                      alt={category.name}
+                      className="w-full h-full object-cover rounded"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-muted rounded flex items-center justify-center">
+                      <Utensils className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h3 className="font-medium">{category.name}</h3>
