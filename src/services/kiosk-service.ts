@@ -181,9 +181,10 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     throw error;
   }
 
+  // Get the topping categories with their display_order
   const { data: toppingCategoryRelations, error: relationsError } = await supabase
     .from("menu_item_topping_categories")
-    .select("topping_category_id")
+    .select("topping_category_id, display_order")
     .eq("menu_item_id", id)
     .order('display_order', { ascending: true });
 
@@ -264,6 +265,7 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
   }
 
   if (topping_categories !== undefined) {
+    // Delete existing relationships
     const { error: deleteError } = await supabase
       .from("menu_item_topping_categories")
       .delete()
@@ -274,9 +276,11 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
     }
 
     if (topping_categories && topping_categories.length > 0) {
-      const toppingCategoryRelations = topping_categories.map((categoryId: string) => ({
+      // Create new relationships with display_order
+      const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
         menu_item_id: id,
-        topping_category_id: categoryId
+        topping_category_id: categoryId,
+        display_order: index
       }));
 
       const { error: insertError } = await supabase
@@ -679,31 +683,38 @@ export const getToppingsForRestaurant = async (restaurantId: string) => {
   return categoriesWithToppings;
 };
 
-// Add or update this function to properly handle menu item topping category ordering
-export const updateMenuItemToppingCategoryOrder = async (menuItemId: string, orderedToppingCategories: string[]) => {
+// Update this function for menu item topping category ordering
+export const updateMenuItemToppingCategoryOrder = async (menuItemId: string, orderedCategories: string[]): Promise<void> => {
   try {
     // Get existing relations
-    const { data: existingRelations } = await supabase
+    const { data: existingRelations, error: fetchError } = await supabase
       .from('menu_item_topping_categories')
       .select('*')
       .eq('menu_item_id', menuItemId);
     
-    if (!existingRelations) return;
-
+    if (fetchError) throw fetchError;
+    
+    // Delete existing relationships
+    const { error: deleteError } = await supabase
+      .from('menu_item_topping_categories')
+      .delete()
+      .eq('menu_item_id', menuItemId);
+      
+    if (deleteError) throw deleteError;
+    
     // Create updates with new display_order values
-    const updates = orderedToppingCategories.map((categoryId, index) => ({
-      id: existingRelations.find(rel => rel.topping_category_id === categoryId)?.id,
+    const updates = orderedCategories.map((categoryId, index) => ({
       menu_item_id: menuItemId,
       topping_category_id: categoryId,
       display_order: index
     }));
 
-    // Update all relations with new order
-    const { error } = await supabase
+    // Insert all relations with new order
+    const { error: insertError } = await supabase
       .from('menu_item_topping_categories')
-      .upsert(updates);
+      .insert(updates);
 
-    if (error) throw error;
+    if (insertError) throw insertError;
   } catch (error) {
     console.error('Error updating topping category order:', error);
     throw error;

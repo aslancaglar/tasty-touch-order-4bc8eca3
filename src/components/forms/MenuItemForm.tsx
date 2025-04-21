@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -146,11 +145,22 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
     }
   };
 
+  const updateToppingCategoryOrder = async (itemId: string, orderedCategories: string[]) => {
+    if (!itemId || orderedCategories.length === 0) return;
+    
+    try {
+      await updateMenuItemToppingCategoryOrder(itemId, orderedCategories);
+    } catch (error) {
+      console.error('Error updating topping category order:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (values: MenuItemFormValues) => {
     try {
       if (values.topping_categories && menuItemId) {
-        // Update the junction table with ordered categories
-        await updateMenuItemToppingCategoryOrder(menuItemId, values.topping_categories);
+        // Update the junction table with ordered categories - this step is now handled in updateMenuItem
+        // await updateToppingCategoryOrder(menuItemId, values.topping_categories);
       }
       
       onSubmit(values);
