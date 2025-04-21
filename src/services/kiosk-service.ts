@@ -588,7 +588,7 @@ export const updateToppingCategory = async (id: string, updates: Partial<Omit<To
     : (updates.show_if_selection_id ? [updates.show_if_selection_id] : []);
     
   const show_if_selection_type = Array.isArray(updates.show_if_selection_type) 
-    ? updates.show_if_selection_type 
+    ? updates.show_if_selection_type as ("category" | "topping" | "")[]
     : (updates.show_if_selection_type ? [updates.show_if_selection_type] : []);
 
   // Only pass the columns that exist in the db
@@ -629,7 +629,7 @@ export const createToppingCategory = async (category: Omit<ToppingCategory, 'id'
     : (category.show_if_selection_id ? [category.show_if_selection_id] : []);
     
   const show_if_selection_type = Array.isArray(category.show_if_selection_type) 
-    ? category.show_if_selection_type 
+    ? category.show_if_selection_type as ("category" | "topping" | "")[]
     : (category.show_if_selection_type ? [category.show_if_selection_type] : []);
 
   // Extract the rest without modifying

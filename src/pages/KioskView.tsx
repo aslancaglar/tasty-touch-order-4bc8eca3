@@ -141,7 +141,9 @@ const KioskView = () => {
             toppings: [],
             required: category.min_selections ? category.min_selections > 0 : false,
             show_if_selection_id: Array.isArray(category.show_if_selection_id) ? category.show_if_selection_id : [],
-            show_if_selection_type: Array.isArray(category.show_if_selection_type) ? category.show_if_selection_type : []
+            show_if_selection_type: Array.isArray(category.show_if_selection_type) 
+              ? category.show_if_selection_type as ("category" | "topping" | "")[]
+              : []
           };
         }
         return {
@@ -157,7 +159,9 @@ const KioskView = () => {
           })),
           required: category.min_selections ? category.min_selections > 0 : false,
           show_if_selection_id: Array.isArray(category.show_if_selection_id) ? category.show_if_selection_id : [],
-          show_if_selection_type: Array.isArray(category.show_if_selection_type) ? category.show_if_selection_type : []
+          show_if_selection_type: Array.isArray(category.show_if_selection_type) 
+            ? category.show_if_selection_type as ("category" | "topping" | "")[]
+            : []
         };
       }));
       return toppingCategoriesWithToppings;
