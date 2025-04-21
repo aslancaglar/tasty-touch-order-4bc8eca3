@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
@@ -304,6 +305,9 @@ const KioskView = () => {
         toppingIds: newToppingIds
       };
       
+      // Remove the code that causes the dialog to refresh
+      // This was causing the dialog to close and reopen
+      /*
       setTimeout(() => {
         if (selectedItem) {
           const updatedItem = {...selectedItem};
@@ -313,6 +317,7 @@ const KioskView = () => {
           }, 0);
         }
       }, 0);
+      */
       
       return newToppings;
     });
