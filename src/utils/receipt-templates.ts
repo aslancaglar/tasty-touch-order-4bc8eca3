@@ -1,5 +1,40 @@
+
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
+
+// Add translations for receipt template
+const translations = {
+  fr: {
+    order: "COMMANDE",
+    takeaway: "A EMPORTER",
+    table: "SUR PLACE - TABLE",
+    subtotal: "Sous-total",
+    vat: "TVA",
+    total: "TOTAL",
+    thanks: "Merci de votre visite!",
+    seeYouSoon: "A bientot!",
+  },
+  en: {
+    order: "ORDER",
+    takeaway: "TAKEAWAY",
+    table: "DINE IN - TABLE",
+    subtotal: "Subtotal",
+    vat: "VAT",
+    total: "TOTAL",
+    thanks: "Thank you for your visit!",
+    seeYouSoon: "See you soon!",
+  },
+  tr: {
+    order: "SİPARİŞ",
+    takeaway: "PAKET SERVİSİ",
+    table: "YERİNDE - MASA",
+    subtotal: "Ara Toplam",
+    vat: "KDV",
+    total: "TOPLAM",
+    thanks: "Ziyaretiniz için teşekkürler!",
+    seeYouSoon: "Tekrar görüşmek üzere!",
+  }
+};
 
 interface ReceiptData {
   restaurant: {
@@ -16,6 +51,7 @@ interface ReceiptData {
   total: number;
   getFormattedOptions?: (item: CartItem) => string;
   getFormattedToppings?: (item: CartItem) => string;
+  uiLanguage?: "fr" | "en" | "tr";
 }
 
 type GroupedToppings = Array<{
@@ -63,51 +99,55 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     tax, 
     total,
     getFormattedOptions = () => '',
+    uiLanguage = "fr",
   } = data;
-  
+
+  // Pick translation function
+  const t = (k: keyof typeof translations["en"]) => translations[uiLanguage]?.[k] ?? translations.fr[k];
+
   const firstItem = cart[0];
   const vat = firstItem?.menuItem?.tax_percentage ?? 10;
 
   const now = new Date();
-  const date = now.toLocaleDateString('fr-FR', { 
+  const date = now.toLocaleDateString(uiLanguage === "en" ? "en-GB" : (uiLanguage === "tr" ? "tr-TR" : "fr-FR"), { 
     day: '2-digit', 
     month: '2-digit', 
     year: 'numeric' 
   });
-  const time = now.toLocaleTimeString('fr-FR', {
+  const time = now.toLocaleTimeString(uiLanguage === "en" ? "en-GB" : (uiLanguage === "tr" ? "tr-TR" : "fr-FR"), {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
   });
-  
+
   let receipt = '';
-  
+
   receipt += ESCPOS.ALIGN_CENTER;
   receipt += formatText(restaurant?.name || 'Restaurant', ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
-  
+
   if (restaurant?.location) {
     receipt += formatText(restaurant.location, ESCPOS.FONT_NORMAL) + addLineFeed();
   }
-  
+
   receipt += formatText(`${date} ${time}`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(`COMMANDE #${orderNumber}`, ESCPOS.FONT_LARGE) + addLineFeed(2);
-  
+  receipt += formatText(`${t("order")} #${orderNumber}`, ESCPOS.FONT_LARGE) + addLineFeed(2);
+
   if (orderType === 'takeaway') {
-    receipt += formatText("A EMPORTER", ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText(t("takeaway"), ESCPOS.FONT_BOLD) + addLineFeed();
   } else if (orderType === 'dine-in' && tableNumber) {
-    receipt += formatText(`SUR PLACE - TABLE: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText(`${t("table")}: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
   }
   receipt += ESCPOS.ALIGN_LEFT;
-  
+
   receipt += createDivider(48) + addLineFeed();
-  
+
   cart.forEach(item => {
     const itemPrice = parseFloat(item.itemPrice.toString()).toFixed(2);
     const itemText = `${item.quantity}x ${item.menuItem.name}`;
     const spaces = 48 - itemText.length - itemPrice.length - 4;
-    
+
     receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + itemPrice + ' EUR', ESCPOS.FONT_BOLD) + addLineFeed();
-    
+
     const options = getFormattedOptions(item).split(', ').filter(Boolean);
     options.forEach(option => {
       receipt += formatText(`  + ${option}`, ESCPOS.FONT_NORMAL) + addLineFeed();
@@ -124,26 +164,26 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
       });
     });
   });
-  
+
   receipt += createDivider(48) + addLineFeed();
-  
+
   receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText('Sous-total: ' + subtotal.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText('TVA: ' + tax.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`${t("subtotal")}: ` + subtotal.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(`${t("vat")}: ` + tax.toFixed(2) + ' EUR', ESCPOS.FONT_NORMAL) + addLineFeed();
   receipt += createDivider(48) + addLineFeed();
-  
+
   receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText('TOTAL: ' + total.toFixed(2) + ' EUR', ESCPOS.FONT_LARGE_BOLD) + addLineFeed(2);
-  
+  receipt += formatText(`${t("total")}: ` + total.toFixed(2) + ' EUR', ESCPOS.FONT_LARGE_BOLD) + addLineFeed(2);
+
   receipt += ESCPOS.ALIGN_CENTER;
-  receipt += formatText('Merci de votre visite!', ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText('A bientot!', ESCPOS.FONT_NORMAL) + addLineFeed(3);
+  receipt += formatText(t("thanks"), ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += formatText(t("seeYouSoon"), ESCPOS.FONT_NORMAL) + addLineFeed(3);
   receipt += ESCPOS.ALIGN_LEFT;
-  
+
   receipt += addLineFeed(5);
-  
+
   receipt += ESCPOS.CUT_PAPER;
-  
+
   return receipt;
 };
 
