@@ -1,9 +1,7 @@
-
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
 import currencyCodes from "currency-codes";
 
-// Add translations for receipt template
 const translations = {
   fr: {
     order: "COMMANDE",
@@ -61,15 +59,10 @@ type GroupedToppings = Array<{
   toppings: string[];
 }>;
 
-// Helper function to ensure special characters are correctly encoded for ESC/POS
 const encodeSpecialChars = (text: string): string => {
-  // Map special characters to their closest ASCII equivalent if needed
-  // This is a simplified approach - for a complete solution, you may need a more comprehensive mapping
   const charMap: Record<string, string> = {
-    // Turkish special characters
     'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I',
     'ö': 'o', 'Ö': 'O', 'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U',
-    // French special characters
     'é': 'e', 'É': 'E', 'è': 'e', 'È': 'E', 'ê': 'e', 'Ê': 'E',
     'ë': 'e', 'Ë': 'E', 'à': 'a', 'À': 'A', 'â': 'a', 'Â': 'A',
     'î': 'i', 'Î': 'I', 'ï': 'i', 'Ï': 'I', 'ô': 'o', 'Ô': 'O',
@@ -77,17 +70,14 @@ const encodeSpecialChars = (text: string): string => {
     'ÿ': 'y', 'Ÿ': 'Y'
   };
 
-  // Use Windows-1252 encoding for better compatibility with thermal printers
-  // This is important as many thermal printers use codepage 850 or similar
   let result = '';
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
-    // If the character is in our map, replace it, otherwise keep it as is
     result += charMap[char] || char;
   }
   
   return result;
-}
+};
 
 const getGroupedToppings = (item: CartItem): GroupedToppings => {
   if (!item.selectedToppings) return [];
@@ -119,9 +109,13 @@ const getToppingPrice = (item: CartItem, groupCategory: string, toppingName: str
 };
 
 const getCurrencySymbol = (currencyCode: string) => {
-  // Prefer symbol, fallback to code
-  const entry = currencyCodes.code(currencyCode);
-  return (entry && entry.symbol) ? entry.symbol : currencyCode;
+  try {
+    const entry = currencyCodes.code(currencyCode);
+    return (entry && entry.code) ? entry.code : currencyCode;
+  } catch (error) {
+    console.error("Error getting currency symbol:", error);
+    return currencyCode;
+  }
 };
 
 export const generateStandardReceipt = (data: ReceiptData): string => {
@@ -138,17 +132,14 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     uiLanguage = "fr",
   } = data;
 
-  // Pick translation function
   const t = (k: keyof typeof translations["en"]) => {
     const translation = translations[uiLanguage]?.[k] ?? translations.fr[k];
-    // Apply special character encoding to ensure proper printing
     return encodeSpecialChars(translation);
   };
 
   const firstItem = cart[0];
   const vat = firstItem?.menuItem?.tax_percentage ?? 10;
   
-  // Get currency symbol
   const currencyCode = restaurant?.currency || 'EUR';
   const currencySymbol = getCurrencySymbol(currencyCode);
 

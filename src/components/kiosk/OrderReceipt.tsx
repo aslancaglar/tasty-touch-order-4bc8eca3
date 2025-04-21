@@ -57,8 +57,14 @@ interface OrderReceiptProps {
 
 // Helper function to get currency symbol
 const getCurrencySymbol = (currencyCode: string): string => {
-  const entry = currencyCodes.code(currencyCode || 'EUR');
-  return (entry && entry.symbol) ? entry.symbol : currencyCode || '€';
+  try {
+    const entry = currencyCodes.code(currencyCode || 'EUR');
+    // Use a safer way to get symbol or fall back to currency code
+    return (entry && entry.code) ? (entry.code) : currencyCode || '€';
+  } catch (error) {
+    console.error("Error getting currency symbol:", error);
+    return currencyCode || '€';
+  }
 };
 
 const OrderReceipt: React.FC<OrderReceiptProps> = ({

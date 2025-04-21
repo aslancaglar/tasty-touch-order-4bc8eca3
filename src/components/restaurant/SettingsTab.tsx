@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,11 +46,11 @@ const languageOptions = [
 const currencyOptions = currencyCodes.data
   .filter(c => c.code && c.currency)
   .map(c => {
-    const symbol = c.symbol || c.code;
+    const currencyCode = c.code || "";
     return {
-      value: c.code,
-      label: `${c.code} (${c.currency})${symbol ? ` ${symbol}` : ""}`,
-      symbol: symbol
+      value: currencyCode,
+      label: `${currencyCode} (${c.currency})`,
+      symbol: currencyCode // Using code as fallback when actual symbol is not available
     };
   })
   .sort((a, b) => {
