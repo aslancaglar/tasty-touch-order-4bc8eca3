@@ -634,19 +634,24 @@ const KioskView = () => {
   }
 
   if (showWelcome) {
-    return <WelcomePage restaurant={restaurant} onStart={handleStartOrder} />;
+    return <WelcomePage restaurant={restaurant} onStart={handleStartOrder} uiLanguage={uiLanguage} />;
   }
 
   if (showOrderTypeSelection) {
     return <>
-        <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
+      <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
         backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
       }} />
-        <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
-        setShowOrderTypeSelection(false);
-        setShowWelcome(true);
-      }} onSelectOrderType={handleOrderTypeSelected} />
-      </>;
+      <OrderTypeSelection
+        isOpen={showOrderTypeSelection}
+        onClose={() => {
+          setShowOrderTypeSelection(false);
+          setShowWelcome(true);
+        }}
+        onSelectOrderType={handleOrderTypeSelected}
+        uiLanguage={uiLanguage}
+      />
+    </>;
   }
 
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
