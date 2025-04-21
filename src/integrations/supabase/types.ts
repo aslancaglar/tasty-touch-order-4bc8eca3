@@ -94,7 +94,6 @@ export type Database = {
       menu_item_topping_categories: {
         Row: {
           created_at: string
-          display_order: number | null
           id: string
           menu_item_id: string
           topping_category_id: string
@@ -102,7 +101,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          display_order?: number | null
           id?: string
           menu_item_id: string
           topping_category_id: string
@@ -110,7 +108,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          display_order?: number | null
           id?: string
           menu_item_id?: string
           topping_category_id?: string
@@ -138,7 +135,6 @@ export type Database = {
           category_id: string
           created_at: string
           description: string | null
-          display_order: number | null
           id: string
           image: string | null
           name: string
@@ -151,7 +147,6 @@ export type Database = {
           category_id: string
           created_at?: string
           description?: string | null
-          display_order?: number | null
           id?: string
           image?: string | null
           name: string
@@ -164,7 +159,6 @@ export type Database = {
           category_id?: string
           created_at?: string
           description?: string | null
-          display_order?: number | null
           id?: string
           image?: string | null
           name?: string
@@ -614,7 +608,6 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
-          display_order: number | null
           icon: string | null
           id: string
           max_selections: number | null
@@ -628,7 +621,6 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
-          display_order?: number | null
           icon?: string | null
           id?: string
           max_selections?: number | null
@@ -642,7 +634,6 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
-          display_order?: number | null
           icon?: string | null
           id?: string
           max_selections?: number | null

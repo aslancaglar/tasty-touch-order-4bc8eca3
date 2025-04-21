@@ -4,15 +4,10 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Edit, GripVertical, Trash2, Utensils } from 'lucide-react';
-import { MenuCategory, ToppingCategory } from '@/types/database-types';
-
-// Create a union type that can accept either MenuCategory or ToppingCategory
-type CategoryType = 
-  | MenuCategory 
-  | (ToppingCategory & { image_url?: string | null });
+import { MenuCategory } from '@/types/database-types';
 
 interface Props {
-  category: CategoryType;
+  category: MenuCategory;
   isSelected: boolean;
   onSelect: () => void;
   onEdit: () => void;
@@ -33,9 +28,6 @@ const SortableCategory = ({ category, isSelected, onSelect, onEdit, onDelete }: 
     transition,
   };
 
-  // Use icon from the category if available, otherwise use the image_url if it exists
-  const iconSrc = category.icon || (('image_url' in category) ? category.image_url : null);
-
   return (
     <div
       ref={setNodeRef}
@@ -52,9 +44,9 @@ const SortableCategory = ({ category, isSelected, onSelect, onEdit, onDelete }: 
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
           <div className="p-2 bg-primary/10 rounded-md w-10 h-10">
-            {iconSrc ? (
+            {category.icon ? (
               <img 
-                src={iconSrc} 
+                src={category.icon} 
                 alt={category.name}
                 className="w-full h-full object-cover rounded"
               />

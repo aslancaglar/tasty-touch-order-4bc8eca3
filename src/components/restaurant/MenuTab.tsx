@@ -36,7 +36,6 @@ import {
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import SortableCategory from "./SortableCategory";
-import SortableMenuItem from './SortableMenuItem';
 import { supabase } from "@/integrations/supabase/client";
 
 interface MenuTabProps {
@@ -126,45 +125,6 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         const newCategories = arrayMove(items, oldIndex, newIndex);
         handleUpdateCategoryOrder(newCategories);
         return newCategories;
-      });
-    }
-  };
-
-  const handleUpdateMenuItemOrder = async (items: MenuItem[]) => {
-    try {
-      const updates = items.map((item, index) => ({
-        id: item.id,
-        name: item.name,
-        category_id: item.category_id,
-        price: item.price,
-        display_order: index
-      }));
-
-      const { error } = await supabase
-        .from('menu_items')
-        .upsert(updates, { onConflict: 'id' });
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error updating menu item order:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update menu item order",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleMenuItemDragEnd = (event: any) => {
-    const { active, over } = event;
-
-    if (active.id !== over.id) {
-      setMenuItems((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        const newItems = arrayMove(items, oldIndex, newIndex);
-        handleUpdateMenuItemOrder(newItems);
-        return newItems;
       });
     }
   };
@@ -477,34 +437,58 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
             </Button>
           </div>
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleMenuItemDragEnd}
-          >
-            <div className="mt-4 space-y-4">
-              <SortableContext
-                items={menuItems}
-                strategy={verticalListSortingStrategy}
+          <div className="mt-4 space-y-4">
+            {menuItems.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between p-4 border rounded-lg"
               >
-                {menuItems.map((item) => (
-                  <SortableMenuItem
-                    key={item.id}
-                    item={item}
-                    currencySymbol={getCurrencySymbol(restaurant.currency)}
-                    onEdit={() => {
+                <div className="flex items-center space-x-4">
+                  {item.image && (
+                    <img 
+                      src={item.image} 
+                      alt={item.name} 
+                      className="h-16 w-16 object-cover rounded-md"
+                    />
+                  )}
+                  <div>
+                    <h3 className="font-medium">{item.name}</h3>
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                    <p className="text-sm font-medium mt-1">
+                      {getCurrencySymbol(restaurant.currency)}{parseFloat(item.price.toString()).toFixed(2)}
+                      {item.promotion_price && (
+                        <span className="ml-2 line-through text-muted-foreground">
+                          {getCurrencySymbol(restaurant.currency)}{parseFloat(item.promotion_price.toString()).toFixed(2)}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
                       setSelectedItem(item);
                       setShowUpdateItemDialog(true);
                     }}
-                    onDelete={() => {
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
                       setSelectedItem(item);
                       setShowDeleteItemDialog(true);
                     }}
-                  />
-                ))}
-              </SortableContext>
-            </div>
-          </DndContext>
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
