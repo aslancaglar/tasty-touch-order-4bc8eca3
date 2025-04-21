@@ -695,3 +695,72 @@ export const getToppingsForRestaurant = async (restaurantId: string) => {
 
   return categoriesWithToppings;
 };
+
+export const getRestaurantPrintConfig = async (restaurantId: string): Promise<{ require_table_selection: boolean } | null> => {
+  const { data, error } = await supabase
+    .from("restaurant_print_config")
+    .select("require_table_selection")
+    .eq("restaurant_id", restaurantId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+};
+
+export const updateRestaurantPrintConfig = async (
+  restaurantId: string,
+  updates: Partial<{ require_table_selection: boolean }>
+) => {
+  // Check if config exists
+  const { data: existingConfig, error: checkError } = await supabase
+    .from("restaurant_print_config")
+    .select("id")
+    .eq("restaurant_id", restaurantId)
+    .maybeSingle();
+
+  if (checkError) throw checkError;
+
+  let result;
+  if (existingConfig) {
+    result = await supabase
+      .from("restaurant_print_config")
+      .update(updates)
+      .eq("restaurant_id", restaurantId);
+  } else {
+    result = await supabase
+      .from("restaurant_print_config")
+      .insert({ restaurant_id: restaurantId, ...updates });
+  }
+  if (result.error) throw result.error;
+  return result.data;
+};
+
+export const getRestaurantTables = async (restaurantId: string): Promise<{ id: string; table_number: string }[]> => {
+  const { data, error } = await supabase
+    .from("restaurant_tables")
+    .select("id, table_number")
+    .eq("restaurant_id", restaurantId)
+    .eq("is_active", true)
+    .order("table_number", { ascending: true });
+
+  if (error) throw error;
+  return data;
+};
+
+export const addRestaurantTable = async (restaurantId: string, tableNumber: string): Promise<{ id: string; table_number: string }> => {
+  const { data, error } = await supabase
+    .from("restaurant_tables")
+    .insert({ restaurant_id: restaurantId, table_number: tableNumber })
+    .select("id, table_number")
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const deleteRestaurantTable = async (tableId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("restaurant_tables")
+    .delete()
+    .eq("id", tableId);
+  if (error) throw error;
+};

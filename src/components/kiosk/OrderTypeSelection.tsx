@@ -1,9 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import TableSelection from "./TableSelection";
+import { getRestaurantPrintConfig } from "@/services/kiosk-service";
 
 export type OrderType = "dine-in" | "takeaway" | null;
 
@@ -11,15 +12,37 @@ interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectOrderType: (type: OrderType, tableNumber?: string) => void;
+  restaurantId?: string;
 }
 
-const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType }: OrderTypeSelectionProps) => {
+const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType, restaurantId }: OrderTypeSelectionProps) => {
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [showTableSelection, setShowTableSelection] = useState(false);
+  const [tableSelectionEnabled, setTableSelectionEnabled] = useState(true);
+
+  useEffect(() => {
+    const fetchTableSelectionSetting = async () => {
+      if (!restaurantId) {
+        setTableSelectionEnabled(true);
+        return;
+      }
+      try {
+        const config = await getRestaurantPrintConfig(restaurantId);
+        setTableSelectionEnabled(config?.require_table_selection !== false);
+      } catch {
+        setTableSelectionEnabled(true);
+      }
+    };
+    if (isOpen) fetchTableSelectionSetting();
+  }, [restaurantId, isOpen]);
 
   const handleSelectDineIn = () => {
     setOrderType("dine-in");
-    setShowTableSelection(true);
+    if (tableSelectionEnabled) {
+      setShowTableSelection(true);
+    } else {
+      onSelectOrderType("dine-in", undefined);
+    }
   };
 
   const handleSelectTakeaway = () => {
@@ -33,7 +56,7 @@ const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType }: OrderTypeSel
 
   return (
     <>
-      <Dialog open={isOpen && !showTableSelection} onOpenChange={(open) => !open && onClose()}>
+      <Dialog open={isOpen && (!showTableSelection)} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-8">
           <DialogHeader>
             <DialogTitle className="text-center text-3xl font-bold mb-6">
@@ -65,6 +88,7 @@ const OrderTypeSelection = ({ isOpen, onClose, onSelectOrderType }: OrderTypeSel
         isOpen={showTableSelection} 
         onClose={() => setShowTableSelection(false)}
         onSelect={handleTableSelected}
+        restaurantId={restaurantId}
       />
     </>
   );
