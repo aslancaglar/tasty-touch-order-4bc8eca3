@@ -1,4 +1,3 @@
-
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -9,6 +8,7 @@ export type Restaurant = {
   location: string | null;
   created_at: string;
   updated_at: string;
+  ui_language?: string;
 };
 
 export type MenuCategory = {
