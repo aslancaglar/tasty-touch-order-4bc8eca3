@@ -33,7 +33,8 @@ const sidebarItems: SidebarItem[] = [
 
 export function Sidebar() {
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
+  // Set the default state to collapsed
+  const [collapsed, setCollapsed] = useState(true);
   const { signOut, user } = useAuth();
   const { toast } = useToast();
 
