@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,6 @@ import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { supabase } from "@/utils/supabase";
 
 const MenuPage = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -191,179 +191,6 @@ const MenuPage = () => {
       toast({
         title: "Error",
         description: "Failed to delete the category. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddMenuItem = async (values: any, categoryId: string) => {
-    try {
-      setLoading(true);
-      
-      if (!selectedRestaurant) {
-        throw new Error("No restaurant selected");
-      }
-      
-      const menuItemData = {
-        name: values.name,
-        description: values.description || null,
-        price: parseFloat(values.price),
-        promotion_price: values.promotion_price ? parseFloat(values.promotion_price) : null,
-        image: values.image || null,
-        category_id: categoryId,
-        tax_percentage: values.tax_percentage ? parseFloat(values.tax_percentage) : 10,
-        topping_categories_order: values.topping_categories_order || null
-      };
-      
-      const { data: newMenuItem, error } = await supabase
-        .from('menu_items')
-        .insert(menuItemData)
-        .select()
-        .single();
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (values.topping_categories && values.topping_categories.length > 0) {
-        const toppingCategoryAssociations = values.topping_categories.map((categoryId: string) => ({
-          menu_item_id: newMenuItem.id,
-          topping_category_id: categoryId
-        }));
-        
-        const { error: associationError } = await supabase
-          .from('menu_item_topping_categories')
-          .insert(toppingCategoryAssociations);
-        
-        if (associationError) {
-          console.error("Error associating topping categories:", associationError);
-        }
-      }
-      
-      setMenuItems(prev => ({
-        ...prev,
-        [categoryId]: [...(prev[categoryId] || []), { ...newMenuItem, topping_categories: values.topping_categories || [] }]
-      }));
-      
-      toast({
-        title: "Menu Item Added",
-        description: `${values.name} has been added to the menu.`
-      });
-      
-      const updatedItems = await getMenuItemsByCategory(categoryId);
-      setMenuItems(prev => ({
-        ...prev,
-        [categoryId]: updatedItems
-      }));
-      
-    } catch (error) {
-      console.error("Error adding menu item:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add the menu item. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateMenuItem = async (values: any, item: MenuItem) => {
-    try {
-      setLoading(true);
-      
-      const menuItemData = {
-        name: values.name,
-        description: values.description || null,
-        price: parseFloat(values.price),
-        promotion_price: values.promotion_price ? parseFloat(values.promotion_price) : null,
-        image: values.image || null,
-        tax_percentage: values.tax_percentage ? parseFloat(values.tax_percentage) : 10,
-        topping_categories_order: values.topping_categories_order || null
-      };
-      
-      const { error } = await supabase
-        .from('menu_items')
-        .update(menuItemData)
-        .eq('id', item.id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      await supabase
-        .from('menu_item_topping_categories')
-        .delete()
-        .eq('menu_item_id', item.id);
-      
-      if (values.topping_categories && values.topping_categories.length > 0) {
-        const toppingCategoryAssociations = values.topping_categories.map((categoryId: string) => ({
-          menu_item_id: item.id,
-          topping_category_id: categoryId
-        }));
-        
-        const { error: associationError } = await supabase
-          .from('menu_item_topping_categories')
-          .insert(toppingCategoryAssociations);
-        
-        if (associationError) {
-          console.error("Error associating topping categories:", associationError);
-        }
-      }
-      
-      toast({
-        title: "Menu Item Updated",
-        description: `${values.name} has been updated.`
-      });
-      
-      const updatedItems = await getMenuItemsByCategory(item.category_id);
-      setMenuItems(prev => ({
-        ...prev,
-        [item.category_id]: updatedItems
-      }));
-      
-    } catch (error) {
-      console.error("Error updating menu item:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update the menu item. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteMenuItem = async (item: MenuItem) => {
-    try {
-      setLoading(true);
-      
-      const { error } = await supabase
-        .from('menu_items')
-        .delete()
-        .eq('id', item.id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      setMenuItems(prev => ({
-        ...prev,
-        [item.category_id]: prev[item.category_id].filter(i => i.id !== item.id)
-      }));
-      
-      toast({
-        title: "Menu Item Deleted",
-        description: `${item.name} has been deleted.`
-      });
-      
-    } catch (error) {
-      console.error("Error deleting menu item:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete the menu item. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -558,27 +385,22 @@ const MenuPage = () => {
                                     <DialogDescription>Make changes to this menu item.</DialogDescription>
                                   </DialogHeader>
                                   <MenuItemForm 
-                                    onSubmit={(values) => handleUpdateMenuItem(values, item)}
+                                    onSubmit={(values) => {
+                                      // Handle edit submission
+                                    }}
                                     initialValues={{
                                       name: item.name,
                                       description: item.description || "",
                                       price: item.price.toString(),
                                       promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
                                       image: item.image || "",
-                                      topping_categories: item.topping_categories || [],
-                                      tax_percentage: item.tax_percentage ? item.tax_percentage.toString() : "10",
-                                      topping_categories_order: item.topping_categories_order
+                                      topping_categories: item.topping_categories || []
                                     }}
                                     restaurantId={selectedRestaurant || ""}
                                   />
                                 </DialogContent>
                               </Dialog>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="text-red-500"
-                                onClick={() => handleDeleteMenuItem(item)}
-                              >
+                              <Button variant="outline" size="sm" className="text-red-500">
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
                               </Button>
@@ -590,7 +412,7 @@ const MenuPage = () => {
                             <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
                               <Button variant="ghost" className="w-full h-full flex items-center justify-center">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Add Menu Item
+                                Ajouter au panier
                               </Button>
                             </div>
                           </DialogTrigger>
@@ -600,7 +422,9 @@ const MenuPage = () => {
                               <DialogDescription>Create a new menu item.</DialogDescription>
                             </DialogHeader>
                             <MenuItemForm 
-                              onSubmit={(values) => handleAddMenuItem(values, category.id)}
+                              onSubmit={(values) => {
+                                // Handle add submission
+                              }}
                               isLoading={false}
                               restaurantId={selectedRestaurant || ""}
                             />
