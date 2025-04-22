@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -6,12 +7,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import ToppingForm from "@/components/forms/ToppingForm";
+import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
+
+// Define the missing interface
+interface ToppingCategoryWithToppings extends ToppingCategory {
+  toppings?: Topping[];
+}
 
 interface ToppingsTabProps {
   restaurant: {
@@ -20,6 +29,16 @@ interface ToppingsTabProps {
     currency?: string;
   };
 }
+
+// Currency symbol helper function
+const getCurrencySymbol = (currency: string): string => {
+  switch (currency) {
+    case 'EUR': return '€';
+    case 'USD': return '$';
+    case 'GBP': return '£';
+    default: return currency;
+  }
+};
 
 const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
   const [categories, setCategories] = useState<ToppingCategory[]>([]);
