@@ -1,4 +1,3 @@
-
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
 import currencyCodes from "currency-codes";
@@ -194,7 +193,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   if (orderType === 'takeaway') {
     receipt += formatText(t("takeaway"), ESCPOS.FONT_BOLD) + addLineFeed();
   } else if (orderType === 'dine-in' && tableNumber) {
-    receipt += formatText(`${t("table")}: ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
+    receipt += formatText(`${t("table")} ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
   }
   receipt += ESCPOS.ALIGN_LEFT;
 
