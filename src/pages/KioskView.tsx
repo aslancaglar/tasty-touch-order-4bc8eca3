@@ -282,6 +282,29 @@ const KioskView = () => {
       }
       const toppingCategories = await fetchToppingCategories(item.id);
 
+      if ((!itemWithOptions.options || itemWithOptions.options.length === 0) && 
+          (!toppingCategories || toppingCategories.length === 0)) {
+        const newItem: CartItem = {
+          id: Date.now().toString(),
+          menuItem: {
+            ...itemWithOptions,
+            toppingCategories: []
+          },
+          quantity: 1,
+          selectedOptions: [],
+          selectedToppings: [],
+          itemPrice: parseFloat(itemWithOptions.price.toString())
+        };
+        
+        setCart(prev => [newItem, ...prev]);
+        toast({
+          title: t("addedToCart"),
+          description: `1x ${itemWithOptions.name} ${t("added")}`
+        });
+        setLoading(false);
+        return;
+      }
+
       let sortedToppingCategories = toppingCategories;
       if (item.topping_categories && item.topping_categories.length > 1) {
         sortedToppingCategories = [...toppingCategories].sort((a, b) => {
@@ -298,6 +321,7 @@ const KioskView = () => {
       setSelectedItem(itemWithToppings);
       setQuantity(1);
       setSpecialInstructions("");
+      
       if (itemWithOptions.options && itemWithOptions.options.length > 0) {
         const initialOptions = itemWithOptions.options.map(option => {
           if (option.required && !option.multiple) {
@@ -315,6 +339,7 @@ const KioskView = () => {
       } else {
         setSelectedOptions([]);
       }
+
       if (sortedToppingCategories.length > 0) {
         const initialToppings = sortedToppingCategories.map(category => ({
           categoryId: category.id,
