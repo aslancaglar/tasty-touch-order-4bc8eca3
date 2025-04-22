@@ -7,32 +7,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Plus, Pencil, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
+import ToppingForm from "@/components/forms/ToppingForm";
+import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  EUR: "€",
-  USD: "$",
-  GBP: "£",
-  TRY: "₺",
-  JPY: "¥",
-  CAD: "$",
-  AUD: "$",
-  CHF: "Fr.",
-  CNY: "¥",
-  RUB: "₽"
-};
-
-interface ToppingFormData {
-  name: string;
-  price: string;
-  tax_percentage?: string;
-}
 
 interface ToppingsTabProps {
   restaurant: {
@@ -42,16 +21,7 @@ interface ToppingsTabProps {
   };
 }
 
-interface ToppingCategoryWithToppings extends ToppingCategory {
-  toppings?: Topping[];
-}
-
-const getCurrencySymbol = (currencyCode: string): string => {
-  const code = (currencyCode || "EUR").toUpperCase();
-  return CURRENCY_SYMBOLS[code] || code;
-};
-
-const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
+const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
   const [categories, setCategories] = useState<ToppingCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ToppingCategoryWithToppings | null>(null);
   const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false);
@@ -346,51 +316,69 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Catégories de compléments</h2>
+        <h2 className="text-2xl font-bold">Menu Categories</h2>
         <p className="text-muted-foreground">
-          Gérer les catégories de compléments disponibles dans votre restaurant.
+          Manage menu categories available in your restaurant.
         </p>
       </div>
 
-      <Button onClick={() => setShowCreateCategoryDialog(true)} className="bg-kiosk-primary">
+      <Button onClick={() => setShowCreateCategoryDialog(true)} className="bg-[#9b87f5] hover:bg-[#8b77e5] text-white">
         <Plus className="mr-2 h-4 w-4" />
-        Ajouter une catégorie
+        Add Category
       </Button>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {categories.map((category) => (
           <div
             key={category.id}
-            className={`border rounded-md p-4 cursor-pointer ${selectedCategory?.id === category.id ? 'border-kiosk-primary' : 'border-gray-200'}`}
+            className={`border rounded-lg p-4 cursor-pointer transition-all ${
+              selectedCategory?.id === category.id ? 'ring-2 ring-[#9b87f5] bg-[#9b87f5]/5' : 'hover:border-[#9b87f5]'
+            }`}
             onClick={() => setSelectedCategory(category)}
           >
-            <h3 className="font-medium">{category.name}</h3>
-            <p className="text-sm text-muted-foreground">{category.description || "Aucune description"}</p>
-            <div className="flex justify-end mt-2 space-x-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedCategory(category);
-                  setCategoryName(category.name);
-                  setCategoryDescription(category.description || "");
-                  setShowUpdateCategoryDialog(true);
-                }}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedCategoryToDelete(category);
-                  setShowDeleteCategoryDialog(true);
-                }}
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center space-x-3">
+              <div className="bg-[#D6BCFA] p-2 rounded-lg">
+                {category.icon ? (
+                  <img
+                    src={category.icon}
+                    alt={category.name}
+                    className="w-6 h-6"
+                  />
+                ) : (
+                  <div className="w-6 h-6" />
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium">{category.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {category.description || "No description"}
+                </p>
+              </div>
+              <div className="flex space-x-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCategoryName(category.name);
+                    setCategoryDescription(category.description || "");
+                    setShowUpdateCategoryDialog(true);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCategoryToDelete(category);
+                    setShowDeleteCategoryDialog(true);
+                  }}
+                >
+                  <Trash className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
             </div>
           </div>
         ))}
@@ -402,14 +390,14 @@ const ToppingsTab: React.FC<ToppingsTabProps> = ({ restaurant }) => {
         <div>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Compléments - {selectedCategory.name}</h2>
+              <h2 className="text-2xl font-bold">Menu Items - {selectedCategory.name}</h2>
               <p className="text-muted-foreground">
-                Gérer les compléments disponibles dans la catégorie sélectionnée.
+                Manage menu items available in the selected category.
               </p>
             </div>
             <Button onClick={() => setShowCreateToppingDialog(true)} className="bg-kiosk-primary">
               <Plus className="mr-2 h-4 w-4" />
-              Ajouter un complément
+              Add Item
             </Button>
           </div>
 

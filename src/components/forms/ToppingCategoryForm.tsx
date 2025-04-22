@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -61,7 +60,6 @@ const ToppingCategoryForm = ({
       try {
         console.log("Fetching toppings for restaurant:", restaurantId);
         
-        // First get all topping categories for this restaurant
         const { data: categories, error: categoriesError } = await supabase
           .from('topping_categories')
           .select('id')
@@ -81,7 +79,6 @@ const ToppingCategoryForm = ({
           return;
         }
         
-        // Then get all toppings from these categories
         const categoryIds = categories.map(cat => cat.id);
         console.log("Fetching toppings for categories:", categoryIds);
         
@@ -209,11 +206,10 @@ const ToppingCategoryForm = ({
           />
         </div>
         
-        {/* Condition Section */}
-        <div className="border rounded-md p-4">
+        <div className="border rounded-lg p-4">
           <h3 className="text-lg font-medium mb-2">Conditions</h3>
           <p className="text-sm text-gray-500 mb-4">
-            Show this category only if the user selects these toppings. Leave empty to always show.
+            Show this category only if the user selects these toppings
           </p>
           
           {loadingToppings ? (
@@ -229,11 +225,11 @@ const ToppingCategoryForm = ({
                 <div 
                   key={topping.id} 
                   className={`flex items-center space-x-2 p-2 border rounded-md cursor-pointer hover:bg-gray-50 
-                    ${selectedToppings.includes(topping.id) ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200'}`}
+                    ${selectedToppings.includes(topping.id) ? 'border-primary bg-primary/5' : 'border-gray-200'}`}
                   onClick={() => handleToppingToggle(topping.id)}
                 >
                   <div className={`w-5 h-5 rounded-sm flex items-center justify-center 
-                    ${selectedToppings.includes(topping.id) ? 'bg-kiosk-primary text-white' : 'border border-gray-300'}`}
+                    ${selectedToppings.includes(topping.id) ? 'bg-primary text-white' : 'border border-gray-300'}`}
                   >
                     {selectedToppings.includes(topping.id) && <Check className="h-3 w-3" />}
                   </div>
@@ -244,7 +240,7 @@ const ToppingCategoryForm = ({
           )}
         </div>
         
-        <Button type="submit" className="w-full bg-kiosk-primary" disabled={isLoading}>
+        <Button type="submit" className="w-full bg-primary" disabled={isLoading}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
