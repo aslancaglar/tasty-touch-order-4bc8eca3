@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -65,6 +66,11 @@ const RestaurantManage = () => {
 
     fetchRestaurant();
   }, [id, toast]);
+
+  const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
+    console.log("Restaurant updated:", updatedRestaurant);
+    setRestaurant(updatedRestaurant);
+  };
 
   const handleCopyUrl = () => {
     if (!restaurant) return;
