@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Restaurant, OrderStatus } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { updateOrderStatus } from "@/services/kiosk-service";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 type OrderItem = {
   name: string;
@@ -20,7 +27,7 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  orderNumber: number; // Added this to track the sequential order number
+  orderNumber: number;
   restaurantId: string;
   status: OrderStatus;
   items: OrderItem[];
@@ -50,17 +57,33 @@ interface OrdersTabProps {
 const OrdersTab = ({ restaurant }: OrdersTabProps) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const ordersPerPage = 10;
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
+        
+        const { count, error: countError } = await supabase
+          .from("orders")
+          .select("*", { count: 'exact', head: true })
+          .eq("restaurant_id", restaurant.id);
+
+        if (countError) {
+          throw countError;
+        }
+
+        setTotalOrders(count || 0);
+
         const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
           .select("*")
           .eq("restaurant_id", restaurant.id)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .range((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage - 1);
 
         if (ordersError) {
           throw ordersError;
@@ -68,7 +91,6 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
         const transformedOrders = await Promise.all(
           ordersData.map(async (order, index) => {
-            // Fetch order items
             const { data: orderItems, error: itemsError } = await supabase
               .from("order_items")
               .select(`
@@ -89,13 +111,10 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
               return null;
             }
 
-            // Process each order item to get its toppings
             const processedItems = await Promise.all(orderItems.map(async (item) => {
-              // Array to store topping details
               let toppings: Array<{name: string, price: number}> = [];
               
               try {
-                // Get topping IDs for this order item from order_item_toppings table
                 const { data: toppingLinks, error: toppingLinksError } = await supabase
                   .from("order_item_toppings")
                   .select("topping_id")
@@ -106,12 +125,9 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                   throw toppingLinksError;
                 }
                 
-                // If toppings exist for this order item
                 if (toppingLinks && toppingLinks.length > 0) {
-                  // Get all topping IDs from the links
                   const toppingIds = toppingLinks.map(link => link.topping_id);
                   
-                  // Fetch the topping details using the IDs
                   const { data: toppingDetails, error: toppingDetailsError } = await supabase
                     .from("toppings")
                     .select("name, price")
@@ -128,7 +144,6 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                 }
               } catch (error) {
                 console.error("Error processing toppings:", error);
-                // Continue with empty toppings array in case of error
               }
               
               return {
@@ -140,9 +155,10 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
               };
             }));
 
+            const startOrderNumber = ((currentPage - 1) * ordersPerPage);
             return {
               id: order.id,
-              orderNumber: ordersData.length - index, // Assign numbers in reverse: most recent = highest number
+              orderNumber: totalOrders - (startOrderNumber + index),
               restaurantId: order.restaurant_id,
               status: order.status as OrderStatus,
               items: processedItems,
@@ -153,7 +169,6 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
           })
         );
 
-        // Filter out any null values (failed to fetch)
         setOrders(transformedOrders.filter(Boolean) as Order[]);
       } catch (error) {
         console.error("Error fetching orders:", error);
@@ -170,13 +185,12 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
     if (restaurant?.id) {
       fetchOrders();
     }
-  }, [restaurant.id, toast]);
+  }, [restaurant.id, currentPage, toast, totalOrders]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
       await updateOrderStatus(orderId, newStatus);
 
-      // Update local state
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId ? { ...order, status: newStatus } : order
@@ -200,6 +214,8 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  const totalPages = Math.ceil(totalOrders / ordersPerPage);
 
   return (
     <div className="space-y-6">
@@ -252,7 +268,6 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                             <span>{(item.price * item.quantity).toFixed(2)} €</span>
                           </div>
                           
-                          {/* Display toppings */}
                           {item.toppings && item.toppings.length > 0 && (
                             <div className="mt-1 ml-5 text-xs text-gray-600">
                               <p className="font-medium">Toppings:</p>
@@ -267,7 +282,6 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                             </div>
                           )}
                           
-                          {/* Display special instructions */}
                           {item.specialInstructions && (
                             <div className="mt-1 ml-5 text-xs text-gray-500 italic">
                               Note: {item.specialInstructions}
@@ -319,6 +333,39 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
         ) : (
           <div className="py-6 px-4 text-center">
             <p className="text-muted-foreground">No orders found.</p>
+          </div>
+        )}
+        
+        {totalPages > 1 && (
+          <div className="mt-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  />
+                </PaginationItem>
+                
+                {[...Array(totalPages)].map((_, index) => (
+                  <PaginationItem key={index + 1}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(index + 1)}
+                      isActive={currentPage === index + 1}
+                    >
+                      {index + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         )}
       </div>
