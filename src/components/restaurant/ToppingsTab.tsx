@@ -1,11 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +15,6 @@ import { Topping, ToppingCategory } from "@/types/database-types";
 interface ToppingCategoryWithToppings extends ToppingCategory {
   toppings?: Topping[];
 }
-
 interface ToppingsTabProps {
   restaurant: {
     id: string;
@@ -33,14 +26,19 @@ interface ToppingsTabProps {
 // Currency symbol helper function
 const getCurrencySymbol = (currency: string): string => {
   switch (currency) {
-    case 'EUR': return '€';
-    case 'USD': return '$';
-    case 'GBP': return '£';
-    default: return currency;
+    case 'EUR':
+      return '€';
+    case 'USD':
+      return '$';
+    case 'GBP':
+      return '£';
+    default:
+      return currency;
   }
 };
-
-const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
+const ToppingsTab = ({
+  restaurant
+}: ToppingsTabProps) => {
   const [categories, setCategories] = useState<ToppingCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ToppingCategoryWithToppings | null>(null);
   const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false);
@@ -52,7 +50,6 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
   const [categoryName, setCategoryName] = useState("");
   const [categoryDescription, setCategoryDescription] = useState("");
   const [selectedCategoryToDelete, setSelectedCategoryToDelete] = useState<ToppingCategory | null>(null);
-
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [selectedTopping, setSelectedTopping] = useState<Topping | null>(null);
   const [showCreateToppingDialog, setShowCreateToppingDialog] = useState(false);
@@ -61,93 +58,84 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
   const [isCreatingTopping, setIsCreatingTopping] = useState(false);
   const [isUpdatingTopping, setIsUpdatingTopping] = useState(false);
   const [isDeletingTopping, setIsDeletingTopping] = useState(false);
-
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
-
   useEffect(() => {
     fetchCategories();
   }, [restaurant.id]);
-
   useEffect(() => {
     fetchToppings();
   }, [selectedCategory?.id]);
-
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('topping_categories')
-        .select('*')
-        .eq('restaurant_id', restaurant.id)
-        .order('created_at', { ascending: true });
-
+      const {
+        data,
+        error
+      } = await supabase.from('topping_categories').select('*').eq('restaurant_id', restaurant.id).order('created_at', {
+        ascending: true
+      });
       if (error) throw error;
-
       setCategories(data || []);
     } catch (error) {
       console.error('Error fetching topping categories:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les catégories de compléments",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const fetchToppings = async () => {
     if (!selectedCategory?.id) return;
-
     try {
-      const { data, error } = await supabase
-        .from('toppings')
-        .select('*')
-        .eq('category_id', selectedCategory.id)
-        .order('created_at', { ascending: true });
-
+      const {
+        data,
+        error
+      } = await supabase.from('toppings').select('*').eq('category_id', selectedCategory.id).order('created_at', {
+        ascending: true
+      });
       if (error) throw error;
-
       if (data) {
         const updatedToppings = data.map(topping => ({
           ...topping,
           tax_percentage: typeof topping.tax_percentage === 'string' ? parseFloat(topping.tax_percentage) : topping.tax_percentage
         }));
         setToppings(updatedToppings);
-        setSelectedCategory(prev => prev ? { ...prev, toppings: updatedToppings } : prev);
+        setSelectedCategory(prev => prev ? {
+          ...prev,
+          toppings: updatedToppings
+        } : prev);
       } else {
         setToppings([]);
-        setSelectedCategory(prev => prev ? { ...prev, toppings: [] } : prev);
+        setSelectedCategory(prev => prev ? {
+          ...prev,
+          toppings: []
+        } : prev);
       }
     } catch (error) {
       console.error('Error fetching toppings:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les compléments",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleCreateCategory = async () => {
     try {
       setIsCreatingCategory(true);
-      const { data, error } = await supabase
-        .from('topping_categories')
-        .insert([
-          {
-            name: categoryName,
-            description: categoryDescription,
-            restaurant_id: restaurant.id,
-          },
-        ])
-        .select()
-        .single();
-
+      const {
+        data,
+        error
+      } = await supabase.from('topping_categories').insert([{
+        name: categoryName,
+        description: categoryDescription,
+        restaurant_id: restaurant.id
+      }]).select().single();
       if (error) throw error;
-
       toast({
         title: "Succès",
-        description: "Catégorie créée avec succès",
+        description: "Catégorie créée avec succès"
       });
-
       fetchCategories();
       setShowCreateCategoryDialog(false);
       setCategoryName("");
@@ -157,33 +145,27 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
       toast({
         title: "Erreur",
         description: "Impossible de créer la catégorie",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsCreatingCategory(false);
     }
   };
-
   const handleUpdateCategory = async () => {
     if (!selectedCategory?.id) return;
-
     try {
       setIsUpdatingCategory(true);
-      const { error } = await supabase
-        .from('topping_categories')
-        .update({
-          name: categoryName,
-          description: categoryDescription,
-        })
-        .eq('id', selectedCategory.id);
-
+      const {
+        error
+      } = await supabase.from('topping_categories').update({
+        name: categoryName,
+        description: categoryDescription
+      }).eq('id', selectedCategory.id);
       if (error) throw error;
-
       toast({
         title: "Succès",
-        description: "Catégorie mise à jour avec succès",
+        description: "Catégorie mise à jour avec succès"
       });
-
       fetchCategories();
       setShowUpdateCategoryDialog(false);
       setCategoryName("");
@@ -193,30 +175,24 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour la catégorie",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsUpdatingCategory(false);
     }
   };
-
   const handleDeleteCategory = async () => {
     if (!selectedCategoryToDelete?.id) return;
-
     try {
       setIsDeletingCategory(true);
-      const { error } = await supabase
-        .from('topping_categories')
-        .delete()
-        .eq('id', selectedCategoryToDelete.id);
-
+      const {
+        error
+      } = await supabase.from('topping_categories').delete().eq('id', selectedCategoryToDelete.id);
       if (error) throw error;
-
       toast({
         title: "Succès",
-        description: "Catégorie supprimée avec succès",
+        description: "Catégorie supprimée avec succès"
       });
-
       fetchCategories();
       setShowDeleteCategoryDialog(false);
     } catch (error) {
@@ -224,36 +200,29 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la catégorie",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsDeletingCategory(false);
     }
   };
-
   const handleCreateTopping = async (formData: ToppingFormValues) => {
     try {
       setIsCreatingTopping(true);
-      const { data: newTopping, error } = await supabase
-        .from('toppings')
-        .insert([
-          {
-            name: formData.name,
-            price: parseFloat(formData.price),
-            tax_percentage: parseFloat(formData.tax_percentage || "10"),
-            category_id: selectedCategory?.id,
-          },
-        ])
-        .select()
-        .single();
-
+      const {
+        data: newTopping,
+        error
+      } = await supabase.from('toppings').insert([{
+        name: formData.name,
+        price: parseFloat(formData.price),
+        tax_percentage: parseFloat(formData.tax_percentage || "10"),
+        category_id: selectedCategory?.id
+      }]).select().single();
       if (error) throw error;
-
       toast({
         title: "Succès",
-        description: "Complément créé avec succès",
+        description: "Complément créé avec succès"
       });
-
       fetchToppings();
       setShowCreateToppingDialog(false);
     } catch (error) {
@@ -261,32 +230,27 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
       toast({
         title: "Erreur",
         description: "Impossible de créer le complément",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsCreatingTopping(false);
     }
   };
-
   const handleUpdateTopping = async (toppingId: string, formData: ToppingFormValues) => {
     try {
       setIsUpdatingTopping(true);
-      const { error } = await supabase
-        .from('toppings')
-        .update({
-          name: formData.name,
-          price: parseFloat(formData.price),
-          tax_percentage: parseFloat(formData.tax_percentage || "10"),
-        })
-        .eq('id', toppingId);
-
+      const {
+        error
+      } = await supabase.from('toppings').update({
+        name: formData.name,
+        price: parseFloat(formData.price),
+        tax_percentage: parseFloat(formData.tax_percentage || "10")
+      }).eq('id', toppingId);
       if (error) throw error;
-
       toast({
         title: "Succès",
-        description: "Complément mis à jour avec succès",
+        description: "Complément mis à jour avec succès"
       });
-
       fetchToppings();
       setShowUpdateToppingDialog(false);
     } catch (error) {
@@ -294,30 +258,24 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le complément",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsUpdatingTopping(false);
     }
   };
-
   const handleDeleteTopping = async () => {
     if (!selectedTopping?.id) return;
-
     try {
       setIsDeletingTopping(true);
-      const { error } = await supabase
-        .from('toppings')
-        .delete()
-        .eq('id', selectedTopping.id);
-
+      const {
+        error
+      } = await supabase.from('toppings').delete().eq('id', selectedTopping.id);
       if (error) throw error;
-
       toast({
         title: "Succès",
-        description: "Complément supprimé avec succès",
+        description: "Complément supprimé avec succès"
       });
-
       fetchToppings();
       setShowDeleteToppingDialog(false);
     } catch (error) {
@@ -325,15 +283,13 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le complément",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsDeletingTopping(false);
     }
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Menu Categories</h2>
         <p className="text-muted-foreground">
@@ -347,26 +303,9 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
       </Button>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((category) => (
-          <div
-            key={category.id}
-            className={`border rounded-lg p-4 cursor-pointer transition-all ${
-              selectedCategory?.id === category.id ? 'ring-2 ring-[#9b87f5] bg-[#9b87f5]/5' : 'hover:border-[#9b87f5]'
-            }`}
-            onClick={() => setSelectedCategory(category)}
-          >
+        {categories.map(category => <div key={category.id} className={`border rounded-lg p-4 cursor-pointer transition-all ${selectedCategory?.id === category.id ? 'ring-2 ring-[#9b87f5] bg-[#9b87f5]/5' : 'hover:border-[#9b87f5]'}`} onClick={() => setSelectedCategory(category)}>
             <div className="flex items-center space-x-3">
-              <div className="bg-[#D6BCFA] p-2 rounded-lg">
-                {category.icon ? (
-                  <img
-                    src={category.icon}
-                    alt={category.name}
-                    className="w-6 h-6"
-                  />
-                ) : (
-                  <div className="w-6 h-6" />
-                )}
-              </div>
+              
               <div className="flex-1">
                 <h3 className="font-medium">{category.name}</h3>
                 <p className="text-sm text-muted-foreground">
@@ -374,39 +313,29 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
                 </p>
               </div>
               <div className="flex space-x-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCategoryName(category.name);
-                    setCategoryDescription(category.description || "");
-                    setShowUpdateCategoryDialog(true);
-                  }}
-                >
+                <Button variant="ghost" size="icon" onClick={e => {
+              e.stopPropagation();
+              setCategoryName(category.name);
+              setCategoryDescription(category.description || "");
+              setShowUpdateCategoryDialog(true);
+            }}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedCategoryToDelete(category);
-                    setShowDeleteCategoryDialog(true);
-                  }}
-                >
+                <Button variant="ghost" size="icon" onClick={e => {
+              e.stopPropagation();
+              setSelectedCategoryToDelete(category);
+              setShowDeleteCategoryDialog(true);
+            }}>
                   <Trash className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             </div>
-          </div>
-        ))}
+          </div>)}
       </div>
 
       <Separator />
 
-      {selectedCategory && (
-        <div>
+      {selectedCategory && <div>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">Menu Items - {selectedCategory.name}</h2>
@@ -421,8 +350,7 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
           </div>
 
           {/* Displaying toppings */}
-          {selectedCategory?.toppings?.map((topping) => (
-            <div key={topping.id} className="flex items-center justify-between py-2">
+          {selectedCategory?.toppings?.map(topping => <div key={topping.id} className="flex items-center justify-between py-2">
               <div>
                 <p className="font-medium">{topping.name}</p>
                 <div className="text-sm font-medium text-muted-foreground">
@@ -431,31 +359,21 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
                 </div>
               </div>
               <div className="space-x-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setSelectedTopping(topping);
-                    setShowUpdateToppingDialog(true);
-                  }}
-                >
+                <Button variant="ghost" size="icon" onClick={() => {
+            setSelectedTopping(topping);
+            setShowUpdateToppingDialog(true);
+          }}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setSelectedTopping(topping);
-                    setShowDeleteToppingDialog(true);
-                  }}
-                >
+                <Button variant="ghost" size="icon" onClick={() => {
+            setSelectedTopping(topping);
+            setShowDeleteToppingDialog(true);
+          }}>
                   <Trash className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            </div>)}
+        </div>}
 
       <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
         <DialogContent>
@@ -467,13 +385,13 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
               <Label htmlFor="name" className="text-right">
                 Nom
               </Label>
-              <Input id="name" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} className="col-span-3" />
+              <Input id="name" value={categoryName} onChange={e => setCategoryName(e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">
                 Description
               </Label>
-              <Input id="description" value={categoryDescription} onChange={(e) => setCategoryDescription(e.target.value)} className="col-span-3" />
+              <Input id="description" value={categoryDescription} onChange={e => setCategoryDescription(e.target.value)} className="col-span-3" />
             </div>
           </div>
           <Button onClick={handleCreateCategory} className="bg-kiosk-primary" disabled={isCreatingCategory}>
@@ -492,13 +410,13 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
               <Label htmlFor="name" className="text-right">
                 Nom
               </Label>
-              <Input id="name" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} className="col-span-3" />
+              <Input id="name" value={categoryName} onChange={e => setCategoryName(e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">
                 Description
               </Label>
-              <Input id="description" value={categoryDescription} onChange={(e) => setCategoryDescription(e.target.value)} className="col-span-3" />
+              <Input id="description" value={categoryDescription} onChange={e => setCategoryDescription(e.target.value)} className="col-span-3" />
             </div>
           </div>
           <Button onClick={handleUpdateCategory} className="bg-kiosk-primary" disabled={isUpdatingCategory}>
@@ -524,11 +442,7 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
           <DialogHeader>
             <DialogTitle>Créer un complément</DialogTitle>
           </DialogHeader>
-          <ToppingForm
-            onSubmit={handleCreateTopping}
-            isLoading={isCreatingTopping}
-            currency={restaurant.currency}
-          />
+          <ToppingForm onSubmit={handleCreateTopping} isLoading={isCreatingTopping} currency={restaurant.currency} />
         </DialogContent>
       </Dialog>
 
@@ -537,18 +451,11 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
           <DialogHeader>
             <DialogTitle>Modifier le complément</DialogTitle>
           </DialogHeader>
-          {selectedTopping && (
-            <ToppingForm
-              onSubmit={(values) => handleUpdateTopping(selectedTopping.id, values)}
-              initialValues={{
-                name: selectedTopping.name,
-                price: selectedTopping.price?.toString() || "0",
-                tax_percentage: selectedTopping.tax_percentage?.toString() || "10",
-              }}
-              isLoading={isUpdatingTopping}
-              currency={restaurant.currency}
-            />
-          )}
+          {selectedTopping && <ToppingForm onSubmit={values => handleUpdateTopping(selectedTopping.id, values)} initialValues={{
+          name: selectedTopping.name,
+          price: selectedTopping.price?.toString() || "0",
+          tax_percentage: selectedTopping.tax_percentage?.toString() || "10"
+        }} isLoading={isUpdatingTopping} currency={restaurant.currency} />}
         </DialogContent>
       </Dialog>
 
@@ -563,8 +470,6 @@ const ToppingsTab = ({ restaurant }: ToppingsTabProps) => {
           </Button>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 };
-
 export default ToppingsTab;
