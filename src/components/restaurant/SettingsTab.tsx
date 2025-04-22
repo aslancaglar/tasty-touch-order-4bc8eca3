@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +67,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [name, setName] = useState(restaurant.name);
   const [location, setLocation] = useState(restaurant.location || "");
   const [image, setImage] = useState(restaurant.image_url || "");
+  const [slug, setSlug] = useState(restaurant.slug || "");
   const [isSaving, setIsSaving] = useState(false);
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
@@ -88,6 +88,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     setName(restaurant.name);
     setLocation(restaurant.location || "");
     setImage(restaurant.image_url || "");
+    setSlug(restaurant.slug || "");
     setUiLanguage(restaurant.ui_language || "fr");
     setCurrency(restaurant.currency || "EUR");
   }, [restaurant]);
@@ -128,6 +129,15 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       return;
     }
 
+    if (!slug.trim()) {
+      toast({
+        title: "Error",
+        description: "Restaurant slug is required",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSaving(true);
     
     try {
@@ -137,6 +147,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         image_url: image,
         ui_language: uiLanguage,
         currency,
+        slug: slug.toLowerCase().trim(),
       });
       
       toast({
@@ -386,6 +397,20 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 onChange={(e) => setName(e.target.value)} 
                 className="mt-1"
               />
+            </div>
+            
+            <div>
+              <Label htmlFor="restaurantSlug">URL du Kiosk</Label>
+              <Input 
+                id="restaurantSlug" 
+                value={slug} 
+                onChange={(e) => setSlug(e.target.value.toLowerCase().trim())} 
+                className="mt-1"
+                placeholder="mon-restaurant"
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Cette URL sera utilisée pour accéder au kiosk: /r/mon-restaurant
+              </p>
             </div>
             
             <div>
