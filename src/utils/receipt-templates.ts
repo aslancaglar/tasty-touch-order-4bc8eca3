@@ -19,7 +19,8 @@ const translations = {
   fr: {
     order: "COMMANDE",
     takeaway: "A EMPORTER",
-    table: "SUR PLACE - TABLE",
+    table: "Sur Place",
+    dineIn: "SUR PLACE",
     subtotal: "Sous-total",
     vat: "TVA",
     total: "TOTAL",
@@ -29,7 +30,8 @@ const translations = {
   en: {
     order: "ORDER",
     takeaway: "TAKEAWAY",
-    table: "DINE IN - TABLE",
+    table: "Dine In",
+    dineIn: "DINE IN",
     subtotal: "Subtotal",
     vat: "VAT",
     total: "TOTAL",
@@ -39,7 +41,8 @@ const translations = {
   tr: {
     order: "SİPARİŞ",
     takeaway: "PAKET SERVİSİ",
-    table: "YERİNDE - MASA",
+    table: "Yemek İçin",
+    dineIn: "YERİNDE TÜKETİM",
     subtotal: "Ara Toplam",
     vat: "KDV",
     total: "TOPLAM",
@@ -192,8 +195,8 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
 
   if (orderType === 'takeaway') {
     receipt += formatText(t("takeaway"), ESCPOS.FONT_BOLD) + addLineFeed();
-  } else if (orderType === 'dine-in' && tableNumber) {
-    receipt += formatText(`${t("table")} ${tableNumber}`, ESCPOS.FONT_BOLD) + addLineFeed();
+  } else if (orderType === 'dine-in') {
+    receipt += formatText(t("dineIn"), ESCPOS.FONT_BOLD) + addLineFeed();
   }
   receipt += ESCPOS.ALIGN_LEFT;
 

@@ -1,4 +1,3 @@
-
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
@@ -15,7 +14,9 @@ const translations = {
     vat: "TVA",
     total: "TOTAL",
     thanks: "Merci de votre visite!",
-    seeYouSoon: "A bientôt!"
+    seeYouSoon: "A bientôt!",
+    dineIn: "Sur Place",
+    takeaway: "À Emporter"
   },
   en: {
     order: "Order",
@@ -25,7 +26,9 @@ const translations = {
     vat: "VAT",
     total: "TOTAL",
     thanks: "Thank you for your visit!",
-    seeYouSoon: "See you soon!"
+    seeYouSoon: "See you soon!",
+    dineIn: "Dine In",
+    takeaway: "Takeaway"
   },
   tr: {
     order: "Sipariş",
@@ -35,7 +38,9 @@ const translations = {
     vat: "KDV",
     total: "TOPLAM",
     thanks: "Ziyaretiniz için teşekkürler!",
-    seeYouSoon: "Tekrar görüşmek üzere!"
+    seeYouSoon: "Tekrar görüşmek üzere!",
+    dineIn: "Yemek İçin",
+    takeaway: "Paket Servisi"
   }
 };
 
@@ -98,7 +103,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         {restaurant.location && <div>{restaurant.location}</div>}
         <div>{currentDate}</div>
         <div>{t("order")} #{orderNumber}</div>
-        {orderType === "dine-in" && tableNumber && <div>{t("table")}: {tableNumber}</div>}
+        {orderType === "dine-in" && <div>{t("dineIn")}</div>}
         {orderType === "takeaway" && <div>{t("takeaway")}</div>}
       </div>
 
