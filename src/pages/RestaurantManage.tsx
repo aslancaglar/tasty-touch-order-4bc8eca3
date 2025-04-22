@@ -1,21 +1,17 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 import { 
-  Loader2, 
   ArrowLeft, 
   UtensilsCrossed, 
   Cherry, 
   Receipt, 
-  Settings,
-  Copy,
-  Check
+  Settings
 } from "lucide-react";
 import { getRestaurants } from "@/services/kiosk-service";
 import { Restaurant } from "@/types/database-types";
@@ -29,7 +25,6 @@ const RestaurantManage = () => {
   const [activeTab, setActiveTab] = useState("menu");
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
   
   const { toast } = useToast();
   
@@ -72,21 +67,6 @@ const RestaurantManage = () => {
     setRestaurant(updatedRestaurant);
   };
 
-  const handleCopyUrl = () => {
-    if (!restaurant) return;
-    
-    const url = `${window.location.origin}/r/${restaurant.slug}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    
-    toast({
-      title: "URL Copié",
-      description: "L'URL du kiosk a été copié dans le presse-papier",
-    });
-    
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   if (loading && !restaurant) {
     return (
       <AdminLayout>
@@ -119,28 +99,9 @@ const RestaurantManage = () => {
             Retour aux Restaurants
           </Link>
         </Button>
-        <div className="flex-1">
+        <div>
           <h1 className="text-3xl font-bold">{restaurant?.name}</h1>
-          <div className="flex items-center mt-2 space-x-2">
-            <Input 
-              value={`${window.location.origin}/r/${restaurant?.slug}`}
-              readOnly
-              className="bg-muted text-muted-foreground w-[300px]"
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCopyUrl}
-              className="flex items-center"
-            >
-              {copied ? (
-                <Check className="h-4 w-4" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-          <p className="text-muted-foreground mt-1">{restaurant?.location || "Aucun emplacement défini"}</p>
+          <p className="text-muted-foreground">{restaurant?.location || "Aucun emplacement défini"}</p>
         </div>
       </div>
       
