@@ -9,7 +9,6 @@ const translations = {
   fr: {
     order: "Commande",
     table: "Table",
-    takeaway: "À Emporter",
     subtotal: "Sous-total",
     vat: "TVA",
     total: "TOTAL",
@@ -21,7 +20,6 @@ const translations = {
   en: {
     order: "Order",
     table: "Table",
-    takeaway: "Takeaway",
     subtotal: "Subtotal",
     vat: "VAT",
     total: "TOTAL",
@@ -33,7 +31,6 @@ const translations = {
   tr: {
     order: "Sipariş",
     table: "Masa",
-    takeaway: "Paket Servisi",
     subtotal: "Ara Toplam",
     vat: "KDV",
     total: "TOPLAM",
