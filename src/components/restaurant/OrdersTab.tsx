@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Restaurant, OrderStatus } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,14 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { updateOrderStatus } from "@/services/kiosk-service";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 
 type OrderItem = {
   name: string;
@@ -27,7 +20,7 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  orderNumber: number;
+  orderNumber: number; // Added this to track the sequential order number
   restaurantId: string;
   status: OrderStatus;
   items: OrderItem[];
@@ -57,33 +50,17 @@ interface OrdersTabProps {
 const OrdersTab = ({ restaurant }: OrdersTabProps) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalOrders, setTotalOrders] = useState(0);
-  const ordersPerPage = 10;
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        
-        const { count: totalCount, error: countError } = await supabase
-          .from("orders")
-          .select("*", { count: 'exact', head: true })
-          .eq("restaurant_id", restaurant.id);
-
-        if (countError) {
-          throw countError;
-        }
-
-        setTotalOrders(totalCount || 0);
-
         const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
           .select("*")
           .eq("restaurant_id", restaurant.id)
-          .order("created_at", { ascending: false })
-          .range((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage - 1);
+          .order("created_at", { ascending: false });
 
         if (ordersError) {
           throw ordersError;
@@ -91,6 +68,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
         const transformedOrders = await Promise.all(
           ordersData.map(async (order, index) => {
+            // Fetch order items
             const { data: orderItems, error: itemsError } = await supabase
               .from("order_items")
               .select(`
@@ -111,10 +89,13 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
               return null;
             }
 
+            // Process each order item to get its toppings
             const processedItems = await Promise.all(orderItems.map(async (item) => {
+              // Array to store topping details
               let toppings: Array<{name: string, price: number}> = [];
               
               try {
+                // Get topping IDs for this order item from order_item_toppings table
                 const { data: toppingLinks, error: toppingLinksError } = await supabase
                   .from("order_item_toppings")
                   .select("topping_id")
@@ -125,9 +106,12 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                   throw toppingLinksError;
                 }
                 
+                // If toppings exist for this order item
                 if (toppingLinks && toppingLinks.length > 0) {
+                  // Get all topping IDs from the links
                   const toppingIds = toppingLinks.map(link => link.topping_id);
                   
+                  // Fetch the topping details using the IDs
                   const { data: toppingDetails, error: toppingDetailsError } = await supabase
                     .from("toppings")
                     .select("name, price")
@@ -144,6 +128,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                 }
               } catch (error) {
                 console.error("Error processing toppings:", error);
+                // Continue with empty toppings array in case of error
               }
               
               return {
@@ -157,7 +142,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
             return {
               id: order.id,
-              orderNumber: ordersData.length - index,
+              orderNumber: ordersData.length - index, // Assign numbers in reverse: most recent = highest number
               restaurantId: order.restaurant_id,
               status: order.status as OrderStatus,
               items: processedItems,
@@ -168,6 +153,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
           })
         );
 
+        // Filter out any null values (failed to fetch)
         setOrders(transformedOrders.filter(Boolean) as Order[]);
       } catch (error) {
         console.error("Error fetching orders:", error);
@@ -184,12 +170,13 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
     if (restaurant?.id) {
       fetchOrders();
     }
-  }, [restaurant.id, toast, currentPage]);
+  }, [restaurant.id, toast]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
       await updateOrderStatus(orderId, newStatus);
 
+      // Update local state
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId ? { ...order, status: newStatus } : order
@@ -214,8 +201,6 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const totalPages = Math.ceil(totalOrders / ordersPerPage);
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -228,139 +213,109 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
             <p className="text-muted-foreground">Loading orders...</p>
           </div>
         ) : orders.length > 0 ? (
-          <>
-            <div className="space-y-4 p-4">
-              {orders.map((order) => (
-                <Card key={order.id} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="flex flex-col md:flex-row justify-between p-4 border-b bg-gray-50">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <p className="font-bold">Order #{order.orderNumber}</p>
-                          <p className="text-xs text-gray-500">{order.id}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {order.customerName || "Guest Customer"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4 mt-4 md:mt-0">
-                        <Badge 
-                          className={`flex items-center space-x-1 ${statusColors[order.status]}`}
-                          variant="outline"
-                        >
-                          {statusIcons[order.status]}
-                          <span className="capitalize ml-1">{order.status}</span>
-                        </Badge>
-                        <p className="text-sm font-medium">{formatTime(order.date)}</p>
-                        <p className="text-sm font-bold">{order.total.toFixed(2)} €</p>
+          <div className="space-y-4 p-4">
+            {orders.map((order) => (
+              <Card key={order.id} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex flex-col md:flex-row justify-between p-4 border-b bg-gray-50">
+                    <div className="flex items-center space-x-4">
+                      <div>
+                        <p className="font-bold">Order #{order.orderNumber}</p>
+                        <p className="text-xs text-gray-500">{order.id}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {order.customerName || "Guest Customer"}
+                        </p>
                       </div>
                     </div>
-                    <div className="p-4">
-                      <p className="text-sm font-medium mb-2">Order Items:</p>
-                      <div className="space-y-3">
-                        {order.items.map((item, index) => (
-                          <div key={index} className="border-b pb-2 last:border-0 last:pb-0">
-                            <div className="flex justify-between text-sm">
-                              <div>
-                                <span className="font-medium">{item.quantity}x </span>
-                                {item.name}
-                              </div>
-                              <span>{(item.price * item.quantity).toFixed(2)} €</span>
+                    <div className="flex items-center space-x-4 mt-4 md:mt-0">
+                      <Badge 
+                        className={`flex items-center space-x-1 ${statusColors[order.status]}`}
+                        variant="outline"
+                      >
+                        {statusIcons[order.status]}
+                        <span className="capitalize ml-1">{order.status}</span>
+                      </Badge>
+                      <p className="text-sm font-medium">{formatTime(order.date)}</p>
+                      <p className="text-sm font-bold">{order.total.toFixed(2)} €</p>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-sm font-medium mb-2">Order Items:</p>
+                    <div className="space-y-3">
+                      {order.items.map((item, index) => (
+                        <div key={index} className="border-b pb-2 last:border-0 last:pb-0">
+                          <div className="flex justify-between text-sm">
+                            <div>
+                              <span className="font-medium">{item.quantity}x </span>
+                              {item.name}
                             </div>
-                            
-                            {item.toppings && item.toppings.length > 0 && (
-                              <div className="mt-1 ml-5 text-xs text-gray-600">
-                                <p className="font-medium">Toppings:</p>
-                                <ul className="pl-2 space-y-1">
-                                  {item.toppings.map((topping, idx) => (
-                                    <li key={idx} className="flex justify-between">
-                                      <span>{topping.name}</span>
-                                      <span>{topping.price.toFixed(2)} €</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            
-                            {item.specialInstructions && (
-                              <div className="mt-1 ml-5 text-xs text-gray-500 italic">
-                                Note: {item.specialInstructions}
-                              </div>
-                            )}
+                            <span>{(item.price * item.quantity).toFixed(2)} €</span>
                           </div>
-                        ))}
-                      </div>
-                      <div className="mt-4 flex justify-end space-x-2">
-                        {order.status === "pending" && (
-                          <>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-blue-600"
-                              onClick={() => handleUpdateOrderStatus(order.id, "preparing")}
-                            >
-                              <ChefHat className="mr-2 h-4 w-4" />
-                              Start Preparing
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-red-600"
-                              onClick={() => handleUpdateOrderStatus(order.id, "cancelled")}
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Cancel Order
-                            </Button>
-                          </>
-                        )}
-                        {order.status === "preparing" && (
+                          
+                          {/* Display toppings */}
+                          {item.toppings && item.toppings.length > 0 && (
+                            <div className="mt-1 ml-5 text-xs text-gray-600">
+                              <p className="font-medium">Toppings:</p>
+                              <ul className="pl-2 space-y-1">
+                                {item.toppings.map((topping, idx) => (
+                                  <li key={idx} className="flex justify-between">
+                                    <span>{topping.name}</span>
+                                    <span>{topping.price.toFixed(2)} €</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {/* Display special instructions */}
+                          {item.specialInstructions && (
+                            <div className="mt-1 ml-5 text-xs text-gray-500 italic">
+                              Note: {item.specialInstructions}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex justify-end space-x-2">
+                      {order.status === "pending" && (
+                        <>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="text-green-600"
-                            onClick={() => handleUpdateOrderStatus(order.id, "completed")}
+                            className="text-blue-600"
+                            onClick={() => handleUpdateOrderStatus(order.id, "preparing")}
                           >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Mark Completed
+                            <ChefHat className="mr-2 h-4 w-4" />
+                            Start Preparing
                           </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            {totalPages > 1 && (
-              <div className="py-4 border-t">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                      />
-                    </PaginationItem>
-                    {[...Array(totalPages)].map((_, index) => (
-                      <PaginationItem key={index + 1}>
-                        <PaginationLink
-                          onClick={() => setCurrentPage(index + 1)}
-                          isActive={currentPage === index + 1}
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600"
+                            onClick={() => handleUpdateOrderStatus(order.id, "cancelled")}
+                          >
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Cancel Order
+                          </Button>
+                        </>
+                      )}
+                      {order.status === "preparing" && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-green-600"
+                          onClick={() => handleUpdateOrderStatus(order.id, "completed")}
                         >
-                          {index + 1}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            )}
-          </>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Mark Completed
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : (
           <div className="py-6 px-4 text-center">
             <p className="text-muted-foreground">No orders found.</p>
