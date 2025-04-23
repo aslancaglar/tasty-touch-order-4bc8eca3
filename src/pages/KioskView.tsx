@@ -731,32 +731,32 @@ const KioskView = () => {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-4">
-            <div className="space-y-1">
+            <div className="space-y-2">
               {categories.map(category => (
                 <button
                   key={category.id}
                   onClick={() => setActiveCategory(category.id)}
                   className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${
-                    activeCategory === category.id ? 'bg-kiosk-primary text-white' : 'hover:bg-gray-100'
+                    activeCategory === category.id 
+                      ? 'bg-kiosk-primary text-white' 
+                      : 'bg-[#D6BCFA] hover:bg-[#E5DEFF] text-gray-800'
                   }`}
                 >
-                  <span className="mr-3">
+                  <div className="mr-3 w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
                     {category.icon ? (
                       <img
                         src={category.icon}
                         alt={category.name}
-                        className={`w-5 h-5 object-cover rounded ${
-                          activeCategory === category.id ? 'brightness-0 invert' : ''
-                        }`}
+                        className="w-full h-full object-cover"
                       />
                     ) : (
-                      <UtensilsCrossed
-                        className={`h-5 w-5 ${
-                          activeCategory === category.id ? 'text-white' : 'text-kiosk-primary'
-                        }`}
-                      />
+                      <div className={`w-full h-full flex items-center justify-center bg-gray-100 ${
+                        activeCategory === category.id ? 'text-white' : 'text-gray-500'
+                      }`}>
+                        <UtensilsCrossed className="h-8 w-8" />
+                      </div>
                     )}
-                  </span>
+                  </div>
                   <span className="font-medium">{category.name}</span>
                 </button>
               ))}
