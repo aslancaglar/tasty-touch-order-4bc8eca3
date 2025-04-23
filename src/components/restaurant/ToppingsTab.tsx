@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,6 @@ import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
 
-// Define the missing interface
 interface ToppingCategoryWithToppings extends ToppingCategory {
   toppings?: Topping[];
 }
@@ -23,7 +22,6 @@ interface ToppingsTabProps {
   };
 }
 
-// Currency symbol helper function
 const getCurrencySymbol = (currency: string): string => {
   switch (currency) {
     case 'EUR':
@@ -36,6 +34,7 @@ const getCurrencySymbol = (currency: string): string => {
       return currency;
   }
 };
+
 const ToppingsTab = ({
   restaurant
 }: ToppingsTabProps) => {
@@ -57,12 +56,15 @@ const ToppingsTab = ({
   const [isUpdatingTopping, setIsUpdatingTopping] = useState(false);
   const [isDeletingTopping, setIsDeletingTopping] = useState(false);
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
+
   useEffect(() => {
     fetchCategories();
   }, [restaurant.id]);
+
   useEffect(() => {
     fetchToppings();
   }, [selectedCategory?.id]);
+
   const fetchCategories = async () => {
     try {
       const {
@@ -82,6 +84,7 @@ const ToppingsTab = ({
       });
     }
   };
+
   const fetchToppings = async () => {
     if (!selectedCategory?.id) return;
     try {
@@ -118,6 +121,7 @@ const ToppingsTab = ({
       });
     }
   };
+
   const handleDeleteCategory = async () => {
     if (!selectedCategoryToDelete?.id) return;
     try {
@@ -143,6 +147,7 @@ const ToppingsTab = ({
       setIsDeletingCategory(false);
     }
   };
+
   const handleCreateTopping = async (formData: ToppingFormValues) => {
     try {
       setIsCreatingTopping(true);
@@ -173,6 +178,7 @@ const ToppingsTab = ({
       setIsCreatingTopping(false);
     }
   };
+
   const handleUpdateTopping = async (toppingId: string, formData: ToppingFormValues) => {
     try {
       setIsUpdatingTopping(true);
@@ -201,6 +207,7 @@ const ToppingsTab = ({
       setIsUpdatingTopping(false);
     }
   };
+
   const handleDeleteTopping = async () => {
     if (!selectedTopping?.id) return;
     try {
@@ -226,6 +233,7 @@ const ToppingsTab = ({
       setIsDeletingTopping(false);
     }
   };
+
   return <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Menu Categories</h2>
@@ -314,6 +322,7 @@ const ToppingsTab = ({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Créer une catégorie</DialogTitle>
+            <DialogDescription>Créez une nouvelle catégorie de compléments</DialogDescription>
           </DialogHeader>
           <ToppingCategoryForm
             restaurantId={restaurant.id}
@@ -329,7 +338,7 @@ const ToppingsTab = ({
                     restaurant_id: restaurant.id,
                     min_selections,
                     max_selections,
-                    show_if_selection_id: conditionToppingIds
+                    show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null
                   }])
                   .select()
                   .single();
@@ -361,13 +370,17 @@ const ToppingsTab = ({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Modifier la catégorie</DialogTitle>
+            <DialogDescription>Modifiez les détails de cette catégorie</DialogDescription>
           </DialogHeader>
           {selectedCategory && (
             <ToppingCategoryForm
               restaurantId={restaurant.id}
               initialValues={{
-                ...selectedCategory,
-                show_if_selection_id: selectedCategory.show_if_selection_id ?? []
+                name: selectedCategory.name,
+                description: selectedCategory.description || "",
+                min_selections: selectedCategory.min_selections || 0,
+                max_selections: selectedCategory.max_selections || 0,
+                show_if_selection_id: selectedCategory.show_if_selection_id || []
               }}
               onSubmit={async (values) => {
                 setIsUpdatingCategory(true);
@@ -380,7 +393,7 @@ const ToppingsTab = ({
                       description,
                       min_selections,
                       max_selections,
-                      show_if_selection_id: conditionToppingIds
+                      show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null
                     })
                     .eq('id', selectedCategory.id);
 
@@ -455,4 +468,5 @@ const ToppingsTab = ({
       </Dialog>
     </div>;
 };
+
 export default ToppingsTab;
