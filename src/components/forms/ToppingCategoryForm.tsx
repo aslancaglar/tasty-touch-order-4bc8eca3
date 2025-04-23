@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form";
 import { Loader2, Check } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Checkbox } from "@/components/ui/checkbox";
+import ImageUpload from "@/components/ImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { Topping } from "@/types/database-types";
 
@@ -22,10 +24,7 @@ type ToppingCategoryFormValues = z.infer<typeof toppingCategorySchema>;
 
 interface ToppingCategoryFormProps {
   onSubmit: (values: ToppingCategoryFormValues & { conditionToppingIds: string[] }) => void;
-  initialValues?: Partial<ToppingCategoryFormValues> & { 
-    show_if_selection_id?: string[] | null 
-    icon?: string
-  };
+  initialValues?: Partial<ToppingCategoryFormValues> & { show_if_selection_id?: string[] | null };
   isLoading?: boolean;
   restaurantId?: string;
 }
@@ -41,8 +40,6 @@ const ToppingCategoryForm = ({
     initialValues?.show_if_selection_id || []
   );
   const [loadingToppings, setLoadingToppings] = useState(false);
-
-  console.log("Initial Values:", initialValues); // Debugging log
 
   const form = useForm<ToppingCategoryFormValues>({
     resolver: zodResolver(toppingCategorySchema),
@@ -61,6 +58,8 @@ const ToppingCategoryForm = ({
       
       setLoadingToppings(true);
       try {
+        console.log("Fetching toppings for restaurant:", restaurantId);
+        
         const { data: categories, error: categoriesError } = await supabase
           .from('topping_categories')
           .select('id')
@@ -72,6 +71,8 @@ const ToppingCategoryForm = ({
           return;
         }
         
+        console.log("Fetched categories:", categories);
+        
         if (!categories || categories.length === 0) {
           console.log("No categories found");
           setLoadingToppings(false);
@@ -79,6 +80,7 @@ const ToppingCategoryForm = ({
         }
         
         const categoryIds = categories.map(cat => cat.id);
+        console.log("Fetching toppings for categories:", categoryIds);
         
         const { data, error } = await supabase
           .from('toppings')
