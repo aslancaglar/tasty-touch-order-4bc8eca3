@@ -229,7 +229,7 @@ const ToppingsTab = ({
         <p className="text-muted-foreground">Manage toppings categories available in your restaurant.</p>
       </div>
 
-      <Button onClick={() => setShowCreateCategoryDialog(true)} className="bg-[#9b87f5] hover:bg-[#8b77e5] text-white">
+      <Button onClick={() => setShowCreateCategoryDialog(true)} className="text-white bg-purple-700 hover:bg-purple-600">
         <Plus className="mr-2 h-4 w-4" />
         Add Category
       </Button>
