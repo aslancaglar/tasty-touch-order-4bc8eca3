@@ -11,7 +11,6 @@ import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
 
-// Define the missing interface
 interface ToppingCategoryWithToppings extends ToppingCategory {
   toppings?: Topping[];
 }
@@ -23,7 +22,6 @@ interface ToppingsTabProps {
   };
 }
 
-// Currency symbol helper function
 const getCurrencySymbol = (currency: string): string => {
   switch (currency) {
     case 'EUR':
@@ -59,12 +57,15 @@ const ToppingsTab = ({
   const [isUpdatingTopping, setIsUpdatingTopping] = useState(false);
   const [isDeletingTopping, setIsDeletingTopping] = useState(false);
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
+
   useEffect(() => {
     fetchCategories();
   }, [restaurant.id]);
+
   useEffect(() => {
     fetchToppings();
   }, [selectedCategory?.id]);
+
   const fetchCategories = async () => {
     try {
       const {
@@ -84,6 +85,7 @@ const ToppingsTab = ({
       });
     }
   };
+
   const fetchToppings = async () => {
     if (!selectedCategory?.id) return;
     try {
@@ -120,22 +122,35 @@ const ToppingsTab = ({
       });
     }
   };
-  const handleCreateCategory = async () => {
+
+  const handleCreateCategory = async (values: any) => {
     try {
       setIsCreatingCategory(true);
+      
+      const categoryData = {
+        name: values.name,
+        description: values.description || "",
+        restaurant_id: restaurant.id,
+        min_selections: values.min_selections || 0,
+        max_selections: values.max_selections || 0,
+        icon: values.icon || null,
+        show_if_selection_id: values.conditionToppingIds || null
+      };
+      
+      console.log("Creating category with data:", categoryData);
+      
       const {
         data,
         error
-      } = await supabase.from('topping_categories').insert([{
-        name: categoryName,
-        description: categoryDescription,
-        restaurant_id: restaurant.id
-      }]).select().single();
+      } = await supabase.from('topping_categories').insert([categoryData]).select().single();
+      
       if (error) throw error;
+      
       toast({
         title: "Succès",
         description: "Catégorie créée avec succès"
       });
+      
       fetchCategories();
       setShowCreateCategoryDialog(false);
       setCategoryName("");
@@ -151,21 +166,35 @@ const ToppingsTab = ({
       setIsCreatingCategory(false);
     }
   };
-  const handleUpdateCategory = async () => {
+
+  const handleUpdateCategory = async (values: any) => {
     if (!selectedCategory?.id) return;
+    
     try {
       setIsUpdatingCategory(true);
+      
+      const categoryData = {
+        name: values.name,
+        description: values.description || "",
+        min_selections: values.min_selections || 0,
+        max_selections: values.max_selections || 0,
+        icon: values.icon || null,
+        show_if_selection_id: values.conditionToppingIds || null
+      };
+      
+      console.log("Updating category with data:", categoryData);
+      
       const {
         error
-      } = await supabase.from('topping_categories').update({
-        name: categoryName,
-        description: categoryDescription
-      }).eq('id', selectedCategory.id);
+      } = await supabase.from('topping_categories').update(categoryData).eq('id', selectedCategory.id);
+      
       if (error) throw error;
+      
       toast({
         title: "Succès",
         description: "Catégorie mise à jour avec succès"
       });
+      
       fetchCategories();
       setShowUpdateCategoryDialog(false);
       setCategoryName("");
@@ -181,6 +210,7 @@ const ToppingsTab = ({
       setIsUpdatingCategory(false);
     }
   };
+
   const handleDeleteCategory = async () => {
     if (!selectedCategoryToDelete?.id) return;
     try {
@@ -206,6 +236,7 @@ const ToppingsTab = ({
       setIsDeletingCategory(false);
     }
   };
+
   const handleCreateTopping = async (formData: ToppingFormValues) => {
     try {
       setIsCreatingTopping(true);
@@ -236,6 +267,7 @@ const ToppingsTab = ({
       setIsCreatingTopping(false);
     }
   };
+
   const handleUpdateTopping = async (toppingId: string, formData: ToppingFormValues) => {
     try {
       setIsUpdatingTopping(true);
@@ -264,6 +296,7 @@ const ToppingsTab = ({
       setIsUpdatingTopping(false);
     }
   };
+
   const handleDeleteTopping = async () => {
     if (!selectedTopping?.id) return;
     try {
@@ -289,6 +322,7 @@ const ToppingsTab = ({
       setIsDeletingTopping(false);
     }
   };
+
   return <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Menu Categories</h2>
@@ -380,23 +414,11 @@ const ToppingsTab = ({
           <DialogHeader>
             <DialogTitle>Créer une catégorie</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nom
-              </Label>
-              <Input id="name" value={categoryName} onChange={e => setCategoryName(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Input id="description" value={categoryDescription} onChange={e => setCategoryDescription(e.target.value)} className="col-span-3" />
-            </div>
-          </div>
-          <Button onClick={handleCreateCategory} className="bg-kiosk-primary" disabled={isCreatingCategory}>
-            {isCreatingCategory ? "Création..." : "Créer"}
-          </Button>
+          <ToppingCategoryForm 
+            onSubmit={handleCreateCategory} 
+            isLoading={isCreatingCategory} 
+            restaurantId={restaurant.id}
+          />
         </DialogContent>
       </Dialog>
 
@@ -405,23 +427,20 @@ const ToppingsTab = ({
           <DialogHeader>
             <DialogTitle>Modifier la catégorie</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nom
-              </Label>
-              <Input id="name" value={categoryName} onChange={e => setCategoryName(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Input id="description" value={categoryDescription} onChange={e => setCategoryDescription(e.target.value)} className="col-span-3" />
-            </div>
-          </div>
-          <Button onClick={handleUpdateCategory} className="bg-kiosk-primary" disabled={isUpdatingCategory}>
-            {isUpdatingCategory ? "Mise à jour..." : "Mettre à jour"}
-          </Button>
+          {selectedCategory && (
+            <ToppingCategoryForm 
+              onSubmit={handleUpdateCategory} 
+              initialValues={{
+                name: selectedCategory.name,
+                description: selectedCategory.description || "",
+                min_selections: selectedCategory.min_selections,
+                max_selections: selectedCategory.max_selections,
+                show_if_selection_id: selectedCategory.show_if_selection_id
+              }}
+              isLoading={isUpdatingCategory}
+              restaurantId={restaurant.id}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
@@ -472,4 +491,5 @@ const ToppingsTab = ({
       </Dialog>
     </div>;
 };
+
 export default ToppingsTab;
