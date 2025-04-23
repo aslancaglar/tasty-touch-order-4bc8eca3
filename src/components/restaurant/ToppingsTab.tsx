@@ -47,8 +47,6 @@ const ToppingsTab = ({
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
-  const [categoryName, setCategoryName] = useState("");
-  const [categoryDescription, setCategoryDescription] = useState("");
   const [selectedCategoryToDelete, setSelectedCategoryToDelete] = useState<ToppingCategory | null>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [selectedTopping, setSelectedTopping] = useState<Topping | null>(null);
@@ -118,67 +116,6 @@ const ToppingsTab = ({
         description: "Impossible de charger les compléments",
         variant: "destructive"
       });
-    }
-  };
-  const handleCreateCategory = async () => {
-    try {
-      setIsCreatingCategory(true);
-      const {
-        data,
-        error
-      } = await supabase.from('topping_categories').insert([{
-        name: categoryName,
-        description: categoryDescription,
-        restaurant_id: restaurant.id
-      }]).select().single();
-      if (error) throw error;
-      toast({
-        title: "Succès",
-        description: "Catégorie créée avec succès"
-      });
-      fetchCategories();
-      setShowCreateCategoryDialog(false);
-      setCategoryName("");
-      setCategoryDescription("");
-    } catch (error) {
-      console.error('Error creating topping category:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer la catégorie",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreatingCategory(false);
-    }
-  };
-  const handleUpdateCategory = async () => {
-    if (!selectedCategory?.id) return;
-    try {
-      setIsUpdatingCategory(true);
-      const {
-        error
-      } = await supabase.from('topping_categories').update({
-        name: categoryName,
-        description: categoryDescription
-      }).eq('id', selectedCategory.id);
-      if (error) throw error;
-      toast({
-        title: "Succès",
-        description: "Catégorie mise à jour avec succès"
-      });
-      fetchCategories();
-      setShowUpdateCategoryDialog(false);
-      setCategoryName("");
-      setCategoryDescription("");
-    } catch (error) {
-      console.error('Error updating topping category:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour la catégorie",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUpdatingCategory(false);
     }
   };
   const handleDeleteCategory = async () => {
@@ -315,8 +252,6 @@ const ToppingsTab = ({
               <div className="flex space-x-1">
                 <Button variant="ghost" size="icon" onClick={e => {
               e.stopPropagation();
-              setCategoryName(category.name);
-              setCategoryDescription(category.description || "");
               setShowUpdateCategoryDialog(true);
             }}>
                   <Pencil className="h-4 w-4" />
@@ -380,23 +315,45 @@ const ToppingsTab = ({
           <DialogHeader>
             <DialogTitle>Créer une catégorie</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nom
-              </Label>
-              <Input id="name" value={categoryName} onChange={e => setCategoryName(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Input id="description" value={categoryDescription} onChange={e => setCategoryDescription(e.target.value)} className="col-span-3" />
-            </div>
-          </div>
-          <Button onClick={handleCreateCategory} className="bg-kiosk-primary" disabled={isCreatingCategory}>
-            {isCreatingCategory ? "Création..." : "Créer"}
-          </Button>
+          <ToppingCategoryForm
+            restaurantId={restaurant.id}
+            onSubmit={async (values) => {
+              setIsCreatingCategory(true);
+              try {
+                const { name, description, min_selections, max_selections, conditionToppingIds } = values;
+                const { data, error } = await supabase
+                  .from('topping_categories')
+                  .insert([{
+                    name,
+                    description,
+                    restaurant_id: restaurant.id,
+                    min_selections,
+                    max_selections,
+                    show_if_selection_id: conditionToppingIds
+                  }])
+                  .select()
+                  .single();
+
+                if (error) throw error;
+                toast({
+                  title: "Succès",
+                  description: "Catégorie créée avec succès"
+                });
+                fetchCategories();
+                setShowCreateCategoryDialog(false);
+              } catch (error) {
+                console.error('Error creating topping category:', error);
+                toast({
+                  title: "Erreur",
+                  description: "Impossible de créer la catégorie",
+                  variant: "destructive"
+                });
+              } finally {
+                setIsCreatingCategory(false);
+              }
+            }}
+            isLoading={isCreatingCategory}
+          />
         </DialogContent>
       </Dialog>
 
@@ -405,23 +362,49 @@ const ToppingsTab = ({
           <DialogHeader>
             <DialogTitle>Modifier la catégorie</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nom
-              </Label>
-              <Input id="name" value={categoryName} onChange={e => setCategoryName(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Input id="description" value={categoryDescription} onChange={e => setCategoryDescription(e.target.value)} className="col-span-3" />
-            </div>
-          </div>
-          <Button onClick={handleUpdateCategory} className="bg-kiosk-primary" disabled={isUpdatingCategory}>
-            {isUpdatingCategory ? "Mise à jour..." : "Mettre à jour"}
-          </Button>
+          {selectedCategory && (
+            <ToppingCategoryForm
+              restaurantId={restaurant.id}
+              initialValues={{
+                ...selectedCategory,
+                show_if_selection_id: selectedCategory.show_if_selection_id ?? []
+              }}
+              onSubmit={async (values) => {
+                setIsUpdatingCategory(true);
+                try {
+                  const { name, description, min_selections, max_selections, conditionToppingIds } = values;
+                  const { error } = await supabase
+                    .from('topping_categories')
+                    .update({
+                      name,
+                      description,
+                      min_selections,
+                      max_selections,
+                      show_if_selection_id: conditionToppingIds
+                    })
+                    .eq('id', selectedCategory.id);
+
+                  if (error) throw error;
+                  toast({
+                    title: "Succès",
+                    description: "Catégorie mise à jour avec succès"
+                  });
+                  fetchCategories();
+                  setShowUpdateCategoryDialog(false);
+                } catch (error) {
+                  console.error('Error updating topping category:', error);
+                  toast({
+                    title: "Erreur",
+                    description: "Impossible de mettre à jour la catégorie",
+                    variant: "destructive"
+                  });
+                } finally {
+                  setIsUpdatingCategory(false);
+                }
+              }}
+              isLoading={isUpdatingCategory}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
