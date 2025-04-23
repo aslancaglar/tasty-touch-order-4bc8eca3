@@ -74,6 +74,7 @@ const ToppingsTab = ({
         ascending: true
       });
       if (error) throw error;
+      console.log("Fetched categories:", data);
       setCategories(data || []);
     } catch (error) {
       console.error('Error fetching topping categories:', error);
@@ -260,6 +261,7 @@ const ToppingsTab = ({
               <div className="flex space-x-1">
                 <Button variant="ghost" size="icon" onClick={e => {
               e.stopPropagation();
+              setSelectedCategory(category);
               setShowUpdateCategoryDialog(true);
             }}>
                   <Pencil className="h-4 w-4" />
@@ -330,6 +332,7 @@ const ToppingsTab = ({
               setIsCreatingCategory(true);
               try {
                 const { name, description, min_selections, max_selections, conditionToppingIds } = values;
+                console.log("Creating category with values:", values);
                 const { data, error } = await supabase
                   .from('topping_categories')
                   .insert([{
@@ -386,6 +389,9 @@ const ToppingsTab = ({
                 setIsUpdatingCategory(true);
                 try {
                   const { name, description, min_selections, max_selections, conditionToppingIds } = values;
+                  console.log("Updating category with values:", values);
+                  console.log("Selected condition toppings:", conditionToppingIds);
+                  
                   const { error } = await supabase
                     .from('topping_categories')
                     .update({
@@ -425,11 +431,17 @@ const ToppingsTab = ({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Supprimer la catégorie</DialogTitle>
+            <DialogDescription>Êtes-vous sûr de vouloir supprimer cette catégorie ?</DialogDescription>
           </DialogHeader>
           <p>Êtes-vous sûr de vouloir supprimer la catégorie "{selectedCategoryToDelete?.name}" ?</p>
-          <Button onClick={handleDeleteCategory} className="bg-red-500 text-white" disabled={isDeletingCategory}>
-            {isDeletingCategory ? "Suppression..." : "Supprimer"}
-          </Button>
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button variant="outline" onClick={() => setShowDeleteCategoryDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleDeleteCategory} variant="destructive" disabled={isDeletingCategory}>
+              {isDeletingCategory ? "Suppression..." : "Supprimer"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

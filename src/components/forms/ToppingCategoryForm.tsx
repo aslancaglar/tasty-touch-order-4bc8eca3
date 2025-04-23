@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import ImageUpload from "@/components/ImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { Topping } from "@/types/database-types";
+import { toast } from "@/hooks/use-toast";
 
 const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -37,9 +39,15 @@ const ToppingCategoryForm = ({
 }: ToppingCategoryFormProps) => {
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [selectedToppings, setSelectedToppings] = useState<string[]>(
-    initialValues?.show_if_selection_id || []
+    Array.isArray(initialValues?.show_if_selection_id) 
+      ? initialValues.show_if_selection_id 
+      : []
   );
   const [loadingToppings, setLoadingToppings] = useState(false);
+
+  // Debug logs
+  console.log("ToppingCategoryForm initialValues:", initialValues);
+  console.log("Initial selectedToppings:", selectedToppings);
 
   const form = useForm<ToppingCategoryFormValues>({
     resolver: zodResolver(toppingCategorySchema),
@@ -89,12 +97,22 @@ const ToppingCategoryForm = ({
           
         if (error) {
           console.error('Error fetching toppings:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load toppings",
+            variant: "destructive"
+          });
         } else {
           console.log("Fetched toppings:", data);
           setToppings(data || []);
         }
       } catch (error) {
         console.error('Error in fetchToppings:', error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred",
+          variant: "destructive"
+        });
       } finally {
         setLoadingToppings(false);
       }
@@ -102,6 +120,18 @@ const ToppingCategoryForm = ({
     
     fetchToppings();
   }, [restaurantId]);
+
+  // Update selected toppings when initialValues change
+  useEffect(() => {
+    if (initialValues?.show_if_selection_id) {
+      console.log("Updating selectedToppings from initialValues:", initialValues.show_if_selection_id);
+      setSelectedToppings(
+        Array.isArray(initialValues.show_if_selection_id)
+          ? initialValues.show_if_selection_id
+          : []
+      );
+    }
+  }, [initialValues?.show_if_selection_id]);
 
   const handleSubmit = (values: ToppingCategoryFormValues) => {
     console.log("Submitting form with values:", values);
