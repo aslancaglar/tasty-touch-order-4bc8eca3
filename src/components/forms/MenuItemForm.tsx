@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -114,8 +113,6 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
   };
 
   const handleSubmit = (values: MenuItemFormValues) => {
-    // Make sure we're passing tax_percentage to onSubmit
-    console.log("Submitting form with values:", values);
     onSubmit(values);
   };
 

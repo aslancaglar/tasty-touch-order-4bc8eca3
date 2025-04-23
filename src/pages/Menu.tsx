@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -385,8 +386,7 @@ const MenuPage = () => {
                                   </DialogHeader>
                                   <MenuItemForm 
                                     onSubmit={(values) => {
-                                      console.log("Updating menu item with values:", values);
-                                      // This is where you'd call updateMenuItem with the values
+                                      // Handle edit submission
                                     }}
                                     initialValues={{
                                       name: item.name,
@@ -394,8 +394,7 @@ const MenuPage = () => {
                                       price: item.price.toString(),
                                       promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
                                       image: item.image || "",
-                                      topping_categories: item.topping_categories || [],
-                                      tax_percentage: item.tax_percentage ? item.tax_percentage.toString() : "10"
+                                      topping_categories: item.topping_categories || []
                                     }}
                                     restaurantId={selectedRestaurant || ""}
                                   />
