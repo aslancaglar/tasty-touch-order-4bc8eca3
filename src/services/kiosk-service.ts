@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -171,7 +172,8 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
       const { data: toppingCategoryRelations, error: relationsError } = await supabase
         .from("menu_item_topping_categories")
         .select("topping_category_id")
-        .eq("menu_item_id", item.id);
+        .eq("menu_item_id", item.id)
+        .order("display_order", { ascending: true }); // Order by display_order
 
       if (relationsError) {
         console.error("Error fetching menu item topping category relations:", relationsError);
@@ -206,7 +208,8 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
   const { data: toppingCategoryRelations, error: relationsError } = await supabase
     .from("menu_item_topping_categories")
     .select("topping_category_id")
-    .eq("menu_item_id", id);
+    .eq("menu_item_id", id)
+    .order("display_order", { ascending: true }); // Order by display_order
 
   if (relationsError) {
     console.error("Error fetching menu item topping category relations:", relationsError);
@@ -243,9 +246,10 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
   }
 
   if (topping_categories && topping_categories.length > 0) {
-    const toppingCategoryRelations = topping_categories.map((categoryId: string) => ({
+    const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
       menu_item_id: data.id,
-      topping_category_id: categoryId
+      topping_category_id: categoryId,
+      display_order: index // Save the order based on array index
     }));
 
     const { error: relationError } = await supabase
@@ -295,9 +299,10 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
     }
 
     if (topping_categories && topping_categories.length > 0) {
-      const toppingCategoryRelations = topping_categories.map((categoryId: string) => ({
+      const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
         menu_item_id: id,
-        topping_category_id: categoryId
+        topping_category_id: categoryId,
+        display_order: index // Add display_order based on the array index
       }));
 
       const { error: insertError } = await supabase
