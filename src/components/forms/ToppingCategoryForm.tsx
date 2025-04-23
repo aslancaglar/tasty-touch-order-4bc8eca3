@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -38,12 +37,7 @@ const ToppingCategoryForm = ({
 }: ToppingCategoryFormProps) => {
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [selectedToppings, setSelectedToppings] = useState<string[]>(
-    initialValues?.show_if_selection_id ? 
-      (Array.isArray(initialValues.show_if_selection_id) ? 
-        initialValues.show_if_selection_id : 
-        []
-      ) : 
-      []
+    initialValues?.show_if_selection_id || []
   );
   const [loadingToppings, setLoadingToppings] = useState(false);
 
@@ -108,16 +102,6 @@ const ToppingCategoryForm = ({
     
     fetchToppings();
   }, [restaurantId]);
-
-  // Update selected toppings when initialValues changes
-  useEffect(() => {
-    if (initialValues?.show_if_selection_id) {
-      const toppingIds = Array.isArray(initialValues.show_if_selection_id) ? 
-        initialValues.show_if_selection_id : 
-        [];
-      setSelectedToppings(toppingIds);
-    }
-  }, [initialValues?.show_if_selection_id]);
 
   const handleSubmit = (values: ToppingCategoryFormValues) => {
     console.log("Submitting form with values:", values);
