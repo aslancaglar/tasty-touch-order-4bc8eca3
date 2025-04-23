@@ -323,7 +323,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         price: Number(values.price),
         promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
         image: values.image || null,
-        topping_categories: values.topping_categories || []
+        topping_categories: values.topping_categories || [],
+        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : null
       });
       
       setMenuItems(menuItems.map(item => 
@@ -568,7 +569,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                 price: selectedItem.price.toString(),
                 promotion_price: selectedItem.promotion_price ? selectedItem.promotion_price.toString() : "",
                 image: selectedItem.image || "",
-                topping_categories: selectedItem.topping_categories || []
+                topping_categories: selectedItem.topping_categories || [],
+                tax_percentage: selectedItem.tax_percentage ? selectedItem.tax_percentage.toString() : "10"
               }}
               isLoading={isUpdatingItem}
               restaurantId={restaurant.id}
