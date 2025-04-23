@@ -757,7 +757,7 @@ const KioskView = () => {
                       </div>
                     )}
                   </div>
-                  <span className="font-medium">{category.name}</span>
+                  <span className="font-medium uppercase">{category.name}</span>
                 </button>
               ))}
             </div>
