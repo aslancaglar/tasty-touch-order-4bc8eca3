@@ -1,73 +1,68 @@
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { 
-  ArrowLeft, 
-  UtensilsCrossed, 
-  Cherry, 
-  Receipt, 
-  Settings
-} from "lucide-react";
-import { getRestaurants } from "@/services/kiosk-service";
-import { Restaurant } from "@/types/database-types";
+import { Button } from "@/components/ui/button";
+import { RestaurantSettings } from "@/components/restaurant/RestaurantSettings";
 import MenuTab from "@/components/restaurant/MenuTab";
-import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
-import SettingsTab from "@/components/restaurant/SettingsTab";
+import { getRestaurantBySlug } from "@/services/kiosk-service";
+import { Restaurant } from "@/types/database-types";
+import { Loader2, Copy } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import ToppingsTab from "@/components/restaurant/ToppingsTab";
+import { duplicateRestaurant } from "@/services/kiosk-service";
 
 const RestaurantManage = () => {
-  const { id } = useParams<{ id: string }>();
-  const [activeTab, setActiveTab] = useState("menu");
+  const { slug } = useParams();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
-  
+  const navigate = useNavigate();
   const { toast } = useToast();
-  
+
+  const handleDuplicateRestaurant = async () => {
+    if (!restaurant) return;
+    
+    try {
+      await duplicateRestaurant(restaurant.id);
+      toast({
+        title: "Success",
+        description: "Restaurant duplicated successfully",
+      });
+      navigate('/restaurants');
+    } catch (error) {
+      console.error('Error duplicating restaurant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to duplicate restaurant",
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
     const fetchRestaurant = async () => {
-      if (!id) return;
-      
+      if (!slug) return;
+      setLoading(true);
       try {
-        setLoading(true);
-        const restaurants = await getRestaurants();
-        const foundRestaurant = restaurants.find(r => r.id === id);
-        
-        if (foundRestaurant) {
-          console.log("Restaurant found:", foundRestaurant);
-          setRestaurant(foundRestaurant);
-        } else {
-          toast({
-            title: "Error",
-            description: "Restaurant not found",
-            variant: "destructive"
-          });
-        }
-        setLoading(false);
+        const data = await getRestaurantBySlug(slug);
+        setRestaurant(data);
       } catch (error) {
         console.error("Error fetching restaurant:", error);
         toast({
           title: "Error",
-          description: "Failed to load restaurant data",
+          description: "Failed to load restaurant",
           variant: "destructive"
         });
+      } finally {
         setLoading(false);
       }
     };
 
     fetchRestaurant();
-  }, [id, toast]);
+  }, [slug, toast]);
 
-  const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
-    console.log("Restaurant updated:", updatedRestaurant);
-    setRestaurant(updatedRestaurant);
-  };
-
-  if (loading && !restaurant) {
+  if (loading) {
     return (
       <AdminLayout>
         <div className="flex justify-center items-center h-[80vh]">
@@ -80,11 +75,8 @@ const RestaurantManage = () => {
   if (!restaurant) {
     return (
       <AdminLayout>
-        <div className="text-center py-10">
-          <h1 className="text-2xl font-bold mb-4">Restaurant not found</h1>
-          <Button asChild>
-            <Link to="/restaurants">Back to Restaurants</Link>
-          </Button>
+        <div className="flex justify-center items-center h-[80vh]">
+          Restaurant not found.
         </div>
       </AdminLayout>
     );
@@ -92,74 +84,37 @@ const RestaurantManage = () => {
 
   return (
     <AdminLayout>
-      <div className="flex items-center mb-8">
-        <Button variant="ghost" asChild className="mr-4">
-          <Link to="/restaurants">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour aux Restaurants
-          </Link>
-        </Button>
+      <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">{restaurant?.name}</h1>
-          <p className="text-muted-foreground">{restaurant?.location || "Aucun emplacement défini"}</p>
+          <p className="text-muted-foreground">Manage your restaurant settings and menu</p>
         </div>
+        <Button onClick={handleDuplicateRestaurant} className="bg-green-600 hover:bg-green-700">
+          <Copy className="mr-2 h-4 w-4" />
+          Duplicate Restaurant
+        </Button>
       </div>
       
-      <Card className="mb-8">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle>Gestion du Restaurant</CardTitle>
-            <Button variant="outline" asChild>
-              <Link to={`/r/${restaurant?.slug}`} target="_blank">
-                Voir Kiosk
-              </Link>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-4 mb-8">
-              <TabsTrigger value="menu" className="flex items-center">
-                <UtensilsCrossed className="mr-2 h-4 w-4" />
-                Menu
-              </TabsTrigger>
-              <TabsTrigger value="toppings" className="flex items-center">
-                <Cherry className="mr-2 h-4 w-4" />
-                Suppléments
-              </TabsTrigger>
-              <TabsTrigger value="orders" className="flex items-center">
-                <Receipt className="mr-2 h-4 w-4" />
-                Commandes
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center">
-                <Settings className="mr-2 h-4 w-4" />
-                Paramètres
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="menu">
-              <MenuTab restaurant={restaurant} />
-            </TabsContent>
-            
-            <TabsContent value="toppings">
-              <ToppingsTab restaurant={restaurant} />
-            </TabsContent>
-            
-            <TabsContent value="orders">
-              <OrdersTab restaurant={restaurant} />
-            </TabsContent>
-            
-            <TabsContent value="settings">
-              {restaurant && (
-                <SettingsTab 
-                  restaurant={restaurant} 
-                  onRestaurantUpdated={handleRestaurantUpdated} 
-                />
-              )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="settings" className="w-full">
+        <TabsList>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="menu">Menu</TabsTrigger>
+          <TabsTrigger value="toppings">Toppings</TabsTrigger>
+          <TabsTrigger value="orders">Orders</TabsTrigger>
+        </TabsList>
+        <TabsContent value="settings">
+          <RestaurantSettings restaurant={restaurant} />
+        </TabsContent>
+        <TabsContent value="menu">
+          <MenuTab restaurant={restaurant} />
+        </TabsContent>
+         <TabsContent value="toppings">
+          <ToppingsTab restaurant={restaurant} />
+        </TabsContent>
+        <TabsContent value="orders">
+          <OrdersTab restaurant={restaurant} />
+        </TabsContent>
+      </Tabs>
     </AdminLayout>
   );
 };
