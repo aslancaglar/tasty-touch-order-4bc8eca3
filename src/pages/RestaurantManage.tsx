@@ -1,9 +1,10 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RestaurantSettings } from "@/components/restaurant/RestaurantSettings";
+import SettingsTab from "@/components/restaurant/SettingsTab";
 import MenuTab from "@/components/restaurant/MenuTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
 import { getRestaurantBySlug } from "@/services/kiosk-service";
@@ -103,7 +104,7 @@ const RestaurantManage = () => {
           <TabsTrigger value="orders">Orders</TabsTrigger>
         </TabsList>
         <TabsContent value="settings">
-          <RestaurantSettings restaurant={restaurant} />
+          <SettingsTab restaurant={restaurant} />
         </TabsContent>
         <TabsContent value="menu">
           <MenuTab restaurant={restaurant} />
