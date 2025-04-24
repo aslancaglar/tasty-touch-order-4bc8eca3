@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Printer, Check, XCircle, Trash2 } from "lucide-react";
+import { Loader2, Printer, Check, XCircle, Trash2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Restaurant } from "@/types/database-types";
 import ImageUpload from "@/components/ImageUpload";
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import currencyCodes from "currency-codes";
+import { duplicateRestaurant } from "@/services/kiosk-service";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
@@ -76,7 +77,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
-
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -372,6 +373,28 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     }
   };
 
+  const handleDuplicateRestaurant = async () => {
+    setIsDuplicating(true);
+    try {
+      const newRestaurant = await duplicateRestaurant(restaurant.id);
+      
+      toast({
+        title: "Restaurant dupliqué",
+        description: "Une copie du restaurant a été créée avec succès.",
+      });
+      
+      navigate(`/restaurant/${newRestaurant.id}`);
+    } catch (error) {
+      console.error("Error duplicating restaurant:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de dupliquer le restaurant",
+        variant: "destructive"
+      });
+      setIsDuplicating(false);
+    }
+  };
+
   const selectedCurrencyOption = currencyOptions.find(opt => opt.value === currency);
   const currencySymbol = selectedCurrencyOption?.symbol || currency;
 
@@ -541,7 +564,25 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 Supprimer ce restaurant effacera définitivement toutes les informations associées - menus, suppléments, commandes, etc.
               </AlertDescription>
               
-              <div className="mt-4">
+              <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-6">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" disabled={isDuplicating} onClick={handleDuplicateRestaurant}>
+                      {isDuplicating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Duplication...
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-2 h-4 w-4" />
+                          Dupliquer ce restaurant
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                </AlertDialog>
+
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" disabled={isDeleting}>

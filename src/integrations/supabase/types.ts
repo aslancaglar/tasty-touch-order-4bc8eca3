@@ -706,6 +706,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      duplicate_restaurant: {
+        Args: { source_restaurant_id: string }
+        Returns: string
+      }
       get_daily_order_count: {
         Args: Record<PropertyKey, never>
         Returns: number

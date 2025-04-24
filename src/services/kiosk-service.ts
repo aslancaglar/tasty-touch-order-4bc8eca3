@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -703,4 +702,33 @@ export const getToppingsForRestaurant = async (restaurantId: string) => {
   );
 
   return categoriesWithToppings;
+};
+
+export const duplicateRestaurant = async (restaurantId: string): Promise<Restaurant> => {
+  console.log("Duplicating restaurant:", restaurantId);
+  
+  const { data, error } = await supabase
+    .rpc('duplicate_restaurant', {
+      source_restaurant_id: restaurantId
+    })
+    .single();
+
+  if (error) {
+    console.error("Error duplicating restaurant:", error);
+    throw error;
+  }
+
+  // Fetch the newly created restaurant
+  const { data: newRestaurant, error: fetchError } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("id", data)
+    .single();
+
+  if (fetchError) {
+    console.error("Error fetching new restaurant:", fetchError);
+    throw fetchError;
+  }
+
+  return newRestaurant;
 };
