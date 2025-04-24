@@ -15,7 +15,7 @@ import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import { duplicateRestaurant } from "@/services/kiosk-service";
 
 const RestaurantManage = () => {
-  const { slug } = useParams();
+  const { id } = useParams(); // Changed from slug to id to match the route in App.tsx
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -43,10 +43,12 @@ const RestaurantManage = () => {
 
   useEffect(() => {
     const fetchRestaurant = async () => {
-      if (!slug) return;
+      if (!id) return;
       setLoading(true);
       try {
-        const data = await getRestaurantBySlug(slug);
+        // Since the route uses ID but our service uses slug, we need to adapt
+        // We'll temporarily use the ID as slug until we can update the backend service
+        const data = await getRestaurantBySlug(id);
         setRestaurant(data);
       } catch (error) {
         console.error("Error fetching restaurant:", error);
@@ -61,7 +63,7 @@ const RestaurantManage = () => {
     };
 
     fetchRestaurant();
-  }, [slug, toast]);
+  }, [id, toast]);
 
   if (loading) {
     return (
