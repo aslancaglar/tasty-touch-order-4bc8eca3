@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -7,15 +6,15 @@ import { Button } from "@/components/ui/button";
 import SettingsTab from "@/components/restaurant/SettingsTab";
 import MenuTab from "@/components/restaurant/MenuTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
-import { getRestaurantBySlug } from "@/services/kiosk-service";
 import { Restaurant } from "@/types/database-types";
 import { Loader2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import { duplicateRestaurant } from "@/services/kiosk-service";
+import { supabase } from "@/integrations/supabase/client";
 
 const RestaurantManage = () => {
-  const { id } = useParams(); // Changed from slug to id to match the route in App.tsx
+  const { id } = useParams(); // We're getting ID from the URL
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -46,9 +45,16 @@ const RestaurantManage = () => {
       if (!id) return;
       setLoading(true);
       try {
-        // Since the route uses ID but our service uses slug, we need to adapt
-        // We'll temporarily use the ID as slug until we can update the backend service
-        const data = await getRestaurantBySlug(id);
+        const { data, error } = await supabase
+          .from("restaurants")
+          .select("*")
+          .eq("id", id)
+          .single();
+          
+        if (error) {
+          throw error;
+        }
+        
         setRestaurant(data);
       } catch (error) {
         console.error("Error fetching restaurant:", error);
