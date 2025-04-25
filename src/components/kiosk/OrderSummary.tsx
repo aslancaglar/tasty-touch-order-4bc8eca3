@@ -353,7 +353,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
         
         <div className="p-4 bg-gray-50">
-          <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[40px]">
+          <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[40px] font-normal">
             <Check className="mr-2 h-5 w-5" />
             {t("confirm")}
           </Button>
