@@ -126,7 +126,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                 {/* Grouped toppings by category, show price if > 0 */}
                 {getGroupedToppings(item).map((group, groupIdx) => (
                   <div key={`${item.id}-cat-${groupIdx}`}>
-                    <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
+                    <div style={{ fontWeight: 600, paddingLeft: 0 }}>{group.category}:</div>
                     {group.toppings.map((topping, topIdx) => {
                       const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
                       const toppingRef = category?.toppings.find(t => t.name === topping);
