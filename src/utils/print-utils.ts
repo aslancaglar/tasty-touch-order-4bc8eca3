@@ -122,7 +122,7 @@ export const printReceipt = (elementId: string) => {
             padding: 5mm 0;
             font-size: 12px;
             line-height: 1.2;
-            font-weight: 400;
+            font-weight: 600;
           }
           .receipt {
             width: 100%;
@@ -133,7 +133,7 @@ export const printReceipt = (elementId: string) => {
             font-weight: 600;
           }
           .logo {
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 700;
             margin-bottom: 5px;
           }
@@ -144,13 +144,13 @@ export const printReceipt = (elementId: string) => {
           .item {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
-            font-weight: 400;
+            margin-bottom: 4px;
+            font-weight: 600;
           }
           .item-details {
             padding-left: 15px;
             font-size: 12px;
-            font-weight: 400;
+            font-weight: 600;
           }
           .total-section {
             margin-top: 10px;
@@ -169,7 +169,7 @@ export const printReceipt = (elementId: string) => {
             text-align: center;
             margin-top: 20px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
           }
           @media print {
             html, body {
