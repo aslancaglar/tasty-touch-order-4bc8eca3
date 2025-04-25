@@ -46,7 +46,7 @@ const CartButton: React.FC<CartButtonProps> = ({
   const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
   const currencySymbol = getCurrencySymbol(currency);
   return <div className="fixed bottom-4 right-4 z-40">
-      <Button onClick={onClick} className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 px-[22px] py-[31px] text-xl">
+      <Button onClick={onClick} className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl py-[40px] px-[100px] font-bold">
         <ShoppingCart className="h-6 w-6 mr-2" />
         <span className="font-bold">{itemCount}</span>
         <span className="mx-2">|</span>
