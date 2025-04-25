@@ -11,6 +11,7 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -23,9 +24,11 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
+
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
+
 const translations = {
   fr: {
     orderSummary: "Résumé de la commande",
@@ -73,6 +76,7 @@ const translations = {
     errorPrinting: "Fiş yazdırılırken bir hata oluştu."
   }
 };
+
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -93,6 +97,7 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: "fr" | "en" | "tr";
 }
+
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -121,6 +126,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     tax
   } = calculateCartTotals(cart);
   const t = (key: keyof typeof translations["en"]) => translations[uiLanguage]?.[key] ?? translations.fr[key];
+
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     const fetchOrderCount = async () => {
@@ -136,6 +142,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
+
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     if (restaurant?.id) {
@@ -205,6 +212,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       }
     }
   };
+
   const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -251,6 +259,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
+
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -278,7 +287,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       useCurrencyCode: true
     });
   };
+
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-md md:max-w-lg p-0">
         <DialogHeader className="p-4 border-b">
@@ -353,7 +364,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
         
         <div className="p-4 bg-gray-50">
-          <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[40px] font-normal">
+          <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[40px] font-normal uppercase">
             <Check className="mr-2 h-5 w-5" />
             {t("confirm")}
           </Button>
@@ -363,4 +374,5 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
     </Dialog>;
 };
+
 export default OrderSummary;
