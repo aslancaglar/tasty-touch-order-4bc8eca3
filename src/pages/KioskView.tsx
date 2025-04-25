@@ -792,7 +792,7 @@ const KioskView = () => {
             
             <DialogFooter>
               <div className="w-full">
-                <Button className="w-full bg-kiosk-primary" onClick={handleAddToCart}>
+                <Button onClick={handleAddToCart} className="w-full bg-kiosk-primary text-2xl py-[30px]">
                   {t("addToCart")} - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} {getCurrencySymbol(restaurant.currency)}
                 </Button>
               </div>
