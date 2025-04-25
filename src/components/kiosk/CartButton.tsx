@@ -58,7 +58,7 @@ const CartButton: React.FC<CartButtonProps> = ({
         onClick={onClick} 
         className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl py-[40px] px-[100px] font-bold"
       >
-        <ShoppingCart className="h-6 w-6 mr-2" />
+        <ShoppingCart className="h-12 w-12 mr-2" />
         <span className="font-bold">{itemCount}</span>
         <span className="mx-2">|</span>
         <span className="font-bold">{total.toFixed(2)} {currencySymbol}</span>

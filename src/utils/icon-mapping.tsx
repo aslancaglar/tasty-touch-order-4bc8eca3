@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Beef, 
@@ -23,7 +24,7 @@ type IconProps = {
 };
 
 export const getIconComponent = (iconName: string, props: IconProps = {}): React.ReactNode => {
-  const { size = 16, className = "" } = props;
+  const { size = 32, className = "" } = props; // Changed default from 16 to 32 (2x bigger)
   
   switch (iconName.toLowerCase()) {
     case 'beef':
@@ -65,5 +66,5 @@ export const getIconComponent = (iconName: string, props: IconProps = {}): React
 };
 
 export const TouchToOrderIcon = () => {
-  return <UtensilsCrossed className="h-6 w-6 mr-2" />;
+  return <UtensilsCrossed className="h-12 w-12 mr-2" />; // Changed from h-6 w-6 to h-12 w-12 (2x bigger)
 };
