@@ -17,13 +17,16 @@ import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { UtensilsCrossed } from "lucide-react";
+
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
+
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -67,10 +70,12 @@ const KioskView = () => {
     CNY: "¥",
     RUB: "₽"
   };
+
   const getCurrencySymbol = (currency: string) => {
     const code = currency?.toUpperCase() || "EUR";
     return CURRENCY_SYMBOLS[code] || code;
   };
+
   const translations = {
     fr: {
       restaurantNotFound: "Restaurant introuvable",
@@ -133,9 +138,11 @@ const KioskView = () => {
       maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz."
     }
   };
+
   const t = (key: keyof typeof translations.en) => {
     return translations[uiLanguage][key];
   };
+
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -176,10 +183,12 @@ const KioskView = () => {
     };
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
+
   const handleStartOrder = () => {
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
   };
+
   const handleOrderTypeSelected = (type: OrderType, table?: string) => {
     setOrderType(type);
     if (table) {
@@ -187,6 +196,7 @@ const KioskView = () => {
     }
     setShowOrderTypeSelection(false);
   };
+
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
       const {
@@ -249,6 +259,7 @@ const KioskView = () => {
       return [];
     }
   };
+
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
@@ -334,6 +345,7 @@ const KioskView = () => {
       setLoading(false);
     }
   };
+
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
       const optionIndex = prev.findIndex(o => o.optionId === optionId);
@@ -362,6 +374,7 @@ const KioskView = () => {
       return newOptions;
     });
   };
+
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -405,6 +418,7 @@ const KioskView = () => {
       return newToppings;
     });
   };
+
   const calculateItemPrice = (item: MenuItemWithOptions, options: {
     optionId: string;
     choiceIds: string[];
@@ -438,6 +452,7 @@ const KioskView = () => {
     }
     return price;
   };
+
   const getFormattedOptions = (item: CartItem): string => {
     if (!item.menuItem.options) return "";
     return item.selectedOptions.flatMap(selectedOption => {
@@ -449,6 +464,7 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
+
   const getFormattedToppings = (item: CartItem): string => {
     if (!item.menuItem.toppingCategories) return "";
     return item.selectedToppings.flatMap(selectedCategory => {
@@ -460,6 +476,7 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
+
   const handleAddToCart = () => {
     if (!selectedItem) return;
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -497,6 +514,7 @@ const KioskView = () => {
       description: `${quantity}x ${selectedItem.name} ${t("added")}`
     });
   };
+
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       handleRemoveCartItem(itemId);
@@ -507,6 +525,7 @@ const KioskView = () => {
       quantity: newQuantity
     } : item));
   };
+
   const handleRemoveCartItem = (itemId: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.id !== itemId);
@@ -516,17 +535,21 @@ const KioskView = () => {
       return newCart;
     });
   };
+
   const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
       return total + item.itemPrice * item.quantity;
     }, 0);
   };
+
   const calculateSubtotal = () => {
     return calculateCartTotal();
   };
+
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
   };
+
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
     try {
@@ -598,20 +621,24 @@ const KioskView = () => {
       setPlacingOrder(false);
     }
   };
+
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
+
   const shouldShowToppingCategory = (category: MenuItemWithOptions['toppingCategories'][0]) => {
     if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
       return true;
     }
     return category.show_if_selection_id.some(toppingId => selectedToppings.some(catSelection => catSelection.toppingIds.includes(toppingId)));
   };
+
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>;
   }
+
   if (!restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -624,9 +651,11 @@ const KioskView = () => {
         </div>
       </div>;
   }
+
   if (showWelcome) {
     return <WelcomePage restaurant={restaurant} onStart={handleStartOrder} uiLanguage={uiLanguage} />;
   }
+
   if (showOrderTypeSelection) {
     return <>
       <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
@@ -638,24 +667,26 @@ const KioskView = () => {
       }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
     </>;
   }
+
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
+
   return <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="h-48 bg-cover bg-center relative" style={{
+      <div className="h-56 bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
     }}>
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         <div className="absolute inset-0 flex items-center p-6">
           <div className="flex items-center">
-            <img src={restaurant.image_url || 'https://via.placeholder.com/100'} alt={restaurant.name} className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" />
+            <img src={restaurant.image_url || '/placeholder.svg'} alt={restaurant.name} className="h-24 w-24 rounded-full border-2 border-white mr-4 object-cover" />
             <div>
-              <h1 className="text-white text-3xl font-bold">{restaurant.name}</h1>
-              <div className="flex items-center text-white text-sm mt-1">
-                <Clock className="h-4 w-4 mr-1" />
+              <h1 className="text-white text-4xl font-bold">{restaurant.name}</h1>
+              <div className="flex items-center text-white text-lg mt-1">
+                <Clock className="h-5 w-5 mr-1" />
                 <span>{restaurant.location || t("open")}</span>
               </div>
-              {orderType && <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center">
+              {orderType && <div className="mt-2 px-4 py-2 bg-white/20 rounded-full text-white text-lg inline-flex items-center">
                   {orderType === 'dine-in' ? <>
                       <span className="mr-1">{t("dineIn")}</span>
                       {tableNumber && <span>- {t("table")} {tableNumber}</span>}
@@ -666,45 +697,60 @@ const KioskView = () => {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-          <div className="p-4">
-            <div className="space-y-2">
-              {categories.map(category => <button key={category.id} onClick={() => setActiveCategory(category.id)} className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${activeCategory === category.id ? 'bg-kiosk-primary text-white' : 'bg-[#D6BCFA] hover:bg-[#E5DEFF] text-gray-800'}`}>
-                  <div className="mr-3 w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                    {category.icon ? <img src={category.icon} alt={category.name} className="w-full h-full object-cover" /> : <div className={`w-full h-full flex items-center justify-center bg-gray-100 ${activeCategory === category.id ? 'text-white' : 'text-gray-500'}`}>
-                        <UtensilsCrossed className="h-8 w-8" />
-                      </div>}
-                  </div>
-                  <span className="font-bold uppercase">{category.name}</span>
-                </button>)}
-            </div>
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="w-full bg-white border-b border-gray-200 overflow-y-auto h-32">
+          <div className="flex overflow-x-auto p-4 gap-4 scrollbar-none">
+            {categories.map(category => (
+              <button
+                key={category.id}
+                onClick={() => setActiveCategory(category.id)}
+                className={`flex flex-col items-center p-3 rounded-lg min-w-[120px] transition-colors
+                  ${activeCategory === category.id ? 'bg-kiosk-primary text-white' : 'bg-[#D6BCFA] hover:bg-[#E5DEFF] text-gray-800'}`}
+              >
+                <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 mb-2">
+                  {category.icon ? (
+                    <img src={category.icon} alt={category.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className={`w-full h-full flex items-center justify-center bg-gray-100 ${activeCategory === category.id ? 'text-white' : 'text-gray-500'}`}>
+                      <UtensilsCrossed className="h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+                <span className="font-bold text-center text-sm uppercase">{category.name}</span>
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto pb-24">
-          <div className="p-6">
-            <h2 className="text-xl font-bold mb-4">
+          <div className="p-4">
+            <h2 className="text-2xl font-bold mb-4">
               {categories.find(c => c.id === activeCategory)?.name || t("menu")}
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeItems.map(item => <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="h-40 bg-cover bg-center" style={{
-                backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
-              }}></div>
-                  <div className="p-4">
-                    <div className="flex justify-between">
-                      <h3 className="font-bold text-lg">{item.name}</h3>
-                      <p className="font-bold">{parseFloat(item.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</p>
+            <div className="grid grid-cols-1 gap-4">
+              {activeItems.map(item => (
+                <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="flex items-center">
+                    <div className="h-32 w-32 bg-cover bg-center" style={{
+                      backgroundImage: `url(${item.image || '/placeholder.svg'})`
+                    }}></div>
+                    <div className="flex-1 p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-bold text-xl">{item.name}</h3>
+                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+                        </div>
+                        <p className="font-bold text-xl">{parseFloat(item.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</p>
+                      </div>
+                      <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
+                        {t("addToCart")}
+                        <ChevronRight className="h-4 w-4 ml-2" />
+                      </Button>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
-                    <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
-                      {t("addToCart")}
-                      <ChevronRight className="h-4 w-4 ml-2" />
-                    </Button>
                   </div>
-                </Card>)}
+                </Card>
+              ))}
             </div>
           </div>
         </div>
@@ -801,4 +847,5 @@ const KioskView = () => {
         </Dialog>}
     </div>;
 };
+
 export default KioskView;
