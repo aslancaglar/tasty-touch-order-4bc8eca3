@@ -1,3 +1,4 @@
+
 import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -38,7 +39,8 @@ const OrderTypeSelection = ({
   const handleSelectTakeaway = () => {
     onSelectOrderType("takeaway");
   };
-  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+  return (
+    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-8">
         <DialogHeader>
           <DialogTitle className="text-center text-3xl font-bold mb-6">
@@ -56,6 +58,7 @@ const OrderTypeSelection = ({
           </Button>
         </div>
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 };
 export default OrderTypeSelection;
