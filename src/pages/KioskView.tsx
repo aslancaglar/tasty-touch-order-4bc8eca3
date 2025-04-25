@@ -699,7 +699,7 @@ const KioskView = () => {
                       <p className="font-bold">{parseFloat(item.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</p>
                     </div>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
-                    <Button className="w-full mt-4 bg-kiosk-primary" onClick={() => handleSelectItem(item)}>
+                    <Button onClick={() => handleSelectItem(item)} className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0">
                       {t("addToCart")}
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
