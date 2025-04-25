@@ -11,7 +11,6 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
-
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -24,11 +23,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
-
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 const translations = {
   fr: {
     orderSummary: "Résumé de la commande",
@@ -76,7 +73,6 @@ const translations = {
     errorPrinting: "Fiş yazdırılırken bir hata oluştu."
   }
 };
-
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -97,7 +93,6 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: "fr" | "en" | "tr";
 }
-
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -108,51 +103,53 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   calculateTax,
   getFormattedOptions,
   getFormattedToppings,
-  restaurant = { name: "Restaurant" },
+  restaurant = {
+    name: "Restaurant"
+  },
   orderType = null,
   tableNumber = null,
-  uiLanguage = "fr",
+  uiLanguage = "fr"
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
-  const { toast } = useToast();
-  
-  const { total, subtotal, tax } = calculateCartTotals(cart);
-
+  const {
+    toast
+  } = useToast();
+  const {
+    total,
+    subtotal,
+    tax
+  } = calculateCartTotals(cart);
   const t = (key: keyof typeof translations["en"]) => translations[uiLanguage]?.[key] ?? translations.fr[key];
-
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        const { count } = await supabase
-          .from('orders')
-          .select('*', { count: 'exact', head: true })
-          .eq('restaurant_id', restaurant.id);
-        
+        const {
+          count
+        } = await supabase.from('orders').select('*', {
+          count: 'exact',
+          head: true
+        }).eq('restaurant_id', restaurant.id);
         setOrderNumber(((count || 0) + 1).toString());
       }
     };
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
-
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
-        const { data: printConfig, error } = await supabase
-          .from('restaurant_print_config')
-          .select('api_key, configured_printers, browser_printing_enabled')
-          .eq('restaurant_id', restaurant.id)
-          .single();
+        const {
+          data: printConfig,
+          error
+        } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
         if (error) {
           console.error("Error fetching print configuration:", error);
           return;
         }
-        const shouldUseBrowserPrinting = 
-          !isMobile && 
-          (printConfig === null || printConfig.browser_printing_enabled !== false);
+        const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
         if (shouldUseBrowserPrinting) {
           console.log("Using browser printing for receipt");
           toast({
@@ -181,27 +178,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           }
         }
         if (printConfig?.api_key && printConfig?.configured_printers) {
-          const printerArray = Array.isArray(printConfig.configured_printers) 
-            ? printConfig.configured_printers 
-            : [];
+          const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
           const printerIds = printerArray.map(id => String(id));
           if (printerIds.length > 0) {
-            await sendReceiptToPrintNode(
-              printConfig.api_key,
-              printerIds,
-              {
-                restaurant,
-                cart,
-                orderNumber,
-                tableNumber,
-                orderType,
-                subtotal,
-                tax,
-                total,
-                getFormattedOptions,
-                getFormattedToppings
-              }
-            );
+            await sendReceiptToPrintNode(printConfig.api_key, printerIds, {
+              restaurant,
+              cart,
+              orderNumber,
+              tableNumber,
+              orderType,
+              subtotal,
+              tax,
+              total,
+              getFormattedOptions,
+              getFormattedToppings
+            });
           }
         }
       } catch (error) {
@@ -214,34 +205,23 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       }
     }
   };
-  
-  const sendReceiptToPrintNode = async (
-    apiKey: string,
-    printerIds: string[],
-    orderData: {
-      restaurant: typeof restaurant;
-      cart: CartItem[];
-      orderNumber: string;
-      tableNumber?: string | null;
-      orderType: "dine-in" | "takeaway" | null;
-      subtotal: number;
-      tax: number;
-      total: number;
-      getFormattedOptions: (item: CartItem) => string;
-      getFormattedToppings: (item: CartItem) => string;
-    }
-  ) => {
+  const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
+    restaurant: typeof restaurant;
+    cart: CartItem[];
+    orderNumber: string;
+    tableNumber?: string | null;
+    orderType: "dine-in" | "takeaway" | null;
+    subtotal: number;
+    tax: number;
+    total: number;
+    getFormattedOptions: (item: CartItem) => string;
+    getFormattedToppings: (item: CartItem) => string;
+  }) => {
     try {
       const receiptContent = generatePrintNodeReceipt(orderData);
-      
       const textEncoder = new TextEncoder();
       const encodedBytes = textEncoder.encode(receiptContent);
-      const encodedContent = btoa(
-        Array.from(encodedBytes)
-          .map(byte => String.fromCharCode(byte))
-          .join('')
-      );
-      
+      const encodedContent = btoa(Array.from(encodedBytes).map(byte => String.fromCharCode(byte)).join(''));
       console.log("Sending receipt to PrintNode printers:", printerIds);
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
@@ -271,7 +251,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
-  
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -299,11 +278,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       useCurrencyCode: true
     });
   };
-
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-md md:max-w-lg p-0">
         <DialogHeader className="p-4 border-b">
           <div className="flex items-center space-x-2">
@@ -318,8 +294,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <h3 className="font-bold text-lg mb-4">{t("orderedItems")}</h3>
           
           <div className="space-y-6 mb-6">
-            {cart.map((item) => (
-              <div key={item.id} className="space-y-2">
+            {cart.map(item => <div key={item.id} className="space-y-2">
                 <div className="flex justify-between">
                   <div className="flex items-center">
                     <span className="font-medium mr-2">{item.quantity}x</span>
@@ -328,41 +303,34 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
                 
-                {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
-                  <div className="pl-6 space-y-1 text-sm text-gray-600">
-                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
-                      <div key={`${item.id}-option-${idx}`} className="flex justify-between">
+                {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && <div className="pl-6 space-y-1 text-sm text-gray-600">
+                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
                         <span>0.00 {currencySymbol}</span>
-                      </div>
-                    ))}
-                    {getGroupedToppings(item).map((group, groupIdx) => (
-                      <div key={`${item.id}-cat-summary-${groupIdx}`}>
-                        <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
+                      </div>)}
+                    {getGroupedToppings(item).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                        <div style={{
+                  fontWeight: 500,
+                  paddingLeft: 0
+                }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
-                          const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                          const toppingRef = category?.toppings.find(t => t.name === toppingObj);
-                          const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                          const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
-                          
-                          return (
-                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                              <span style={{ paddingLeft: 6 }}>
+                  const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                  const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                  const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                  const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
+                  return <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                              <span style={{
+                      paddingLeft: 6
+                    }}>
                                 + {toppingObj}
-                                {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && 
-                                  <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>
-                                }
+                                {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>}
                               </span>
                               <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                            </div>;
+                })}
+                      </div>)}
+                  </div>}
+              </div>)}
           </div>
           
           <Separator className="my-4" />
@@ -385,29 +353,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
         
         <div className="p-4 bg-gray-50">
-          <Button 
-            className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
-            onClick={handleConfirmOrder}
-            disabled={placingOrder}
-          >
+          <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[40px]">
             <Check className="mr-2 h-5 w-5" />
             {t("confirm")}
           </Button>
         </div>
       </DialogContent>
 
-      <OrderReceipt
-        restaurant={restaurant}
-        cart={cart}
-        orderNumber={orderNumber}
-        tableNumber={tableNumber}
-        orderType={orderType}
-        getFormattedOptions={getFormattedOptions}
-        getFormattedToppings={getFormattedToppings}
-        uiLanguage={uiLanguage}
-      />
-    </Dialog>
-  );
+      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
+    </Dialog>;
 };
-
 export default OrderSummary;
