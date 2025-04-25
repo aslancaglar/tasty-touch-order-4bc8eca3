@@ -30,8 +30,8 @@ const WelcomePage = ({
     backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url(${restaurant.image_url || "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"})`
   }}>
       <div className="mb-8 text-center">
-        <h1 className="text-white text-5xl font-bold mb-2">{restaurant.name}</h1>
-        <p className="text-white text-xl">{t("welcome")}</p>
+        <h1 className="text-white font-bold mb-2 text-7xl">{restaurant.name}</h1>
+        <p className="text-white text-3xl">{t("welcome")}</p>
       </div>
       <Button onClick={onStart} className="bg-white hover:bg-white/90 text-black hover:text-black/90 w-100 h-24 font-bold shadow-lg animate-pulse px-[30px] py-[60px] text-4xl rounded-full mx-0">
         <UtensilsCrossed className="mr-2 h-6 w-6" />
