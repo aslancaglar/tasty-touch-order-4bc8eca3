@@ -767,7 +767,7 @@ const KioskView = () => {
                           <span>{topping.name}</span>
                           <div className="flex items-center gap-2">
                             {topping.price > 0 && <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>}
-                            <Button variant="outline" size="icon" onClick={() => handleToggleTopping(category.id, topping.id)} className="text-5xl bg-zinc-950 hover:bg-zinc-800 px-[10px] rounded-full text-slate-50 font-bold py-[9px]">
+                            <Button variant="outline" size="icon" onClick={() => handleToggleTopping(category.id, topping.id)} className="text-5xl px-[10px] rounded-full text-slate-50 font-bold py-[9px] bg-violet-800 hover:bg-violet-700">
                               {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                             </Button>
                           </div>
