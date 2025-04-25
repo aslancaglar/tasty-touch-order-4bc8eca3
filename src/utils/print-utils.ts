@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 /**
@@ -126,6 +127,7 @@ export const printReceipt = (elementId: string) => {
           }
           .receipt {
             width: 100%;
+            display: block !important;
           }
           .header {
             text-align: center;
@@ -170,6 +172,11 @@ export const printReceipt = (elementId: string) => {
             margin-top: 20px;
             font-size: 12px;
             font-weight: 600;
+          }
+          /* Order number style */
+          .order-number {
+            font-size: 18px;
+            font-weight: 900;
           }
           @media print {
             html, body {
