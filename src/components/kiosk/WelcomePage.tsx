@@ -33,7 +33,7 @@ const WelcomePage = ({
         <h1 className="text-white font-bold mb-2 text-7xl">{restaurant.name}</h1>
         <p className="text-white text-3xl">{t("welcome")}</p>
       </div>
-      <Button onClick={onStart} className="bg-white hover:bg-white/90 text-black hover:text-black/90 w-100 h-24 font-bold shadow-lg animate-pulse px-[30px] py-[60px] text-4xl rounded-full mx-0">
+      <Button onClick={onStart} className="w-100 h-24 font-bold shadow-lg animate-pulse px-[30px] py-[60px] text-4xl rounded-full mx-0 bg-violet-700 hover:bg-violet-600 text-slate-50">
         <UtensilsCrossed className="mr-2 h-6 w-6" />
         {t("start")}
       </Button>
