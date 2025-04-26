@@ -1,14 +1,16 @@
-
 import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 export type OrderType = "dine-in" | "takeaway" | null;
+
 interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectOrderType: (type: OrderType, tableNumber?: string) => void;
   uiLanguage?: "fr" | "en" | "tr";
 }
+
 const translations = {
   fr: {
     title: "Comment souhaitez-vous commander ?",
@@ -26,6 +28,7 @@ const translations = {
     takeaway: "Paket Yap"
   }
 };
+
 const OrderTypeSelection = ({
   isOpen,
   onClose,
@@ -39,6 +42,7 @@ const OrderTypeSelection = ({
   const handleSelectTakeaway = () => {
     onSelectOrderType("takeaway");
   };
+
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-8">
@@ -49,11 +53,11 @@ const OrderTypeSelection = ({
         </DialogHeader>
         <div className="grid grid-cols-2 gap-6 py-4">
           <Button onClick={handleSelectDineIn} variant="outline" className="flex flex-col items-center justify-center h-64 p-6 hover:bg-primary/10">
-            <UtensilsCrossed className="h-24 w-24 mb-4" />
+            <UtensilsCrossed className="h-96 w-96 mb-4" />
             <span className="font-semibold text-4xl">{t("dineIn")}</span>
           </Button>
           <Button onClick={handleSelectTakeaway} variant="outline" className="flex flex-col items-center justify-center h-64 p-6 hover:bg-primary/10">
-            <ShoppingBag className="h-24 w-24 mb-4" />
+            <ShoppingBag className="h-96 w-96 mb-4" />
             <span className="font-semibold text-4xl">{t("takeaway")}</span>
           </Button>
         </div>
@@ -61,4 +65,5 @@ const OrderTypeSelection = ({
     </Dialog>
   );
 };
+
 export default OrderTypeSelection;
