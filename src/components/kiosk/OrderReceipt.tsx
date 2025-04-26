@@ -76,6 +76,15 @@ const getCurrencySymbol = (currencyCode: string): string => {
   return CURRENCY_SYMBOLS[code] || code;
 };
 
+/**
+ * Sanitizes text to remove emojis for display in receipts
+ * This is a browser-side only sanitization for preview purposes
+ */
+const sanitizeText = (text: string): string => {
+  // Remove emojis and other extended Unicode characters that might not display correctly
+  return text.replace(/[\u{1F600}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '');
+};
+
 const OrderReceipt: React.FC<OrderReceiptProps> = ({
   restaurant,
   cart,
@@ -97,8 +106,8 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   return (
     <div id="receipt-content" className="receipt" style={{ display: "none" }}>
       <div className="header">
-        <div className="logo">{restaurant.name}</div>
-        {restaurant.location && <div>{restaurant.location}</div>}
+        <div className="logo">{sanitizeText(restaurant.name)}</div>
+        {restaurant.location && <div>{sanitizeText(restaurant.location)}</div>}
         <div>{currentDate}</div>
         <div className="order-number">{t("order")} #{orderNumber}</div>
         {orderType === "dine-in" && <div>{t("dineIn")}</div>}
@@ -111,7 +120,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         {cart.map((item, index) => (
           <div key={item.id} style={{ marginBottom: "8px" }}>
             <div className="item">
-              <span>{item.quantity}x {item.menuItem.name}</span>
+              <span>{item.quantity}x {sanitizeText(item.menuItem.name)}</span>
               <span>{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
             </div>
             {(getFormattedOptions(item) || getFormattedToppings(item)) && (
@@ -119,21 +128,21 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                 {/* Options */}
                 {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                   <div key={`${item.id}-option-${idx}`} className="item">
-                    <span>+ {option}</span>
+                    <span>+ {sanitizeText(option)}</span>
                     <span></span>
                   </div>
                 ))}
                 {/* Grouped toppings by category, show price if > 0 */}
                 {getGroupedToppings(item).map((group, groupIdx) => (
                   <div key={`${item.id}-cat-${groupIdx}`}>
-                    <div style={{ fontWeight: 600, paddingLeft: 0 }}>{group.category}:</div>
+                    <div style={{ fontWeight: 600, paddingLeft: 0 }}>{sanitizeText(group.category)}:</div>
                     {group.toppings.map((topping, topIdx) => {
                       const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
                       const toppingRef = category?.toppings.find(t => t.name === topping);
                       const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
                       return (
                         <div key={`${item.id}-cat-${groupIdx}-topping-${topIdx}`} className="item">
-                          <span style={{ paddingLeft: 6 }}>+ {topping}</span>
+                          <span style={{ paddingLeft: 6 }}>+ {sanitizeText(topping)}</span>
                           <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
                         </div>
                       )
