@@ -1,3 +1,4 @@
+
 import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -53,11 +54,11 @@ const OrderTypeSelection = ({
         </DialogHeader>
         <div className="grid grid-cols-2 gap-6 py-4">
           <Button onClick={handleSelectDineIn} variant="outline" className="flex flex-col items-center justify-center h-64 p-6 hover:bg-primary/10">
-            <UtensilsCrossed className="h-96 w-96 mb-4" />
+            <UtensilsCrossed className="h-64 w-64 mb-4" />
             <span className="font-semibold text-4xl">{t("dineIn")}</span>
           </Button>
           <Button onClick={handleSelectTakeaway} variant="outline" className="flex flex-col items-center justify-center h-64 p-6 hover:bg-primary/10">
-            <ShoppingBag className="h-96 w-96 mb-4" />
+            <ShoppingBag className="h-64 w-64 mb-4" />
             <span className="font-semibold text-4xl">{t("takeaway")}</span>
           </Button>
         </div>
