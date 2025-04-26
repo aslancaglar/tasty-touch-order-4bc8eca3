@@ -803,7 +803,7 @@ const KioskView = () => {
                               variant="outline" 
                               size="icon" 
                               onClick={() => handleToggleTopping(category.id, topping.id)} 
-                              className={`px-[10px] rounded-full ${isSelected ? 'bg-green-700' : 'bg-violet-800'} hover:bg-green-700 py-[10px] font-thin text-base`}
+                              className={`px-[10px] rounded-full ${isSelected ? 'bg-green-700' : 'bg-violet-800'} hover:bg-violet-700 py-[10px] font-thin text-base`}
                             >
                               {isSelected ? <Check className="h-4 w-4 text-white" /> : <Plus className="h-4 w-4 text-white" />}
                             </Button>
