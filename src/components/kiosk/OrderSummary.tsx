@@ -291,7 +291,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
 
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-md md:max-w-lg p-0">
+      <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 w-[95vw] max-w-[95vw]">
         <DialogHeader className="p-4 border-b">
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
