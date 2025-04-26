@@ -17,13 +17,16 @@ import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { UtensilsCrossed } from "lucide-react";
+
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
+
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -609,7 +612,7 @@ const KioskView = () => {
   };
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
       </div>;
   }
   if (!restaurant) {
@@ -801,4 +804,5 @@ const KioskView = () => {
         </Dialog>}
     </div>;
 };
+
 export default KioskView;

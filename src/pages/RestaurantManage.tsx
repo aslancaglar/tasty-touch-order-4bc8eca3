@@ -71,7 +71,7 @@ const RestaurantManage = () => {
     return (
       <AdminLayout>
         <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader2 className="w-8 h-8 animate-spin text-purple-700" />
         </div>
       </AdminLayout>
     );
