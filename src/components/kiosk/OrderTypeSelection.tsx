@@ -22,8 +22,8 @@ const translations = {
   },
   tr: {
     title: "Nasıl sipariş vermek istersiniz?",
-    dineIn: "Yerinde Yeme",
-    takeaway: "Paket Servis"
+    dineIn: "Masada Servis",
+    takeaway: "Paket Yap"
   }
 };
 const OrderTypeSelection = ({
