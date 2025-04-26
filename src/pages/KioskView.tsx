@@ -17,13 +17,16 @@ import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { UtensilsCrossed } from "lucide-react";
+
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
+
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -715,7 +718,7 @@ const KioskView = () => {
       <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} showOrderSummaryOnly={false} uiLanguage={uiLanguage} />
 
       {selectedItem && <Dialog open={!!selectedItem} onOpenChange={open => !open && setSelectedItem(null)}>
-        <DialogContent className="w-[95vw] max-w-[95vw] md:w-[85vw] md:max-w-[95vw] max-h-[95vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] md:w-auto md:min-w-[600px] max-w-[95vw] md:max-w-[800px] min-h-[300px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">{selectedItem.name}</DialogTitle>
             <DialogDescription>{selectedItem.description}</DialogDescription>
@@ -801,4 +804,5 @@ const KioskView = () => {
       </Dialog>}
     </div>;
 };
+
 export default KioskView;
