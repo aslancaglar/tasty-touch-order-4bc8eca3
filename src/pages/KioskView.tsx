@@ -17,16 +17,13 @@ import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { UtensilsCrossed } from "lucide-react";
-
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
-
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
-
 const KioskView = () => {
   const {
     restaurantSlug
@@ -70,12 +67,10 @@ const KioskView = () => {
     CNY: "¥",
     RUB: "₽"
   };
-
   const getCurrencySymbol = (currency: string) => {
     const code = currency?.toUpperCase() || "EUR";
     return CURRENCY_SYMBOLS[code] || code;
   };
-
   const translations = {
     fr: {
       restaurantNotFound: "Restaurant introuvable",
@@ -138,11 +133,9 @@ const KioskView = () => {
       maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz."
     }
   };
-
   const t = (key: keyof typeof translations.en) => {
     return translations[uiLanguage][key];
   };
-
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -183,12 +176,10 @@ const KioskView = () => {
     };
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
-
   const handleStartOrder = () => {
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
   };
-
   const handleOrderTypeSelected = (type: OrderType, table?: string) => {
     setOrderType(type);
     if (table) {
@@ -196,7 +187,6 @@ const KioskView = () => {
     }
     setShowOrderTypeSelection(false);
   };
-
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
       const {
@@ -259,7 +249,6 @@ const KioskView = () => {
       return [];
     }
   };
-
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
@@ -345,7 +334,6 @@ const KioskView = () => {
       setLoading(false);
     }
   };
-
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
       const optionIndex = prev.findIndex(o => o.optionId === optionId);
@@ -374,7 +362,6 @@ const KioskView = () => {
       return newOptions;
     });
   };
-
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -418,7 +405,6 @@ const KioskView = () => {
       return newToppings;
     });
   };
-
   const calculateItemPrice = (item: MenuItemWithOptions, options: {
     optionId: string;
     choiceIds: string[];
@@ -452,7 +438,6 @@ const KioskView = () => {
     }
     return price;
   };
-
   const getFormattedOptions = (item: CartItem): string => {
     if (!item.menuItem.options) return "";
     return item.selectedOptions.flatMap(selectedOption => {
@@ -464,7 +449,6 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
-
   const getFormattedToppings = (item: CartItem): string => {
     if (!item.menuItem.toppingCategories) return "";
     return item.selectedToppings.flatMap(selectedCategory => {
@@ -476,7 +460,6 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
-
   const handleAddToCart = () => {
     if (!selectedItem) return;
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -514,7 +497,6 @@ const KioskView = () => {
       description: `${quantity}x ${selectedItem.name} ${t("added")}`
     });
   };
-
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       handleRemoveCartItem(itemId);
@@ -525,7 +507,6 @@ const KioskView = () => {
       quantity: newQuantity
     } : item));
   };
-
   const handleRemoveCartItem = (itemId: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.id !== itemId);
@@ -535,21 +516,17 @@ const KioskView = () => {
       return newCart;
     });
   };
-
   const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
       return total + item.itemPrice * item.quantity;
     }, 0);
   };
-
   const calculateSubtotal = () => {
     return calculateCartTotal();
   };
-
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
   };
-
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
     try {
@@ -621,24 +598,20 @@ const KioskView = () => {
       setPlacingOrder(false);
     }
   };
-
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
-
   const shouldShowToppingCategory = (category: MenuItemWithOptions['toppingCategories'][0]) => {
     if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
       return true;
     }
     return category.show_if_selection_id.some(toppingId => selectedToppings.some(catSelection => catSelection.toppingIds.includes(toppingId)));
   };
-
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>;
   }
-
   if (!restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -651,11 +624,9 @@ const KioskView = () => {
         </div>
       </div>;
   }
-
   if (showWelcome) {
     return <WelcomePage restaurant={restaurant} onStart={handleStartOrder} uiLanguage={uiLanguage} />;
   }
-
   if (showOrderTypeSelection) {
     return <>
       <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
@@ -667,11 +638,9 @@ const KioskView = () => {
       }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
     </>;
   }
-
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-
   return <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="h-48 bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
@@ -782,8 +751,7 @@ const KioskView = () => {
                   </div>
                 </div>)}
 
-              {selectedItem.toppingCategories && selectedItem.toppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => (
-                <div key={category.id} className="space-y-3">
+              {selectedItem.toppingCategories && selectedItem.toppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => <div key={category.id} className="space-y-3">
                   <div className="font-bold text-xl flex items-center">
                     {category.name} 
                     {category.required && <span className="text-red-500 ml-1">*</span>}
@@ -799,20 +767,14 @@ const KioskView = () => {
                           <span>{topping.name}</span>
                           <div className="flex items-center gap-2">
                             {topping.price > 0 && <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>}
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
-                              onClick={() => handleToggleTopping(category.id, topping.id)} 
-                              className={`px-[10px] rounded-full ${isSelected ? 'bg-green-700' : 'bg-violet-800'} hover:bg-violet-700 py-[10px] font-thin text-base`}
-                            >
-                              {isSelected ? <Check className="h-4 w-4 text-white" /> : <Plus className="h-4 w-4 text-white" />}
+                            <Button variant="outline" size="icon" onClick={() => handleToggleTopping(category.id, topping.id)} className="text-5xl px-[10px] rounded-full text-slate-50 font-bold py-[9px] bg-violet-800 hover:bg-violet-700">
+                              {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                             </Button>
                           </div>
                         </div>;
               })}
                   </div>
-                </div>
-              ))}
+                </div>)}
 
               <div>
                 <Label className="font-medium">{t("quantity")}</Label>
@@ -839,5 +801,4 @@ const KioskView = () => {
         </Dialog>}
     </div>;
 };
-
 export default KioskView;
