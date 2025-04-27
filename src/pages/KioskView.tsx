@@ -12,7 +12,7 @@ import {
   createOrderItemOptions,
   createOrderItemToppings
 } from "@/services/kiosk-service";
-import { Restaurant, MenuItem, CartItem, MenuItemWithOptions, OrderType } from "@/types/database-types";
+import { Restaurant, MenuItem, CartItem, MenuItemWithOptions, OrderType, MenuCategory } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
@@ -41,7 +41,6 @@ const KioskView = () => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Use our new custom hook for menu management
   const { categories, activeCategory, setActiveCategory, loading: menuLoading } = useMenu(restaurant?.id);
   
   const [showWelcome, setShowWelcome] = useState(true);
@@ -594,11 +593,11 @@ const KioskView = () => {
   }, [cart]);
 
   const calculateSubtotal = () => {
-    return calculateCartTotal();
+    return calculateCartTotal;
   };
 
   const calculateTax = () => {
-    return calculateCartTotal() * 0.1; // 10% tax
+    return calculateCartTotal * 0.1; // 10% tax
   };
 
   const handlePlaceOrder = async () => {
@@ -608,7 +607,7 @@ const KioskView = () => {
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
-        total: calculateCartTotal(),
+        total: calculateCartTotal,
         customer_name: null
       });
       const orderItems = await createOrderItems(cart.map(item => ({
@@ -787,10 +786,10 @@ const KioskView = () => {
       {!isCartOpen && !cartIsEmpty && (
         <CartButton 
           itemCount={cartItemCount} 
-          total={calculateCartTotal()} 
+          total={calculateCartTotal} 
           onClick={toggleCart} 
           uiLanguage={uiLanguage} 
-          currency={restaurant.currency} 
+          currency={restaurant?.currency || "EUR"} 
         />
       )}
 
