@@ -378,7 +378,7 @@ const MenuPage = () => {
                                     Edit
                                   </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-[425px]">
+                                <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
                                   <DialogHeader>
                                     <DialogTitle>Edit Menu Item</DialogTitle>
                                     <DialogDescription>Make changes to this menu item.</DialogDescription>
