@@ -90,7 +90,7 @@ export interface Order {
   status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at: string;
   total: number;
-  order_type?: 'dine-in' | 'takeaway';
+  order_type?: 'dine-in' | 'takeaway' | null;
   table_number?: string;
 }
 
