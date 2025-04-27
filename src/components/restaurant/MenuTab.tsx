@@ -289,7 +289,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
         image: values.image || null,
         category_id: selectedCategory.id,
-        topping_categories: values.topping_categories || []
+        topping_categories: values.topping_categories || [],
+        in_stock: true // Add the in_stock property with a default value of true
       });
       
       setMenuItems(prev => [...prev, newMenuItem]);
