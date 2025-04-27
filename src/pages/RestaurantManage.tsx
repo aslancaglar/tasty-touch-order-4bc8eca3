@@ -11,7 +11,8 @@ import {
   UtensilsCrossed, 
   Cherry, 
   Receipt, 
-  Settings
+  Settings,
+  Package
 } from "lucide-react";
 import { getRestaurants } from "@/services/kiosk-service";
 import { Restaurant } from "@/types/database-types";
@@ -19,6 +20,7 @@ import MenuTab from "@/components/restaurant/MenuTab";
 import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
 import SettingsTab from "@/components/restaurant/SettingsTab";
+import StockTab from "@/components/restaurant/StockTab";
 
 const RestaurantManage = () => {
   const { id } = useParams<{ id: string }>();
@@ -118,7 +120,7 @@ const RestaurantManage = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-4 mb-8">
+            <TabsList className="grid grid-cols-5 mb-8">
               <TabsTrigger value="menu" className="flex items-center">
                 <UtensilsCrossed className="mr-2 h-4 w-4" />
                 Menu
@@ -134,6 +136,10 @@ const RestaurantManage = () => {
               <TabsTrigger value="settings" className="flex items-center">
                 <Settings className="mr-2 h-4 w-4" />
                 Paramètres
+              </TabsTrigger>
+              <TabsTrigger value="stock" className="flex items-center">
+                <Package className="mr-2 h-4 w-4" />
+                Stock
               </TabsTrigger>
             </TabsList>
             
@@ -155,6 +161,12 @@ const RestaurantManage = () => {
                   restaurant={restaurant} 
                   onRestaurantUpdated={handleRestaurantUpdated} 
                 />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="stock">
+              {restaurant && (
+                <StockTab restaurant={restaurant} />
               )}
             </TabsContent>
           </Tabs>
