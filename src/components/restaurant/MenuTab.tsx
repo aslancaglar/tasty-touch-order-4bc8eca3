@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -495,7 +496,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
 
       {/* Dialogs */}
       <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Category</DialogTitle>
           </DialogHeader>
@@ -507,7 +508,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       </Dialog>
 
       <Dialog open={showUpdateCategoryDialog} onOpenChange={setShowUpdateCategoryDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Category</DialogTitle>
           </DialogHeader>
@@ -526,7 +527,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       </Dialog>
 
       <Dialog open={showDeleteCategoryDialog} onOpenChange={setShowDeleteCategoryDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Delete Category</DialogTitle>
           </DialogHeader>
@@ -543,7 +544,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       </Dialog>
 
       <Dialog open={showCreateItemDialog} onOpenChange={setShowCreateItemDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Menu Item</DialogTitle>
           </DialogHeader>
@@ -556,7 +557,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       </Dialog>
 
       <Dialog open={showUpdateItemDialog} onOpenChange={setShowUpdateItemDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Menu Item</DialogTitle>
           </DialogHeader>
@@ -580,7 +581,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       </Dialog>
 
       <Dialog open={showDeleteItemDialog} onOpenChange={setShowDeleteItemDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Delete Menu Item</DialogTitle>
           </DialogHeader>

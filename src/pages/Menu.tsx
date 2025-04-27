@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -236,7 +237,7 @@ const MenuPage = () => {
                 Add Category
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add Menu Category</DialogTitle>
                 <DialogDescription>Create a new menu category for your restaurant.</DialogDescription>
@@ -296,7 +297,7 @@ const MenuPage = () => {
                       </Button>
                     </div>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Add Menu Category</DialogTitle>
                       <DialogDescription>Create a new menu category for your restaurant.</DialogDescription>
@@ -378,7 +379,7 @@ const MenuPage = () => {
                                     Edit
                                   </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
+                                <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
                                   <DialogHeader>
                                     <DialogTitle>Edit Menu Item</DialogTitle>
                                     <DialogDescription>Make changes to this menu item.</DialogDescription>
@@ -416,7 +417,7 @@ const MenuPage = () => {
                               </Button>
                             </div>
                           </DialogTrigger>
-                          <DialogContent className="sm:max-w-[425px]">
+                          <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>Add Menu Item</DialogTitle>
                               <DialogDescription>Create a new menu item.</DialogDescription>
