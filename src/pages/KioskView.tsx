@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useLocalCache } from "@/hooks/useLocalCache";
 import { useParams, useNavigate } from "react-router-dom";
@@ -18,6 +19,7 @@ import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { UtensilsCrossed } from "lucide-react";
+import { calculateCartTotals } from "@/utils/price-utils";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -56,9 +58,8 @@ const KioskView = () => {
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  
   const CURRENCY_SYMBOLS: Record<string, string> = {
     EUR: "€",
     USD: "$",
@@ -71,10 +72,12 @@ const KioskView = () => {
     CNY: "¥",
     RUB: "₽"
   };
+  
   const getCurrencySymbol = (currency: string) => {
     const code = currency?.toUpperCase() || "EUR";
     return CURRENCY_SYMBOLS[code] || code;
   };
+  
   const translations = {
     fr: {
       restaurantNotFound: "Restaurant introuvable",
@@ -137,9 +140,11 @@ const KioskView = () => {
       maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz."
     }
   };
+  
   const t = (key: keyof typeof translations.en) => {
     return translations[uiLanguage][key];
   };
+  
   const { setCache, getCache } = useLocalCache();
 
   useEffect(() => {
@@ -216,38 +221,22 @@ const KioskView = () => {
     // Create the item to add to cart
     const itemToAdd: CartItem = {
       id: crypto.randomUUID(),
-      menuItemId: selectedItem.id,
-      name: selectedItem.name,
-      price: selectedItem.price,
+      menuItem: selectedItem,
       quantity: quantity,
       specialInstructions: specialInstructions,
-      options: selectedOptions.map(option => {
-        const optionGroup = selectedItem.options.find(o => o.id === option.optionId);
-        const choices = optionGroup?.choices.filter(c => option.choiceIds.includes(c.id)) || [];
-        
+      selectedOptions: selectedOptions.map(option => {
         return {
           optionId: option.optionId,
-          optionName: optionGroup?.name || '',
-          choices: choices.map(choice => ({
-            choiceId: choice.id,
-            choiceName: choice.name,
-            price: choice.price || 0
-          }))
+          choiceIds: option.choiceIds
         };
       }),
-      toppings: selectedToppings.flatMap(selectedCategory => {
-        const category = selectedItem.topping_categories.find(tc => tc.id === selectedCategory.categoryId);
-        return selectedCategory.toppingIds.map(toppingId => {
-          const topping = category?.toppings.find(t => t.id === toppingId);
-          return {
-            toppingId,
-            toppingName: topping?.name || '',
-            toppingCategoryId: selectedCategory.categoryId,
-            toppingCategoryName: category?.name || '',
-            price: topping?.price || 0
-          };
-        });
-      })
+      selectedToppings: selectedToppings.map(category => {
+        return {
+          categoryId: category.categoryId,
+          toppingIds: category.toppingIds
+        };
+      }),
+      itemPrice: calculateItemPrice(selectedItem, selectedOptions, selectedToppings, quantity)
     };
     
     setCart(prev => [...prev, itemToAdd]);
@@ -259,11 +248,48 @@ const KioskView = () => {
     
     toast({
       title: t("addedToCart"),
-      description: `${itemToAdd.name} ${t("added")}`,
+      description: `${selectedItem.name} ${t("added")}`,
       variant: "default"
     });
   };
 
+  const calculateItemPrice = (
+    item: MenuItemWithOptions,
+    selectedOptions: { optionId: string; choiceIds: string[] }[],
+    selectedToppings: { categoryId: string; toppingIds: string[] }[],
+    quantity: number
+  ): number => {
+    let basePrice = item.price;
+    
+    // Add option choice prices
+    selectedOptions.forEach(selectedOption => {
+      const option = item.options?.find(o => o.id === selectedOption.optionId);
+      if (option) {
+        selectedOption.choiceIds.forEach(choiceId => {
+          const choice = option.choices.find(c => c.id === choiceId);
+          if (choice && choice.price) {
+            basePrice += choice.price;
+          }
+        });
+      }
+    });
+    
+    // Add topping prices
+    selectedToppings.forEach(selectedCategory => {
+      const category = item.toppingCategories?.find(tc => tc.id === selectedCategory.categoryId);
+      if (category) {
+        selectedCategory.toppingIds.forEach(toppingId => {
+          const topping = category.toppings.find(t => t.id === toppingId);
+          if (topping) {
+            basePrice += topping.price;
+          }
+        });
+      }
+    });
+    
+    return basePrice * quantity;
+  };
+  
   const handleSelectItem = async (item: MenuItem) => {
     try {
       const itemWithOptions = await getMenuItemWithOptions(item.id);
@@ -273,11 +299,14 @@ const KioskView = () => {
       setQuantity(1);
       setSpecialInstructions("");
       
-      // Initialize selected options
-      const initialOptions = itemWithOptions.options.map(option => ({
-        optionId: option.id,
-        choiceIds: option.min_selections > 0 && option.choices.length > 0 ? [option.choices[0].id] : []
-      }));
+      // Initialize selected options for required options
+      const initialOptions = itemWithOptions.options?.map(option => {
+        // If the option is required and has choices, pre-select the first choice
+        if (option.required && option.choices.length > 0) {
+          return { optionId: option.id, choiceIds: [option.choices[0].id] };
+        }
+        return { optionId: option.id, choiceIds: [] };
+      }) || [];
       
       setSelectedOptions(initialOptions);
     } catch (error) {
@@ -287,6 +316,49 @@ const KioskView = () => {
 
   const handleImageClick = (item: MenuItem) => {
     handleSelectItem(item);
+  };
+  
+  const handleRemoveFromCart = (itemId: string) => {
+    setCart(prev => prev.filter(item => item.id !== itemId));
+  };
+  
+  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      handleRemoveFromCart(itemId);
+      return;
+    }
+    
+    setCart(prev => prev.map(item => 
+      item.id === itemId ? { ...item, quantity: newQuantity, itemPrice: calculateItemPrice(item.menuItem, item.selectedOptions, item.selectedToppings, newQuantity) } : item
+    ));
+  };
+  
+  const getFormattedOptions = (item: CartItem): string => {
+    return item.selectedOptions.map(option => {
+      const optionGroup = item.menuItem.options?.find(o => o.id === option.optionId);
+      if (!optionGroup) return '';
+      
+      const choiceNames = option.choiceIds.map(choiceId => {
+        const choice = optionGroup.choices.find(c => c.id === choiceId);
+        return choice?.name || '';
+      });
+      
+      return choiceNames.join(', ');
+    }).filter(Boolean).join('; ');
+  };
+  
+  const getFormattedToppings = (item: CartItem): string => {
+    return item.selectedToppings.map(category => {
+      const toppingCategory = item.menuItem.toppingCategories?.find(tc => tc.id === category.categoryId);
+      if (!toppingCategory) return '';
+      
+      const toppingNames = category.toppingIds.map(toppingId => {
+        const topping = toppingCategory.toppings.find(t => t.id === toppingId);
+        return topping?.name || '';
+      });
+      
+      return `${toppingCategory.name}: ${toppingNames.join(', ')}`;
+    }).filter(Boolean).join('; ');
   };
 
   if (loading) {
@@ -325,7 +397,7 @@ const KioskView = () => {
   if (orderPlaced) {
     return (
       <OrderReceipt
-        restaurant={restaurant}
+        restaurant={restaurant!}
         orderType={orderType}
         tableNumber={tableNumber}
         onNewOrder={() => {
@@ -335,6 +407,8 @@ const KioskView = () => {
       />
     );
   }
+  
+  const { total } = calculateCartTotals(cart);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -349,6 +423,9 @@ const KioskView = () => {
           <CartButton
             count={cart.length}
             onClick={() => setIsCartOpen(true)}
+            total={total}
+            currency={restaurant?.currency}
+            uiLanguage={uiLanguage}
           />
         </div>
       </header>
@@ -377,13 +454,13 @@ const KioskView = () => {
                 key={item.id}
                 className="overflow-hidden transition-all hover:shadow-lg"
               >
-                {item.image_url && (
+                {item.image && (
                   <div
                     className="aspect-[4/3] cursor-pointer"
                     onClick={() => handleImageClick(item)}
                   >
                     <img
-                      src={item.image_url}
+                      src={item.image}
                       alt={item.name}
                       className="h-full w-full object-cover"
                     />
@@ -422,16 +499,16 @@ const KioskView = () => {
             <DialogDescription>{selectedItem?.description}</DialogDescription>
           </DialogHeader>
           
-          {selectedItem?.options.map(option => (
+          {selectedItem?.options?.map(option => (
             <div key={option.id} className="mb-4">
               <div className="mb-2 flex items-center justify-between">
                 <Label className="font-medium">
                   {option.name} 
-                  {option.min_selections > 0 && <span className="text-red-500">*</span>}
+                  {option.required && <span className="text-red-500">*</span>}
                 </Label>
-                {option.max_selections > 1 && (
+                {option.multiple && (
                   <span className="text-xs text-gray-500">
-                    {t("selectUpTo")} {option.max_selections}
+                    {t("selectUpTo")} {option.choices.length}
                   </span>
                 )}
               </div>
@@ -458,7 +535,7 @@ const KioskView = () => {
                                 return [...prev, { optionId: option.id, choiceIds: [choice.id] }];
                               }
                               
-                              if (option.max_selections === 1) {
+                              if (!option.multiple) {
                                 return prev.map(o => 
                                   o.optionId === option.id
                                     ? { ...o, choiceIds: [choice.id] }
@@ -474,7 +551,7 @@ const KioskView = () => {
                                 );
                               } else {
                                 const selectedCount = currentOption.choiceIds.length;
-                                if (selectedCount < option.max_selections) {
+                                if (selectedCount < option.choices.length) {
                                   return prev.map(o => 
                                     o.optionId === option.id
                                       ? { ...o, choiceIds: [...o.choiceIds, choice.id] }
@@ -483,7 +560,7 @@ const KioskView = () => {
                                 } else {
                                   toast({
                                     title: t("maxSelectionsReached"),
-                                    description: t("maxSelectionsMessage").replace("{max}", option.max_selections.toString()),
+                                    description: t("maxSelectionsMessage").replace("{max}", option.choices.length.toString()),
                                     variant: "destructive"
                                   });
                                   return prev;
@@ -509,11 +586,11 @@ const KioskView = () => {
             </div>
           ))}
           
-          {selectedItem?.topping_categories.map(category => (
+          {selectedItem?.toppingCategories?.map(category => (
             <div key={category.id} className="mb-4">
               <div className="mb-2 flex items-center justify-between">
                 <Label className="font-medium">{category.name}</Label>
-                {category.multiple_selection && (
+                {category.max_selections > 1 && (
                   <span className="text-xs text-gray-500">
                     {t("multipleSelection")}
                   </span>
@@ -542,7 +619,7 @@ const KioskView = () => {
                                 return [...prev, { categoryId: category.id, toppingIds: [topping.id] }];
                               }
                               
-                              if (!category.multiple_selection) {
+                              if (category.max_selections === 1) {
                                 return prev.map(t => 
                                   t.categoryId === category.id
                                     ? { ...t, toppingIds: [topping.id] }
@@ -556,11 +633,21 @@ const KioskView = () => {
                                       : t
                                   );
                                 } else {
-                                  return prev.map(t => 
-                                    t.categoryId === category.id
-                                      ? { ...t, toppingIds: [...t.toppingIds, topping.id] }
-                                      : t
-                                  );
+                                  const selectedCount = currentCategory.toppingIds.length;
+                                  if (category.max_selections === 0 || selectedCount < category.max_selections) {
+                                    return prev.map(t => 
+                                      t.categoryId === category.id
+                                        ? { ...t, toppingIds: [...t.toppingIds, topping.id] }
+                                        : t
+                                    );
+                                  } else {
+                                    toast({
+                                      title: t("maxSelectionsReached"),
+                                      description: t("maxSelectionsMessage").replace("{max}", category.max_selections.toString()),
+                                      variant: "destructive"
+                                    });
+                                    return prev;
+                                  }
                                 }
                               }
                             });
@@ -609,13 +696,13 @@ const KioskView = () => {
           <DialogFooter>
             <Button
               onClick={() => {
-                const allRequiredSelected = selectedItem?.options.every(option => {
-                  if (option.min_selections > 0) {
+                const allRequiredSelected = selectedItem?.options?.every(option => {
+                  if (option.required) {
                     const selections = selectedOptions.find(o => o.optionId === option.id)?.choiceIds.length || 0;
-                    return selections >= option.min_selections;
+                    return selections > 0;
                   }
                   return true;
-                });
+                }) ?? true;
                 
                 if (!allRequiredSelected) {
                   toast({
@@ -638,8 +725,12 @@ const KioskView = () => {
       <Cart 
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
+        onToggleOpen={() => setIsCartOpen(!isCartOpen)}
         cart={cart}
         updateCart={setCart}
+        onRemoveItem={handleRemoveFromCart}
+        onUpdateQuantity={handleUpdateQuantity}
+        onClearCart={() => setCart([])}
         restaurant={restaurant}
         orderType={orderType}
         tableNumber={tableNumber}
@@ -660,7 +751,10 @@ const KioskView = () => {
             setPlacingOrder(false);
           }
         }}
+        getFormattedOptions={getFormattedOptions}
+        getFormattedToppings={getFormattedToppings}
         placingOrder={placingOrder}
+        uiLanguage={uiLanguage}
       />
     </div>
   );

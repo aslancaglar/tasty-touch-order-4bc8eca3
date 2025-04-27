@@ -22,11 +22,11 @@ function getCurrencySymbol(currency: string) {
 }
 
 interface CartButtonProps {
-  itemCount: number;
-  total: number;
+  count?: number; // Changed from itemCount to count
+  total?: number;
   onClick: () => void;
   uiLanguage?: "fr" | "en" | "tr";
-  currency?: string; // Updated to require currency
+  currency?: string;
 }
 
 const translations = {
@@ -42,13 +42,13 @@ const translations = {
 };
 
 const CartButton: React.FC<CartButtonProps> = ({
-  itemCount,
-  total,
+  count = 0,
+  total = 0,
   onClick,
   uiLanguage = "fr",
-  currency = "EUR" // Default to EUR if not provided
+  currency = "EUR"
 }) => {
-  if (itemCount === 0) return null;
+  if (count === 0) return null;
   const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
   const currencySymbol = getCurrencySymbol(currency);
   
@@ -59,7 +59,7 @@ const CartButton: React.FC<CartButtonProps> = ({
         className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl py-[40px] px-[100px] font-bold"
       >
         <ShoppingCart className="h-12 w-12 mr-2" />
-        <span className="font-bold">{itemCount}</span>
+        <span className="font-bold">{count}</span>
         <span className="mx-2">|</span>
         <span className="font-bold">{total.toFixed(2)} {currencySymbol}</span>
         <span className="ml-3 font-semibold">{t("viewCart")}</span>
