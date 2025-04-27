@@ -1,43 +1,36 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Check, ArrowRight, Loader2, Plus, Minus, ChevronDown, X } from "lucide-react";
-import { CartItem, Restaurant } from "@/types/database-types";
+import { CartItem } from "@/types/database-types";
 import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { calculateCartTotals } from "@/utils/price-utils";
-
-type OrderType = "dine-in" | "takeaway" | null;
-
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
-  onClose?: () => void; // Made optional
-  onToggleOpen?: () => void; // Made optional
-  onUpdateQuantity?: (itemId: string, quantity: number) => void;
-  onRemoveItem?: (itemId: string) => void;
-  onClearCart?: () => void;
-  updateCart?: React.Dispatch<React.SetStateAction<CartItem[]>>;
+  onToggleOpen: () => void;
+  onUpdateQuantity: (itemId: string, quantity: number) => void;
+  onRemoveItem: (itemId: string) => void;
+  onClearCart: () => void;
   onPlaceOrder: () => void;
   placingOrder: boolean;
-  orderPlaced?: boolean;
-  calculateSubtotal?: () => number;
-  calculateTax?: () => number;
-  getFormattedOptions?: (item: CartItem) => string;
-  getFormattedToppings?: (item: CartItem) => string;
+  orderPlaced: boolean;
+  calculateSubtotal: () => number;
+  calculateTax: () => number;
+  getFormattedOptions: (item: CartItem) => string;
+  getFormattedToppings: (item: CartItem) => string;
   restaurant?: {
     name: string;
     location?: string;
     currency?: string;
   } | null;
-  orderType?: OrderType;
+  orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
   showOrderSummaryOnly?: boolean;
   uiLanguage?: "fr" | "en" | "tr";
 }
-
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -50,11 +43,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
-
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 const translations = {
   fr: {
     yourOrder: "VOTRE COMMANDE",
@@ -90,23 +81,20 @@ const translations = {
     empty: "Ürün yok"
   }
 };
-
 const Cart: React.FC<CartProps> = ({
   cart,
   isOpen,
-  onClose = () => {},
-  onToggleOpen = () => {},
-  onUpdateQuantity = () => {},
-  onRemoveItem = () => {},
-  onClearCart = () => {},
-  updateCart,
+  onToggleOpen,
+  onUpdateQuantity,
+  onRemoveItem,
+  onClearCart,
   onPlaceOrder,
   placingOrder,
-  orderPlaced = false,
-  calculateSubtotal = () => 0,
-  calculateTax = () => 0,
-  getFormattedOptions = () => "",
-  getFormattedToppings = () => "",
+  orderPlaced,
+  calculateSubtotal,
+  calculateTax,
+  getFormattedOptions,
+  getFormattedToppings,
   restaurant = null,
   orderType = null,
   tableNumber = null,
@@ -116,7 +104,6 @@ const Cart: React.FC<CartProps> = ({
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartRef = useRef<HTMLDivElement>(null);
-  
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && !showOrderSummary && cartRef.current && !cartRef.current.contains(event.target as Node)) {
@@ -128,39 +115,31 @@ const Cart: React.FC<CartProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onToggleOpen, showOrderSummary]);
-  
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
   };
-  
   const handleCloseOrderSummary = () => {
     setShowOrderSummary(false);
   };
-  
   const handlePlaceOrder = () => {
     onPlaceOrder();
     setShowOrderSummary(false);
   };
-  
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
-  
   const {
     total,
     subtotal,
     tax
   } = calculateCartTotals(cart);
-  
   const reversedCart = [...cart].reverse();
   const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
-  
-  return (
-    <>
+  return <>
       <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
-        maxHeight: "60vh"
-      }}>
+      maxHeight: "60vh"
+    }}>
         <div className="w-full">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center">
@@ -172,33 +151,21 @@ const Cart: React.FC<CartProps> = ({
           </div>
 
           <ScrollArea className="p-4" style={{
-            maxHeight: "40vh"
-          }}>
+          maxHeight: "40vh"
+        }}>
             <Carousel opts={{
-              align: "start",
-              containScroll: "trimSnaps"
-            }} className="w-full">
+            align: "start",
+            containScroll: "trimSnaps"
+          }} className="w-full">
               <CarouselContent className="-ml-2">
-                {reversedCart.length === 0 ? (
-                  <div className="p-4 text-gray-400 text-center">{t("empty")}</div>
-                ) : reversedCart.map(item => (
-                  <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
+                {reversedCart.length === 0 ? <div className="p-4 text-gray-400 text-center">{t("empty")}</div> : reversedCart.map(item => <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
                     <div className="border border-gray-200 rounded-lg p-3 relative">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="absolute right-1 top-1 text-red-500 h-7 w-7" 
-                        onClick={() => onRemoveItem(item.id)}
-                      >
+                      <Button variant="ghost" size="icon" className="absolute right-1 top-1 text-red-500 h-7 w-7" onClick={() => onRemoveItem(item.id)}>
                         <X className="h-5 w-5" />
                       </Button>
                       
                       <div className="flex items-start space-x-3">
-                        <img 
-                          src={item.menuItem.image || '/placeholder.svg'} 
-                          alt={item.menuItem.name} 
-                          className="w-16 h-16 object-cover rounded" 
-                        />
+                        <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
                         <div className="flex flex-col">
                           <h3 className="font-bold">{item.menuItem.name}</h3>
                           <p className="text-gray-700 font-medium">
@@ -206,29 +173,18 @@ const Cart: React.FC<CartProps> = ({
                           </p>
                           
                           <div className="flex items-center mt-2">
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
-                              className="h-7 w-7 rounded-full p-0" 
-                              onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                            >
+                            <Button variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}>
                               <Minus className="h-3 w-3" />
                             </Button>
                             <span className="w-8 text-center font-medium">{item.quantity}</span>
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
-                              className="h-7 w-7 rounded-full p-0" 
-                              onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                            >
+                            <Button variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}>
                               <Plus className="h-3 w-3" />
                             </Button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </CarouselItem>
-                ))}
+                  </CarouselItem>)}
               </CarouselContent>
             </Carousel>
           </ScrollArea>
@@ -254,11 +210,7 @@ const Cart: React.FC<CartProps> = ({
               <Button variant="destructive" onClick={onClearCart} className="text-4xl py-[40px]">
                 {t("cancel")}
               </Button>
-              <Button 
-                onClick={handleShowOrderSummary} 
-                disabled={placingOrder || orderPlaced || cart.length === 0} 
-                className="bg-green-800 hover:bg-green-900 text-white py-[40px] text-4xl"
-              >
+              <Button onClick={handleShowOrderSummary} disabled={placingOrder || orderPlaced || cart.length === 0} className="bg-green-800 hover:bg-green-900 text-white py-[40px] text-4xl">
                 {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {orderPlaced && <Check className="h-4 w-4 mr-2" />}
                 {orderPlaced ? t("confirmed") : placingOrder ? t("processing") : t("seeOrder")}
@@ -269,23 +221,7 @@ const Cart: React.FC<CartProps> = ({
         </div>
       </div>
 
-      <OrderSummary 
-        isOpen={showOrderSummary} 
-        onClose={handleCloseOrderSummary} 
-        cart={cart} 
-        onPlaceOrder={handlePlaceOrder} 
-        placingOrder={placingOrder}
-        calculateSubtotal={calculateSubtotal}
-        calculateTax={calculateTax}
-        getFormattedOptions={getFormattedOptions}
-        getFormattedToppings={getFormattedToppings}
-        restaurant={restaurant}
-        orderType={orderType}
-        tableNumber={tableNumber}
-        uiLanguage={uiLanguage}
-      />
-    </>
-  );
+      <OrderSummary isOpen={showOrderSummary} onClose={handleCloseOrderSummary} cart={cart} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} />
+    </>;
 };
-
 export default Cart;
