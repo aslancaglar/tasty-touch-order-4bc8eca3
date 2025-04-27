@@ -184,7 +184,467 @@ const KioskView = () => {
     };
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
-  // ... keep existing code
+  const handleAddToCart = async (item: MenuItemWithOptions) => {
+    if (!item) {
+      return;
+    }
+    if (item.options && item.options.length > 0) {
+      const requiredOptions = item.options.filter(option => option.required);
+      const unselectedRequiredOptions = requiredOptions.filter(option => !selectedOptions.find(so => so.optionId === option.id));
+      if (unselectedRequiredOptions.length > 0) {
+        toast({
+          title: t("selectionsRequired"),
+          description: t("pleaseSelectRequired"),
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    const totalPrice = calculateTotalPrice(item);
+    const newCartItem: CartItem = {
+      id: item.id,
+      menuItem: item,
+      quantity: quantity,
+      options: selectedOptions,
+      toppings: selectedToppings,
+      specialInstructions: specialInstructions,
+      price: totalPrice
+    };
+    setCart([...cart, newCartItem]);
+    setQuantity(1);
+    setSelectedItem(null);
+    setSelectedOptions([]);
+    setSelectedToppings([]);
+    setSpecialInstructions("");
+    toast({
+      title: t("addedToCart"),
+      description: `${item.name} ${t("added")}!`,
+      duration: 3000
+    });
+  };
+  const calculateTotalPrice = (item: MenuItemWithOptions) => {
+    let itemPrice = item.promotion_price !== null && item.promotion_price !== undefined ? item.promotion_price : item.price;
+    let optionsPrice = 0;
+    selectedOptions.forEach(selectedOption => {
+      selectedOption.choiceIds.forEach(choiceId => {
+        const option = item.options?.find(o => o.id === selectedOption.optionId);
+        const choice = option?.choices.find(c => c.id === choiceId);
+        if (choice) {
+          optionsPrice += choice.price || 0;
+        }
+      });
+    });
+    let toppingsPrice = 0;
+    selectedToppings.forEach(toppingCategory => {
+      toppingCategory.toppingIds.forEach(toppingId => {
+        // Find the topping within the current item's topping categories
+        categories.forEach(category => {
+          category.items.forEach(menuItem => {
+            if (menuItem.id === item.id) {
+              // Now you're sure you're only looking at toppings for the current menu item
+              const topping = categories.find(cat => cat.id === toppingCategory.categoryId)?.items.find(t => t.id === toppingId);
+              if (topping) {
+                toppingsPrice += topping.price;
+              }
+            }
+          });
+        });
+      });
+    });
+    const totalPrice = itemPrice + optionsPrice + toppingsPrice;
+    return totalPrice * quantity;
+  };
+  const handleIncrement = () => {
+    setQuantity(quantity + 1);
+  };
+  const handleDecrement = () => {
+    if (quantity > 1) {
+      setQuantity(quantity - 1);
+    }
+  };
+  const handleOptionSelect = (optionId: string, choiceId: string) => {
+    setSelectedOptions(prevOptions => {
+      const option = prevOptions.find(opt => opt.optionId === optionId);
+      if (option) {
+        const choiceExists = option.choiceIds.includes(choiceId);
+        if (choiceExists) {
+          return prevOptions.map(opt => opt.optionId === optionId ? {
+            ...opt,
+            choiceIds: opt.choiceIds.filter(id => id !== choiceId)
+          } : opt).filter(opt => opt.choiceIds.length > 0);
+        } else {
+          return prevOptions.map(opt => opt.optionId === optionId ? {
+            ...opt,
+            choiceIds: [...opt.choiceIds, choiceId]
+          } : opt);
+        }
+      } else {
+        return [...prevOptions, {
+          optionId: optionId,
+          choiceIds: [choiceId]
+        }];
+      }
+    });
+  };
+  const isChoiceSelected = (optionId: string, choiceId: string) => {
+    const option = selectedOptions.find(opt => opt.optionId === optionId);
+    return !!option && option.choiceIds.includes(choiceId);
+  };
+  const handleToppingSelect = (categoryId: string, toppingId: string) => {
+    setSelectedToppings(prevToppings => {
+      const category = prevToppings.find(cat => cat.categoryId === categoryId);
+      if (category) {
+        const toppingExists = category.toppingIds.includes(toppingId);
+        if (toppingExists) {
+          return prevToppings.map(cat => cat.categoryId === categoryId ? {
+            ...cat,
+            toppingIds: cat.toppingIds.filter(id => id !== toppingId)
+          } : cat).filter(cat => cat.toppingIds.length > 0);
+        } else {
+          return prevToppings.map(cat => cat.categoryId === categoryId ? {
+            ...cat,
+            toppingIds: [...cat.toppingIds, toppingId]
+          } : cat);
+        }
+      } else {
+        return [...prevToppings, {
+          categoryId: categoryId,
+          toppingIds: [toppingId]
+        }];
+      }
+    });
+  };
+  const isToppingSelected = (categoryId: string, toppingId: string) => {
+    const category = selectedToppings.find(cat => cat.categoryId === categoryId);
+    return !!category && category.toppingIds.includes(toppingId);
+  };
+  const getCategoryById = (categoryId: string) => {
+    return categories.find(cat => cat.id === categoryId);
+  };
+  const handleRemoveCartItem = (itemId: string) => {
+    setCart(cart.filter(item => item.id !== itemId));
+  };
+  const handlePlaceOrder = async () => {
+    if (cart.length === 0) {
+      toast({
+        title: "Your cart is empty",
+        description: "Please add items to your cart before placing an order.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setPlacingOrder(true);
+    try {
+      if (!restaurant) {
+        throw new Error("Restaurant not loaded");
+      }
+      const orderData = {
+        restaurant_id: restaurant.id,
+        total: cart.reduce((acc, item) => acc + item.price, 0),
+        customer_name: "Kiosk Order"
+      };
+      const newOrder = await createOrder(orderData);
+      if (!newOrder) {
+        throw new Error("Failed to create order");
+      }
+      const orderItemsData = cart.map(cartItem => ({
+        order_id: newOrder.id,
+        menu_item_id: cartItem.menuItem.id,
+        quantity: cartItem.quantity,
+        price: cartItem.price,
+        special_instructions: cartItem.specialInstructions || null
+      }));
+      const newOrderItems = await createOrderItems(orderItemsData);
+      if (!newOrderItems) {
+        throw new Error("Failed to create order items");
+      }
+      // Create order item options
+      for (const cartItem of cart) {
+        if (cartItem.options && cartItem.options.length > 0) {
+          for (const option of cartItem.options) {
+            for (const choiceId of option.choiceIds) {
+              const orderItem = newOrderItems.find(item => item.menu_item_id === cartItem.menuItem.id);
+              if (orderItem) {
+                const orderItemOptionData = {
+                  order_item_id: orderItem.id,
+                  option_id: option.optionId,
+                  choice_id: choiceId
+                };
+                await createOrderItemOptions(orderItemOptionData);
+              }
+            }
+          }
+        }
+        if (cartItem.toppings && cartItem.toppings.length > 0) {
+          for (const toppingCategory of cartItem.toppings) {
+            for (const toppingId of toppingCategory.toppingIds) {
+              const orderItem = newOrderItems.find(item => item.menu_item_id === cartItem.menuItem.id);
+              if (orderItem) {
+                const orderItemToppingData = {
+                  order_item_id: orderItem.id,
+                  topping_category_id: toppingCategory.categoryId,
+                  topping_id: toppingId
+                };
+                await createOrderItemToppings(orderItemToppingData);
+              }
+            }
+          }
+        }
+      }
+      setCart([]);
+      setOrderPlaced(true);
+      toast({
+        title: "Order Placed!",
+        description: "Your order has been placed successfully.",
+        duration: 5000
+      });
+    } catch (error) {
+      console.error("Error placing order:", error);
+      toast({
+        title: "Error Placing Order",
+        description: "There was an error placing your order. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setPlacingOrder(false);
+    }
+  };
+  const handleStartNewOrder = () => {
+    setOrderPlaced(false);
+    setShowWelcome(true);
+    setOrderType(null);
+    setTableNumber(null);
+  };
+  const handleSelectOrderType = (type: OrderType, table: string | null = null) => {
+    setOrderType(type);
+    setTableNumber(table);
+    setShowOrderTypeSelection(false);
+  };
+  // Return JSX content
+  return (
+    <>
+      {showWelcome && restaurant && (
+        <WelcomePage
+          restaurant={restaurant}
+          onStart={() => {
+            setShowWelcome(false);
+            setShowOrderTypeSelection(true);
+          }}
+        />
+      )}
+      {showOrderTypeSelection && restaurant && <OrderTypeSelection restaurant={restaurant} onSelectOrderType={handleSelectOrderType} />}
+      {!showWelcome && !showOrderTypeSelection && restaurant && !orderPlaced && (
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-6 flex items-center justify-between">
+            <Button variant="ghost" onClick={() => {
+              setShowWelcome(true);
+              setOrderType(null);
+              setTableNumber(null);
+            }}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {t("backToHome")}
+            </Button>
+            <div className="flex items-center space-x-4">
+              <Button variant="secondary" onClick={() => setIsCartOpen(true)}>
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">View Cart</span>
+                <CartButton cart={cart} />
+              </Button>
+              <select className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 capitalize" value={uiLanguage} onChange={e => setUiLanguage(e.target.value as "fr" | "en" | "tr")}>
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="tr">Türkçe</option>
+              </select>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold mb-4">{restaurant.name}</h1>
+          <p className="text-muted-foreground mb-4">
+            {restaurant.location}
+            <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+              <Clock className="mr-1.5 h-3 w-3" />
+              {t("open")}
+            </span>
+          </p>
+          {orderType && <div className="mb-4">
+            {orderType === "dine_in" && <Badge variant="secondary">
+              <UtensilsCrossed className="mr-2 h-4 w-4" />
+              {t("dineIn")} {tableNumber && `${t("table")} ${tableNumber}`}
+            </Badge>}
+            {orderType === "takeaway" && <Badge variant="secondary">
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              {t("takeaway")}
+            </Badge>}
+          </div>}
+          <h2 className="text-2xl font-semibold mb-4">{t("menu")}</h2>
+          {loading ? (
+            <div className="flex justify-center items-center">
+              <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categories.map(category => (
+                <div key={category.id}>
+                  <h3 className="text-xl font-semibold mb-2 flex items-center">
+                    {getIconComponent(category.icon)}
+                    <Button variant="link" onClick={() => setActiveCategory(category.id)} className={activeCategory === category.id ? "text-kiosk-primary" : ""}>
+                      {category.name}
+                    </Button>
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {category.items.map(item => (
+                      <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="text-lg font-medium">{item.name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {getCurrencySymbol(restaurant.currency)}{parseFloat(item.price.toString()).toFixed(2)}
+                              </p>
+                            </div>
+                            {item.image && (
+                              <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-md" />
+                            )}
+                          </div>
+                          <Button className="mt-4 w-full bg-kiosk-primary" onClick={() => setSelectedItem(item)}>
+                            {t("addToCart")}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>{selectedItem?.name}</DialogTitle>
+            <DialogDescription>
+              {selectedItem?.description}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="py-4">
+              {selectedItem.options && selectedItem.options.length > 0 && selectedItem.options.map(option => (
+                <div key={option.id} className="mb-4">
+                  <Label className="block font-semibold mb-2">{option.name} {option.required && <span className="text-red-500">*</span>}</Label>
+                  {option.multiple ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">{t("multipleSelection")} - {t("selectUpTo")} {option.choices.length}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {option.choices.map(choice => (
+                          <Button key={choice.id} variant={isChoiceSelected(option.id, choice.id) ? "secondary" : "outline"} onClick={() => handleOptionSelect(option.id, choice.id)}>
+                            {choice.name} {choice.price !== null && `(+${getCurrencySymbol(restaurant.currency)}${choice.price.toFixed(2)})`}
+                          </Button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {option.choices.map(choice => (
+                        <Button key={choice.id} variant={isChoiceSelected(option.id, choice.id) ? "secondary" : "outline"} onClick={() => handleOptionSelect(option.id, choice.id)}>
+                          {choice.name} {choice.price !== null && `(+${getCurrencySymbol(restaurant.currency)}${choice.price.toFixed(2)})`}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {categories.map(category => {
+                // Ensure category.items is an array before filtering
+                if (!Array.isArray(category.items)) {
+                  return null;
+                }
+                // Filter toppings to only include items that are toppings
+                const toppings = category.items.filter(item => selectedItem.topping_categories?.includes(category.id));
+                if (toppings.length === 0) {
+                  return null;
+                }
+                return (
+                  <div key={category.id} className="mb-4">
+                    <Label className="block font-semibold mb-2">{category.name}</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {toppings.map(topping => (
+                        <Button key={topping.id} variant={isToppingSelected(category.id, topping.id) ? "secondary" : "outline"} onClick={() => handleToppingSelect(category.id, topping.id)}>
+                          {topping.name} (+{getCurrencySymbol(restaurant.currency)}{topping.price.toFixed(2)})
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              <Label className="block font-semibold mb-2">{t("quantity")}</Label>
+              <div className="flex items-center space-x-2 mb-4">
+                <Button variant="outline" onClick={handleDecrement} disabled={quantity <= 1}>
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="font-semibold">{quantity}</span>
+                <Button variant="outline" onClick={handleIncrement}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <Label htmlFor="specialInstructions" className="block font-semibold mb-2">Special Instructions</Label>
+              <textarea id="specialInstructions" className="w-full border rounded-md p-2" value={specialInstructions} onChange={e => setSpecialInstructions(e.target.value)} placeholder="Any special requests?" />
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="submit" className="w-full bg-kiosk-primary" onClick={() => {
+              if (selectedItem) {
+                handleAddToCart(selectedItem);
+              }
+            }}>
+              {t("addToCart")} - {getCurrencySymbol(restaurant.currency)}{selectedItem ? calculateTotalPrice(selectedItem).toFixed(2) : "0.00"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isCartOpen} onOpenChange={() => setIsCartOpen(false)}>
+        <DialogContent className="sm:max-w-[625px]">
+          <DialogHeader>
+            <DialogTitle>Your Cart</DialogTitle>
+            <DialogDescription>
+              Review and confirm your order.
+            </DialogDescription>
+          </DialogHeader>
+          <Cart cart={cart} restaurant={restaurant} onRemoveItem={handleRemoveCartItem} />
+          <DialogFooter>
+            <Button type="submit" className="w-full bg-kiosk-primary" onClick={handlePlaceOrder} disabled={placingOrder}>
+              {placingOrder ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Placing Order...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Place Order
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={orderPlaced} onOpenChange={() => setOrderPlaced(false)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Order Confirmation</DialogTitle>
+            <DialogDescription>
+              Thank you for your order!
+            </DialogDescription>
+          </DialogHeader>
+          <OrderReceipt cart={cart} restaurant={restaurant} />
+          <DialogFooter>
+            <Button type="submit" className="w-full bg-kiosk-primary" onClick={handleStartNewOrder}>
+              Start New Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 };
 
 export default KioskView;
