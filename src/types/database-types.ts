@@ -85,6 +85,9 @@ export type Topping = {
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
+// Add the missing OrderType type
+export type OrderType = 'dine-in' | 'takeaway' | null;
+
 export interface Order {
   id: string;
   restaurant_id: string;
@@ -93,7 +96,7 @@ export interface Order {
   status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at: string;
   total: number;
-  order_type?: 'dine-in' | 'takeaway' | null;
+  order_type?: OrderType;
   table_number?: string;
 }
 

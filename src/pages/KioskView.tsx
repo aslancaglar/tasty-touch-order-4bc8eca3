@@ -1,9 +1,18 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions } from "@/services/kiosk-service";
+import { 
+  getRestaurantBySlug, 
+  getMenuForRestaurant, 
+  getMenuItemWithOptions,
+  createOrder,
+  createOrderItems,
+  createOrderItemOptions,
+  createOrderItemToppings
+} from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
