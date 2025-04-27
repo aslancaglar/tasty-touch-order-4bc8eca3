@@ -1,43 +1,23 @@
 
-import React, { memo } from "react";
+import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { MenuItem } from "@/types/database-types";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface MenuItemGridProps {
   items: MenuItem[];
   handleSelectItem: (item: MenuItem) => void;
   currencySymbol: string;
   t: (key: string) => string;
-  loading?: boolean;
 }
 
-const MenuItemGrid = memo(({
+const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
   currencySymbol,
-  t,
-  loading
-}: MenuItemGridProps) => {
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="overflow-hidden">
-            <Skeleton className="h-40" />
-            <div className="p-4">
-              <Skeleton className="h-6 w-3/4 mb-2" />
-              <Skeleton className="h-4 w-1/2 mb-4" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
+  t
+}) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {items
@@ -69,8 +49,6 @@ const MenuItemGrid = memo(({
         ))}
     </div>
   );
-});
-
-MenuItemGrid.displayName = 'MenuItemGrid';
+};
 
 export default MenuItemGrid;

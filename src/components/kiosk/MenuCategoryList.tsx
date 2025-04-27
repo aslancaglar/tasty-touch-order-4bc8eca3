@@ -1,34 +1,19 @@
 
-import React, { memo } from "react";
+import React from "react";
 import { UtensilsCrossed } from "lucide-react";
 import { MenuCategory } from "@/types/database-types";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface MenuCategoryListProps {
   categories: MenuCategory[];
   activeCategory: string | null;
   setActiveCategory: (categoryId: string) => void;
-  loading?: boolean;
 }
 
-const MenuCategoryList = memo(({
+const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   categories,
   activeCategory,
-  setActiveCategory,
-  loading
-}: MenuCategoryListProps) => {
-  if (loading) {
-    return (
-      <div className="p-4">
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="w-full h-24" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
+  setActiveCategory
+}) => {
   return (
     <div className="p-4">
       <div className="space-y-2">
@@ -63,8 +48,6 @@ const MenuCategoryList = memo(({
       </div>
     </div>
   );
-});
-
-MenuCategoryList.displayName = 'MenuCategoryList';
+};
 
 export default MenuCategoryList;

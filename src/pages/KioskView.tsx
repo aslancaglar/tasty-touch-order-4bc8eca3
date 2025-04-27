@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import {
   createOrderItemOptions,
   createOrderItemToppings
 } from "@/services/kiosk-service";
-import { Restaurant, MenuItem, CartItem, MenuItemWithOptions, OrderType, MenuCategory } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
@@ -22,7 +23,6 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
-import { useMenu } from "@/hooks/useMenu";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -36,21 +36,14 @@ type SelectedToppingCategory = {
 const KioskView = () => {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 3;
-  
-  const { categories, activeCategory, setActiveCategory, loading: menuLoading } = useMenu(restaurant?.id);
-  
   const [showWelcome, setShowWelcome] = useState(true);
   const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{
     optionId: string;
@@ -61,8 +54,11 @@ const KioskView = () => {
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
+  
+  const { toast } = useToast();
   
   const CURRENCY_SYMBOLS: Record<string, string> = {
     EUR: "€",
@@ -158,24 +154,15 @@ const KioskView = () => {
       
       try {
         setLoading(true);
-        setFetchError(null);
         const restaurantData = await getRestaurantBySlug(restaurantSlug);
         
         if (!restaurantData) {
-          if (retryCount < MAX_RETRIES) {
-            // Wait for 1 second before retrying
-            setTimeout(() => {
-              setRetryCount(prev => prev + 1);
-            }, 1000);
-            return;
-          }
-          
-          setFetchError("Restaurant not found");
           toast({
             title: t("restaurantNotFound"),
             description: t("sorryNotFound"),
             variant: "destructive"
           });
+          navigate('/');
           return;
         }
         
@@ -183,22 +170,27 @@ const KioskView = () => {
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         
+        const menuData = await getMenuForRestaurant(restaurantData.id);
+        setCategories(menuData);
+        
+        if (menuData.length > 0) {
+          setActiveCategory(menuData[0].id);
+        }
+        
         setLoading(false);
       } catch (error) {
-        console.error("Error loading restaurant and menu:", error);
-        setFetchError("Failed to load restaurant data");
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
         toast({
           title: t("restaurantNotFound"),
           description: t("sorryNotFound"),
           variant: "destructive"
         });
-      } finally {
         setLoading(false);
       }
     };
     
     fetchRestaurantAndMenu();
-  }, [restaurantSlug, navigate, toast, t, retryCount]);
+  }, [restaurantSlug, navigate, toast]);
 
   const handleStartOrder = () => {
     setShowWelcome(false);
@@ -285,7 +277,7 @@ const KioskView = () => {
     }
   };
 
-  const handleSelectItem = useCallback(async (item: MenuItem) => {
+  const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
       const itemWithOptions = await getMenuItemWithOptions(item.id);
@@ -380,7 +372,7 @@ const KioskView = () => {
       });
       setLoading(false);
     }
-  }, [toast, t]);
+  };
 
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
@@ -532,7 +524,7 @@ const KioskView = () => {
     }).filter(Boolean).join(", ");
   };
 
-  const handleAddToCart = useCallback(() => {
+  const handleAddToCart = () => {
     if (!selectedItem) return;
     
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -577,7 +569,7 @@ const KioskView = () => {
       title: t("addedToCart"),
       description: `${quantity}x ${selectedItem.name} ${t("added")}`
     });
-  }, [selectedItem, selectedOptions, selectedToppings, quantity, specialInstructions, toast, t]);
+  };
 
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -600,18 +592,18 @@ const KioskView = () => {
     });
   };
 
-  const calculateCartTotal = useMemo(() => {
+  const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
       return total + item.itemPrice * item.quantity;
     }, 0);
-  }, [cart]);
+  };
 
   const calculateSubtotal = () => {
-    return calculateCartTotal;
+    return calculateCartTotal();
   };
 
   const calculateTax = () => {
-    return calculateCartTotal * 0.1; // 10% tax
+    return calculateCartTotal() * 0.1; // 10% tax
   };
 
   const handlePlaceOrder = async () => {
@@ -621,7 +613,7 @@ const KioskView = () => {
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
-        total: calculateCartTotal,
+        total: calculateCartTotal(),
         customer_name: null
       });
       const orderItems = await createOrderItems(cart.map(item => ({
@@ -702,23 +694,22 @@ const KioskView = () => {
     );
   };
 
-  if (loading) {
+  if (loading && !restaurant) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <Loader2 className="h-12 w-12 animate-spin text-purple-700 mb-4" />
-        <p className="text-gray-600">Loading restaurant...</p>
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
       </div>
     );
   }
 
-  if (fetchError || !restaurant) {
+  if (!restaurant) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <div className="max-w-md mx-auto text-center p-8">
-          <h1 className="text-2xl font-bold mb-4 text-gray-800">{t("restaurantNotFound")}</h1>
-          <p className="text-gray-600 mb-6">{t("sorryNotFound")}</p>
-          <Button onClick={() => navigate('/')} variant="outline" className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
+          <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
+          <Button onClick={() => navigate('/')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
             {t("backToHome")}
           </Button>
         </div>
@@ -777,7 +768,6 @@ const KioskView = () => {
             categories={categories}
             activeCategory={activeCategory}
             setActiveCategory={setActiveCategory}
-            loading={menuLoading}
           />
         </div>
 
@@ -790,9 +780,8 @@ const KioskView = () => {
             <MenuItemGrid 
               items={activeItems}
               handleSelectItem={handleSelectItem}
-              currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
+              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
               t={t}
-              loading={menuLoading}
             />
           </div>
         </div>
@@ -801,10 +790,10 @@ const KioskView = () => {
       {!isCartOpen && !cartIsEmpty && (
         <CartButton 
           itemCount={cartItemCount} 
-          total={calculateCartTotal} 
+          total={calculateCartTotal()} 
           onClick={toggleCart} 
           uiLanguage={uiLanguage} 
-          currency={restaurant?.currency || "EUR"} 
+          currency={restaurant.currency} 
         />
       )}
 
