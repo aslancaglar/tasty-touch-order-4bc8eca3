@@ -121,7 +121,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
           <div key={item.id} style={{ marginBottom: "8px" }}>
             <div className="item">
               <span>{item.quantity}x {sanitizeText(item.menuItem.name)}</span>
-              <span>{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
+              <span>{parseFloat(item.itemPrice?.toString() || item.price.toString()).toFixed(2)} {currencySymbol}</span>
             </div>
             {(getFormattedOptions(item) || getFormattedToppings(item)) && (
               <div className="item-details text-xs">
@@ -137,7 +137,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                   <div key={`${item.id}-cat-${groupIdx}`}>
                     <div style={{ fontWeight: 600, paddingLeft: 0 }}>{sanitizeText(group.category)}:</div>
                     {group.toppings.map((topping, topIdx) => {
-                      const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                      const category = item.menuItem.topping_categories?.find(cat => cat.name === group.category);
                       const toppingRef = category?.toppings.find(t => t.name === topping);
                       const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
                       return (

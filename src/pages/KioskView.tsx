@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getIconComponent } from "@/utils/icon-mapping";
 import { supabase } from "@/integrations/supabase/client";
 import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, OrderItem, CartItem, MenuItemWithOptions, ToppingCategory, Topping, OrderType } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, OrderItem, CartItem, MenuItemWithOptions, ToppingCategory, Topping, OrderType, OrderStatus } from "@/types/database-types";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
 import Cart from "@/components/kiosk/Cart";
@@ -363,7 +363,11 @@ const KioskView = () => {
             for (const choiceId of option.choiceIds) {
               const orderItem = newOrderItems.find(item => item.menu_item_id === cartItem.menuItem.id);
               if (orderItem) {
-                const orderItemOptionData = [{ order_item_id: orderItem.id, option_id: option.optionId, choice_id: choiceId }];
+                const orderItemOptionData = [{ 
+                  order_item_id: orderItem.id, 
+                  option_id: option.optionId, 
+                  choice_id: choiceId 
+                }];
                 await createOrderItemOptions(orderItemOptionData);
               }
             }
@@ -374,7 +378,10 @@ const KioskView = () => {
             for (const toppingId of toppingCategory.toppingIds) {
               const orderItem = newOrderItems.find(item => item.menu_item_id === cartItem.menuItem.id);
               if (orderItem) {
-                const orderItemToppingData = [{ order_item_id: orderItem.id, topping_id: toppingId }];
+                const orderItemToppingData = [{ 
+                  order_item_id: orderItem.id,
+                  topping_id: toppingId 
+                }];
                 await createOrderItemToppings(orderItemToppingData);
               }
             }
@@ -423,8 +430,8 @@ const KioskView = () => {
       )}
       {showOrderTypeSelection && restaurant && (
         <OrderTypeSelection 
-          restaurant={restaurant} 
-          onSelectOrderType={handleSelectOrderType} 
+          restaurant={restaurant as any} 
+          onSelectOrderType={handleSelectOrderType as any} 
         />
       )}
       {!showWelcome && !showOrderTypeSelection && restaurant && !orderPlaced && (
@@ -442,7 +449,7 @@ const KioskView = () => {
               <Button variant="secondary" onClick={() => setIsCartOpen(true)}>
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">View Cart</span>
-                <CartButton cart={cart} />
+                <CartButton cart={cart as any} />
               </Button>
               <select className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 capitalize" value={uiLanguage} onChange={e => setUiLanguage(e.target.value as "fr" | "en" | "tr")}>
                 <option value="fr">Français</option>

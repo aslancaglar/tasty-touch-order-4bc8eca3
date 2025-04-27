@@ -1,3 +1,4 @@
+
 import { CartItem } from "@/types/database-types";
 
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
@@ -36,9 +37,9 @@ export const calculateCartTotals = (cart: CartItem[]) => {
     let itemToppingsTotal = 0;
     let itemToppingsTax = 0;
     
-    if (item.selectedToppings && item.menuItem.toppingCategories) {
+    if (item.selectedToppings && item.menuItem.topping_categories) {
       item.selectedToppings.forEach(toppingCategory => {
-        const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingCategory.categoryId);
+        const category = item.menuItem.topping_categories?.find(cat => cat.id === toppingCategory.categoryId);
         if (category) {
           toppingCategory.toppingIds.forEach(toppingId => {
             const topping = category.toppings.find(t => t.id === toppingId);

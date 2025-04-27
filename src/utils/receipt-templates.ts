@@ -22,6 +22,84 @@ export const getGroupedToppings = (item: CartItem) => {
   return result;
 };
 
+export const generateStandardReceipt = ({
+  restaurant,
+  cart,
+  orderNumber,
+  tableNumber = null,
+  orderType = null,
+  subtotal,
+  tax,
+  total,
+  getFormattedOptions,
+  getFormattedToppings,
+  uiLanguage = 'fr',
+  useCurrencyCode = false
+}: {
+  restaurant: {
+    name: string;
+    location?: string;
+    currency?: string;
+  };
+  cart: CartItem[];
+  orderNumber: string;
+  tableNumber?: string | null;
+  orderType?: "dine-in" | "takeaway" | null;
+  subtotal: number;
+  tax: number;
+  total: number;
+  getFormattedOptions: (item: CartItem) => string;
+  getFormattedToppings: (item: CartItem) => string;
+  uiLanguage?: "fr" | "en" | "tr";
+  useCurrencyCode?: boolean;
+}): string => {
+  const translations = {
+    fr: {
+      order: "Commande",
+      table: "Table",
+      subtotal: "Sous-total",
+      vat: "TVA",
+      total: "TOTAL",
+      thanks: "Merci de votre visite!",
+      seeYouSoon: "A bientôt!",
+      dineIn: "Sur Place",
+      takeaway: "À Emporter"
+    },
+    en: {
+      order: "Order",
+      table: "Table",
+      subtotal: "Subtotal",
+      vat: "VAT",
+      total: "TOTAL",
+      thanks: "Thank you for your visit!",
+      seeYouSoon: "See you soon!",
+      dineIn: "Dine In",
+      takeaway: "Takeaway"
+    },
+    tr: {
+      order: "Sipariş",
+      table: "Masa",
+      subtotal: "Ara Toplam",
+      vat: "KDV",
+      total: "TOPLAM",
+      thanks: "Ziyaretiniz için teşekkürler!",
+      seeYouSoon: "Tekrar görüşmek üzere!",
+      dineIn: "Yemek İçin",
+      takeaway: "Paket Servisi"
+    }
+  };
+  
+  const t = (key: keyof typeof translations.en) => translations[uiLanguage][key];
+  
+  const orderDate = new Date().toLocaleDateString('fr-FR');
+  const orderTime = new Date().toLocaleTimeString('fr-FR');
+  
+  const currencyCode = restaurant.currency || 'EUR';
+  const currencySymbol = useCurrencyCode ? currencyCode : getCurrencySymbol(currencyCode);
+  
+  return `Receipt Template Generated`;
+};
+
 export const generateReceiptHTML = (
   restaurant: {
     name: string;
@@ -291,4 +369,22 @@ export const getFormattedToppings = (item: CartItem): string => {
   });
 
   return formattedToppings.join(', ');
+};
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
+};
+
+const getCurrencySymbol = (currencyCode: string): string => {
+  const code = (currencyCode || "EUR").toUpperCase();
+  return CURRENCY_SYMBOLS[code] || code;
 };

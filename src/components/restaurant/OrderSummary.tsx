@@ -9,7 +9,7 @@ import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
+import { getGroupedToppings, generateReceiptHTML } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 
 const translations = {
@@ -201,7 +201,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     try {
       const receiptContent = generatePrintNodeReceipt(orderData);
       
-      // Fix: Properly encode special characters for UTF-8
       const textEncoder = new TextEncoder();
       const encodedBytes = textEncoder.encode(receiptContent);
       const encodedContent = btoa(
@@ -252,21 +251,15 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     getFormattedOptions: (item: CartItem) => string;
     getFormattedToppings: (item: CartItem) => string;
   }): string => {
-    // Pass uiLanguage and useCurrencyCode: true so PrintNode template is formatted accordingly
-    return generateStandardReceipt({
-      restaurant: orderData.restaurant,
-      cart: orderData.cart,
-      orderNumber: orderData.orderNumber,
-      tableNumber: orderData.tableNumber,
-      orderType: orderData.orderType,
-      subtotal: orderData.subtotal,
-      tax: orderData.tax,
-      total: orderData.total,
-      getFormattedOptions: orderData.getFormattedOptions,
-      getFormattedToppings: orderData.getFormattedToppings,
-      uiLanguage,
-      useCurrencyCode: true // <-- show ISO code for PrintNode
-    });
+    return generateReceiptHTML(
+      orderData.restaurant,
+      orderData.cart,
+      orderData.orderNumber,
+      new Date().toISOString(),
+      orderData.tableNumber,
+      orderData.orderType,
+      uiLanguage
+    );
   };
 
   return (
@@ -292,7 +285,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <span className="font-medium mr-2">{item.quantity}x</span>
                     <span className="font-medium">{item.menuItem.name}</span>
                   </div>
-                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
+                  <span className="font-medium">{parseFloat(item.itemPrice?.toString() || item.price.toString()).toFixed(2)} €</span>
                 </div>
                 
                 {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
@@ -309,8 +302,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                       <div key={`${item.id}-cat-summary-${groupIdx}`}>
                         <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
-                          const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                          const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                          const category = item.menuItem.topping_categories?.find(cat => cat.name === group.category);
+                          const toppingRef = category?.toppings?.find(t => t.name === toppingObj);
                           const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
                           return (
                             <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
