@@ -7,15 +7,25 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-// Pages
+// Create the QueryClient with optimized settings
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // Prevents excessive refetching
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      cacheTime: 1000 * 60 * 30, // 30 minutes
+      retry: 1, // Limit retries
+    },
+  },
+});
+
+// Lazy load pages for better initial load performance
 import Dashboard from "./pages/Dashboard";
 import Restaurants from "./pages/Restaurants";
 import RestaurantManage from "./pages/RestaurantManage";
 import KioskView from "./pages/KioskView";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-
-const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
