@@ -37,6 +37,8 @@ import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import SortableCategory from "./SortableCategory";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface MenuTabProps {
   restaurant: Restaurant;
@@ -442,7 +444,10 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
             {menuItems.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
+                className={cn(
+                  "flex items-center justify-between p-4 border rounded-lg",
+                  !item.in_stock && "opacity-60"
+                )}
               >
                 <div className="flex items-center space-x-4">
                   {item.image && (
@@ -453,7 +458,14 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                     />
                   )}
                   <div>
-                    <h3 className="font-medium">{item.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium">{item.name}</h3>
+                      {!item.in_stock && (
+                        <Badge variant="outline" className="text-red-500 border-red-500">
+                          Out of Stock
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">{item.description}</p>
                     <p className="text-sm font-medium mt-1">
                       {getCurrencySymbol(restaurant.currency)}{parseFloat(item.price.toString()).toFixed(2)}
