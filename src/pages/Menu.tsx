@@ -30,6 +30,8 @@ import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
+import { supabase } from "@/integrations/supabase/client";
 
 const MenuPage = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -196,6 +198,39 @@ const MenuPage = () => {
       setLoading(false);
     }
   };
+
+  const toggleItemStock = async (itemId: string, inStock: boolean) => {
+    try {
+      const { data, error } = await supabase
+        .from('menu_items')
+        .update({ in_stock: inStock })
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // Update local state
+      setMenuItems(prev => ({
+        ...prev,
+        [categories.find(cat => cat.id === activeCategory)?.id || ""]: prev[categories.find(cat => cat.id === activeCategory)?.id || ""]?.map(item =>
+          item.id === itemId ? { ...item, in_stock: inStock } : item
+        ) || []
+      }));
+
+      toast({
+        title: `Item ${inStock ? 'In Stock' : 'Out of Stock'}`,
+        description: `The item has been marked as ${inStock ? 'in stock' : 'out of stock'}.`
+      });
+    } catch (error) {
+      console.error('Error updating stock status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update stock status. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const activeCategory = categories.length > 0 ? categories[0].id : null;
 
   if (loading && restaurants.length === 0) {
     return (
@@ -371,6 +406,13 @@ const MenuPage = () => {
                               </div>
                             </div>
                             <div className="flex space-x-2 mt-4 md:mt-0">
+                              <Switch
+                                checked={item.in_stock}
+                                onCheckedChange={(checked) => toggleItemStock(item.id, checked)}
+                              />
+                              <span className="text-sm text-gray-500">
+                                {item.in_stock ? 'In Stock' : 'Out of Stock'}
+                              </span>
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Button variant="outline" size="sm">
