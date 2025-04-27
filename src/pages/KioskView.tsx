@@ -777,15 +777,37 @@ const KioskView = () => {
                     {category.toppings.map(topping => {
                 const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
                 const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
-                return <div key={topping.id} className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300">
-                          <span>{topping.name}</span>
-                          <div className="flex items-center gap-2">
-                            {topping.price > 0 && <span className="text-sm">+{parseFloat(topping.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>}
-                            <Button variant="outline" size="icon" onClick={() => handleToggleTopping(category.id, topping.id)} className="text-5xl px-[10px] rounded-full text-slate-50 font-bold py-[9px] bg-violet-800 hover:bg-violet-700">
-                              {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                            </Button>
-                          </div>
-                        </div>;
+                return (
+                  <div
+                    key={topping.id}
+                    onClick={() => handleToggleTopping(category.id, topping.id)}
+                    className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300 cursor-pointer"
+                  >
+                    <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
+                      {topping.name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {topping.price > 0 && (
+                        <span className="text-sm">
+                          +{parseFloat(topping.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}
+                        </span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleTopping(category.id, topping.id);
+                        }}
+                        className={`text-5xl px-[10px] rounded-full text-slate-50 font-bold py-[9px] ${
+                          isSelected ? 'bg-green-700 hover:bg-green-600' : 'bg-violet-800 hover:bg-violet-700'
+                        }`}
+                      >
+                        {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                );
               })}
                   </div>
                 </div>)}
