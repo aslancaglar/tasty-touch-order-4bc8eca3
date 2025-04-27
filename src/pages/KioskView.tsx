@@ -192,31 +192,38 @@ const KioskView = () => {
   };
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
-      const {
-        data: menuItemToppingCategories,
-        error: toppingCategoriesError
-      } = await supabase.from('menu_item_topping_categories').select('topping_category_id').eq('menu_item_id', menuItemId);
+      const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
+        .from('menu_item_topping_categories')
+        .select('topping_category_id')
+        .eq('menu_item_id', menuItemId);
+
       if (toppingCategoriesError) {
         console.error("Erreur lors du chargement des catégories de toppings:", toppingCategoriesError);
         return [];
       }
+
       if (!menuItemToppingCategories.length) {
         return [];
       }
+
       const toppingCategoryIds = menuItemToppingCategories.map(mtc => mtc.topping_category_id);
-      const {
-        data: toppingCategories,
-        error: categoriesError
-      } = await supabase.from('topping_categories').select('*').in('id', toppingCategoryIds);
+      const { data: toppingCategories, error: categoriesError } = await supabase
+        .from('topping_categories')
+        .select('*')
+        .in('id', toppingCategoryIds);
+
       if (categoriesError) {
         console.error("Erreur lors du chargement des détails des catégories de toppings:", categoriesError);
         return [];
       }
+
       const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
-        const {
-          data: toppings,
-          error: toppingsError
-        } = await supabase.from('toppings').select('*').eq('category_id', category.id);
+        const { data: toppings, error: toppingsError } = await supabase
+          .from('toppings')
+          .select('*')
+          .eq('category_id', category.id)
+          .eq('in_stock', true);
+
         if (toppingsError) {
           console.error(`Erreur lors du chargement des ingrédients pour la catégorie ${category.id}:`, toppingsError);
           return {
@@ -230,6 +237,7 @@ const KioskView = () => {
             show_if_selection_type: category.show_if_selection_type
           };
         }
+
         return {
           id: category.id,
           name: category.name,
@@ -246,7 +254,8 @@ const KioskView = () => {
           show_if_selection_type: category.show_if_selection_type
         };
       }));
-      return toppingCategoriesWithToppings;
+
+      return toppingCategoriesWithToppings.filter(category => category.toppings.length > 0);
     } catch (error) {
       console.error("Erreur lors de la récupération des catégories de toppings:", error);
       return [];
