@@ -1,3 +1,4 @@
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -79,6 +80,7 @@ export type Topping = {
   tax_percentage: number | null;
   created_at: string;
   updated_at: string;
+  in_stock: boolean; // Added this property to match the database schema
 };
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
