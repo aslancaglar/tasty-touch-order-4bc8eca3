@@ -40,6 +40,9 @@ const KioskView = () => {
   
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
   
   const { categories, activeCategory, setActiveCategory, loading: menuLoading } = useMenu(restaurant?.id);
   
@@ -155,15 +158,24 @@ const KioskView = () => {
       
       try {
         setLoading(true);
+        setFetchError(null);
         const restaurantData = await getRestaurantBySlug(restaurantSlug);
         
         if (!restaurantData) {
+          if (retryCount < MAX_RETRIES) {
+            // Wait for 1 second before retrying
+            setTimeout(() => {
+              setRetryCount(prev => prev + 1);
+            }, 1000);
+            return;
+          }
+          
+          setFetchError("Restaurant not found");
           toast({
             title: t("restaurantNotFound"),
             description: t("sorryNotFound"),
             variant: "destructive"
           });
-          navigate('/');
           return;
         }
         
@@ -173,18 +185,20 @@ const KioskView = () => {
         
         setLoading(false);
       } catch (error) {
-        console.error("Erreur lors du chargement du restaurant et du menu:", error);
+        console.error("Error loading restaurant and menu:", error);
+        setFetchError("Failed to load restaurant data");
         toast({
           title: t("restaurantNotFound"),
           description: t("sorryNotFound"),
           variant: "destructive"
         });
+      } finally {
         setLoading(false);
       }
     };
     
     fetchRestaurantAndMenu();
-  }, [restaurantSlug, navigate, toast, t]);
+  }, [restaurantSlug, navigate, toast, t, retryCount]);
 
   const handleStartOrder = () => {
     setShowWelcome(false);
@@ -688,22 +702,23 @@ const KioskView = () => {
     );
   };
 
-  if (loading && !restaurant) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <Loader2 className="h-12 w-12 animate-spin text-purple-700 mb-4" />
+        <p className="text-gray-600">Loading restaurant...</p>
       </div>
     );
   }
 
-  if (!restaurant) {
+  if (fetchError || !restaurant) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
-          <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
-          <Button onClick={() => navigate('/')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <div className="max-w-md mx-auto text-center p-8">
+          <h1 className="text-2xl font-bold mb-4 text-gray-800">{t("restaurantNotFound")}</h1>
+          <p className="text-gray-600 mb-6">{t("sorryNotFound")}</p>
+          <Button onClick={() => navigate('/')} variant="outline" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
             {t("backToHome")}
           </Button>
         </div>
