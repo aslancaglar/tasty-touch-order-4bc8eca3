@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
@@ -18,7 +17,6 @@ import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { UtensilsCrossed } from "lucide-react";
-import { useMenuCache } from "@/hooks/useMenuCache";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -30,13 +28,18 @@ type SelectedToppingCategory = {
 };
 
 const KioskView = () => {
-  const { restaurantSlug } = useParams<{ restaurantSlug: string; }>();
+  const {
+    restaurantSlug
+  } = useParams<{
+    restaurantSlug: string;
+  }>();
   const navigate = useNavigate();
-  const { restaurant, categories, loading } = useMenuCache(restaurantSlug);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
@@ -49,6 +52,7 @@ const KioskView = () => {
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
   const {
@@ -136,15 +140,45 @@ const KioskView = () => {
     return translations[uiLanguage][key];
   };
   useEffect(() => {
-    if (restaurant) {
-        const lang = restaurant.ui_language === "en" ? "en" : restaurant.ui_language === "tr" ? "tr" : "fr";
-        console.log("Setting UI language from restaurant:", lang, restaurant.ui_language);
-        setUiLanguage(lang);
-        if (categories.length > 0) {
-          setActiveCategory(categories[0].id);
+    const fetchRestaurantAndMenu = async () => {
+      if (!restaurantSlug) {
+        navigate('/');
+        return;
+      }
+      try {
+        setLoading(true);
+        const restaurantData = await getRestaurantBySlug(restaurantSlug);
+        if (!restaurantData) {
+          toast({
+            title: t("restaurantNotFound"),
+            description: t("sorryNotFound"),
+            variant: "destructive"
+          });
+          navigate('/');
+          return;
         }
-    }
-  }, [restaurant, categories]);
+        setRestaurant(restaurantData);
+        const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
+        console.log("Setting UI language from restaurant:", lang, restaurantData.ui_language);
+        setUiLanguage(lang);
+        const menuData = await getMenuForRestaurant(restaurantData.id);
+        setCategories(menuData);
+        if (menuData.length > 0) {
+          setActiveCategory(menuData[0].id);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
+        toast({
+          title: t("restaurantNotFound"),
+          description: t("sorryNotFound"),
+          variant: "destructive"
+        });
+        setLoading(false);
+      }
+    };
+    fetchRestaurantAndMenu();
+  }, [restaurantSlug, navigate, toast]);
   const handleStartOrder = () => {
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
@@ -585,10 +619,10 @@ const KioskView = () => {
     }
     return category.show_if_selection_id.some(toppingId => selectedToppings.some(catSelection => catSelection.toppingIds.includes(toppingId)));
   };
-  if (loading) {
+  if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen">
-      <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
-    </div>;
+        <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
+      </div>;
   }
   if (!restaurant) {
     return <div className="flex items-center justify-center h-screen">
@@ -714,76 +748,94 @@ const KioskView = () => {
                   </Label>
                   <div className="space-y-2">
                     {option.choices.map(choice => {
-                      const selectedOption = selectedOptions.find(o => o.optionId === option.id);
-                      const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
-                      return <div key={choice.id} className={`
-                                flex items-center justify-between p-3 border rounded-md cursor-pointer
-                                ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
-                            `} onClick={() => handleToggleChoice(option.id, choice.id, option.multiple)}>
+                const selectedOption = selectedOptions.find(o => o.optionId === option.id);
+                const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
+                return <div key={choice.id} className={`
+                            flex items-center justify-between p-3 border rounded-md cursor-pointer
+                            ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
+                          `} onClick={() => handleToggleChoice(option.id, choice.id, !!option.multiple)}>
                           <div className="flex items-center">
-                            <div className={`w-5 h-5 flex items-center justify-center rounded-full border ${isSelected ? 'bg-kiosk-primary border-kiosk-primary text-white' : 'border-gray-300'}`}>
+                            <div className={`
+                              w-5 h-5 mr-3 rounded-full flex items-center justify-center
+                              ${isSelected ? 'bg-kiosk-primary text-white' : 'border border-gray-300'}
+                            `}>
                               {isSelected && <Check className="h-3 w-3" />}
                             </div>
-                            <span className="ml-2">{choice.name}</span>
+                            <span>{choice.name}</span>
                           </div>
-                          {choice.price > 0 && <span className="font-medium">{choice.price.toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>}
+                          {choice.price && choice.price > 0 && <span>+{parseFloat(choice.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>}
                         </div>;
-                    })}
+              })}
                   </div>
                 </div>)}
-              
-              {selectedItem.toppingCategories && selectedItem.toppingCategories.map(category => {
-                if (!shouldShowToppingCategory(category)) return null;
-                return <div key={category.id} className="space-y-2">
-                  <Label className="font-medium">
-                    {category.name}
+
+              {selectedItem.toppingCategories && selectedItem.toppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => <div key={category.id} className="space-y-3">
+                  <div className="font-bold text-xl flex items-center">
+                    {category.name} 
                     {category.required && <span className="text-red-500 ml-1">*</span>}
-                    {category.max_selections > 0 && <span className="text-sm text-gray-500 ml-2">
-                      ({t("selectUpTo")} {category.max_selections})
-                    </span>}
-                  </Label>
-                  <div className="space-y-2">
-                    {category.toppings.map(topping => {
-                      const selectedToppingCategory = selectedToppings.find(t => t.categoryId === category.id);
-                      const isSelected = selectedToppingCategory?.toppingIds.includes(topping.id) || false;
-                      return <div key={topping.id} className={`
-                                flex items-center justify-between p-3 border rounded-md cursor-pointer
-                                ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
-                            `} onClick={() => handleToggleTopping(category.id, topping.id)}>
-                          <div className="flex items-center">
-                            <div className={`w-5 h-5 flex items-center justify-center rounded-full border ${isSelected ? 'bg-kiosk-primary border-kiosk-primary text-white' : 'border-gray-300'}`}>
-                              {isSelected && <Check className="h-3 w-3" />}
-                            </div>
-                            <span className="ml-2">{topping.name}</span>
-                          </div>
-                          {topping.price > 0 && <span className="font-medium">{topping.price.toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>}
-                        </div>;
-                    })}
+                    <span className="ml-2 text-red-600 text-base mx-[10px] font-bold">
+                      {category.max_selections > 0 ? `(${t("selectUpTo")} ${category.max_selections})` : `(${t("multipleSelection")})`}
+                    </span>
                   </div>
-                </div>;
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {category.toppings.map(topping => {
+                const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
+                const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
+                return (
+                  <div
+                    key={topping.id}
+                    onClick={() => handleToggleTopping(category.id, topping.id)}
+                    className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300 cursor-pointer"
+                  >
+                    <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
+                      {topping.name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {topping.price > 0 && (
+                        <span className="text-sm">
+                          +{parseFloat(topping.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}
+                        </span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleTopping(category.id, topping.id);
+                        }}
+                        className={`text-5xl px-[10px] rounded-full text-slate-50 font-bold py-[9px] ${
+                          isSelected ? 'bg-green-700 hover:bg-green-600' : 'bg-violet-800 hover:bg-violet-700'
+                        }`}
+                      >
+                        {isSelected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                );
               })}
-              
-              <div className="space-y-2">
+                  </div>
+                </div>)}
+
+              <div>
                 <Label className="font-medium">{t("quantity")}</Label>
-                <div className="flex items-center space-x-3">
-                  <Button variant="outline" size="icon" onClick={() => setQuantity(q => Math.max(1, q - 1))}>
-                    <Minus className="h-4 w-4" />
+                <div className="flex items-center space-x-4 mt-2">
+                  <Button variant="outline" size="icon" onClick={() => quantity > 1 && setQuantity(quantity - 1)}>
+                    <MinusCircle className="h-4 w-4" />
                   </Button>
-                  <span className="text-xl font-medium w-8 text-center">{quantity}</span>
-                  <Button variant="outline" size="icon" onClick={() => setQuantity(q => q + 1)}>
-                    <Plus className="h-4 w-4" />
+                  <span className="font-medium text-lg">{quantity}</span>
+                  <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>
+                    <PlusCircle className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </div>
             
             <DialogFooter>
-              <Button 
-                onClick={handleAddToCart} 
-                className="w-full text-white py-6 text-xl bg-kiosk-primary hover:bg-purple-700"
-              >
-                {t("addToCart")} - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} {getCurrencySymbol(restaurant.currency)}
-              </Button>
+              <div className="w-full">
+                <Button onClick={handleAddToCart} className="w-full bg-kiosk-primary text-2xl py-[30px]">
+                  {t("addToCart")} - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} {getCurrencySymbol(restaurant.currency)}
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>}
