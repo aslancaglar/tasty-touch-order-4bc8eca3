@@ -671,6 +671,7 @@ export type Database = {
           category_id: string
           created_at: string
           id: string
+          in_stock: boolean
           name: string
           price: number
           tax_percentage: number | null
@@ -680,6 +681,7 @@ export type Database = {
           category_id: string
           created_at?: string
           id?: string
+          in_stock?: boolean
           name: string
           price?: number
           tax_percentage?: number | null
@@ -689,6 +691,7 @@ export type Database = {
           category_id?: string
           created_at?: string
           id?: string
+          in_stock?: boolean
           name?: string
           price?: number
           tax_percentage?: number | null
