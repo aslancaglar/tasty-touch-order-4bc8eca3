@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import {
   createOrderItemOptions,
   createOrderItemToppings
 } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType } from "@/types/database-types";
+import { Restaurant, MenuItem, CartItem, MenuItemWithOptions, OrderType } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
@@ -23,6 +22,7 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
+import { useMenu } from "@/hooks/useMenu";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -36,14 +36,19 @@ type SelectedToppingCategory = {
 const KioskView = () => {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Use our new custom hook for menu management
+  const { categories, activeCategory, setActiveCategory, loading: menuLoading } = useMenu(restaurant?.id);
+  
   const [showWelcome, setShowWelcome] = useState(true);
   const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItemWithOptions | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{
     optionId: string;
@@ -54,11 +59,8 @@ const KioskView = () => {
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
-  
-  const { toast } = useToast();
   
   const CURRENCY_SYMBOLS: Record<string, string> = {
     EUR: "€",
@@ -170,13 +172,6 @@ const KioskView = () => {
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         
-        const menuData = await getMenuForRestaurant(restaurantData.id);
-        setCategories(menuData);
-        
-        if (menuData.length > 0) {
-          setActiveCategory(menuData[0].id);
-        }
-        
         setLoading(false);
       } catch (error) {
         console.error("Erreur lors du chargement du restaurant et du menu:", error);
@@ -190,7 +185,7 @@ const KioskView = () => {
     };
     
     fetchRestaurantAndMenu();
-  }, [restaurantSlug, navigate, toast]);
+  }, [restaurantSlug, navigate, toast, t]);
 
   const handleStartOrder = () => {
     setShowWelcome(false);
@@ -277,7 +272,7 @@ const KioskView = () => {
     }
   };
 
-  const handleSelectItem = async (item: MenuItem) => {
+  const handleSelectItem = useCallback(async (item: MenuItem) => {
     try {
       setLoading(true);
       const itemWithOptions = await getMenuItemWithOptions(item.id);
@@ -372,7 +367,7 @@ const KioskView = () => {
       });
       setLoading(false);
     }
-  };
+  }, [toast, t]);
 
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
@@ -524,7 +519,7 @@ const KioskView = () => {
     }).filter(Boolean).join(", ");
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = useCallback(() => {
     if (!selectedItem) return;
     
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -569,7 +564,7 @@ const KioskView = () => {
       title: t("addedToCart"),
       description: `${quantity}x ${selectedItem.name} ${t("added")}`
     });
-  };
+  }, [selectedItem, selectedOptions, selectedToppings, quantity, specialInstructions, toast, t]);
 
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -592,11 +587,11 @@ const KioskView = () => {
     });
   };
 
-  const calculateCartTotal = (): number => {
+  const calculateCartTotal = useMemo(() => {
     return cart.reduce((total, item) => {
       return total + item.itemPrice * item.quantity;
     }, 0);
-  };
+  }, [cart]);
 
   const calculateSubtotal = () => {
     return calculateCartTotal();
@@ -768,6 +763,7 @@ const KioskView = () => {
             categories={categories}
             activeCategory={activeCategory}
             setActiveCategory={setActiveCategory}
+            loading={menuLoading}
           />
         </div>
 
@@ -780,8 +776,9 @@ const KioskView = () => {
             <MenuItemGrid 
               items={activeItems}
               handleSelectItem={handleSelectItem}
-              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
+              currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
               t={t}
+              loading={menuLoading}
             />
           </div>
         </div>
