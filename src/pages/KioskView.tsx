@@ -686,10 +686,14 @@ const KioskView = () => {
                 <span>{restaurant.location || t("open")}</span>
               </div>
               {orderType && <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center">
-                  {orderType === 'dine_in' ? <>
+                  {orderType === 'dine_in' ? (
+                    <>
                       <span className="mr-1">{t("dineIn")}</span>
                       {tableNumber && <span>- {t("table")} {tableNumber}</span>}
-                    </> : <span>{t("takeaway")}</span>}
+                    </>
+                  ) : (
+                    <span>{t("takeaway")}</span>
+                  )}
                 </div>}
             </div>
           </div>
