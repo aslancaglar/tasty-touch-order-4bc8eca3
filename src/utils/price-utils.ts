@@ -16,7 +16,7 @@ export const calculateToppingsPrice = (item: CartItem): number => {
   
   if (item.toppings && item.menuItem.topping_categories) {
     item.toppings.forEach(category => {
-      const toppingCategory = item.menuItem.topping_categories?.find(id => id === category.categoryId);
+      const toppingCategory = item.menuItem.topping_categories?.find(tc => tc.id === category.categoryId);
       if (toppingCategory) {
         toppingsPrice += category.toppingIds.length * 1;
       }

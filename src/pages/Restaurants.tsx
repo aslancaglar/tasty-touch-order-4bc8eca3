@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlusCircle, Edit, Trash2, ExternalLink } from "lucide-react";
+import { PlusCircle, Edit, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,27 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Restaurant } from "@/types/database-types";
 import { useAuth } from "@/contexts/AuthContext";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -47,7 +69,11 @@ const RestaurantsPage = () => {
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
-        const data = await getRestaurants();
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('*');
+        
+        if (error) throw error;
         setRestaurants(data);
         setLoading(false);
       } catch (error) {
@@ -64,7 +90,7 @@ const RestaurantsPage = () => {
     fetchRestaurants();
   }, [toast]);
 
-  const handleCreateRestaurant = async (values: any) => {
+  const handleCreateRestaurant = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsCreating(true);
       
@@ -73,14 +99,21 @@ const RestaurantsPage = () => {
         .replace(/[^a-z0-9 ]/g, "")
         .replace(/\s+/g, "-");
       
-      const newRestaurant = await createRestaurant({
-        name: values.name,
-        slug: slug,
-        location: values.location || "",
-        image_url: values.image_url || "",
-        currency: "EUR", // Add default currency
-        ui_language: "fr" // Add default language
-      });
+      const { data: newRestaurant, error } = await supabase
+        .from('restaurants')
+        .insert({
+          name: values.name,
+          slug: slug,
+          location: values.location || "",
+          image_url: values.image_url || "",
+          currency: "EUR", 
+          ui_language: "fr",
+          display_order: 0
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
       
       setRestaurants([...restaurants, newRestaurant]);
       
@@ -102,7 +135,7 @@ const RestaurantsPage = () => {
     }
   };
 
-  const handleUpdateRestaurant = async (id: string, values: any) => {
+  const handleUpdateRestaurant = async (id: string, values: z.infer<typeof formSchema>) => {
     try {
       setIsUpdating(true);
       
@@ -111,12 +144,19 @@ const RestaurantsPage = () => {
         .replace(/[^a-z0-9 ]/g, "")
         .replace(/\s+/g, "-");
       
-      const updatedRestaurant = await updateRestaurant(id, {
-        name: values.name,
-        slug: slug,
-        location: values.location || "",
-        image_url: values.image_url || ""
-      });
+      const { data: updatedRestaurant, error } = await supabase
+        .from('restaurants')
+        .update({
+          name: values.name,
+          slug: slug,
+          location: values.location || "",
+          image_url: values.image_url || ""
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
       
       setRestaurants(restaurants.map(restaurant =>
         restaurant.id === id ? updatedRestaurant : restaurant
@@ -146,7 +186,12 @@ const RestaurantsPage = () => {
     try {
       setIsDeleting(true);
       
-      await deleteRestaurant(restaurantToDelete.id);
+      const { error } = await supabase
+        .from('restaurants')
+        .delete()
+        .eq('id', restaurantToDelete.id);
+      
+      if (error) throw error;
       
       setRestaurants(restaurants.filter(restaurant => restaurant.id !== restaurantToDelete.id));
       
@@ -187,7 +232,7 @@ const RestaurantsPage = () => {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">My Restaurants</h1>
-        <Button onClick={() => setAddingRestaurant(true)}>
+        <Button onClick={() => setShowCreateDialog(true)}>
           <PlusCircle className="mr-2 h-4 w-4" /> Add Restaurant
         </Button>
       </div>
@@ -214,25 +259,15 @@ const RestaurantsPage = () => {
                 <Button variant="outline" onClick={() => navigate(`/restaurant/${restaurant.id}`)}>
                   <ExternalLink className="mr-2 h-4 w-4" /> Manage
                 </Button>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="destructive">
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Are you sure?</DialogTitle>
-                      <DialogDescription>
-                        This will permanently delete {restaurant.name} and cannot be undone.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => {}}>Cancel</Button>
-                      <Button variant="destructive" onClick={() => handleDeleteRestaurant(restaurant.id)}>Delete</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => {
+                    setRestaurantToDelete(restaurant);
+                    setShowDeleteDialog(true);
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                </Button>
               </div>
             </CardFooter>
           </Card>
@@ -240,9 +275,6 @@ const RestaurantsPage = () => {
       </div>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogTrigger asChild>
-          <Button>Add Restaurant</Button>
-        </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Create Restaurant</DialogTitle>
