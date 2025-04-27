@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
@@ -30,7 +31,7 @@ interface RouteParams {
 }
 
 const KioskView = () => {
-  const { restaurantSlug } = useParams<RouteParams>();
+  const { restaurantSlug } = useParams<keyof RouteParams>();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menu, setMenu] = useState<MenuCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
