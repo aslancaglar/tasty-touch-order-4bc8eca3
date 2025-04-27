@@ -1,5 +1,28 @@
+// Types representing our Supabase database entities
 
-// Add 'in_stock' to the existing MenuItem type
+export type Restaurant = {
+  id: string;
+  name: string;
+  slug: string;
+  image_url: string | null;
+  location: string | null;
+  created_at: string;
+  updated_at: string;
+  ui_language?: string;
+  currency?: string; // NEW: ISO 4217 code, e.g. "EUR", "USD", ...
+};
+
+export type MenuCategory = {
+  id: string;
+  name: string;
+  restaurant_id: string;
+  description: string | null;
+  icon: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type MenuItem = {
   id: string;
   name: string;
@@ -12,116 +35,39 @@ export type MenuItem = {
   updated_at: string;
   topping_categories?: string[];
   tax_percentage?: number | null;
-  in_stock: boolean; // Added this line
-  options?: MenuItemOption[]; // Adding this to fix errors
-  display_order?: number; // Add missing property
-};
-
-// Additional missing types needed by the application
-export type Restaurant = {
-  id: string;
-  name: string;
-  location: string | null;
-  image_url: string | null;
-  ui_language: string;
-  currency: string;
-  slug: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type MenuCategory = {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  image_url: string | null;
-  restaurant_id: string;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
-};
-
-export type CartItem = {
-  id: string;
-  menuItem: MenuItem;
-  quantity: number;
-  options?: {
-    optionId: string;
-    choiceIds: string[];
-  }[];
-  toppings?: {
-    categoryId: string;
-    toppingIds: string[];
-  }[];
-  specialInstructions?: string;
-  price: number;
-  itemPrice?: number; // Adding this to fix errors
-  selectedOptions?: { optionId: string; choiceIds: string[] }[]; // Adding this to fix errors
-  selectedToppings?: { categoryId: string; toppingIds: string[] }[]; // Adding this to fix errors
-};
-
-export type MenuItemWithOptions = MenuItem & {
-  options?: MenuItemOption[];
 };
 
 export type MenuItemOption = {
   id: string;
-  name: string;
-  required: boolean;
-  multiple: boolean;
   menu_item_id: string;
-  choices: OptionChoice[];
+  name: string;
+  required: boolean | null;
+  multiple: boolean | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type OptionChoice = {
   id: string;
+  option_id: string;
   name: string;
   price: number | null;
-  option_id: string;
-};
-
-export type Order = {
-  id: string;
-  status: OrderStatus;
-  customer_name: string | null;
-  restaurant_id: string;
-  total: number;
   created_at: string;
   updated_at: string;
 };
-
-export type OrderItem = {
-  id: string;
-  order_id: string;
-  menu_item_id: string;
-  quantity: number;
-  price: number;
-  special_instructions: string | null;
-};
-
-export type OrderItemOption = {
-  id: string;
-  order_item_id: string;
-  option_id: string;
-  choice_id: string;
-};
-
-export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'completed'; // Added 'completed' status
 
 export type ToppingCategory = {
   id: string;
   name: string;
-  description: string | null;
   restaurant_id: string;
-  min_selections: number;
-  max_selections: number;
+  description: string | null;
   icon: string | null;
-  display_order: number;
-  show_if_selection_type: string[] | null;
-  show_if_selection_id: string[] | null;
+  min_selections: number | null;
+  max_selections: number | null;
   created_at: string;
   updated_at: string;
+  show_if_selection_type?: string[] | null;
+  show_if_selection_id?: string[] | null;
 };
 
 export type Topping = {
@@ -134,36 +80,81 @@ export type Topping = {
   updated_at: string;
 };
 
-// Define the CreateOrderParams type for the API
-export type CreateOrderParams = {
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+
+export interface Order {
+  id: string;
   restaurant_id: string;
+  customer_id?: string;
+  customer_name?: string;
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+  created_at: string;
   total: number;
-  customer_name: string;
-  status: OrderStatus;
+  order_type?: 'dine-in' | 'takeaway';
+  table_number?: string;
+}
+
+export type OrderItem = {
+  id: string;
+  order_id: string;
+  menu_item_id: string;
+  quantity: number;
+  price: number;
+  special_instructions: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
-// Define OrderTypeSelectionProps
-export type OrderTypeSelectionProps = {
-  restaurant: Restaurant;
-  onSelectOrderType: (type: OrderType, table?: string | null) => void;
+export type OrderItemOption = {
+  id: string;
+  order_item_id: string;
+  option_id: string;
+  choice_id: string;
+  created_at: string;
+  updated_at: string;
 };
 
-// Define CartButtonProps
-export type CartButtonProps = {
-  cart: CartItem[];
-};
+export interface MenuItemWithOptions extends MenuItem {
+  options?: {
+    id: string;
+    name: string;
+    required: boolean | null;
+    multiple: boolean | null;
+    choices: {
+      id: string;
+      name: string;
+      price: number | null;
+    }[];
+  }[];
+  toppingCategories?: {
+    id: string;
+    name: string;
+    min_selections: number;
+    max_selections: number;
+    required: boolean;
+    toppings: {
+      id: string;
+      name: string;
+      price: number;
+      tax_percentage: number;
+    }[];
+    show_if_selection_id?: string[] | null;
+    show_if_selection_type?: string[] | null;
+  }[];
+}
 
-// Define OrderType
-export type OrderType = 'dine_in' | 'takeaway' | null;
-
-// Define OrderReceiptProps
-export type OrderReceiptProps = {
-  cart: CartItem[];
-  restaurant: Restaurant;
-  orderNumber: string;
-  orderType: 'dine-in' | 'takeaway' | null;
-  getFormattedOptions: (item: CartItem) => string;
-  getFormattedToppings: (item: CartItem) => string;
-  uiLanguage?: "fr" | "en" | "tr";
-};
-
+export interface CartItem {
+  id: string;
+  menuItem: MenuItemWithOptions;
+  quantity: number;
+  selectedOptions: {
+    optionId: string;
+    choiceIds: string[];
+  }[];
+  selectedToppings: {
+    categoryId: string;
+    toppingIds: string[];
+  }[];
+  specialInstructions?: string;
+  itemPrice: number;
+}

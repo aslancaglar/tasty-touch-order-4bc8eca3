@@ -9,7 +9,7 @@ import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { getGroupedToppings, generateReceiptHTML } from "@/utils/receipt-templates";
+import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -272,15 +272,20 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     getFormattedOptions: (item: CartItem) => string;
     getFormattedToppings: (item: CartItem) => string;
   }): string => {
-    return generateReceiptHTML(
-      orderData.restaurant,
-      orderData.cart,
-      orderData.orderNumber,
-      new Date().toISOString(),
-      orderData.tableNumber,
-      orderData.orderType,
-      uiLanguage
-    );
+    return generateStandardReceipt({
+      restaurant: orderData.restaurant,
+      cart: orderData.cart,
+      orderNumber: orderData.orderNumber,
+      tableNumber: orderData.tableNumber,
+      orderType: orderData.orderType,
+      subtotal: orderData.subtotal,
+      tax: orderData.tax,
+      total: orderData.total,
+      getFormattedOptions: orderData.getFormattedOptions,
+      getFormattedToppings: orderData.getFormattedToppings,
+      uiLanguage,
+      useCurrencyCode: true
+    });
   };
 
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
@@ -300,50 +305,43 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <h3 className="font-bold text-lg mb-4">{t("orderedItems")}</h3>
           
           <div className="space-y-6 mb-6">
-            {cart.map(item => (
-              <div key={item.id} className="space-y-2">
+            {cart.map(item => <div key={item.id} className="space-y-2">
                 <div className="flex justify-between">
                   <div className="flex items-center">
                     <span className="font-medium mr-2">{item.quantity}x</span>
                     <span className="font-medium">{item.menuItem.name}</span>
                   </div>
-                  <span className="font-medium">{parseFloat(item.itemPrice?.toString() || item.price.toString()).toFixed(2)} {currencySymbol}</span>
+                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
                 
-                {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && (
-                  <div className="pl-6 space-y-1 text-sm text-gray-600">
-                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
-                      <div key={`${item.id}-option-${idx}`} className="flex justify-between">
+                {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && <div className="pl-6 space-y-1 text-sm text-gray-600">
+                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
                         <span>0.00 {currencySymbol}</span>
-                      </div>
-                    ))}
-                    {getGroupedToppings(item).map((group, groupIdx) => (
-                      <div key={`${item.id}-cat-summary-${groupIdx}`}>
-                        <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
+                      </div>)}
+                    {getGroupedToppings(item).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                        <div style={{
+                  fontWeight: 500,
+                  paddingLeft: 0
+                }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
-                          const category = item.menuItem.topping_categories?.find(cat => cat.name === group.category);
-                          const toppingRef = category?.toppings?.find(t => t.name === toppingObj);
-                          const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                          const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
-                          return (
-                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                              <span style={{ paddingLeft: 6 }}>
+                  const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                  const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                  const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                  const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
+                  return <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                              <span style={{
+                      paddingLeft: 6
+                    }}>
                                 + {toppingObj}
-                                {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && (
-                                  <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>
-                                )}
+                                {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>}
                               </span>
                               <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                            </div>;
+                })}
+                      </div>)}
+                  </div>}
+              </div>)}
           </div>
           
           <Separator className="my-4" />
@@ -373,16 +371,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
       </DialogContent>
 
-      <OrderReceipt 
-        restaurant={restaurant} 
-        cart={cart} 
-        orderNumber={orderNumber} 
-        tableNumber={tableNumber} 
-        orderType={orderType} 
-        getFormattedOptions={getFormattedOptions} 
-        getFormattedToppings={getFormattedToppings} 
-        uiLanguage={uiLanguage} 
-      />
+      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
     </Dialog>;
 };
 

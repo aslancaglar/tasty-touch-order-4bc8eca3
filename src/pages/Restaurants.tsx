@@ -1,435 +1,390 @@
-
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { PlusCircle, Edit, Trash2, ExternalLink, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Edit, MoreHorizontal, Plus, Trash2, Settings, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Restaurant } from "@/types/database-types";
+import { getRestaurants, createRestaurant } from "@/services/kiosk-service";
 import { useAuth } from "@/contexts/AuthContext";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@/components/ui/alert-dialog";
+import ImageUpload from "@/components/ImageUpload";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Restaurant name must be at least 2 characters.",
-  }),
-  location: z.string().optional(),
-  image_url: z.string().optional(),
-});
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
+};
 
-const RestaurantsPage = () => {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
-  const [restaurantToEdit, setRestaurantToEdit] = useState<Restaurant | null>(null);
+function getCurrencySymbol(currency: string) {
+  const code = currency?.toUpperCase() || "EUR";
+  return CURRENCY_SYMBOLS[code] || code;
+}
+
+const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => void }) => {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [location, setLocation] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
   const { user } = useAuth();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      location: "",
-      image_url: "",
-    },
-  });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !slug) {
+      toast({
+        title: "Validation Error",
+        description: "Name and slug are required",
+        variant: "destructive"
+      });
+      return;
+    }
 
-  useEffect(() => {
-    const fetchRestaurants = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('restaurants')
-          .select('*');
-        
-        if (error) throw error;
-        setRestaurants(data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching restaurants:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch restaurants. Please try again.",
-          variant: "destructive"
-        });
-        setLoading(false);
-      }
-    };
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to create a restaurant",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    fetchRestaurants();
-  }, [toast]);
-
-  const handleCreateRestaurant = async (values: z.infer<typeof formSchema>) => {
     try {
-      setIsCreating(true);
-      
-      const slug = values.name
-        .toLowerCase()
-        .replace(/[^a-z0-9 ]/g, "")
-        .replace(/\s+/g, "-");
-      
-      const { data: newRestaurant, error } = await supabase
-        .from('restaurants')
-        .insert({
-          name: values.name,
-          slug: slug,
-          location: values.location || "",
-          image_url: values.image_url || "",
-          currency: "EUR", 
-          ui_language: "fr",
-          display_order: 0
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      setRestaurants([...restaurants, newRestaurant]);
+      setIsSubmitting(true);
+      await createRestaurant({
+        name,
+        slug,
+        location,
+        image_url: imageUrl
+      });
       
       toast({
         title: "Success",
-        description: `${values.name} has been added to your restaurants.`,
+        description: "Restaurant created successfully",
       });
       
-      setShowCreateDialog(false);
+      setName("");
+      setSlug("");
+      setLocation("");
+      setImageUrl("");
+      
+      setOpen(false);
+      
+      onRestaurantAdded();
     } catch (error) {
       console.error("Error creating restaurant:", error);
       toast({
         title: "Error",
-        description: "Failed to create the restaurant. Please try again.",
+        description: "Failed to create restaurant. Please ensure you're logged in and try again.",
         variant: "destructive"
       });
     } finally {
-      setIsCreating(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleUpdateRestaurant = async (id: string, values: z.infer<typeof formSchema>) => {
-    try {
-      setIsUpdating(true);
-      
-      const slug = values.name
-        .toLowerCase()
-        .replace(/[^a-z0-9 ]/g, "")
-        .replace(/\s+/g, "-");
-      
-      const { data: updatedRestaurant, error } = await supabase
-        .from('restaurants')
-        .update({
-          name: values.name,
-          slug: slug,
-          location: values.location || "",
-          image_url: values.image_url || ""
-        })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      setRestaurants(restaurants.map(restaurant =>
-        restaurant.id === id ? updatedRestaurant : restaurant
-      ));
-      
-      toast({
-        title: "Success",
-        description: `${values.name} has been updated.`,
-      });
-      
-      setShowEditDialog(false);
-    } catch (error) {
-      console.error("Error updating restaurant:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update the restaurant. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUpdating(false);
-    }
+  const handleNameChange = (value: string) => {
+    setName(value);
+    setSlug(value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""));
   };
-
-  const handleDeleteRestaurant = async () => {
-    if (!restaurantToDelete) return;
-
-    try {
-      setIsDeleting(true);
-      
-      const { error } = await supabase
-        .from('restaurants')
-        .delete()
-        .eq('id', restaurantToDelete.id);
-      
-      if (error) throw error;
-      
-      setRestaurants(restaurants.filter(restaurant => restaurant.id !== restaurantToDelete.id));
-      
-      toast({
-        title: "Success",
-        description: `${restaurantToDelete.name} has been deleted.`,
-      });
-      
-      setShowDeleteDialog(false);
-    } catch (error) {
-      console.error("Error deleting restaurant:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete the restaurant. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleEditRestaurant = (restaurant: Restaurant) => {
-    setRestaurantToEdit(restaurant);
-    setShowEditDialog(true);
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">My Restaurants</h1>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Restaurant
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="bg-kiosk-primary">
+          <Plus className="mr-2 h-4 w-4" />
+          Add Restaurant
         </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {restaurants.map(restaurant => (
-          <Card key={restaurant.id} className="flex flex-col">
-            <CardHeader>
-              <CardTitle>{restaurant.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-500 mb-2">{restaurant.location || "No location specified"}</p>
-              <p className="text-sm">
-                Kiosk URL: <a href={`${window.location.origin}/kiosk/${restaurant.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                  {`${window.location.origin}/kiosk/${restaurant.slug}`}
-                </a>
-              </p>
-            </CardContent>
-            <CardFooter className="mt-auto border-t pt-4">
-              <div className="flex space-x-2">
-                <Button variant="outline" onClick={() => handleEditRestaurant(restaurant)}>
-                  <Edit className="mr-2 h-4 w-4" /> Edit
-                </Button>
-                <Button variant="outline" onClick={() => navigate(`/restaurant/${restaurant.id}`)}>
-                  <ExternalLink className="mr-2 h-4 w-4" /> Manage
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={() => {
-                    setRestaurantToDelete(restaurant);
-                    setShowDeleteDialog(true);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                </Button>
-              </div>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px]">
+        <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Create Restaurant</DialogTitle>
+            <DialogTitle>Add New Restaurant</DialogTitle>
             <DialogDescription>
-              Add a new restaurant to your platform.
+              Enter the details for the new restaurant.
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleCreateRestaurant)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Restaurant Name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="name"
+                placeholder="Burger House"
+                className="col-span-3"
+                value={name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                required
               />
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Restaurant Location" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="slug" className="text-right">
+                Slug
+              </Label>
+              <Input
+                id="slug"
+                placeholder="burger-house"
+                className="col-span-3"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                required
               />
-              <FormField
-                control={form.control}
-                name="image_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Image URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Image URL" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="location" className="text-right">
+                Location
+              </Label>
+              <Input
+                id="location"
+                placeholder="New York, NY"
+                className="col-span-3"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
               />
-              <Button type="submit" disabled={isCreating} className="w-full bg-kiosk-primary">
-                {isCreating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create"
-                )}
-              </Button>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Restaurant</DialogTitle>
-            <DialogDescription>
-              Edit the details of your restaurant.
-            </DialogDescription>
-          </DialogHeader>
-          {restaurantToEdit && (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit((values) => handleUpdateRestaurant(restaurantToEdit.id, values))} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Restaurant Name" {...field} defaultValue={restaurantToEdit.name} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Restaurant Location" {...field} defaultValue={restaurantToEdit.location || ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="image_url"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Image URL</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Image URL" {...field} defaultValue={restaurantToEdit.image_url || ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={isUpdating} className="w-full bg-kiosk-primary">
-                  {isUpdating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    "Update"
-                  )}
-                </Button>
-              </form>
-            </Form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the restaurant
-              and remove all its data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={isDeleting} onClick={handleDeleteRestaurant}>
-              {isDeleting ? (
+            </div>
+            <div className="col-span-4">
+              <ImageUpload
+                value={imageUrl}
+                onChange={setImageUrl}
+                label="Cover Photo"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" className="bg-kiosk-primary" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
+                  Saving...
                 </>
               ) : (
-                "Delete"
+                'Save Restaurant'
               )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default RestaurantsPage;
+type RestaurantStats = {
+  totalOrders: number;
+  revenue: number;
+};
+
+const RestaurantCard = ({
+  restaurant,
+  stats,
+  loadingStats,
+}: {
+  restaurant: Restaurant;
+  stats: RestaurantStats | undefined;
+  loadingStats: boolean;
+}) => {
+  const currencySymbol = getCurrencySymbol(restaurant.currency || "EUR");
+  
+  return (
+    <Card className="overflow-hidden">
+      <div className="h-40 w-full overflow-hidden">
+        <img
+          src={restaurant.image_url || "https://via.placeholder.com/400x200?text=No+Image"}
+          alt={restaurant.name}
+          className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+        />
+      </div>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-lg">{restaurant.name}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-sm text-muted-foreground mb-4">{restaurant.location}</div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-muted-foreground">Orders</p>
+            {loadingStats ? (
+              <Skeleton className="h-6 w-16" />
+            ) : (
+              <p className="font-medium">{stats?.totalOrders ?? 0}</p>
+            )}
+          </div>
+          <div>
+            <p className="text-muted-foreground">Revenue</p>
+            {loadingStats ? (
+              <Skeleton className="h-6 w-20" />
+            ) : (
+              <p className="font-medium">
+                {currencySymbol}{stats?.revenue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button variant="outline" asChild>
+            <Link to={`/r/${restaurant.slug}`}>
+              View Kiosk
+            </Link>
+          </Button>
+          <Button variant="default" className="bg-kiosk-primary" asChild>
+            <Link to={`/restaurant/${restaurant.id}`}>
+              <Settings className="mr-2 h-4 w-4" />
+              Manage
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const fetchRestaurantStats = async (restaurantIds: string[]): Promise<Record<string, RestaurantStats>> => {
+  if (restaurantIds.length === 0) return {};
+
+  let stats: Record<string, RestaurantStats> = {};
+  const { data, error } = await supabase
+    .from("orders")
+    .select("restaurant_id,total,status")
+    .in("restaurant_id", restaurantIds);
+
+  if (error) {
+    console.error("Error fetching order stats for restaurants:", error);
+    throw error;
+  }
+
+  for (const id of restaurantIds) {
+    stats[id] = { totalOrders: 0, revenue: 0 };
+  }
+
+  if (data) {
+    for (const order of data) {
+      if (order.status === "cancelled") continue;
+      if (order.restaurant_id && stats[order.restaurant_id]) {
+        stats[order.restaurant_id].totalOrders += 1;
+        stats[order.restaurant_id].revenue += order.total ? parseFloat(String(order.total)) : 0;
+      }
+    }
+  }
+  return stats;
+};
+
+const Restaurants = () => {
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [stats, setStats] = useState<Record<string, RestaurantStats>>({});
+  const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  const fetchRestaurants = async () => {
+    try {
+      setLoading(true);
+      const data = await getRestaurants();
+      setRestaurants(data);
+    } catch (error) {
+      console.error("Error fetching restaurants:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load restaurants",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchRestaurants();
+    } else {
+      setLoading(false);
+    }
+    setStats({});
+    setLoadingStats(true);
+  }, [user]);
+
+  useEffect(() => {
+    const getStats = async () => {
+      if (restaurants.length === 0) {
+        setStats({});
+        setLoadingStats(false);
+        return;
+      }
+      setLoadingStats(true);
+      try {
+        const ids = restaurants.map((r) => r.id);
+        const statData = await fetchRestaurantStats(ids);
+        setStats(statData);
+      } catch (err) {
+        console.error("Failed to fetch restaurant stats", err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    getStats();
+  }, [restaurants]);
+
+  return (
+    <AdminLayout>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Restaurants</h1>
+          <p className="text-muted-foreground">
+            Manage all the restaurants on your platform
+          </p>
+        </div>
+        <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} />
+      </div>
+
+      {!user ? (
+        <div className="text-center py-10">
+          <p className="text-lg mb-3">You need to be logged in to view and manage restaurants</p>
+          <Button asChild>
+            <Link to="/auth">Sign In</Link>
+          </Button>
+        </div>
+      ) : loading ? (
+        <div className="flex justify-center items-center h-60">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : restaurants.length > 0 ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {restaurants.map((restaurant) => (
+            <RestaurantCard
+              key={restaurant.id}
+              restaurant={restaurant}
+              stats={stats[restaurant.id]}
+              loadingStats={loadingStats}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-20">
+          <p className="text-lg text-muted-foreground mb-4">No restaurants found</p>
+          <p className="text-muted-foreground mb-6">Start by adding your first restaurant</p>
+        </div>
+      )}
+    </AdminLayout>
+  );
+};
+
+export default Restaurants;

@@ -186,8 +186,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         description: values.description || null,
         image_url: values.image_url || null,
         icon: "utensils",
-        restaurant_id: restaurant.id,
-        display_order: 0
+        restaurant_id: restaurant.id
       });
       
       setCategories(prevCategories => [...prevCategories, newCategory]);
@@ -289,9 +288,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
         image: values.image || null,
         category_id: selectedCategory.id,
-        topping_categories: values.topping_categories || [],
-        in_stock: values.in_stock ?? true,
-        display_order: 0
+        topping_categories: values.topping_categories || []
       });
       
       setMenuItems(prev => [...prev, newMenuItem]);

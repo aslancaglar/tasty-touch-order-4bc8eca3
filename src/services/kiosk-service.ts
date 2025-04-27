@@ -1,18 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Restaurant,
-  MenuCategory,
-  MenuItem,
-  MenuItemOption,
-  OptionChoice,
-  Order,
-  OrderItem,
+import { 
+  Restaurant, 
+  MenuCategory, 
+  MenuItem, 
+  MenuItemOption, 
+  OptionChoice, 
+  Order, 
+  OrderItem, 
   OrderItemOption,
   OrderStatus,
   ToppingCategory,
-  Topping,
-  CreateOrderParams,
-  MenuItemWithOptions
+  Topping
 } from "@/types/database-types";
 
 // Restaurant services
@@ -337,47 +335,18 @@ export const deleteMenuItem = async (id: string): Promise<void> => {
 
 // Menu Item Options services
 export const getMenuItemOptions = async (menuItemId: string): Promise<MenuItemOption[]> => {
-  const { data: optionsData, error: optionsError } = await supabase
-    .from('menu_item_options')
-    .select('*')
-    .eq('menu_item_id', menuItemId);
+  const { data, error } = await supabase
+    .from("menu_item_options")
+    .select("*")
+    .eq("menu_item_id", menuItemId);
 
-  if (optionsError) {
-    console.error("Error fetching menu item options:", optionsError);
-    return [];
+  if (error) {
+    console.error("Error fetching menu item options:", error);
+    throw error;
   }
 
-  if (!optionsData || optionsData.length === 0) {
-    return [];
-  }
-
-  const result: MenuItemOption[] = [];
-  
-  for (const option of optionsData) {
-    const { data: choicesData, error: choicesError } = await supabase
-      .from('option_choices')
-      .select('*')
-      .eq('option_id', option.id);
-      
-    if (choicesError) {
-      console.error("Error fetching option choices:", choicesError);
-      continue;
-    }
-    
-    result.push({
-      id: option.id,
-      name: option.name,
-      required: option.required || false,
-      multiple: option.multiple || false,
-      menu_item_id: option.menu_item_id,
-      choices: choicesData || [],
-      created_at: option.created_at,
-      updated_at: option.updated_at
-    });
-  }
-  
-  return result;
-}
+  return data;
+};
 
 // Option Choices services
 export const getOptionChoices = async (optionId: string): Promise<OptionChoice[]> => {
@@ -395,6 +364,15 @@ export const getOptionChoices = async (optionId: string): Promise<OptionChoice[]
 };
 
 // Order services
+interface CreateOrderParams {
+  restaurant_id: string;
+  customer_name: string | null;
+  status: string;
+  total: number;
+  order_type?: string;
+  table_number?: string;
+}
+
 export const createOrder = async (params: CreateOrderParams): Promise<any> => {
   try {
     const { data, error } = await supabase
@@ -522,7 +500,7 @@ export const createOrderItemToppings = async (toppings: Array<{order_item_id: st
 };
 
 // Helper function to get a complete menu item with its options and choices
-export const getMenuItemWithOptions = async (menuItemId: string): Promise<MenuItemWithOptions | null> => {
+export const getMenuItemWithOptions = async (menuItemId: string) => {
   const menuItem = await getMenuItemById(menuItemId);
   if (!menuItem) return null;
 
