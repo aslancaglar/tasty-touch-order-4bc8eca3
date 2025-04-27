@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
@@ -713,8 +714,80 @@ const KioskView = () => {
                   </Label>
                   <div className="space-y-2">
                     {option.choices.map(choice => {
-                const selectedOption = selectedOptions.find(o => o.optionId === option.id);
-                const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
-                return <div key={choice.id} className={`
-                            flex items-center justify-between p-3 border rounded-md cursor-pointer
-                            ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-
+                      const selectedOption = selectedOptions.find(o => o.optionId === option.id);
+                      const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
+                      return <div key={choice.id} className={`
+                                flex items-center justify-between p-3 border rounded-md cursor-pointer
+                                ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
+                            `} onClick={() => handleToggleChoice(option.id, choice.id, option.multiple)}>
+                          <div className="flex items-center">
+                            <div className={`w-5 h-5 flex items-center justify-center rounded-full border ${isSelected ? 'bg-kiosk-primary border-kiosk-primary text-white' : 'border-gray-300'}`}>
+                              {isSelected && <Check className="h-3 w-3" />}
+                            </div>
+                            <span className="ml-2">{choice.name}</span>
+                          </div>
+                          {choice.price > 0 && <span className="font-medium">{choice.price.toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>}
+                        </div>;
+                    })}
+                  </div>
+                </div>)}
+              
+              {selectedItem.toppingCategories && selectedItem.toppingCategories.map(category => {
+                if (!shouldShowToppingCategory(category)) return null;
+                return <div key={category.id} className="space-y-2">
+                  <Label className="font-medium">
+                    {category.name}
+                    {category.required && <span className="text-red-500 ml-1">*</span>}
+                    {category.max_selections > 0 && <span className="text-sm text-gray-500 ml-2">
+                      ({t("selectUpTo")} {category.max_selections})
+                    </span>}
+                  </Label>
+                  <div className="space-y-2">
+                    {category.toppings.map(topping => {
+                      const selectedToppingCategory = selectedToppings.find(t => t.categoryId === category.id);
+                      const isSelected = selectedToppingCategory?.toppingIds.includes(topping.id) || false;
+                      return <div key={topping.id} className={`
+                                flex items-center justify-between p-3 border rounded-md cursor-pointer
+                                ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
+                            `} onClick={() => handleToggleTopping(category.id, topping.id)}>
+                          <div className="flex items-center">
+                            <div className={`w-5 h-5 flex items-center justify-center rounded-full border ${isSelected ? 'bg-kiosk-primary border-kiosk-primary text-white' : 'border-gray-300'}`}>
+                              {isSelected && <Check className="h-3 w-3" />}
+                            </div>
+                            <span className="ml-2">{topping.name}</span>
+                          </div>
+                          {topping.price > 0 && <span className="font-medium">{topping.price.toFixed(2)} {getCurrencySymbol(restaurant.currency)}</span>}
+                        </div>;
+                    })}
+                  </div>
+                </div>;
+              })}
+              
+              <div className="space-y-2">
+                <Label className="font-medium">{t("quantity")}</Label>
+                <div className="flex items-center space-x-3">
+                  <Button variant="outline" size="icon" onClick={() => setQuantity(q => Math.max(1, q - 1))}>
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xl font-medium w-8 text-center">{quantity}</span>
+                  <Button variant="outline" size="icon" onClick={() => setQuantity(q => q + 1)}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                onClick={handleAddToCart} 
+                className="w-full text-white py-6 text-xl bg-kiosk-primary hover:bg-purple-700"
+              >
+                {t("addToCart")} - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} {getCurrencySymbol(restaurant.currency)}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>}
+    </div>;
+};
+
+export default KioskView;
