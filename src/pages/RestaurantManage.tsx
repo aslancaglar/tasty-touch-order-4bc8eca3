@@ -111,11 +111,19 @@ const RestaurantManage = () => {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle>Gestion du Restaurant</CardTitle>
-            <Button variant="outline" asChild>
-              <Link to={`/r/${restaurant?.slug}`} target="_blank">
-                Voir Kiosk
-              </Link>
-            </Button>
+            <div className="flex space-x-2">
+              <Button variant="outline" asChild>
+                <Link to={`/restaurant/${restaurant?.id}/stock`}>
+                  <Package className="mr-2 h-4 w-4" />
+                  Stock Management
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to={`/r/${restaurant?.slug}`} target="_blank">
+                  Voir Kiosk
+                </Link>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
