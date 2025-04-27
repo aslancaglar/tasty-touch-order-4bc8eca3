@@ -35,7 +35,6 @@ export type MenuItem = {
   updated_at: string;
   topping_categories?: string[];
   tax_percentage?: number | null;
-  in_stock?: boolean; // Added this property for stock management
 };
 
 export type MenuItemOption = {
@@ -83,8 +82,6 @@ export type Topping = {
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
-export type OrderType = 'dine_in' | 'takeaway'; // Added OrderType type definition
-
 export interface Order {
   id: string;
   restaurant_id: string;
@@ -93,7 +90,7 @@ export interface Order {
   status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at: string;
   total: number;
-  order_type?: OrderType;
+  order_type?: 'dine-in' | 'takeaway';
   table_number?: string;
 }
 
