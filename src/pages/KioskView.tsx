@@ -6,13 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getIconComponent } from "@/utils/icon-mapping";
 import { supabase } from "@/integrations/supabase/client";
 import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, OrderItem, CartItem, MenuItemWithOptions, ToppingCategory, Topping } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, OrderItem, CartItem, MenuItemWithOptions, ToppingCategory, Topping, OrderType } from "@/types/database-types";
 import WelcomePage from "@/components/kiosk/WelcomePage";
-import OrderTypeSelection, { OrderType } from "@/components/kiosk/OrderTypeSelection";
+import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
 import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
@@ -162,7 +163,6 @@ const KioskView = () => {
         console.log("Setting UI language from restaurant:", lang, restaurantData.ui_language);
         setUiLanguage(lang);
         const menuData = await getMenuForRestaurant(restaurantData.id);
-        // Filter out of stock items
         const menuDataWithInStock = menuData.map(category => ({
           ...category,
           items: category.items.filter(item => item.in_stock)
@@ -237,11 +237,9 @@ const KioskView = () => {
     let toppingsPrice = 0;
     selectedToppings.forEach(toppingCategory => {
       toppingCategory.toppingIds.forEach(toppingId => {
-        // Find the topping within the current item's topping categories
         categories.forEach(category => {
           category.items.forEach(menuItem => {
             if (menuItem.id === item.id) {
-              // Now you're sure you're only looking at toppings for the current menu item
               const topping = categories.find(cat => cat.id === toppingCategory.categoryId)?.items.find(t => t.id === toppingId);
               if (topping) {
                 toppingsPrice += topping.price;
@@ -341,7 +339,8 @@ const KioskView = () => {
       const orderData = {
         restaurant_id: restaurant.id,
         total: cart.reduce((acc, item) => acc + item.price, 0),
-        customer_name: "Kiosk Order"
+        customer_name: "Kiosk Order",
+        status: 'pending' as OrderStatus
       };
       const newOrder = await createOrder(orderData);
       if (!newOrder) {
@@ -358,18 +357,13 @@ const KioskView = () => {
       if (!newOrderItems) {
         throw new Error("Failed to create order items");
       }
-      // Create order item options
       for (const cartItem of cart) {
         if (cartItem.options && cartItem.options.length > 0) {
           for (const option of cartItem.options) {
             for (const choiceId of option.choiceIds) {
               const orderItem = newOrderItems.find(item => item.menu_item_id === cartItem.menuItem.id);
               if (orderItem) {
-                const orderItemOptionData = {
-                  order_item_id: orderItem.id,
-                  option_id: option.optionId,
-                  choice_id: choiceId
-                };
+                const orderItemOptionData = [{ order_item_id: orderItem.id, option_id: option.optionId, choice_id: choiceId }];
                 await createOrderItemOptions(orderItemOptionData);
               }
             }
@@ -380,11 +374,7 @@ const KioskView = () => {
             for (const toppingId of toppingCategory.toppingIds) {
               const orderItem = newOrderItems.find(item => item.menu_item_id === cartItem.menuItem.id);
               if (orderItem) {
-                const orderItemToppingData = {
-                  order_item_id: orderItem.id,
-                  topping_category_id: toppingCategory.categoryId,
-                  topping_id: toppingId
-                };
+                const orderItemToppingData = [{ order_item_id: orderItem.id, topping_id: toppingId }];
                 await createOrderItemToppings(orderItemToppingData);
               }
             }
@@ -420,7 +410,6 @@ const KioskView = () => {
     setTableNumber(table);
     setShowOrderTypeSelection(false);
   };
-  // Return JSX content
   return (
     <>
       {showWelcome && restaurant && (
@@ -432,7 +421,12 @@ const KioskView = () => {
           }}
         />
       )}
-      {showOrderTypeSelection && restaurant && <OrderTypeSelection restaurant={restaurant} onSelectOrderType={handleSelectOrderType} />}
+      {showOrderTypeSelection && restaurant && (
+        <OrderTypeSelection 
+          restaurant={restaurant} 
+          onSelectOrderType={handleSelectOrderType} 
+        />
+      )}
       {!showWelcome && !showOrderTypeSelection && restaurant && !orderPlaced && (
         <div className="container mx-auto px-4 py-8">
           <div className="mb-6 flex items-center justify-between">
@@ -465,16 +459,22 @@ const KioskView = () => {
               {t("open")}
             </span>
           </p>
-          {orderType && <div className="mb-4">
-            {orderType === "dine_in" && <Badge variant="secondary">
-              <UtensilsCrossed className="mr-2 h-4 w-4" />
-              {t("dineIn")} {tableNumber && `${t("table")} ${tableNumber}`}
-            </Badge>}
-            {orderType === "takeaway" && <Badge variant="secondary">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              {t("takeaway")}
-            </Badge>}
-          </div>}
+          {orderType && (
+            <div className="mb-4">
+              {orderType === "dine_in" && (
+                <Badge variant="secondary">
+                  <UtensilsCrossed className="mr-2 h-4 w-4" />
+                  {t("dineIn")} {tableNumber && `${t("table")} ${tableNumber}`}
+                </Badge>
+              )}
+              {orderType === "takeaway" && (
+                <Badge variant="secondary">
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  {t("takeaway")}
+                </Badge>
+              )}
+            </div>
+          )}
           <h2 className="text-2xl font-semibold mb-4">{t("menu")}</h2>
           {loading ? (
             <div className="flex justify-center items-center">
@@ -554,11 +554,9 @@ const KioskView = () => {
                 </div>
               ))}
               {categories.map(category => {
-                // Ensure category.items is an array before filtering
                 if (!Array.isArray(category.items)) {
                   return null;
                 }
-                // Filter toppings to only include items that are toppings
                 const toppings = category.items.filter(item => selectedItem.topping_categories?.includes(category.id));
                 if (toppings.length === 0) {
                   return null;
@@ -609,7 +607,22 @@ const KioskView = () => {
               Review and confirm your order.
             </DialogDescription>
           </DialogHeader>
-          <Cart cart={cart} restaurant={restaurant} onRemoveItem={handleRemoveCartItem} />
+          <Cart 
+            cart={cart} 
+            restaurant={restaurant} 
+            onRemoveItem={handleRemoveCartItem}
+            isOpen={true}
+            onToggleOpen={() => {}}
+            onUpdateQuantity={() => {}}
+            onClearCart={() => {}}
+            onPlaceOrder={() => {}}
+            placingOrder={false}
+            orderPlaced={false}
+            calculateSubtotal={() => 0}
+            calculateTax={() => 0}
+            getFormattedOptions={() => ""}
+            getFormattedToppings={() => ""}
+          />
           <DialogFooter>
             <Button type="submit" className="w-full bg-kiosk-primary" onClick={handlePlaceOrder} disabled={placingOrder}>
               {placingOrder ? (
@@ -635,7 +648,14 @@ const KioskView = () => {
               Thank you for your order!
             </DialogDescription>
           </DialogHeader>
-          <OrderReceipt cart={cart} restaurant={restaurant} />
+          <OrderReceipt 
+            cart={cart} 
+            restaurant={restaurant} 
+            orderNumber="12345" 
+            orderType="dine-in"
+            getFormattedOptions={() => ""}
+            getFormattedToppings={() => ""}
+          />
           <DialogFooter>
             <Button type="submit" className="w-full bg-kiosk-primary" onClick={handleStartNewOrder}>
               Start New Order

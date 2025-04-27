@@ -149,7 +149,8 @@ const MenuPage = () => {
         description: values.description || null,
         image_url: values.image_url || null,
         icon: "utensils", // Default icon
-        restaurant_id: selectedRestaurant
+        restaurant_id: selectedRestaurant,
+        display_order: 0 // Add this line
       });
       
       console.log("New category created:", newCategory);

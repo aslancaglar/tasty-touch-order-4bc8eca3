@@ -12,7 +12,9 @@ export type MenuItem = {
   updated_at: string;
   topping_categories?: string[];
   tax_percentage?: number | null;
-  in_stock: boolean; // Add this line
+  in_stock: boolean; // Added this line
+  options?: MenuItemOption[]; // Adding this to fix errors
+  display_order?: number; // Add missing property
 };
 
 // Additional missing types needed by the application
@@ -54,6 +56,9 @@ export type CartItem = {
   }[];
   specialInstructions?: string;
   price: number;
+  itemPrice?: number; // Adding this to fix errors
+  selectedOptions?: { optionId: string; choiceIds: string[] }[]; // Adding this to fix errors
+  selectedToppings?: { categoryId: string; toppingIds: string[] }[]; // Adding this to fix errors
 };
 
 export type MenuItemWithOptions = MenuItem & {
@@ -102,7 +107,7 @@ export type OrderItemOption = {
   choice_id: string;
 };
 
-export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'completed'; // Added 'completed' status
 
 export type ToppingCategory = {
   id: string;
@@ -128,3 +133,37 @@ export type Topping = {
   created_at: string;
   updated_at: string;
 };
+
+// Define the CreateOrderParams type for the API
+export type CreateOrderParams = {
+  restaurant_id: string;
+  total: number;
+  customer_name: string;
+  status: OrderStatus;
+};
+
+// Define OrderTypeSelectionProps
+export type OrderTypeSelectionProps = {
+  restaurant: Restaurant;
+  onSelectOrderType: (type: OrderType, table?: string | null) => void;
+};
+
+// Define CartButtonProps
+export type CartButtonProps = {
+  cart: CartItem[];
+};
+
+// Define OrderType
+export type OrderType = 'dine_in' | 'takeaway' | null;
+
+// Define OrderReceiptProps
+export type OrderReceiptProps = {
+  cart: CartItem[];
+  restaurant: Restaurant;
+  orderNumber: string;
+  orderType: 'dine-in' | 'takeaway' | null;
+  getFormattedOptions: (item: CartItem) => string;
+  getFormattedToppings: (item: CartItem) => string;
+  uiLanguage?: "fr" | "en" | "tr";
+};
+

@@ -186,7 +186,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         description: values.description || null,
         image_url: values.image_url || null,
         icon: "utensils",
-        restaurant_id: restaurant.id
+        restaurant_id: restaurant.id,
+        display_order: 0
       });
       
       setCategories(prevCategories => [...prevCategories, newCategory]);
@@ -289,7 +290,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         image: values.image || null,
         category_id: selectedCategory.id,
         topping_categories: values.topping_categories || [],
-        in_stock: values.in_stock ?? true
+        in_stock: values.in_stock ?? true,
+        display_order: 0
       });
       
       setMenuItems(prev => [...prev, newMenuItem]);

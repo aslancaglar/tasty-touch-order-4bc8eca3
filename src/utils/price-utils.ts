@@ -1,4 +1,3 @@
-
 import { CartItem } from "@/types/database-types";
 
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
@@ -11,20 +10,32 @@ export const calculateTaxAmount = (totalPrice: number, percentage: number = 10):
   return totalPrice - priceWithoutTax;
 };
 
-// Updated utility function to calculate cart totals with proper topping VAT
+export const calculateToppingsPrice = (item: CartItem): number => {
+  let toppingsPrice = 0;
+  
+  if (item.toppings && item.menuItem.topping_categories) {
+    item.toppings.forEach(category => {
+      const toppingCategory = item.menuItem.topping_categories?.find(id => id === category.categoryId);
+      if (toppingCategory) {
+        toppingsPrice += category.toppingIds.length * 1;
+      }
+    });
+  }
+  
+  return toppingsPrice;
+};
+
 export const calculateCartTotals = (cart: CartItem[]) => {
   let total = 0;
   let totalTax = 0;
 
   cart.forEach(item => {
-    // Base menu item price with its VAT
     const baseItemTotal = item.quantity * (item.menuItem.price || 0);
     const vatPercentage = item.menuItem.tax_percentage ?? 10;
     
     let itemToppingsTotal = 0;
     let itemToppingsTax = 0;
     
-    // Calculate toppings price and tax separately
     if (item.selectedToppings && item.menuItem.toppingCategories) {
       item.selectedToppings.forEach(toppingCategory => {
         const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingCategory.categoryId);
@@ -35,7 +46,6 @@ export const calculateCartTotals = (cart: CartItem[]) => {
               const toppingPrice = topping.price ? parseFloat(topping.price.toString()) * item.quantity : 0;
               itemToppingsTotal += toppingPrice;
               
-              // Use topping specific tax rate if available
               const toppingVatPercentage = topping.tax_percentage ?? vatPercentage; 
               itemToppingsTax += calculateTaxAmount(toppingPrice, toppingVatPercentage);
             }
@@ -44,10 +54,8 @@ export const calculateCartTotals = (cart: CartItem[]) => {
       });
     }
     
-    // Calculate base item tax
     const baseItemTax = calculateTaxAmount(baseItemTotal, vatPercentage);
     
-    // Add to totals
     total += baseItemTotal + itemToppingsTotal;
     totalTax += baseItemTax + itemToppingsTax;
   });
