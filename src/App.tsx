@@ -1,45 +1,60 @@
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Toaster } from "@/components/ui/sonner";
-import Index from "@/pages/Index";
-import Auth from "@/pages/Auth";
-import Dashboard from "@/pages/Dashboard";
-import Orders from "@/pages/Orders";
-import Menu from "@/pages/Menu";
-import KioskView from "@/pages/KioskView";
-import NotFound from "@/pages/NotFound";
-import Restaurants from "@/pages/Restaurants";
-import RestaurantManage from "@/pages/RestaurantManage";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { CartProvider } from "@/contexts/CartContext";
-import { RestaurantProvider } from "@/contexts/RestaurantContext";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-import "./App.css";
+// Pages
+import Dashboard from "./pages/Dashboard";
+import Restaurants from "./pages/Restaurants";
+import RestaurantManage from "./pages/RestaurantManage";
+import KioskView from "./pages/KioskView";
+import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 
-function App() {
-  return (
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <Router>
-        <RestaurantProvider>
-          <CartProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-              <Route path="/menu" element={<ProtectedRoute><Menu /></ProtectedRoute>} />
-              <Route path="/restaurants" element={<ProtectedRoute><Restaurants /></ProtectedRoute>} />
-              <Route path="/restaurants/:id" element={<ProtectedRoute><RestaurantManage /></ProtectedRoute>} />
-              <Route path="/kiosk/:restaurantSlug" element={<KioskView />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <Toaster position="top-right" />
-          </CartProvider>
-        </RestaurantProvider>
-      </Router>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Auth Routes */}
+            <Route path="/auth" element={<Auth />} />
+            
+            {/* Admin Routes - Protected */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/restaurants" element={
+              <ProtectedRoute>
+                <Restaurants />
+              </ProtectedRoute>
+            } />
+            <Route path="/restaurant/:id" element={
+              <ProtectedRoute>
+                <RestaurantManage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Public Kiosk Routes */}
+            <Route path="/r/:restaurantSlug" element={<KioskView />} />
+            
+            {/* Catch-all Route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
     </AuthProvider>
-  );
-}
+  </QueryClientProvider>
+);
 
 export default App;
