@@ -692,7 +692,9 @@ const KioskView = () => {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeItems.map(item => <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
+              {activeItems
+                .filter(item => item.in_stock)
+                .map(item => <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
                   <div className="h-40 bg-cover bg-center" style={{
                 backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
               }}></div>
