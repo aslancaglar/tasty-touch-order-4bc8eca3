@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -44,6 +44,7 @@ const formSchema = z.object({
     val === "" || (!isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100),
     { message: "Enter a valid VAT rate (0-100%)" }
   ).optional(),
+  in_stock: z.boolean().optional().default(true)
 });
 
 type MenuItemFormValues = z.infer<typeof formSchema>;
@@ -58,6 +59,7 @@ interface MenuItemFormProps {
     image?: string;
     topping_categories?: string[];
     tax_percentage?: string;
+    in_stock?: boolean;
   };
   isLoading?: boolean;
   restaurantId?: string;
@@ -78,6 +80,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
       image: initialValues?.image || "",
       topping_categories: initialValues?.topping_categories || [],
       tax_percentage: initialValues?.tax_percentage || "10",
+      in_stock: initialValues?.in_stock ?? true,
     },
   });
 
@@ -103,7 +106,6 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
     form.setValue("image", url);
   };
 
-  // Helper: move topping category up or down
   const moveToppingCategory = (from: number, to: number) => {
     const current = form.getValues("topping_categories") || [];
     if (to < 0 || to >= current.length) return;
@@ -240,7 +242,6 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
                     Select and reorder which topping categories can be applied to this item. Drag to reorder.
                   </p>
                 </div>
-                {/* Selection list (with checkboxes) */}
                 <div className="space-y-2">
                   {toppingCategories.map((category) => {
                     const index = field.value?.indexOf(category.id) ?? -1;
@@ -251,10 +252,8 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
                           onCheckedChange={(checked) => {
                             const currentValues = field.value || [];
                             if (checked) {
-                              // Add to end
                               field.onChange([...currentValues, category.id]);
                             } else {
-                              // Remove
                               field.onChange(currentValues.filter((value) => value !== category.id));
                             }
                           }}
@@ -265,7 +264,6 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
                             <span className="text-xs text-muted-foreground ml-2">{category.description}</span>
                           )}
                         </span>
-                        {/* Show arrows if selected */}
                         {field.value?.includes(category.id) && (
                           <>
                             <Button
@@ -298,7 +296,6 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
                     );
                   })}
                 </div>
-                {/* Ordered preview */}
                 {field.value && field.value.length > 1 && (
                   <div className="mt-3">
                     <div className="text-xs mb-1 font-medium text-muted-foreground">
@@ -316,6 +313,25 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
             )}
           />
         )}
+
+        <FormField
+          control={form.control}
+          name="in_stock"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">In Stock</FormLabel>
+                <FormMessage />
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
         <Button type="submit" className="w-full bg-kiosk-primary" disabled={isLoading}>
           {isLoading ? (
