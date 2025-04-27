@@ -704,9 +704,13 @@ const KioskView = () => {
               {activeItems
                 .filter(item => item.in_stock)
                 .map(item => <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="h-40 bg-cover bg-center" style={{
-                backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
-              }}></div>
+                  <div 
+                    className="h-40 bg-cover bg-center cursor-pointer" 
+                    style={{
+                      backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
+                    }}
+                    onClick={() => handleSelectItem(item)}
+                  ></div>
                   <div className="p-4">
                     <div className="flex justify-between">
                       <h3 className="font-bold text-lg">{item.name}</h3>
