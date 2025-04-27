@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Clock, MinusCircle, PlusCircle, ShoppingCart, Trash2, Check, Loader2, ChevronLeft, Plus, ArrowRight, Minus, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -10,9 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { getIconComponent } from "@/utils/icon-mapping";
 import { supabase } from "@/integrations/supabase/client";
 import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, OrderItem, CartItem, MenuItemWithOptions, ToppingCategory, Topping } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, OrderItem, CartItem, MenuItemWithOptions, ToppingCategory, Topping, OrderType } from "@/types/database-types";
 import WelcomePage from "@/components/kiosk/WelcomePage";
-import OrderTypeSelection, { OrderType } from "@/components/kiosk/OrderTypeSelection";
+import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
 import Cart from "@/components/kiosk/Cart";
 import CartButton from "@/components/kiosk/CartButton";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
@@ -36,7 +36,7 @@ const KioskView = () => {
   const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(true);
   const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
-  const [orderType, setOrderType] = useState<OrderType>(null);
+  const [orderType, setOrderType] = useState<OrderType | null>(null);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<CategoryWithItems[]>([]);
@@ -139,50 +139,50 @@ const KioskView = () => {
   const t = (key: keyof typeof translations.en) => {
     return translations[uiLanguage][key];
   };
-  useEffect(() => {
-    const fetchRestaurantAndMenu = async () => {
-      if (!restaurantSlug) {
-        navigate('/');
-        return;
-      }
-      try {
-        setLoading(true);
-        const restaurantData = await getRestaurantBySlug(restaurantSlug);
-        if (!restaurantData) {
-          toast({
-            title: t("restaurantNotFound"),
-            description: t("sorryNotFound"),
-            variant: "destructive"
-          });
-          navigate('/');
-          return;
-        }
-        setRestaurant(restaurantData);
-        const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
-        console.log("Setting UI language from restaurant:", lang, restaurantData.ui_language);
-        setUiLanguage(lang);
-        const menuData = await getMenuForRestaurant(restaurantData.id);
-        setCategories(menuData);
-        if (menuData.length > 0) {
-          setActiveCategory(menuData[0].id);
-        }
-        setLoading(false);
-      } catch (error) {
-        console.error("Erreur lors du chargement du restaurant et du menu:", error);
+  
+  const fetchRestaurantAndMenu = async () => {
+    if (!restaurantSlug) {
+      navigate('/');
+      return;
+    }
+    try {
+      setLoading(true);
+      const restaurantData = await getRestaurantBySlug(restaurantSlug);
+      if (!restaurantData) {
         toast({
           title: t("restaurantNotFound"),
           description: t("sorryNotFound"),
           variant: "destructive"
         });
-        setLoading(false);
+        navigate('/');
+        return;
       }
-    };
-    fetchRestaurantAndMenu();
-  }, [restaurantSlug, navigate, toast]);
+      setRestaurant(restaurantData);
+      const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
+      console.log("Setting UI language from restaurant:", lang, restaurantData.ui_language);
+      setUiLanguage(lang);
+      const menuData = await getMenuForRestaurant(restaurantData.id);
+      setCategories(menuData);
+      if (menuData.length > 0) {
+        setActiveCategory(menuData[0].id);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Erreur lors du chargement du restaurant et du menu:", error);
+      toast({
+        title: t("restaurantNotFound"),
+        description: t("sorryNotFound"),
+        variant: "destructive"
+      });
+      setLoading(false);
+    }
+  };
+  
   const handleStartOrder = () => {
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
   };
+  
   const handleOrderTypeSelected = (type: OrderType, table?: string) => {
     setOrderType(type);
     if (table) {
@@ -190,6 +190,7 @@ const KioskView = () => {
     }
     setShowOrderTypeSelection(false);
   };
+  
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
       const {
@@ -252,6 +253,7 @@ const KioskView = () => {
       return [];
     }
   };
+  
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
@@ -337,6 +339,7 @@ const KioskView = () => {
       setLoading(false);
     }
   };
+  
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
       const optionIndex = prev.findIndex(o => o.optionId === optionId);
@@ -365,6 +368,7 @@ const KioskView = () => {
       return newOptions;
     });
   };
+  
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -408,6 +412,7 @@ const KioskView = () => {
       return newToppings;
     });
   };
+  
   const calculateItemPrice = (item: MenuItemWithOptions, options: {
     optionId: string;
     choiceIds: string[];
@@ -441,6 +446,7 @@ const KioskView = () => {
     }
     return price;
   };
+  
   const getFormattedOptions = (item: CartItem): string => {
     if (!item.menuItem.options) return "";
     return item.selectedOptions.flatMap(selectedOption => {
@@ -452,6 +458,7 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
+  
   const getFormattedToppings = (item: CartItem): string => {
     if (!item.menuItem.toppingCategories) return "";
     return item.selectedToppings.flatMap(selectedCategory => {
@@ -463,6 +470,7 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
+  
   const handleAddToCart = () => {
     if (!selectedItem) return;
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -500,6 +508,7 @@ const KioskView = () => {
       description: `${quantity}x ${selectedItem.name} ${t("added")}`
     });
   };
+  
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       handleRemoveCartItem(itemId);
@@ -510,6 +519,7 @@ const KioskView = () => {
       quantity: newQuantity
     } : item));
   };
+  
   const handleRemoveCartItem = (itemId: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.id !== itemId);
@@ -519,17 +529,21 @@ const KioskView = () => {
       return newCart;
     });
   };
+  
   const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
       return total + item.itemPrice * item.quantity;
     }, 0);
   };
+  
   const calculateSubtotal = () => {
     return calculateCartTotal();
   };
+  
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
   };
+  
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
     try {
@@ -601,9 +615,11 @@ const KioskView = () => {
       setPlacingOrder(false);
     }
   };
+  
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
+  
   const shouldShowToppingCategory = (category: MenuItemWithOptions['toppingCategories'][0]) => {
     if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
       return true;
@@ -622,6 +638,7 @@ const KioskView = () => {
         <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
       </div>;
   }
+  
   if (!restaurant) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -634,9 +651,11 @@ const KioskView = () => {
         </div>
       </div>;
   }
+  
   if (showWelcome) {
     return <WelcomePage restaurant={restaurant} onStart={handleStartOrder} uiLanguage={uiLanguage} />;
   }
+  
   if (showOrderTypeSelection) {
     return <>
       <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
@@ -645,11 +664,13 @@ const KioskView = () => {
       <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
         setShowOrderTypeSelection(false);
         setShowWelcome(true);
-      }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
+      }} onSelectOrderType={(type, table) => handleOrderTypeSelected(type, table || null)} uiLanguage={uiLanguage} />
     </>;
   }
+  
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
+  
   return <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="h-48 bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
@@ -665,7 +686,7 @@ const KioskView = () => {
                 <span>{restaurant.location || t("open")}</span>
               </div>
               {orderType && <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center">
-                  {orderType === 'dine-in' ? <>
+                  {orderType === 'dine_in' ? <>
                       <span className="mr-1">{t("dineIn")}</span>
                       {tableNumber && <span>- {t("table")} {tableNumber}</span>}
                     </> : <span>{t("takeaway")}</span>}
@@ -702,7 +723,7 @@ const KioskView = () => {
                   <div className="h-40 bg-cover bg-center" style={{
                 backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
               }}></div>
-                  <div className="p-4">
+                  <CardContent className="p-4">
                     <div className="flex justify-between">
                       <h3 className="font-bold text-lg">{item.name}</h3>
                       <p className="font-bold">{parseFloat(item.price.toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}</p>
@@ -712,7 +733,7 @@ const KioskView = () => {
                       {t("addToCart")}
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
-                  </div>
+                  </CardContent>
                 </Card>)}
             </div>
           </div>
@@ -731,4 +752,64 @@ const KioskView = () => {
             </DialogHeader>
             
             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-              {selectedItem.options && selectedItem.options.map(option => <div key
+              {selectedItem.options && selectedItem.options.map(option => <div key={option.id} className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-xl font-bold">{option.name}</Label>
+                    {option.multiple && <span className="text-sm text-gray-500 italic">{t("multipleSelection")}</span>}
+                    {option.required && <span className="text-sm text-red-500">*</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {option.choices.map(choice => {
+                      const isSelected = selectedOptions.some(o => o.optionId === option.id && o.choiceIds.includes(choice.id));
+                      return <Button key={choice.id} type="button" variant={isSelected ? "default" : "outline"} className={`${isSelected ? 'bg-kiosk-primary' : ''} flex justify-between items-center min-w-[180px]`} onClick={() => handleToggleChoice(option.id, choice.id, option.multiple)}>
+                          <span>{choice.name}</span>
+                          {choice.price > 0 && <span>+{choice.price.toFixed(2)}</span>}
+                        </Button>;
+                    })}
+                  </div>
+                </div>)}
+                
+              {selectedItem.toppingCategories && selectedItem.toppingCategories.map(category => shouldShowToppingCategory(category) && <div key={category.id} className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-xl font-bold">{category.name}</Label>
+                    {category.max_selections > 0 && <span className="text-sm text-gray-500 italic">
+                        {t("selectUpTo")} {category.max_selections}
+                      </span>}
+                    {category.required && <span className="text-sm text-red-500">*</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {category.toppings.map(topping => {
+                      const isSelected = selectedToppings.some(t => t.categoryId === category.id && t.toppingIds.includes(topping.id));
+                      return <Button key={topping.id} type="button" variant={isSelected ? "default" : "outline"} className={`${isSelected ? 'bg-kiosk-primary' : ''} flex justify-between items-center min-w-[180px]`} onClick={() => handleToggleTopping(category.id, topping.id)}>
+                          <span>{topping.name}</span>
+                          {topping.price > 0 && <span>+{topping.price.toFixed(2)}</span>}
+                        </Button>;
+                    })}
+                  </div>
+                </div>)}
+                
+              <div className="space-y-3">
+                <Label htmlFor="quantity" className="text-xl font-bold">{t("quantity")}</Label>
+                <div className="flex items-center">
+                  <Button type="button" variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={quantity <= 1}>
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <div className="w-12 text-center text-xl font-bold">{quantity}</div>
+                  <Button type="button" variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button onClick={handleAddToCart} className="w-full bg-kiosk-primary text-xl py-8">
+                {t("addToCart")} - {parseFloat(calculateItemPrice(selectedItem, selectedOptions, selectedToppings).toString()).toFixed(2)} {getCurrencySymbol(restaurant.currency)}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>}
+    </div>;
+};
+
+export default KioskView;
