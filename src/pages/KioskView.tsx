@@ -210,7 +210,460 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
-  // ... keep existing code (rest of the component)
+  const handleAddToCart = () => {
+    if (!selectedItem) return;
+    
+    // Create the item to add to cart
+    const itemToAdd: CartItem = {
+      id: crypto.randomUUID(),
+      menuItemId: selectedItem.id,
+      name: selectedItem.name,
+      price: selectedItem.price,
+      quantity: quantity,
+      specialInstructions: specialInstructions,
+      options: selectedOptions.map(option => {
+        const optionGroup = selectedItem.options.find(o => o.id === option.optionId);
+        const choices = optionGroup?.choices.filter(c => option.choiceIds.includes(c.id)) || [];
+        
+        return {
+          optionId: option.optionId,
+          optionName: optionGroup?.name || '',
+          choices: choices.map(choice => ({
+            choiceId: choice.id,
+            choiceName: choice.name,
+            price: choice.price || 0
+          }))
+        };
+      }),
+      toppings: selectedToppings.flatMap(selectedCategory => {
+        const category = selectedItem.topping_categories.find(tc => tc.id === selectedCategory.categoryId);
+        return selectedCategory.toppingIds.map(toppingId => {
+          const topping = category?.toppings.find(t => t.id === toppingId);
+          return {
+            toppingId,
+            toppingName: topping?.name || '',
+            toppingCategoryId: selectedCategory.categoryId,
+            toppingCategoryName: category?.name || '',
+            price: topping?.price || 0
+          };
+        });
+      })
+    };
+    
+    setCart(prev => [...prev, itemToAdd]);
+    setSelectedItem(null);
+    setSelectedOptions([]);
+    setSelectedToppings([]);
+    setQuantity(1);
+    setSpecialInstructions("");
+    
+    toast({
+      title: t("addedToCart"),
+      description: `${itemToAdd.name} ${t("added")}`,
+      variant: "default"
+    });
+  };
+
+  const handleSelectItem = async (item: MenuItem) => {
+    try {
+      const itemWithOptions = await getMenuItemWithOptions(item.id);
+      setSelectedItem(itemWithOptions);
+      setSelectedOptions([]);
+      setSelectedToppings([]);
+      setQuantity(1);
+      setSpecialInstructions("");
+      
+      // Initialize selected options
+      const initialOptions = itemWithOptions.options.map(option => ({
+        optionId: option.id,
+        choiceIds: option.min_selections > 0 && option.choices.length > 0 ? [option.choices[0].id] : []
+      }));
+      
+      setSelectedOptions(initialOptions);
+    } catch (error) {
+      console.error("Error fetching menu item details:", error);
+    }
+  };
+
+  const handleImageClick = (item: MenuItem) => {
+    handleSelectItem(item);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (showWelcome) {
+    return (
+      <WelcomePage
+        restaurant={restaurant}
+        onStart={() => {
+          setShowWelcome(false);
+          setShowOrderTypeSelection(true);
+        }}
+      />
+    );
+  }
+  
+  if (showOrderTypeSelection) {
+    return (
+      <OrderTypeSelection
+        restaurant={restaurant}
+        onSelectType={(type, tableNumber) => {
+          setOrderType(type);
+          setTableNumber(tableNumber);
+          setShowOrderTypeSelection(false);
+        }}
+      />
+    );
+  }
+  
+  if (orderPlaced) {
+    return (
+      <OrderReceipt
+        restaurant={restaurant}
+        orderType={orderType}
+        tableNumber={tableNumber}
+        onNewOrder={() => {
+          setCart([]);
+          setOrderPlaced(false);
+        }}
+      />
+    );
+  }
+  
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="sticky top-0 z-10 bg-white shadow">
+        <div className="container flex items-center justify-between p-4">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+              <ArrowLeft />
+            </Button>
+            <h1 className="text-xl font-bold">{restaurant?.name}</h1>
+          </div>
+          <CartButton
+            count={cart.length}
+            onClick={() => setIsCartOpen(true)}
+          />
+        </div>
+      </header>
+      
+      <main className="container pb-24 pt-4">
+        <div className="mb-6 overflow-x-auto">
+          <div className="flex gap-2 pb-2">
+            {categories.map(category => (
+              <Button
+                key={category.id}
+                variant={activeCategory === category.id ? "default" : "outline"}
+                onClick={() => setActiveCategory(category.id)}
+                className="whitespace-nowrap"
+              >
+                {category.name}
+              </Button>
+            ))}
+          </div>
+        </div>
+        
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {categories
+            .find(cat => cat.id === activeCategory)
+            ?.items.map(item => (
+              <Card
+                key={item.id}
+                className="overflow-hidden transition-all hover:shadow-lg"
+              >
+                {item.image_url && (
+                  <div
+                    className="aspect-[4/3] cursor-pointer"
+                    onClick={() => handleImageClick(item)}
+                  >
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium">{item.name}</h3>
+                      <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
+                    </div>
+                    <div className="text-lg font-bold">
+                      {getCurrencySymbol(restaurant?.currency || 'EUR')} 
+                      {(item.price / 100).toFixed(2)}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleSelectItem(item)}
+                    className="mt-2 w-full"
+                  >
+                    {t("addToCart")}
+                  </Button>
+                </div>
+              </Card>
+            ))}
+        </div>
+      </main>
+      
+      <Dialog
+        open={!!selectedItem}
+        onOpenChange={(open) => !open && setSelectedItem(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedItem?.name}</DialogTitle>
+            <DialogDescription>{selectedItem?.description}</DialogDescription>
+          </DialogHeader>
+          
+          {selectedItem?.options.map(option => (
+            <div key={option.id} className="mb-4">
+              <div className="mb-2 flex items-center justify-between">
+                <Label className="font-medium">
+                  {option.name} 
+                  {option.min_selections > 0 && <span className="text-red-500">*</span>}
+                </Label>
+                {option.max_selections > 1 && (
+                  <span className="text-xs text-gray-500">
+                    {t("selectUpTo")} {option.max_selections}
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                {option.choices.map(choice => {
+                  const isSelected = selectedOptions
+                    .find(o => o.optionId === option.id)
+                    ?.choiceIds.includes(choice.id);
+                  
+                  return (
+                    <div key={choice.id} className="flex items-center justify-between rounded-md border p-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => {
+                            setSelectedOptions(prev => {
+                              const currentOption = prev.find(o => o.optionId === option.id);
+                              
+                              if (!currentOption) {
+                                return [...prev, { optionId: option.id, choiceIds: [choice.id] }];
+                              }
+                              
+                              if (option.max_selections === 1) {
+                                return prev.map(o => 
+                                  o.optionId === option.id
+                                    ? { ...o, choiceIds: [choice.id] }
+                                    : o
+                                );
+                              }
+                              
+                              if (isSelected) {
+                                return prev.map(o => 
+                                  o.optionId === option.id
+                                    ? { ...o, choiceIds: o.choiceIds.filter(id => id !== choice.id) }
+                                    : o
+                                );
+                              } else {
+                                const selectedCount = currentOption.choiceIds.length;
+                                if (selectedCount < option.max_selections) {
+                                  return prev.map(o => 
+                                    o.optionId === option.id
+                                      ? { ...o, choiceIds: [...o.choiceIds, choice.id] }
+                                      : o
+                                  );
+                                } else {
+                                  toast({
+                                    title: t("maxSelectionsReached"),
+                                    description: t("maxSelectionsMessage").replace("{max}", option.max_selections.toString()),
+                                    variant: "destructive"
+                                  });
+                                  return prev;
+                                }
+                              }
+                            });
+                          }}
+                        >
+                          {isSelected ? <Check className="h-4 w-4" /> : null}
+                        </Button>
+                        <span>{choice.name}</span>
+                      </div>
+                      {choice.price > 0 && (
+                        <span className="text-sm">
+                          +{getCurrencySymbol(restaurant?.currency || 'EUR')} 
+                          {(choice.price / 100).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          
+          {selectedItem?.topping_categories.map(category => (
+            <div key={category.id} className="mb-4">
+              <div className="mb-2 flex items-center justify-between">
+                <Label className="font-medium">{category.name}</Label>
+                {category.multiple_selection && (
+                  <span className="text-xs text-gray-500">
+                    {t("multipleSelection")}
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                {category.toppings.map(topping => {
+                  const isSelected = selectedToppings
+                    .find(t => t.categoryId === category.id)
+                    ?.toppingIds.includes(topping.id);
+                  
+                  return (
+                    <div key={topping.id} className="flex items-center justify-between rounded-md border p-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => {
+                            setSelectedToppings(prev => {
+                              const currentCategory = prev.find(t => t.categoryId === category.id);
+                              
+                              if (!currentCategory) {
+                                return [...prev, { categoryId: category.id, toppingIds: [topping.id] }];
+                              }
+                              
+                              if (!category.multiple_selection) {
+                                return prev.map(t => 
+                                  t.categoryId === category.id
+                                    ? { ...t, toppingIds: [topping.id] }
+                                    : t
+                                );
+                              } else {
+                                if (isSelected) {
+                                  return prev.map(t => 
+                                    t.categoryId === category.id
+                                      ? { ...t, toppingIds: t.toppingIds.filter(id => id !== topping.id) }
+                                      : t
+                                  );
+                                } else {
+                                  return prev.map(t => 
+                                    t.categoryId === category.id
+                                      ? { ...t, toppingIds: [...t.toppingIds, topping.id] }
+                                      : t
+                                  );
+                                }
+                              }
+                            });
+                          }}
+                        >
+                          {isSelected ? <Check className="h-4 w-4" /> : null}
+                        </Button>
+                        <span>{topping.name}</span>
+                      </div>
+                      {topping.price > 0 && (
+                        <span className="text-sm">
+                          +{getCurrencySymbol(restaurant?.currency || 'EUR')} 
+                          {(topping.price / 100).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          
+          <div className="mb-4">
+            <Label className="mb-2 block font-medium">{t("quantity")}</Label>
+            <div className="flex items-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setQuantity(q => Math.max(1, q - 1))}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="mx-4 w-8 text-center">{quantity}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setQuantity(q => q + 1)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                const allRequiredSelected = selectedItem?.options.every(option => {
+                  if (option.min_selections > 0) {
+                    const selections = selectedOptions.find(o => o.optionId === option.id)?.choiceIds.length || 0;
+                    return selections >= option.min_selections;
+                  }
+                  return true;
+                });
+                
+                if (!allRequiredSelected) {
+                  toast({
+                    title: t("selectionsRequired"),
+                    description: t("pleaseSelectRequired"),
+                    variant: "destructive"
+                  });
+                  return;
+                }
+                
+                handleAddToCart();
+              }}
+            >
+              {t("addToCart")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Cart 
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cart={cart}
+        updateCart={setCart}
+        restaurant={restaurant}
+        orderType={orderType}
+        tableNumber={tableNumber}
+        onPlaceOrder={async () => {
+          setPlacingOrder(true);
+          try {
+            await new Promise(r => setTimeout(r, 2000));
+            setOrderPlaced(true);
+            setIsCartOpen(false);
+          } catch (error) {
+            console.error("Error placing order:", error);
+            toast({
+              title: "Error",
+              description: "Failed to place order. Please try again.",
+              variant: "destructive"
+            });
+          } finally {
+            setPlacingOrder(false);
+          }
+        }}
+        placingOrder={placingOrder}
+      />
+    </div>
+  );
 };
 
 export default KioskView;
