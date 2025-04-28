@@ -22,7 +22,7 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
-import { setCacheItem, getCacheItem, clearCache } from "@/services/cache-service";
+import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
 
@@ -62,8 +62,6 @@ const KioskView = () => {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const cartRef = useRef<HTMLDivElement | null>(null);
-  const refreshTimerRef = useRef<number | null>(null);
-  const lastRefreshTimeRef = useRef<number>(Date.now());
 
   const { toast } = useToast();
   
@@ -184,64 +182,58 @@ const KioskView = () => {
 
   const { showDialog, handleContinue, handleCancel, fullReset } = useInactivityTimer(resetToWelcome);
 
-  const refreshMenuItems = async () => {
-    if (!restaurant || showWelcome || showOrderTypeSelection) return;
-    
-    try {
-      console.log("Refreshing menu items to check for stock changes...");
-      if (restaurant) {
-        clearCache(restaurant.id, 'categories');
+  useEffect(() => {
+    const fetchRestaurantAndMenu = async () => {
+      if (!restaurantSlug) {
+        navigate('/');
+        return;
       }
       
-      const currentTime = Date.now();
-      if (currentTime - lastRefreshTimeRef.current >= 10000) {
-        lastRefreshTimeRef.current = currentTime;
+      try {
+        setLoading(true);
+        const restaurantData = await getRestaurantBySlug(restaurantSlug);
         
-        const menuData = await getMenuForRestaurant(restaurant.id);
-        
-        const hasStockChanges = menuData.some(newCategory => {
-          const existingCategory = categories.find(c => c.id === newCategory.id);
-          if (!existingCategory) return true;
-          
-          return newCategory.items.some(newItem => {
-            const existingItem = existingCategory.items.find(i => i.id === newItem.id);
-            return existingItem && existingItem.in_stock !== newItem.in_stock;
+        if (!restaurantData) {
+          toast({
+            title: t("restaurantNotFound"),
+            description: t("sorryNotFound"),
+            variant: "destructive"
           });
-        });
-        
-        if (hasStockChanges) {
-          console.log("Stock changes detected, updating menu items");
-          setCategories(menuData);
-          if (activeCategory) {
-            const currentCategory = menuData.find(c => c.id === activeCategory);
-            if (!currentCategory) {
-              setActiveCategory(menuData.length > 0 ? menuData[0].id : null);
-            }
-          }
+          navigate('/');
+          return;
         }
-      }
-    } catch (error) {
-      console.error("Error refreshing menu items:", error);
-    }
-  };
-
-  useEffect(() => {
-    if (showWelcome || showOrderTypeSelection || !restaurant) return;
-    
-    if (refreshTimerRef.current) {
-      window.clearInterval(refreshTimerRef.current);
-    }
-    
-    refreshTimerRef.current = window.setInterval(() => {
-      refreshMenuItems();
-    }, 30000);
-    
-    return () => {
-      if (refreshTimerRef.current) {
-        window.clearInterval(refreshTimerRef.current);
+        
+        setRestaurant(restaurantData);
+        const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
+        setUiLanguage(lang);
+        
+        const menuData = await getMenuForRestaurant(restaurantData.id);
+        setCategories(menuData);
+        
+        if (menuData.length > 0) {
+          setActiveCategory(menuData[0].id);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
+        toast({
+          title: t("restaurantNotFound"),
+          description: t("sorryNotFound"),
+          variant: "destructive"
+        });
+        setLoading(false);
       }
     };
-  }, [restaurant, showWelcome, showOrderTypeSelection]);
+    
+    fetchRestaurantAndMenu();
+  }, [restaurantSlug, navigate, toast]);
+
+  useEffect(() => {
+    if (showWelcome) {
+      fullReset();
+    }
+  }, [showWelcome, fullReset]);
 
   const handleStartOrder = () => {
     fullReset();
