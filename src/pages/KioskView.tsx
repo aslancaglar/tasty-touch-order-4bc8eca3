@@ -61,6 +61,7 @@ const KioskView = () => {
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const cartRef = useRef<HTMLDivElement | null>(null);
 
   const { toast } = useToast();
@@ -106,7 +107,10 @@ const KioskView = () => {
       inactivityTitle: "Êtes-vous toujours là ?",
       inactivityMessage: "Voulez-vous continuer votre commande ?",
       yes: "Oui",
-      no: "Non"
+      no: "Non",
+      refreshMenu: "Rafraîchir le menu",
+      menuRefreshed: "Menu rafraîchi",
+      menuRefreshSuccess: "Le menu a été rafraîchi avec succès"
     },
     en: {
       restaurantNotFound: "Restaurant not found",
@@ -130,7 +134,10 @@ const KioskView = () => {
       inactivityTitle: "Are you still there?",
       inactivityMessage: "Do you want to continue your order?",
       yes: "Yes",
-      no: "No"
+      no: "No",
+      refreshMenu: "Refresh menu",
+      menuRefreshed: "Menu refreshed",
+      menuRefreshSuccess: "Menu has been refreshed successfully"
     },
     tr: {
       restaurantNotFound: "Restoran bulunamadı",
@@ -154,7 +161,10 @@ const KioskView = () => {
       inactivityTitle: "Hala orada mısınız?",
       inactivityMessage: "Siparişinize devam etmek istiyor musunuz?",
       yes: "Evet",
-      no: "Hayır"
+      no: "Hayır",
+      refreshMenu: "Menüyü yenile",
+      menuRefreshed: "Menü yenilendi",
+      menuRefreshSuccess: "Menü başarıyla yenilendi"
     }
   };
   
@@ -938,6 +948,7 @@ const KioskView = () => {
         orderType={orderType}
         tableNumber={tableNumber}
         t={t}
+        onRefresh={handleRefreshMenu}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -960,6 +971,8 @@ const KioskView = () => {
               handleSelectItem={handleSelectItem}
               currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
               t={t}
+              restaurantId={restaurant?.id}
+              refreshTrigger={refreshTrigger}
             />
           </div>
         </div>

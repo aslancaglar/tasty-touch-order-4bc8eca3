@@ -11,18 +11,23 @@ interface MenuItemGridProps {
   handleSelectItem: (item: MenuItem) => void;
   currencySymbol: string;
   t: (key: string) => string;
+  restaurantId?: string;
+  refreshTrigger?: number;
 }
 
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
   currencySymbol,
-  t
+  t,
+  restaurantId,
+  refreshTrigger
 }) => {
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const cacheImages = async () => {
+      console.log("Caching images for items:", items.length);
       const imagePromises = items
         .filter(item => item.in_stock && item.image)
         .map(async item => {
@@ -40,7 +45,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     };
 
     cacheImages();
-  }, [items]);
+  }, [items, refreshTrigger]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -76,4 +81,3 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
 };
 
 export default MenuItemGrid;
-
