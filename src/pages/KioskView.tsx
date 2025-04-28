@@ -821,7 +821,7 @@ const KioskView = () => {
     }
   };
 
-  const enableRealtimeForMenuItems = async () => {
+  const enableRealtimeForMenuItems = () => {
     try {
       const channel = supabase
         .channel('menu-items-status')
@@ -912,12 +912,8 @@ const KioskView = () => {
   }, [restaurantSlug, navigate, toast]);
 
   useEffect(() => {
-    const cleanup = enableRealtimeForMenuItems();
-    return () => {
-      if (cleanup) {
-        cleanup();
-      }
-    };
+    const cleanupFn = enableRealtimeForMenuItems();
+    return cleanupFn;
   }, [restaurant?.id]);
 
   if (loading && !restaurant) {
