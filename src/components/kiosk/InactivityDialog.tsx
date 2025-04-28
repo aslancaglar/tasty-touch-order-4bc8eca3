@@ -24,23 +24,16 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
   t
 }) => {
   return (
-    <Dialog 
-      open={isOpen} 
-      onOpenChange={(open) => {
-        if (!open) onCancel();
-      }}
-    >
-      <DialogContent 
-        className="sm:max-w-[425px]" 
-        onPointerDownOutside={(e) => {
-          // Prevent closing when clicking outside
-          e.preventDefault();
-        }} 
-        onEscapeKeyDown={(e) => {
-          // Prevent closing with Escape key
-          e.preventDefault();
-        }}
-      >
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) onCancel();
+    }}>
+      <DialogContent className="sm:max-w-[425px]" onPointerDownOutside={(e) => {
+        // Prevent closing when clicking outside
+        e.preventDefault();
+      }} onEscapeKeyDown={(e) => {
+        // Prevent closing with Escape key
+        e.preventDefault();
+      }}>
         <DialogHeader>
           <DialogTitle>{t("inactivityTitle")}</DialogTitle>
           <DialogDescription>
