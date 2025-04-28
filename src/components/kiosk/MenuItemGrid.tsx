@@ -8,18 +8,25 @@ import { getCachedImageUrl } from "@/utils/image-cache";
 
 interface MenuItemGridProps {
   items: MenuItem[];
-  handleSelectItem: (item: MenuItem) => void;
+  handleSelectItem?: (item: MenuItem) => void; // Made optional to match old usage
   currencySymbol: string;
   t: (key: string) => string;
+  loading?: boolean; // Added for KioskView usage
+  onSelectItem?: (item: MenuItem) => Promise<void>; // Added for KioskView usage
 }
 
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
   currencySymbol,
-  t
+  t,
+  loading,
+  onSelectItem
 }) => {
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
+  
+  // Use either onSelectItem or handleSelectItem, with preference to onSelectItem
+  const selectItemHandler = onSelectItem || handleSelectItem || ((item: MenuItem) => {});
   
   useEffect(() => {
     const cacheImages = async () => {
@@ -53,7 +60,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
               style={{
                 backgroundImage: `url(${cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'})`
               }}
-              onClick={() => handleSelectItem(item)}
+              onClick={() => selectItemHandler(item)}
             ></div>
             <div className="p-4">
               <div className="flex justify-between">
@@ -62,7 +69,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
               </div>
               <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
               <Button 
-                onClick={() => handleSelectItem(item)} 
+                onClick={() => selectItemHandler(item)} 
                 className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0"
               >
                 {t("addToCart")}

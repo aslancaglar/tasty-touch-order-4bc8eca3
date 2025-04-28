@@ -8,13 +8,15 @@ interface KioskHeaderProps {
   orderType: OrderType;
   tableNumber: string | null;
   t: (key: string) => string;
+  onBack?: () => void; // Added this prop to match usage in KioskView
 }
 
 const KioskHeader: React.FC<KioskHeaderProps> = ({
   restaurant,
   orderType,
   tableNumber,
-  t
+  t,
+  onBack
 }) => {
   return (
     <div className="h-48 bg-cover bg-center relative" style={{

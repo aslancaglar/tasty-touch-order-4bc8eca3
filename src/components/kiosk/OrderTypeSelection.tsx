@@ -9,7 +9,9 @@ interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectOrderType: (type: OrderType, tableNumber?: string) => void;
+  onOrderTypeSelected?: (type: OrderType, table?: string) => void; // Added this prop to match usage in KioskView
   uiLanguage?: "fr" | "en" | "tr";
+  t?: (key: string) => string; // Added t prop
 }
 
 const translations = {
@@ -34,16 +36,28 @@ const OrderTypeSelection = ({
   isOpen,
   onClose,
   onSelectOrderType,
-  uiLanguage = "fr"
+  onOrderTypeSelected, // Added this prop
+  uiLanguage = "fr",
+  t: externalT // Accept external t function
 }: OrderTypeSelectionProps) => {
-  const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
+  const internalT = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
+  // Use provided t function or fall back to internal translations
+  const t = externalT || internalT;
   
   const handleSelectDineIn = () => {
-    onSelectOrderType("dine-in");
+    if (onOrderTypeSelected) {
+      onOrderTypeSelected("dine-in");
+    } else {
+      onSelectOrderType("dine-in");
+    }
   };
   
   const handleSelectTakeaway = () => {
-    onSelectOrderType("takeaway");
+    if (onOrderTypeSelected) {
+      onOrderTypeSelected("takeaway");
+    } else {
+      onSelectOrderType("takeaway");
+    }
   };
   
   return (

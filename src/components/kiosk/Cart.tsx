@@ -12,10 +12,10 @@ import { calculateCartTotals } from "@/utils/price-utils";
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
-  onToggleOpen: () => void;
+  onToggleOpen?: () => void; // Made optional
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
-  onClearCart: () => void;
+  onClearCart?: () => void; // Made optional
   onPlaceOrder: () => void;
   placingOrder: boolean;
   orderPlaced: boolean;
@@ -32,7 +32,15 @@ interface CartProps {
   tableNumber?: string | null;
   showOrderSummaryOnly?: boolean;
   uiLanguage?: "fr" | "en" | "tr";
-  t: (key: string) => string;
+  t?: (key: string) => string;
+  
+  // Added additional props for KioskView
+  onClose?: () => void;
+  total?: number;
+  subtotal?: number;
+  tax?: number;
+  currencySymbol?: string;
+  cartRef?: React.RefObject<HTMLDivElement>;
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -107,11 +115,18 @@ const Cart: React.FC<CartProps> = ({
   tableNumber = null,
   showOrderSummaryOnly = false,
   uiLanguage = "fr",
-  t
+  t: externalT,
+  onClose,
+  total: providedTotal,
+  subtotal: providedSubtotal,
+  tax: providedTax,
+  currencySymbol: providedCurrencySymbol,
+  cartRef: externalCartRef
 }) => {
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
-  const cartRef = useRef<HTMLDivElement>(null);
+  const internalCartRef = useRef<HTMLDivElement>(null);
+  const cartRef = externalCartRef || internalCartRef;
   
   // Helper function to get cart-specific translations
   const tCart = (key: keyof typeof cartTranslations["en"]) => {
@@ -120,21 +135,25 @@ const Cart: React.FC<CartProps> = ({
       return cartTranslations[uiLanguage][key];
     } catch (err) {
       // If the key is missing in our translations, try to use the passed t function
-      return t(key);
+      return externalT ? externalT(key) : key;
     }
   };
   
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && !showOrderSummary && cartRef.current && !cartRef.current.contains(event.target as Node)) {
-        onToggleOpen();
+        if (onClose) {
+          onClose();
+        } else if (onToggleOpen) {
+          onToggleOpen();
+        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, onToggleOpen, showOrderSummary]);
+  }, [isOpen, onToggleOpen, showOrderSummary, onClose, cartRef]);
   
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
@@ -148,19 +167,37 @@ const Cart: React.FC<CartProps> = ({
     onPlaceOrder();
     setShowOrderSummary(false);
   };
+
+  const handleToggleCart = () => {
+    if (onClose) {
+      onClose();
+    } else if (onToggleOpen) {
+      onToggleOpen();
+    }
+  };
   
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
   
-  const {
-    total,
-    subtotal,
-    tax
-  } = calculateCartTotals(cart);
+  // Use provided values or calculate them
+  let totals = {
+    total: typeof providedTotal !== 'undefined' ? providedTotal : 0,
+    subtotal: typeof providedSubtotal !== 'undefined' ? providedSubtotal : 0,
+    tax: typeof providedTax !== 'undefined' ? providedTax : 0
+  };
+  
+  if (typeof totals.total === 'undefined' || 
+      typeof totals.subtotal === 'undefined' || 
+      typeof totals.tax === 'undefined') {
+    // Calculate from cart if values not provided
+    const calculatedTotals = calculateCartTotals(cart);
+    totals = calculatedTotals;
+  }
   
   const reversedCart = [...cart].reverse();
-  const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+  const currencySymbol = providedCurrencySymbol || 
+    (restaurant?.currency ? getCurrencySymbol(restaurant.currency) : "€");
   
   return (
     <>
@@ -172,7 +209,7 @@ const Cart: React.FC<CartProps> = ({
             <div className="flex items-center">
               <h2 className="text-xl font-bold">{tCart("yourOrder")} ({cartItemCount})</h2>
             </div>
-            <Button variant="ghost" size="icon" onClick={onToggleOpen}>
+            <Button variant="ghost" size="icon" onClick={handleToggleCart}>
               <ChevronDown className="h-5 w-5" />
             </Button>
           </div>
@@ -224,21 +261,25 @@ const Cart: React.FC<CartProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">{tCart("totalHT")}</span>
-                <span className="font-medium">{subtotal.toFixed(2)} {currencySymbol}</span>
+                <span className="font-medium">{totals.subtotal.toFixed(2)} {currencySymbol}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">{tCart("vat")}</span>
-                <span className="font-medium">{tax.toFixed(2)} {currencySymbol}</span>
+                <span className="font-medium">{totals.tax.toFixed(2)} {currencySymbol}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between text-lg font-bold">
                 <span>{tCart("totalTTC")}</span>
-                <span>{total.toFixed(2)} {currencySymbol}</span>
+                <span>{totals.total.toFixed(2)} {currencySymbol}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-6">
-              <Button variant="destructive" onClick={onClearCart} className="text-4xl py-[40px]">
+              <Button 
+                variant="destructive" 
+                onClick={onClearCart || (() => {})} 
+                className="text-4xl py-[40px]"
+              >
                 {tCart("cancel")}
               </Button>
               <Button onClick={handleShowOrderSummary} disabled={placingOrder || orderPlaced || cart.length === 0} className="bg-green-800 hover:bg-green-900 text-white py-[40px] text-4xl">

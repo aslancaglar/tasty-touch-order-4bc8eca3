@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Check, MinusCircle, PlusCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -22,12 +23,16 @@ interface ItemCustomizationDialogProps {
   onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
   onToggleTopping: (categoryId: string, toppingId: string) => void;
   quantity: number;
-  onQuantityChange: (quantity: number) => void;
+  onQuantityChange?: (quantity: number) => void; // Made optional
   specialInstructions: string;
-  onSpecialInstructionsChange: (instructions: string) => void;
+  onSpecialInstructionsChange?: (instructions: string) => void; // Made optional
   shouldShowToppingCategory: (category: any) => boolean;
   t: (key: string) => string;
   currencySymbol: string;
+  
+  // Added props to match KioskView usage
+  setQuantity?: (quantity: number) => void;
+  setSpecialInstructions?: (instructions: string) => void;
 }
 
 const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
@@ -45,9 +50,29 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   onSpecialInstructionsChange,
   shouldShowToppingCategory,
   t,
-  currencySymbol
+  currencySymbol,
+  // Added props
+  setQuantity,
+  setSpecialInstructions
 }) => {
   if (!item) return null;
+  
+  // Use either the handler or the setter function
+  const handleQuantityChange = (newQuantity: number) => {
+    if (setQuantity) {
+      setQuantity(newQuantity);
+    } else if (onQuantityChange) {
+      onQuantityChange(newQuantity);
+    }
+  };
+  
+  const handleSpecialInstructionsChange = (value: string) => {
+    if (setSpecialInstructions) {
+      setSpecialInstructions(value);
+    } else if (onSpecialInstructionsChange) {
+      onSpecialInstructionsChange(value);
+    }
+  };
   
   const calculateItemPrice = () => {
     if (!item) return 0;
@@ -191,7 +216,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               <Button 
                 variant="outline" 
                 size="icon" 
-                onClick={() => quantity > 1 && onQuantityChange(quantity - 1)}
+                onClick={() => quantity > 1 && handleQuantityChange(quantity - 1)}
               >
                 <MinusCircle className="h-4 w-4" />
               </Button>
@@ -199,7 +224,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               <Button 
                 variant="outline" 
                 size="icon" 
-                onClick={() => onQuantityChange(quantity + 1)}
+                onClick={() => handleQuantityChange(quantity + 1)}
               >
                 <PlusCircle className="h-4 w-4" />
               </Button>
@@ -212,7 +237,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               id="special-instructions"
               placeholder="Any special requests..."
               value={specialInstructions}
-              onChange={(e) => onSpecialInstructionsChange(e.target.value)}
+              onChange={(e) => handleSpecialInstructionsChange(e.target.value)}
               className="mt-1"
             />
           </div>
