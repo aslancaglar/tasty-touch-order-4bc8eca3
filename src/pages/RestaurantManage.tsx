@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom";
 import { getRestaurants } from "@/services/kiosk-service";
 import { Restaurant } from "@/types/database-types";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OrdersTab from "@/components/restaurant/OrdersTab";
 import MenuTab from "@/components/restaurant/MenuTab";
@@ -13,6 +13,7 @@ import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import StockTab from "@/components/restaurant/StockTab";
 import SettingsTab from "@/components/restaurant/SettingsTab";
 import CacheManagement from "@/components/restaurant/CacheManagement";
+import { Button } from "@/components/ui/button";
 
 const RestaurantManage = () => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -20,41 +21,46 @@ const RestaurantManage = () => {
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchRestaurant = async () => {
-      try {
-        setLoading(true);
-        console.log("Fetching restaurant with ID:", restaurantId);
-        
-        // Using getRestaurants instead of getRestaurantById
-        const restaurantsData = await getRestaurants();
-        
-        // Find the restaurant with the matching ID
-        const data = restaurantsData.find(r => r.id === restaurantId) || null;
-        
-        if (data) {
-          console.log("Restaurant found:", data);
-          setRestaurant(data);
-        } else {
-          console.error("Restaurant not found with ID:", restaurantId);
-          toast({
-            title: "Error",
-            description: `Restaurant with ID ${restaurantId} could not be found.`,
-            variant: "destructive"
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching restaurant:", error);
+  const fetchRestaurant = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching restaurant with ID:", restaurantId);
+      
+      // Using getRestaurants instead of getRestaurantById
+      const restaurantsData = await getRestaurants();
+      console.log("Fetched restaurants:", restaurantsData);
+      
+      if (!restaurantsData || !Array.isArray(restaurantsData)) {
+        throw new Error("Invalid restaurant data format");
+      }
+      
+      // Find the restaurant with the matching ID
+      const data = restaurantsData.find(r => r.id === restaurantId);
+      
+      if (data) {
+        console.log("Restaurant found:", data);
+        setRestaurant(data);
+      } else {
+        console.error("Restaurant not found with ID:", restaurantId);
         toast({
           title: "Error",
-          description: "Failed to fetch restaurant details. Please try again.",
+          description: `Restaurant with ID ${restaurantId} could not be found.`,
           variant: "destructive"
         });
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching restaurant:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch restaurant details. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (restaurantId) {
       fetchRestaurant();
     }
@@ -73,13 +79,16 @@ const RestaurantManage = () => {
   if (!restaurant) {
     return (
       <AdminLayout>
-        <div className="flex justify-center items-center h-[80vh]">
+        <div className="flex justify-center items-center h-[80vh] flex-col gap-4">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Restaurant Not Found</h1>
             <p className="text-muted-foreground">
               The restaurant with the ID {restaurantId} could not be found.
             </p>
           </div>
+          <Button onClick={fetchRestaurant} variant="default">
+            <RefreshCw className="mr-2 h-4 w-4" /> Try Again
+          </Button>
         </div>
       </AdminLayout>
     );

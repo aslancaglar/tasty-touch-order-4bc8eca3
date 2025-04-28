@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { cacheImage, getCachedImage } from '@/utils/image-cache';
 import { UtensilsCrossed } from 'lucide-react';
+import { saveImageToCache, getImageFromCache } from '@/utils/image-cache';
 
 interface CachedImageProps {
   src: string;
@@ -12,6 +12,58 @@ interface CachedImageProps {
   width?: number;
   height?: number;
 }
+
+// Helper function to cache image from URL - implementation within component file
+const cacheImage = async (url: string, restaurantId: string): Promise<void> => {
+  try {
+    // Skip if URL is empty or not a valid URL
+    if (!url || url.startsWith('data:') || url.startsWith('blob:')) {
+      return;
+    }
+
+    // Generate a simple hash as ID from the URL
+    const id = url.split('/').pop() || url;
+    
+    // Fetch the image
+    const response = await fetch(url, { cache: 'no-store' });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    
+    // Save to cache
+    await saveImageToCache(id, url, restaurantId, blob);
+  } catch (error) {
+    console.error(`Failed to cache image from URL ${url}:`, error);
+  }
+};
+
+// Helper function to get cached image by URL - implementation within component file
+const getCachedImage = async (url: string, restaurantId: string): Promise<string | null> => {
+  try {
+    // Skip if URL is empty or not a valid URL
+    if (!url || url.startsWith('data:') || url.startsWith('blob:')) {
+      return url;
+    }
+    
+    // Generate a simple hash as ID from the URL
+    const id = url.split('/').pop() || url;
+    
+    // Try to get from cache
+    const cachedBlob = await getImageFromCache(id, restaurantId);
+    
+    if (cachedBlob) {
+      return URL.createObjectURL(cachedBlob);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Failed to get cached image for URL ${url}:`, error);
+    return null;
+  }
+};
 
 const CachedImage: React.FC<CachedImageProps> = ({
   src,
@@ -45,7 +97,7 @@ const CachedImage: React.FC<CachedImageProps> = ({
       
       try {
         // Try to get from cache first
-        const cachedSrc = await getCachedImage(src);
+        const cachedSrc = await getCachedImage(src, restaurantId);
         
         if (cachedSrc && isMounted) {
           setImageSrc(cachedSrc);
