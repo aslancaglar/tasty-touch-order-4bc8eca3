@@ -1,239 +1,178 @@
 
-/**
- * A utility for caching images in IndexedDB
- */
+// Image cache implementation using IndexedDB for larger files
 
-const DB_NAME = 'image_cache_db';
-const STORE_NAME = 'image_cache';
-const DB_VERSION = 1;
-const CACHE_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+// Set constants for cache management
+const IMAGE_CACHE_DB_NAME = 'imageCache';
+const IMAGE_CACHE_STORE_NAME = 'images';
+const IMAGE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
-let db: IDBDatabase | null = null;
-
-// Initialize the database
-const initDB = (): Promise<IDBDatabase> => {
+// Function to open the IndexedDB database
+const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
-    if (db) {
-      resolve(db);
-      return;
-    }
-
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
+    const request = indexedDB.open(IMAGE_CACHE_DB_NAME, 1);
+    
     request.onerror = (event) => {
-      console.error('Error opening IndexedDB', event);
+      console.error('Error opening IndexedDB:', event);
       reject('Error opening IndexedDB');
     };
-
+    
     request.onsuccess = (event) => {
-      db = (event.target as IDBOpenDBRequest).result;
+      const db = (event.target as IDBOpenDBRequest).result;
       resolve(db);
     };
-
+    
     request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result;
-      
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        const objectStore = database.createObjectStore(STORE_NAME, { keyPath: 'url' });
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(IMAGE_CACHE_STORE_NAME)) {
+        const objectStore = db.createObjectStore(IMAGE_CACHE_STORE_NAME, { keyPath: 'id' });
         objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+        objectStore.createIndex('restaurantId', 'restaurantId', { unique: false });
       }
     };
   });
 };
 
-// Clear expired cache entries
-const clearExpiredCache = async (): Promise<void> => {
+// Function to save an image to the cache
+export const saveImageToCache = async (
+  id: string, 
+  url: string, 
+  restaurantId: string,
+  blob: Blob
+): Promise<void> => {
   try {
-    const database = await initDB();
-    const transaction = database.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const index = store.index('timestamp');
-    const now = Date.now();
+    const db = await openDB();
+    const transaction = db.transaction(IMAGE_CACHE_STORE_NAME, 'readwrite');
+    const objectStore = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
     
-    const request = index.openCursor();
-    
-    request.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-      
-      if (cursor) {
-        const entry = cursor.value;
-        if (now - entry.timestamp > CACHE_EXPIRY) {
-          store.delete(cursor.primaryKey);
-        }
-        cursor.continue();
-      }
-    };
-    
-  } catch (error) {
-    console.error('Error clearing expired cache:', error);
-  }
-};
-
-// Cache an image
-export const cacheImage = async (url: string, restaurantId: string): Promise<void> => {
-  if (!url || url.startsWith('blob:') || url.startsWith('data:')) {
-    return;
-  }
-
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    
-    const database = await initDB();
-    const transaction = database.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    
-    await store.put({
+    const cacheEntry = {
+      id: `${restaurantId}_${id}`,
       url,
       restaurantId,
       blob,
       timestamp: Date.now()
-    });
+    };
     
-    // Clear expired entries periodically
-    clearExpiredCache();
+    await new Promise<void>((resolve, reject) => {
+      const request = objectStore.put(cacheEntry);
+      request.onsuccess = () => resolve();
+      request.onerror = (e) => {
+        console.error('Error saving image to cache:', e);
+        reject(e);
+      };
+    });
   } catch (error) {
-    console.error('Error caching image:', error);
+    console.error('Failed to save image to cache:', error);
   }
 };
 
-// Get a cached image
-export const getCachedImage = async (url: string): Promise<string | null> => {
-  if (!url || url.startsWith('blob:') || url.startsWith('data:')) {
-    return url;
-  }
-
+// Function to get an image from the cache
+export const getImageFromCache = async (id: string, restaurantId: string): Promise<Blob | null> => {
   try {
-    const database = await initDB();
-    const transaction = database.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
+    const db = await openDB();
+    const transaction = db.transaction(IMAGE_CACHE_STORE_NAME, 'readonly');
+    const objectStore = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
     
-    return new Promise((resolve) => {
-      const request = store.get(url);
-      
-      request.onsuccess = (event) => {
-        const result = (event.target as IDBRequest).result;
-        
-        if (result && result.blob) {
-          resolve(URL.createObjectURL(result.blob));
-        } else {
-          resolve(null);
-        }
-      };
-      
-      request.onerror = () => {
-        resolve(null);
+    const cacheEntry = await new Promise<any>((resolve, reject) => {
+      const request = objectStore.get(`${restaurantId}_${id}`);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = (e) => {
+        console.error('Error getting image from cache:', e);
+        reject(e);
       };
     });
+    
+    if (cacheEntry && cacheEntry.timestamp > Date.now() - IMAGE_CACHE_TTL) {
+      return cacheEntry.blob;
+    }
+    
+    return null;
   } catch (error) {
-    console.error('Error retrieving cached image:', error);
+    console.error('Failed to get image from cache:', error);
     return null;
   }
 };
 
-// Clear cached images for a restaurant
-export const clearCachedImages = async (restaurantId: string | null = null): Promise<void> => {
+// Function to get cache statistics for a restaurant
+export const getImageCacheStats = async (restaurantId: string): Promise<{ count: number, size: number }> => {
   try {
-    const database = await initDB();
-    const transaction = database.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
+    const db = await openDB();
+    const transaction = db.transaction(IMAGE_CACHE_STORE_NAME, 'readonly');
+    const objectStore = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
+    const index = objectStore.index('restaurantId');
     
-    if (restaurantId) {
-      // Clear only images for this restaurant
-      const request = store.openCursor();
-      
-      request.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-        
-        if (cursor) {
-          const entry = cursor.value;
-          if (entry.restaurantId === restaurantId) {
-            store.delete(cursor.primaryKey);
-          }
-          cursor.continue();
-        }
-      };
-    } else {
-      // Clear all images
-      store.clear();
-    }
-  } catch (error) {
-    console.error('Error clearing cached images:', error);
-  }
-};
-
-// Get stats about cached images
-export const getImageCacheStats = async (restaurantId: string | null = null): Promise<{ count: number, size: number }> => {
-  try {
-    const database = await initDB();
-    const transaction = database.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    
-    return new Promise((resolve) => {
-      let count = 0;
-      let totalSize = 0;
-      
-      const request = store.openCursor();
-      
-      request.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-        
-        if (cursor) {
-          const entry = cursor.value;
-          
-          if (!restaurantId || entry.restaurantId === restaurantId) {
-            count++;
-            if (entry.blob && entry.blob.size) {
-              totalSize += entry.blob.size;
-            }
-          }
-          
-          cursor.continue();
-        } else {
-          resolve({
-            count,
-            size: Math.round(totalSize / 1024) // Size in KB
-          });
-        }
-      };
-      
-      request.onerror = () => {
-        resolve({ count: 0, size: 0 });
+    const entries = await new Promise<any[]>((resolve, reject) => {
+      const request = index.getAll(restaurantId);
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = (e) => {
+        console.error('Error getting image cache stats:', e);
+        reject(e);
       };
     });
+    
+    const totalSize = entries.reduce((total, entry) => {
+      return total + (entry.blob ? entry.blob.size : 0);
+    }, 0);
+    
+    return {
+      count: entries.length,
+      size: Math.round(totalSize / 1024) // Convert bytes to KB
+    };
   } catch (error) {
-    console.error('Error getting image cache stats:', error);
+    console.error('Failed to get image cache stats:', error);
     return { count: 0, size: 0 };
   }
 };
 
-// Update the clearCache in cache-utils.ts to also clear images
-export const clearAllCache = async (restaurantId: string | null = null): Promise<void> => {
-  // Clear localStorage cache
-  if (typeof window !== 'undefined') {
-    const CACHE_PREFIX = 'kiosk_cache_';
+// Function to clear all cached images for a restaurant
+export const clearCachedImages = async (restaurantId: string): Promise<void> => {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction(IMAGE_CACHE_STORE_NAME, 'readwrite');
+    const objectStore = transaction.objectStore(IMAGE_CACHE_STORE_NAME);
+    const index = objectStore.index('restaurantId');
     
-    if (restaurantId) {
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(`${CACHE_PREFIX}${restaurantId}_`)) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-    } else {
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(CACHE_PREFIX)) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-    }
+    const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
+      const keyRequest = index.getAllKeys(restaurantId);
+      keyRequest.onsuccess = () => resolve(keyRequest.result);
+      keyRequest.onerror = (e) => {
+        console.error('Error getting image cache keys:', e);
+        reject(e);
+      };
+    });
+    
+    await Promise.all(keys.map(key => 
+      new Promise<void>((resolve, reject) => {
+        const deleteRequest = objectStore.delete(key);
+        deleteRequest.onsuccess = () => resolve();
+        deleteRequest.onerror = (e) => {
+          console.error('Error deleting image from cache:', e);
+          reject(e);
+        };
+      })
+    ));
+    
+    console.log(`Cleared ${keys.length} cached images for restaurant ${restaurantId}`);
+  } catch (error) {
+    console.error('Failed to clear cached images:', error);
+    throw error;
   }
-  
-  // Clear image cache
-  await clearCachedImages(restaurantId);
+};
+
+// Function to clear all caches for a restaurant (both data and images)
+export const clearAllCache = async (restaurantId: string): Promise<void> => {
+  try {
+    // Import data cache utilities to avoid circular dependency
+    const { clearCache } = await import('./cache-utils');
+    
+    // Clear data cache
+    clearCache(restaurantId);
+    
+    // Clear image cache
+    await clearCachedImages(restaurantId);
+    
+    console.log(`All caches cleared for restaurant ${restaurantId}`);
+  } catch (error) {
+    console.error('Failed to clear all caches:', error);
+    throw error;
+  }
 };
