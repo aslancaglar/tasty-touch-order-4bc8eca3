@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, RefreshCw, Database, Image } from 'lucide-react';
 import { clearCache, getCacheStats } from '@/utils/cache-utils';
-import { getImageCacheStats, clearAllCache } from '@/utils/image-cache';
+import { getImageCacheStats, clearCachedImages, clearAllCache } from '@/utils/image-cache';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 

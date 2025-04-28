@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ import {
   updateCategory,
   deleteCategory,
   getToppingCategoriesByRestaurantId,
-  getRestaurantById,
+  getRestaurants as getRestaurantById, // Using getRestaurants as temporary replacement for getRestaurantById
   updateRestaurant
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, ToppingCategory } from "@/types/database-types";
@@ -34,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Order } from "@/types/database-types";
 import { getOrdersByRestaurantId, updateOrderStatus } from "@/services/kiosk-service";
-import { CheckCheck, ChevronsUpDown } from "lucide-react";
+import { CheckCheck, ChevronsUpDown, CalendarIcon } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -52,7 +53,6 @@ import {
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { CalendarIcon } from "@radix-ui/react-icons";
 import { DateRange } from "react-day-picker";
 import { Button as UIButton } from "@/components/ui/button";
 import { Input as UInput } from "@/components/ui/input";
@@ -99,12 +99,17 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ restaurantId }) => {
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
       setLoading(true);
-      await updateOrderStatus(orderId, newStatus);
+      // Make sure newStatus is of type OrderStatus
+      const validStatus = newStatus as Order['status'];
+      await updateOrderStatus(orderId, validStatus);
+      
+      // Update the order status in the state with the correct type
       setOrders(prevOrders =>
         prevOrders.map(order =>
-          order.id === orderId ? { ...order, status: newStatus } : order
+          order.id === orderId ? { ...order, status: validStatus } : order
         )
       );
+      
       toast({
         title: "Order Status Updated",
         description: `Order status updated to ${newStatus}.`,
@@ -151,7 +156,7 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ restaurantId }) => {
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="bottom">
+            <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="range"
                 defaultMonth={date?.from}
@@ -174,7 +179,7 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ restaurantId }) => {
                 <CommandList>
                   <CommandEmpty>No status found.</CommandEmpty>
                   <CommandGroup>
-                    {["pending", "processing", "shipped", "delivered", "cancelled"].map((status) => (
+                    {["pending", "preparing", "ready", "completed", "cancelled"].map((status) => (
                       <CommandItem
                         key={status}
                         onSelect={() => {
@@ -244,7 +249,7 @@ const OrdersTab: React.FC<OrdersTabProps> = ({ restaurantId }) => {
                         <SelectValue placeholder="Update Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["pending", "processing", "shipped", "delivered", "cancelled"].map((status) => (
+                        {["pending", "preparing", "ready", "completed", "cancelled"].map((status) => (
                           <SelectItem key={status} value={status}>
                             {status}
                           </SelectItem>
@@ -781,10 +786,8 @@ interface SettingsTabProps {
 const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onUpdate }) => {
   const [name, setName] = useState(restaurant.name);
   const [slug, setSlug] = useState(restaurant.slug);
-  const [location, setLocation] = useState(restaurant.location);
-  const [description, setDescription] = useState(restaurant.description || "");
+  const [location, setLocation] = useState(restaurant.location || "");
   const [imageUrl, setImageUrl] = useState(restaurant.image_url || "");
-  const [active, setActive] = useState(restaurant.active);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -795,9 +798,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onUpdate }) => {
         name,
         slug,
         location,
-        description,
-        image_url: imageUrl,
-        active
+        image_url: imageUrl
       });
       toast({
         title: "Restaurant Updated",
@@ -835,16 +836,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onUpdate }) => {
           <UInput id="location" value={location} onChange={(e) => setLocation(e.target.value)} />
         </div>
         <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
-        <div>
           <Label htmlFor="image_url">Image URL</Label>
           <UInput id="image_url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-        </div>
-        <div className="flex items-center space-x-2">
-          <Label htmlFor="active">Active</Label>
-          <Switch id="active" checked={active} onCheckedChange={(checked) => setActive(checked)} />
         </div>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? (
@@ -871,7 +864,10 @@ const RestaurantManage = () => {
     const fetchRestaurant = async () => {
       try {
         setLoading(true);
-        const data = await getRestaurantById(restaurantId || "");
+        // Using getRestaurants instead of getRestaurantById as a temporary workaround
+        // This will need to be updated once getRestaurantById is implemented properly
+        const restaurantsData = await getRestaurants();
+        const data = restaurantsData.find(restaurant => restaurant.id === restaurantId) || null;
         setRestaurant(data);
         setLoading(false);
       } catch (error) {
@@ -964,7 +960,9 @@ const RestaurantManage = () => {
                   // Refetch restaurant data
                   const fetchRestaurant = async () => {
                     try {
-                      const data = await getRestaurantById(restaurant.id);
+                      // Using getRestaurants as a workaround
+                      const restaurantsData = await getRestaurants();
+                      const data = restaurantsData.find(r => r.id === restaurant.id) || null;
                       setRestaurant(data);
                     } catch (error) {
                       console.error("Error fetching restaurant:", error);
