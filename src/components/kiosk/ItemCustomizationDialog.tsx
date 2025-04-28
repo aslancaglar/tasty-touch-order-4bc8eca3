@@ -24,7 +24,7 @@ interface ItemCustomizationDialogProps {
   handleToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
   handleToggleTopping: (categoryId: string, toppingId: string) => void;
   handleAddToCart: () => void;
-  calculateItemPrice: (item: MenuItemWithOptions, options: any[], toppings: any[]) => number;
+  calculateItemPrice: (item: MenuItemWithOptions) => number;
   getCurrencySymbol: (currency: string) => string;
   restaurant: { currency?: string } | null;
   t: (key: string) => string;
@@ -62,7 +62,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         </DialogHeader>
         
         <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-          {selectedItem.options && selectedItem.options.map(option => (
+          {selectedItem.options && selectedItem.options.length > 0 && selectedItem.options.map(option => (
             <div key={option.id} className="space-y-2">
               <Label className="font-medium">
                 {option.name}
@@ -99,7 +99,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
             </div>
           ))}
 
-          {selectedItem.toppingCategories && selectedItem.toppingCategories
+          {selectedItem.toppingCategories && selectedItem.toppingCategories.length > 0 && selectedItem.toppingCategories
             .filter(category => shouldShowToppingCategory(category))
             .map(category => (
               <div key={category.id} className="space-y-3">
@@ -114,7 +114,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                   </span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {category.toppings.map(topping => {
+                  {category.toppings && category.toppings.length > 0 && category.toppings.map(topping => {
                     const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
                     const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
                     return (
@@ -181,7 +181,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               onClick={handleAddToCart} 
               className="w-full bg-kiosk-primary text-2xl py-[30px]"
             >
-              {t("addToCart")} - {(calculateItemPrice(selectedItem, selectedOptions, selectedToppings) * quantity).toFixed(2)} {currencySymbol}
+              {t("addToCart")} - {(calculateItemPrice(selectedItem) * quantity).toFixed(2)} {currencySymbol}
             </Button>
           </div>
         </DialogFooter>

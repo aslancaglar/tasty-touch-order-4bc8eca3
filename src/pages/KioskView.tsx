@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -281,7 +280,9 @@ const KioskView = () => {
   // Item customization functions
   const handleSelectItem = async (item: MenuItem) => {
     try {
+      console.log("Selected item:", item);
       const itemWithOptions = await getMenuItemWithOptions(item.id);
+      console.log("Item with options:", itemWithOptions);
       setSelectedItem(itemWithOptions);
       setQuantity(1);
       setSelectedOptions([]);
@@ -332,6 +333,7 @@ const KioskView = () => {
   };
   
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
+    console.log("Toggle topping:", { categoryId, toppingId });
     setSelectedToppings(prev => {
       // Find if we already have this category
       const existingCategory = prev.find(c => c.categoryId === categoryId);
@@ -360,7 +362,7 @@ const KioskView = () => {
   };
   
   const shouldShowToppingCategory = (category: any) => {
-    // Logic to determine if a topping category should be shown based on selections
+    // Always show categories if they don't have conditional logic
     if (!category.show_if_selection_type || !category.show_if_selection_id) return true;
     
     // Check if any of the required selections are made
@@ -386,7 +388,7 @@ const KioskView = () => {
     return false;
   };
   
-  const calculateItemPrice = (item: MenuItemWithOptions | null) => {
+  const calculateItemPrice = (item: MenuItemWithOptions) => {
     if (!item) return 0;
     
     let basePrice = parseFloat(item.price.toString());
@@ -417,17 +419,17 @@ const KioskView = () => {
       }
     });
     
-    return basePrice * quantity;
+    return basePrice;
   };
   
   const handleAddToCart = () => {
     if (!selectedItem) return;
     
     // Check if all required options are selected
-    const requiredOptions = selectedItem.options?.filter(option => option.required);
-    const allRequiredSelected = requiredOptions?.every(option => 
+    const requiredOptions = selectedItem.options?.filter(option => option.required) || [];
+    const allRequiredSelected = requiredOptions.every(option => 
       selectedOptions.some(selected => selected.optionId === option.id)
-    ) ?? true;
+    );
     
     if (!allRequiredSelected) {
       toast({
@@ -446,7 +448,7 @@ const KioskView = () => {
       selectedOptions: selectedOptions,
       selectedToppings: selectedToppings,
       specialInstructions: specialInstructions,
-      itemPrice: calculateItemPrice(selectedItem) / quantity, // Per item price
+      itemPrice: calculateItemPrice(selectedItem), // Per item price
     };
     
     // Add to cart
