@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { Package, PackageOpen } from "lucide-react";
+import { Package, PackageOpen, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import {
   getCategoriesByRestaurantId,
   getMenuItemsByCategory,
@@ -14,6 +14,7 @@ import {
   updateTopping,
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, ToppingCategory, Topping } from "@/types/database-types";
+import { sendKioskRefreshSignal } from "@/integrations/supabase/client";
 
 interface StockTabProps {
   restaurant: Restaurant;
@@ -25,6 +26,7 @@ const StockTab = ({ restaurant }: StockTabProps) => {
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
   const [toppings, setToppings] = useState<Record<string, Topping[]>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -161,98 +163,139 @@ const StockTab = ({ restaurant }: StockTabProps) => {
     }
   };
 
+  const handleRefreshKiosk = async () => {
+    try {
+      setRefreshing(true);
+      
+      const success = await sendKioskRefreshSignal(restaurant.id);
+      
+      if (success) {
+        toast({
+          title: "Kiosk Refreshed",
+          description: "All kiosk views connected to this restaurant will be refreshed.",
+        });
+      } else {
+        throw new Error("Failed to send refresh signal");
+      }
+    } catch (error) {
+      console.error("Error refreshing kiosk:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh kiosk view",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (loading) {
     return <div>Loading stock management...</div>;
   }
 
   return (
-    <Tabs defaultValue="menu-items">
-      <TabsList className="mb-4">
-        <TabsTrigger value="menu-items">Menu Items</TabsTrigger>
-        <TabsTrigger value="toppings">Toppings</TabsTrigger>
-      </TabsList>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Stock Management</h2>
+        <Button 
+          onClick={handleRefreshKiosk} 
+          variant="outline" 
+          disabled={refreshing}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? "Refreshing Kiosk..." : "Refresh Kiosk View"}
+        </Button>
+      </div>
+      
+      <Tabs defaultValue="menu-items">
+        <TabsList className="mb-4">
+          <TabsTrigger value="menu-items">Menu Items</TabsTrigger>
+          <TabsTrigger value="toppings">Toppings</TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="menu-items">
-        <div className="space-y-6">
-          {categories.map((category) => (
-            <Card key={category.id} className="p-6">
-              <h3 className="text-lg font-semibold mb-4">{category.name}</h3>
-              <div className="space-y-4">
-                {menuItems[category.id]?.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center space-x-4">
-                      {item.image && (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="h-12 w-12 object-cover rounded-md"
+        <TabsContent value="menu-items">
+          <div className="space-y-6">
+            {categories.map((category) => (
+              <Card key={category.id} className="p-6">
+                <h3 className="text-lg font-semibold mb-4">{category.name}</h3>
+                <div className="space-y-4">
+                  {menuItems[category.id]?.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div className="flex items-center space-x-4">
+                        {item.image && (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="h-12 w-12 object-cover rounded-md"
+                          />
+                        )}
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {item.description}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {item.in_stock ? (
+                          <Package className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <PackageOpen className="h-4 w-4 text-red-500" />
+                        )}
+                        <Switch
+                          checked={item.in_stock}
+                          onCheckedChange={() => handleMenuItemStockToggle(item)}
                         />
-                      )}
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.description}
-                        </p>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {item.in_stock ? (
-                        <Package className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <PackageOpen className="h-4 w-4 text-red-500" />
-                      )}
-                      <Switch
-                        checked={item.in_stock}
-                        onCheckedChange={() => handleMenuItemStockToggle(item)}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ))}
-        </div>
-      </TabsContent>
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
 
-      <TabsContent value="toppings">
-        <div className="space-y-6">
-          {toppingCategories.map((category) => (
-            <Card key={category.id} className="p-6">
-              <h3 className="text-lg font-semibold mb-4">{category.name}</h3>
-              <div className="space-y-4">
-                {toppings[category.id]?.map((topping) => (
-                  <div
-                    key={topping.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium">{topping.name}</p>
-                      <p className="text-sm text-gray-600">
-                        €{topping.price.toFixed(2)}
-                      </p>
+        <TabsContent value="toppings">
+          <div className="space-y-6">
+            {toppingCategories.map((category) => (
+              <Card key={category.id} className="p-6">
+                <h3 className="text-lg font-semibold mb-4">{category.name}</h3>
+                <div className="space-y-4">
+                  {toppings[category.id]?.map((topping) => (
+                    <div
+                      key={topping.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{topping.name}</p>
+                        <p className="text-sm text-gray-600">
+                          €{topping.price.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {topping.in_stock ? (
+                          <Package className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <PackageOpen className="h-4 w-4 text-red-500" />
+                        )}
+                        <Switch
+                          checked={topping.in_stock}
+                          onCheckedChange={() => handleToppingStockToggle(topping)}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {topping.in_stock ? (
-                        <Package className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <PackageOpen className="h-4 w-4 text-red-500" />
-                      )}
-                      <Switch
-                        checked={topping.in_stock}
-                        onCheckedChange={() => handleToppingStockToggle(topping)}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ))}
-        </div>
-      </TabsContent>
-    </Tabs>
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 
