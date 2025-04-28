@@ -178,48 +178,6 @@ const KioskView = () => {
   const { showDialog, handleContinue, handleCancel, fullReset } = useInactivityTimer(resetToWelcome);
 
   useEffect(() => {
-    const fetchRestaurantAndMenu = async () => {
-      if (!restaurantSlug) {
-        navigate('/');
-        return;
-      }
-      
-      try {
-        setLoading(true);
-        const restaurantData = await getRestaurantBySlug(restaurantSlug);
-        
-        if (!restaurantData) {
-          toast({
-            title: t("restaurantNotFound"),
-            description: t("sorryNotFound"),
-            variant: "destructive"
-          });
-          navigate('/');
-          return;
-        }
-        
-        setRestaurant(restaurantData);
-        const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
-        setUiLanguage(lang);
-        
-        await fetchCategories();
-        
-        setLoading(false);
-      } catch (error) {
-        console.error("Erreur lors du chargement du restaurant et du menu:", error);
-        toast({
-          title: t("restaurantNotFound"),
-          description: t("sorryNotFound"),
-          variant: "destructive"
-        });
-        setLoading(false);
-      }
-    };
-    
-    fetchRestaurantAndMenu();
-  }, [restaurantSlug, navigate, toast]);
-
-  useEffect(() => {
     if (showWelcome) {
       fullReset();
     }
@@ -931,4 +889,35 @@ const KioskView = () => {
       if (restaurant?.id && !showWelcome && !showOrderTypeSelection) {
         fetchCategories();
       }
-    }, 60000); // Refresh every
+    }, 60000); // Refresh every minute
+    
+    return () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+    };
+  }, [restaurantSlug]);
+
+  return (
+    <div className="flex flex-col h-screen">
+      <KioskHeader restaurant={restaurant} onBack={() => navigate('/')} />
+
+      {loading ? (
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="animate-spin h-6 w-6" />
+        </div>
+      ) : showWelcome ? (
+        <WelcomePage restaurant={restaurant} onStartOrder={handleStartOrder} />
+      ) : showOrderTypeSelection ? (
+        <OrderTypeSelection onOrderTypeSelected={handleOrderTypeSelected} t={t} />
+      ) : (
+        <div className="flex flex-grow">
+          <div className="w-1/4 p-4">
+            <MenuCategoryList
+              categories={categories}
+              activeCategory={activeCategory}
+              setActiveCategory={setActiveCategory}
+            />
+            <CartButton cart={cart} toggleCart={toggleCart} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />
+          </div>
+          <div className="w-3/4 p-4">
+            {restaurant ? (
+              <>
