@@ -25,10 +25,12 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const [localItems, setLocalItems] = useState<MenuItem[]>(items);
   const { toast } = useToast();
 
+  // Initialize localItems when items prop changes
   useEffect(() => {
     setLocalItems(items);
   }, [items]);
 
+  // Cache images for performance
   useEffect(() => {
     const cacheImages = async () => {
       const imagePromises = localItems
@@ -50,8 +52,20 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     cacheImages();
   }, [localItems]);
 
+  // Set up real-time subscription to menu items
   useEffect(() => {
-    // Set up real-time subscription to menu items
+    console.log("Setting up real-time subscription for menu items", 
+      items.map(item => item.id)
+    );
+    
+    // Create a proper filter condition with a valid IN clause
+    const itemIds = items.map(item => item.id);
+    
+    // Only set up subscription if we have items
+    if (itemIds.length === 0) {
+      return;
+    }
+    
     const channel = supabase
       .channel('menu-items-changes')
       .on(
@@ -60,9 +74,10 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           event: 'UPDATE',
           schema: 'public',
           table: 'menu_items',
-          filter: `id=in.(${items.map(item => `'${item.id}'`).join(',')})`,
+          filter: `id=in.(${itemIds.map(id => `'${id}'`).join(',')})`,
         },
         (payload) => {
+          console.log("Received update for menu item:", payload);
           const updatedItem = payload.new as MenuItem;
           
           // Find the item in the current local state
@@ -92,12 +107,16 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Subscription status:", status);
+      });
 
+    // Cleanup subscription on component unmount
     return () => {
+      console.log("Cleaning up subscription");
       supabase.removeChannel(channel);
     };
-  }, [items, localItems, toast]);
+  }, [items, toast]); // Remove localItems from dependency to avoid re-subscribing
 
   // Filter in-stock items at render time
   const inStockItems = localItems.filter(item => item.in_stock);
