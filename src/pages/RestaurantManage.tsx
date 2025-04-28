@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { useParams } from "react-router-dom";
-import { getRestaurants, updateRestaurant } from "@/services/kiosk-service";
+import { getRestaurants } from "@/services/kiosk-service";
 import { Restaurant } from "@/types/database-types";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -106,38 +106,24 @@ const RestaurantManage = () => {
           </TabsList>
           
           <TabsContent value="orders">
-            <OrdersTab restaurantId={restaurant.id} />
+            <OrdersTab restaurant={restaurant} />
           </TabsContent>
           
           <TabsContent value="menu">
-            <MenuTab restaurantId={restaurant.id} />
+            <MenuTab restaurant={restaurant} />
           </TabsContent>
           
           <TabsContent value="toppings">
-            <ToppingsTab restaurantId={restaurant.id} />
+            <ToppingsTab restaurant={restaurant} />
           </TabsContent>
           
           <TabsContent value="stock">
-            <StockTab restaurantId={restaurant.id} />
+            <StockTab restaurant={restaurant} />
           </TabsContent>
           
           <TabsContent value="settings">
             <SettingsTab 
               restaurant={restaurant} 
-              onUpdate={() => {
-                // Refetch restaurant data
-                const fetchRestaurant = async () => {
-                  try {
-                    // Using getRestaurants as a workaround
-                    const restaurantsData = await getRestaurants();
-                    const data = restaurantsData.find(r => r.id === restaurant.id) || null;
-                    setRestaurant(data);
-                  } catch (error) {
-                    console.error("Error fetching restaurant:", error);
-                  }
-                };
-                fetchRestaurant();
-              }} 
             />
           </TabsContent>
           

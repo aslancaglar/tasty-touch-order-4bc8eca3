@@ -92,6 +92,59 @@ export const getImageFromCache = async (id: string, restaurantId: string): Promi
   }
 };
 
+// Function to cache an image from a URL
+export const cacheImage = async (url: string, restaurantId: string): Promise<void> => {
+  try {
+    // Skip if URL is empty or not a valid URL
+    if (!url || url.startsWith('data:') || url.startsWith('blob:')) {
+      return;
+    }
+
+    // Generate a simple hash as ID from the URL
+    const id = url.split('/').pop() || url;
+    
+    // Fetch the image
+    const response = await fetch(url, { cache: 'no-store' });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    
+    // Save to cache
+    await saveImageToCache(id, url, restaurantId, blob);
+  } catch (error) {
+    console.error(`Failed to cache image from URL ${url}:`, error);
+  }
+};
+
+// Function to get a cached image by URL
+export const getCachedImage = async (url: string): Promise<string | null> => {
+  try {
+    // Skip if URL is empty or not a valid URL
+    if (!url || url.startsWith('data:') || url.startsWith('blob:')) {
+      return url;
+    }
+    
+    // Generate a simple hash as ID from the URL
+    const id = url.split('/').pop() || url;
+    const restaurantId = 'global'; // Default restaurantId for URL-based caching
+    
+    // Try to get from cache
+    const cachedBlob = await getImageFromCache(id, restaurantId);
+    
+    if (cachedBlob) {
+      return URL.createObjectURL(cachedBlob);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Failed to get cached image for URL ${url}:`, error);
+    return null;
+  }
+};
+
 // Function to get cache statistics for a restaurant
 export const getImageCacheStats = async (restaurantId: string): Promise<{ count: number, size: number }> => {
   try {
