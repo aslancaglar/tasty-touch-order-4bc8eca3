@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -22,8 +23,6 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
-import { cacheKeys, getCache, setCache } from "@/utils/cache-utils";
-import { calculateCartTotals } from "@/utils/price-utils";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -58,7 +57,6 @@ const KioskView = () => {
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
-  const [activeItems, setActiveItems] = useState<MenuItem[]>([]);
   
   const { toast } = useToast();
   
@@ -169,32 +167,19 @@ const KioskView = () => {
         }
         
         setRestaurant(restaurantData);
-        
-        // Try to get cached menu data
-        const cachedMenu = getCache<CategoryWithItems[]>(cacheKeys.categories(restaurantData.id));
-        if (cachedMenu) {
-          setCategories(cachedMenu);
-          if (cachedMenu.length > 0) {
-            setActiveCategory(cachedMenu[0].id);
-            setActiveItems(cachedMenu[0].items);
-          }
-        } else {
-          const menuData = await getMenuForRestaurant(restaurantData.id);
-          setCategories(menuData);
-          if (menuData.length > 0) {
-            setActiveCategory(menuData[0].id);
-            setActiveItems(menuData[0].items);
-          }
-          // Cache the menu data
-          setCache(cacheKeys.categories(restaurantData.id), menuData);
-        }
-        
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         
+        const menuData = await getMenuForRestaurant(restaurantData.id);
+        setCategories(menuData);
+        
+        if (menuData.length > 0) {
+          setActiveCategory(menuData[0].id);
+        }
+        
         setLoading(false);
       } catch (error) {
-        console.error("Error loading restaurant and menu:", error);
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
         toast({
           title: t("restaurantNotFound"),
           description: t("sorryNotFound"),
@@ -207,231 +192,356 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
-  // Update active items when active category changes
-  useEffect(() => {
-    if (activeCategory) {
-      const activeCategory_data = categories.find(c => c.id === activeCategory);
-      if (activeCategory_data) {
-        setActiveItems(activeCategory_data.items);
+  const handleStartOrder = () => {
+    setShowWelcome(false);
+    setShowOrderTypeSelection(true);
+  };
+
+  const handleOrderTypeSelected = (type: OrderType, table?: string) => {
+    setOrderType(type);
+    if (table) {
+      setTableNumber(table);
+    }
+    setShowOrderTypeSelection(false);
+  };
+
+  const fetchToppingCategories = async (menuItemId: string) => {
+    try {
+      const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
+        .from('menu_item_topping_categories')
+        .select('topping_category_id')
+        .eq('menu_item_id', menuItemId);
+
+      if (toppingCategoriesError) {
+        console.error("Erreur lors du chargement des catégories de toppings:", toppingCategoriesError);
+        return [];
       }
-    }
-  }, [activeCategory, categories]);
 
-  // Cart related functions
-  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
-  const cartIsEmpty = cartItemCount === 0;
-  
-  const toggleCart = () => {
-    setIsCartOpen(!isCartOpen);
-  };
-  
-  const calculateCartTotal = () => {
-    return cart.reduce((total, item) => total + (item.itemPrice * item.quantity), 0);
-  };
+      if (!menuItemToppingCategories.length) {
+        return [];
+      }
 
-  const calculateSubtotal = () => {
-    const { subtotal } = calculateCartTotals(cart);
-    return subtotal;
-  };
-  
-  const calculateTax = () => {
-    const { tax } = calculateCartTotals(cart);
-    return tax;
-  };
-  
-  const handleUpdateCartItemQuantity = (itemId: string, quantity: number) => {
-    if (quantity < 1) {
-      handleRemoveCartItem(itemId);
-      return;
-    }
-    
-    setCart(prevCart => {
-      return prevCart.map(item => {
-        if (item.id === itemId) {
-          return { ...item, quantity };
+      const toppingCategoryIds = menuItemToppingCategories.map(mtc => mtc.topping_category_id);
+      const { data: toppingCategories, error: categoriesError } = await supabase
+        .from('topping_categories')
+        .select('*')
+        .in('id', toppingCategoryIds);
+
+      if (categoriesError) {
+        console.error("Erreur lors du chargement des détails des catégories de toppings:", categoriesError);
+        return [];
+      }
+
+      const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
+        const { data: toppings, error: toppingsError } = await supabase
+          .from('toppings')
+          .select('*')
+          .eq('category_id', category.id)
+          .eq('in_stock', true);
+
+        if (toppingsError) {
+          console.error(`Erreur lors du chargement des ingrédients pour la catégorie ${category.id}:`, toppingsError);
+          return {
+            id: category.id,
+            name: category.name,
+            min_selections: category.min_selections || 0,
+            max_selections: category.max_selections || 0,
+            required: category.min_selections ? category.min_selections > 0 : false,
+            toppings: [],
+            show_if_selection_id: category.show_if_selection_id,
+            show_if_selection_type: category.show_if_selection_type
+          };
         }
-        return item;
-      });
-    });
+
+        return {
+          id: category.id,
+          name: category.name,
+          min_selections: category.min_selections || 0,
+          max_selections: category.max_selections || 0,
+          required: category.min_selections ? category.min_selections > 0 : false,
+          toppings: toppings.map(topping => ({
+            id: topping.id,
+            name: topping.name,
+            price: topping.price,
+            tax_percentage: topping.tax_percentage || 0
+          })),
+          show_if_selection_id: category.show_if_selection_id,
+          show_if_selection_type: category.show_if_selection_type
+        };
+      }));
+
+      return toppingCategoriesWithToppings.filter(category => category.toppings.length > 0);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des catégories de toppings:", error);
+      return [];
+    }
   };
-  
-  const handleRemoveCartItem = (itemId: string) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== itemId));
-  };
-  
-  const handlePlaceOrder = async () => {
-    // Order placement logic would go here
-    setPlacingOrder(true);
-    
-    // Simulate order placement
-    setTimeout(() => {
-      setPlacingOrder(false);
-      setOrderPlaced(true);
-      
-      // Clear cart and reset after some delay
-      setTimeout(() => {
-        setCart([]);
-        setIsCartOpen(false);
-        setOrderPlaced(false);
-      }, 2000);
-    }, 1500);
-  };
-  
-  // Item customization functions
+
   const handleSelectItem = async (item: MenuItem) => {
     try {
-      console.log("Selected item:", item);
+      setLoading(true);
       const itemWithOptions = await getMenuItemWithOptions(item.id);
-      console.log("Item with options:", itemWithOptions);
-      setSelectedItem(itemWithOptions);
+      
+      if (!itemWithOptions) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les détails de l'article. Veuillez réessayer.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const toppingCategories = await fetchToppingCategories(item.id);
+      
+      if ((!itemWithOptions.options || itemWithOptions.options.length === 0) && 
+          (!toppingCategories || toppingCategories.length === 0)) {
+        const newItem: CartItem = {
+          id: Date.now().toString(),
+          menuItem: {
+            ...itemWithOptions,
+            toppingCategories: []
+          },
+          quantity: 1,
+          selectedOptions: [],
+          selectedToppings: [],
+          itemPrice: parseFloat(itemWithOptions.price.toString())
+        };
+        
+        setCart(prev => [newItem, ...prev]);
+        toast({
+          title: t("addedToCart"),
+          description: `1x ${itemWithOptions.name} ${t("added")}`
+        });
+        setLoading(false);
+        return;
+      }
+      
+      let sortedToppingCategories = toppingCategories;
+      if (item.topping_categories && item.topping_categories.length > 1) {
+        sortedToppingCategories = [...toppingCategories].sort((a, b) => {
+          const indexA = item.topping_categories.indexOf(a.id);
+          const indexB = item.topping_categories.indexOf(b.id);
+          return indexA - indexB;
+        });
+      }
+      
+      const itemWithToppings: MenuItemWithOptions = {
+        ...(itemWithOptions as MenuItemWithOptions),
+        toppingCategories: sortedToppingCategories
+      };
+      
+      setSelectedItem(itemWithToppings);
       setQuantity(1);
-      setSelectedOptions([]);
-      setSelectedToppings([]);
       setSpecialInstructions("");
+      
+      if (itemWithOptions.options && itemWithOptions.options.length > 0) {
+        const initialOptions = itemWithOptions.options.map(option => {
+          if (option.required && !option.multiple) {
+            return {
+              optionId: option.id,
+              choiceIds: option.choices.length > 0 ? [option.choices[0].id] : []
+            };
+          }
+          return {
+            optionId: option.id,
+            choiceIds: []
+          };
+        });
+        setSelectedOptions(initialOptions);
+      } else {
+        setSelectedOptions([]);
+      }
+      
+      if (sortedToppingCategories.length > 0) {
+        const initialToppings = sortedToppingCategories.map(category => ({
+          categoryId: category.id,
+          toppingIds: []
+        }));
+        setSelectedToppings(initialToppings);
+      } else {
+        setSelectedToppings([]);
+      }
+      
+      setLoading(false);
     } catch (error) {
-      console.error("Error loading item details:", error);
+      console.error("Erreur lors du chargement des détails de l'article:", error);
       toast({
-        title: "Error",
-        description: "Failed to load item details",
+        title: "Erreur",
+        description: "Un problème est survenu lors du chargement des détails de l'article. Veuillez réessayer.",
         variant: "destructive"
       });
+      setLoading(false);
     }
   };
-  
+
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
-      // Find if we already have this option
-      const existingOption = prev.find(o => o.optionId === optionId);
+      const optionIndex = prev.findIndex(o => o.optionId === optionId);
       
-      if (!existingOption) {
-        // Option doesn't exist yet, create it
-        return [...prev, { optionId, choiceIds: [choiceId] }];
+      if (optionIndex === -1) {
+        return [...prev, {
+          optionId,
+          choiceIds: [choiceId]
+        }];
       }
       
-      // Option exists
+      const option = prev[optionIndex];
+      let newChoiceIds: string[];
+      
       if (multiple) {
-        // For multiple selection
-        const hasChoice = existingOption.choiceIds.includes(choiceId);
-        
-        if (hasChoice) {
-          // Remove the choice
-          const updatedChoices = existingOption.choiceIds.filter(id => id !== choiceId);
-          if (updatedChoices.length === 0) {
-            // No choices left, remove the option
-            return prev.filter(o => o.optionId !== optionId);
-          }
-          return prev.map(o => o.optionId === optionId ? { ...o, choiceIds: updatedChoices } : o);
+        if (option.choiceIds.includes(choiceId)) {
+          newChoiceIds = option.choiceIds.filter(id => id !== choiceId);
         } else {
-          // Add the choice
-          return prev.map(o => o.optionId === optionId ? { ...o, choiceIds: [...o.choiceIds, choiceId] } : o);
+          newChoiceIds = [...option.choiceIds, choiceId];
         }
       } else {
-        // For single selection, replace the existing choice
-        return prev.map(o => o.optionId === optionId ? { ...o, choiceIds: [choiceId] } : o);
+        newChoiceIds = [choiceId];
       }
+      
+      const newOptions = [...prev];
+      newOptions[optionIndex] = {
+        ...option,
+        choiceIds: newChoiceIds
+      };
+      
+      return newOptions;
     });
   };
-  
+
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
-    console.log("Toggle topping:", { categoryId, toppingId });
     setSelectedToppings(prev => {
-      // Find if we already have this category
-      const existingCategory = prev.find(c => c.categoryId === categoryId);
+      const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
       
-      if (!existingCategory) {
-        // Category doesn't exist yet, create it
-        return [...prev, { categoryId, toppingIds: [toppingId] }];
+      if (categoryIndex === -1) {
+        return [...prev, {
+          categoryId,
+          toppingIds: [toppingId]
+        }];
       }
       
-      // Category exists, check if topping is selected
-      const hasToppingSelected = existingCategory.toppingIds.includes(toppingId);
+      const category = prev[categoryIndex];
+      let newToppingIds: string[];
       
-      if (hasToppingSelected) {
-        // Remove the topping
-        const updatedToppings = existingCategory.toppingIds.filter(id => id !== toppingId);
-        if (updatedToppings.length === 0) {
-          // No toppings left in category, remove the category
-          return prev.filter(c => c.categoryId !== categoryId);
-        }
-        return prev.map(c => c.categoryId === categoryId ? { ...c, toppingIds: updatedToppings } : c);
+      if (category.toppingIds.includes(toppingId)) {
+        newToppingIds = category.toppingIds.filter(id => id !== toppingId);
       } else {
-        // Add the topping
-        return prev.map(c => c.categoryId === categoryId ? { ...c, toppingIds: [...c.toppingIds, toppingId] } : c);
+        if (selectedItem?.toppingCategories) {
+          const toppingCategory = selectedItem.toppingCategories.find(c => c.id === categoryId);
+          
+          if (toppingCategory && toppingCategory.max_selections > 0) {
+            if (toppingCategory.max_selections === 1) {
+              newToppingIds = [toppingId];
+            } else if (category.toppingIds.length >= toppingCategory.max_selections) {
+              toast({
+                title: t("maxSelectionsReached"),
+                description: t("maxSelectionsMessage").replace("{max}", String(toppingCategory.max_selections))
+              });
+              return prev;
+            } else {
+              newToppingIds = [...category.toppingIds, toppingId];
+            }
+          } else {
+            newToppingIds = [...category.toppingIds, toppingId];
+          }
+        } else {
+          newToppingIds = [...category.toppingIds, toppingId];
+        }
       }
+      
+      const newToppings = [...prev];
+      newToppings[categoryIndex] = {
+        ...category,
+        toppingIds: newToppingIds
+      };
+      
+      return newToppings;
     });
   };
-  
-  const shouldShowToppingCategory = (category: any) => {
-    // Always show categories if they don't have conditional logic
-    if (!category.show_if_selection_type || !category.show_if_selection_id) return true;
+
+  const calculateItemPrice = (
+    item: MenuItemWithOptions,
+    options: { optionId: string; choiceIds: string[] }[],
+    toppings: SelectedToppingCategory[]
+  ): number => {
+    let price = parseFloat(item.price.toString());
     
-    // Check if any of the required selections are made
-    for (let i = 0; i < category.show_if_selection_type.length; i++) {
-      const type = category.show_if_selection_type[i];
-      const id = category.show_if_selection_id[i];
-      
-      if (type === 'option') {
-        // Check if option is selected
-        const optionSelected = selectedOptions.some(o => 
-          o.optionId === id || o.choiceIds.includes(id)
-        );
-        if (optionSelected) return true;
-      } else if (type === 'topping') {
-        // Check if topping is selected
-        const toppingSelected = selectedToppings.some(t => 
-          t.categoryId === id || t.toppingIds.includes(id)
-        );
-        if (toppingSelected) return true;
-      }
+    if (item.options) {
+      item.options.forEach(option => {
+        const selectedOption = options.find(o => o.optionId === option.id);
+        if (selectedOption) {
+          selectedOption.choiceIds.forEach(choiceId => {
+            const choice = option.choices.find(c => c.id === choiceId);
+            if (choice && choice.price) {
+              price += parseFloat(choice.price.toString());
+            }
+          });
+        }
+      });
     }
     
-    return false;
+    if (item.toppingCategories) {
+      item.toppingCategories.forEach(category => {
+        const selectedToppingCategory = toppings.find(t => t.categoryId === category.id);
+        if (selectedToppingCategory) {
+          selectedToppingCategory.toppingIds.forEach(toppingId => {
+            const topping = category.toppings.find(t => t.id === toppingId);
+            if (topping && topping.price) {
+              price += parseFloat(topping.price.toString());
+            }
+          });
+        }
+      });
+    }
+    
+    return price;
   };
-  
-  const calculateItemPrice = (item: MenuItemWithOptions) => {
-    if (!item) return 0;
+
+  const getFormattedOptions = (item: CartItem): string => {
+    if (!item.menuItem.options) return "";
     
-    let basePrice = parseFloat(item.price.toString());
-    
-    // Add option choice prices
-    selectedOptions.forEach(selectedOption => {
-      const option = item.options?.find(opt => opt.id === selectedOption.optionId);
-      if (option) {
-        selectedOption.choiceIds.forEach(choiceId => {
-          const choice = option.choices.find(c => c.id === choiceId);
-          if (choice && choice.price) {
-            basePrice += parseFloat(choice.price.toString());
-          }
-        });
-      }
-    });
-    
-    // Add topping prices
-    selectedToppings.forEach(selectedCategory => {
-      const category = item.toppingCategories?.find(cat => cat.id === selectedCategory.categoryId);
-      if (category) {
-        selectedCategory.toppingIds.forEach(toppingId => {
-          const topping = category.toppings.find(t => t.id === toppingId);
-          if (topping) {
-            basePrice += parseFloat(topping.price.toString());
-          }
-        });
-      }
-    });
-    
-    return basePrice;
+    return item.selectedOptions.flatMap(selectedOption => {
+      const option = item.menuItem.options?.find(o => o.id === selectedOption.optionId);
+      if (!option) return [];
+      
+      return selectedOption.choiceIds.map(choiceId => {
+        const choice = option.choices.find(c => c.id === choiceId);
+        return choice ? choice.name : "";
+      });
+    }).filter(Boolean).join(", ");
   };
-  
+
+  const getFormattedToppings = (item: CartItem): string => {
+    if (!item.menuItem.toppingCategories) return "";
+    
+    return item.selectedToppings.flatMap(selectedCategory => {
+      const category = item.menuItem.toppingCategories?.find(c => c.id === selectedCategory.categoryId);
+      if (!category) return [];
+      
+      return selectedCategory.toppingIds.map(toppingId => {
+        const topping = category.toppings.find(t => t.id === toppingId);
+        return topping ? topping.name : "";
+      });
+    }).filter(Boolean).join(", ");
+  };
+
   const handleAddToCart = () => {
     if (!selectedItem) return;
     
-    // Check if all required options are selected
-    const requiredOptions = selectedItem.options?.filter(option => option.required) || [];
-    const allRequiredSelected = requiredOptions.every(option => 
-      selectedOptions.some(selected => selected.optionId === option.id)
-    );
+    const isOptionsValid = selectedItem.options?.every(option => {
+      if (!option.required) return true;
+      
+      const selected = selectedOptions.find(o => o.optionId === option.id);
+      return selected && selected.choiceIds.length > 0;
+    }) ?? true;
     
-    if (!allRequiredSelected) {
+    const isToppingsValid = selectedItem.toppingCategories?.every(category => {
+      if (!category.min_selections || category.min_selections <= 0) return true;
+      
+      const selected = selectedToppings.find(t => t.categoryId === category.id);
+      return selected && selected.toppingIds.length >= category.min_selections;
+    }) ?? true;
+    
+    if (!isOptionsValid || !isToppingsValid) {
       toast({
         title: t("selectionsRequired"),
         description: t("pleaseSelectRequired"),
@@ -440,112 +550,208 @@ const KioskView = () => {
       return;
     }
     
-    // Create cart item
-    const newCartItem: CartItem = {
-      id: crypto.randomUUID(),
+    const itemPrice = calculateItemPrice(selectedItem, selectedOptions, selectedToppings);
+    
+    const newItem: CartItem = {
+      id: Date.now().toString(),
       menuItem: selectedItem,
-      quantity: quantity,
-      selectedOptions: selectedOptions,
-      selectedToppings: selectedToppings,
-      specialInstructions: specialInstructions,
-      itemPrice: calculateItemPrice(selectedItem), // Per item price
+      quantity,
+      selectedOptions,
+      selectedToppings,
+      specialInstructions: specialInstructions.trim() || undefined,
+      itemPrice
     };
     
-    // Add to cart
-    setCart(prevCart => [...prevCart, newCartItem]);
-    
-    // Close dialog and show confirmation
+    setCart(prev => [newItem, ...prev]);
     setSelectedItem(null);
+    
     toast({
       title: t("addedToCart"),
-      description: `${selectedItem.name} ${t("added")}`,
+      description: `${quantity}x ${selectedItem.name} ${t("added")}`
     });
   };
-  
-  const getFormattedOptions = (item: CartItem): string => {
-    if (!item.selectedOptions || item.selectedOptions.length === 0) return "";
-    
-    return item.selectedOptions
-      .map(selectedOption => {
-        const option = item.menuItem.options?.find(o => o.id === selectedOption.optionId);
-        if (!option) return "";
-        
-        const choiceNames = selectedOption.choiceIds.map(choiceId => {
-          const choice = option.choices.find(c => c.id === choiceId);
-          return choice ? choice.name : "";
-        }).filter(Boolean);
-        
-        return choiceNames.join(', ');
-      })
-      .filter(Boolean)
-      .join(', ');
-  };
-  
-  const getFormattedToppings = (item: CartItem): string => {
-    if (!item.selectedToppings || item.selectedToppings.length === 0) return "";
-    
-    return item.selectedToppings
-      .map(selectedCategory => {
-        const category = item.menuItem.toppingCategories?.find(c => c.id === selectedCategory.categoryId);
-        if (!category) return "";
-        
-        const toppingNames = selectedCategory.toppingIds.map(toppingId => {
-          const topping = category.toppings.find(t => t.id === toppingId);
-          return topping ? topping.name : "";
-        }).filter(Boolean);
-        
-        return `${category.name}: ${toppingNames.join(', ')}`;
-      })
-      .filter(Boolean)
-      .join('; ');
-  };
 
-  // Handle start ordering from welcome screen
-  const handleStartOrdering = () => {
-    setShowWelcome(false);
-    setShowOrderTypeSelection(true);
-  };
-
-  // Handle order type selection
-  const handleSelectOrderType = (type: OrderType, tableNum?: string) => {
-    setOrderType(type);
-    if (tableNum) {
-      setTableNumber(tableNum);
+  const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      handleRemoveCartItem(itemId);
+      return;
     }
-    setShowOrderTypeSelection(false);
+    
+    setCart(prev => prev.map(item => 
+      item.id === itemId ? { ...item, quantity: newQuantity } : item
+    ));
   };
 
-  // Show loading state
-  if (loading) {
+  const handleRemoveCartItem = (itemId: string) => {
+    setCart(prev => {
+      const newCart = prev.filter(item => item.id !== itemId);
+      if (newCart.length === 0) {
+        setIsCartOpen(false);
+      }
+      return newCart;
+    });
+  };
+
+  const calculateCartTotal = (): number => {
+    return cart.reduce((total, item) => {
+      return total + item.itemPrice * item.quantity;
+    }, 0);
+  };
+
+  const calculateSubtotal = () => {
+    return calculateCartTotal();
+  };
+
+  const calculateTax = () => {
+    return calculateCartTotal() * 0.1; // 10% tax
+  };
+
+  const handlePlaceOrder = async () => {
+    if (!restaurant || cart.length === 0) return;
+    try {
+      setPlacingOrder(true);
+      const order = await createOrder({
+        restaurant_id: restaurant.id,
+        status: 'pending',
+        total: calculateCartTotal(),
+        customer_name: null
+      });
+      const orderItems = await createOrderItems(cart.map(item => ({
+        order_id: order.id,
+        menu_item_id: item.menuItem.id,
+        quantity: item.quantity,
+        price: item.itemPrice,
+        special_instructions: item.specialInstructions || null
+      })));
+      const orderItemOptionsToCreate = [];
+      const orderItemToppingsToCreate = [];
+      for (let i = 0; i < cart.length; i++) {
+        const cartItem = cart[i];
+        const orderItem = orderItems[i];
+        for (const selectedOption of cartItem.selectedOptions) {
+          for (const choiceId of selectedOption.choiceIds) {
+            orderItemOptionsToCreate.push({
+              order_item_id: orderItem.id,
+              option_id: selectedOption.optionId,
+              choice_id: choiceId
+            });
+          }
+        }
+        for (const selectedCategory of cartItem.selectedToppings) {
+          for (const toppingId of selectedCategory.toppingIds) {
+            orderItemToppingsToCreate.push({
+              order_item_id: orderItem.id,
+              topping_id: toppingId
+            });
+          }
+        }
+      }
+      if (orderItemOptionsToCreate.length > 0) {
+        await createOrderItemOptions(orderItemOptionsToCreate);
+      }
+      if (orderItemToppingsToCreate.length > 0) {
+        await createOrderItemToppings(orderItemToppingsToCreate);
+      }
+      setOrderPlaced(true);
+      toast({
+        title: "Commande passée",
+        description: "Votre commande a été passée avec succès !"
+      });
+      setTimeout(() => {
+        setOrderPlaced(false);
+        setCart([]);
+        setIsCartOpen(false);
+        setPlacingOrder(false);
+        setShowWelcome(true);
+        if (categories.length > 0) {
+          setActiveCategory(categories[0].id);
+        }
+      }, 3000);
+    } catch (error) {
+      console.error("Erreur lors de la commande:", error);
+      toast({
+        title: "Erreur",
+        description: "Un problème est survenu lors de la commande. Veuillez réessayer.",
+        variant: "destructive"
+      });
+      setPlacingOrder(false);
+    }
+  };
+
+  const toggleCart = () => {
+    setIsCartOpen(!isCartOpen);
+  };
+
+  const shouldShowToppingCategory = (category: MenuItemWithOptions['toppingCategories'][0]) => {
+    if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
+      return true;
+    }
+    
+    return category.show_if_selection_id.some(toppingId => 
+      selectedToppings.some(catSelection => 
+        catSelection.toppingIds.includes(toppingId)
+      )
+    );
+  };
+
+  if (loading && !restaurant) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-violet-700" />
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
       </div>
     );
   }
 
-  // Show welcome page
-  if (showWelcome && restaurant) {
+  if (!restaurant) {
     return (
-      <WelcomePage
-        restaurant={restaurant}
-        onStart={handleStartOrdering}
-        uiLanguage={uiLanguage as "fr" | "en" | "tr"}
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
+          <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
+          <Button onClick={() => navigate('/')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t("backToHome")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showWelcome) {
+    return (
+      <WelcomePage 
+        restaurant={restaurant} 
+        onStart={handleStartOrder} 
+        uiLanguage={uiLanguage} 
       />
     );
   }
 
-  // Show order type selection
   if (showOrderTypeSelection) {
     return (
-      <OrderTypeSelection
-        isOpen={showOrderTypeSelection}
-        onClose={() => setShowOrderTypeSelection(false)}
-        onSelectOrderType={handleSelectOrderType}
-        uiLanguage={uiLanguage as "fr" | "en" | "tr"}
-      />
+      <>
+        <div 
+          className="fixed inset-0 bg-cover bg-center bg-black/50" 
+          style={{
+            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+          }} 
+        />
+        <OrderTypeSelection 
+          isOpen={showOrderTypeSelection} 
+          onClose={() => {
+            setShowOrderTypeSelection(false);
+            setShowWelcome(true);
+          }} 
+          onSelectOrderType={handleOrderTypeSelected} 
+          uiLanguage={uiLanguage} 
+        />
+      </>
     );
   }
+
+  const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartIsEmpty = cart.length === 0;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -562,7 +768,6 @@ const KioskView = () => {
             categories={categories}
             activeCategory={activeCategory}
             setActiveCategory={setActiveCategory}
-            restaurantId={restaurant?.id || ""}
           />
         </div>
 
@@ -575,9 +780,8 @@ const KioskView = () => {
             <MenuItemGrid 
               items={activeItems}
               handleSelectItem={handleSelectItem}
-              currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
+              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
               t={t}
-              restaurantId={restaurant?.id || ""}
             />
           </div>
         </div>
@@ -589,7 +793,7 @@ const KioskView = () => {
           total={calculateCartTotal()} 
           onClick={toggleCart} 
           uiLanguage={uiLanguage} 
-          currency={restaurant?.currency} 
+          currency={restaurant.currency} 
         />
       )}
 

@@ -21,7 +21,6 @@ import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
 import SettingsTab from "@/components/restaurant/SettingsTab";
 import StockTab from "@/components/restaurant/StockTab";
-import CacheClearButton from "@/components/restaurant/CacheClearButton";
 
 const RestaurantManage = () => {
   const { id } = useParams<{ id: string }>();
@@ -95,21 +94,16 @@ const RestaurantManage = () => {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+      <div className="flex items-center mb-8">
+        <Button variant="ghost" asChild className="mr-4">
+          <Link to="/restaurants">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Retour aux Restaurants
+          </Link>
+        </Button>
         <div>
-          <h1 className="text-3xl font-bold">Menu Management</h1>
-          <p className="text-muted-foreground">
-            Manage your restaurant's menu categories and items
-          </p>
-        </div>
-        <div className="flex space-x-2 mt-4 sm:mt-0">
-          <CacheClearButton restaurantId={id || ""} />
-          <Button variant="ghost" asChild className="mr-4">
-            <Link to="/restaurants">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour aux Restaurants
-            </Link>
-          </Button>
+          <h1 className="text-3xl font-bold">{restaurant?.name}</h1>
+          <p className="text-muted-foreground">{restaurant?.location || "Aucun emplacement défini"}</p>
         </div>
       </div>
       
