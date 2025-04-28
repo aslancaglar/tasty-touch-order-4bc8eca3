@@ -820,6 +820,53 @@ const KioskView = () => {
     }
   };
 
+  const enableRealtimeForMenuItems = async () => {
+    try {
+      const channel = supabase
+        .channel('menu-items-status')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'menu_items',
+            filter: 'in_stock=eq.true OR in_stock=eq.false'
+          },
+          (payload) => {
+            console.info('Menu item stock status changed:', payload);
+            
+            setCategories(prevCategories => {
+              const updatedCategories = prevCategories.map(category => {
+                const itemIndex = category.items.findIndex(item => item.id === payload.new.id);
+                
+                if (itemIndex === -1) return category;
+                
+                const updatedItems = [...category.items];
+                updatedItems[itemIndex] = {
+                  ...updatedItems[itemIndex],
+                  in_stock: payload.new.in_stock
+                };
+                
+                return {
+                  ...category,
+                  items: updatedItems
+                };
+              });
+              
+              return updatedCategories;
+            });
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (error) {
+      console.error("Error setting up realtime updates:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -861,6 +908,13 @@ const KioskView = () => {
     
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
+
+  useEffect(() => {
+    const cleanup = enableRealtimeForMenuItems();
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [restaurant?.id]);
 
   if (loading && !restaurant) {
     return (
