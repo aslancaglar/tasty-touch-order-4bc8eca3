@@ -32,7 +32,7 @@ interface CartProps {
   tableNumber?: string | null;
   showOrderSummaryOnly?: boolean;
   uiLanguage?: "fr" | "en" | "tr";
-  t: (key: keyof typeof translations["en"]) => string;
+  t: (key: string) => string;
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -52,7 +52,7 @@ function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
 
-const translations = {
+const cartTranslations = {
   fr: {
     yourOrder: "VOTRE COMMANDE",
     totalHT: "Total HT:",
@@ -113,6 +113,17 @@ const Cart: React.FC<CartProps> = ({
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartRef = useRef<HTMLDivElement>(null);
   
+  // Helper function to get cart-specific translations
+  const tCart = (key: keyof typeof cartTranslations["en"]) => {
+    // Use the provided t function if possible, otherwise fallback to our internal translations
+    try {
+      return cartTranslations[uiLanguage][key];
+    } catch (err) {
+      // If the key is missing in our translations, try to use the passed t function
+      return t(key);
+    }
+  };
+  
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && !showOrderSummary && cartRef.current && !cartRef.current.contains(event.target as Node)) {
@@ -159,7 +170,7 @@ const Cart: React.FC<CartProps> = ({
         <div className="w-full">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center">
-              <h2 className="text-xl font-bold">{t("yourOrder")} ({cartItemCount})</h2>
+              <h2 className="text-xl font-bold">{tCart("yourOrder")} ({cartItemCount})</h2>
             </div>
             <Button variant="ghost" size="icon" onClick={onToggleOpen}>
               <ChevronDown className="h-5 w-5" />
@@ -175,7 +186,7 @@ const Cart: React.FC<CartProps> = ({
             }} className="w-full">
               <CarouselContent className="-ml-2">
                 {reversedCart.length === 0 ? (
-                  <div className="p-4 text-gray-400 text-center">{t("empty")}</div>
+                  <div className="p-4 text-gray-400 text-center">{tCart("empty")}</div>
                 ) : reversedCart.map(item => (
                   <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
                     <div className="border border-gray-200 rounded-lg p-3 relative">
@@ -212,28 +223,28 @@ const Cart: React.FC<CartProps> = ({
           <div className="px-4 pb-4">
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">{t("totalHT")}</span>
+                <span className="text-gray-600">{tCart("totalHT")}</span>
                 <span className="font-medium">{subtotal.toFixed(2)} {currencySymbol}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">{t("vat")}</span>
+                <span className="text-gray-600">{tCart("vat")}</span>
                 <span className="font-medium">{tax.toFixed(2)} {currencySymbol}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between text-lg font-bold">
-                <span>{t("totalTTC")}</span>
+                <span>{tCart("totalTTC")}</span>
                 <span>{total.toFixed(2)} {currencySymbol}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-6">
               <Button variant="destructive" onClick={onClearCart} className="text-4xl py-[40px]">
-                {t("cancel")}
+                {tCart("cancel")}
               </Button>
               <Button onClick={handleShowOrderSummary} disabled={placingOrder || orderPlaced || cart.length === 0} className="bg-green-800 hover:bg-green-900 text-white py-[40px] text-4xl">
                 {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {orderPlaced && <Check className="h-4 w-4 mr-2" />}
-                {orderPlaced ? t("confirmed") : placingOrder ? t("processing") : t("seeOrder")}
+                {orderPlaced ? tCart("confirmed") : placingOrder ? tCart("processing") : tCart("seeOrder")}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>

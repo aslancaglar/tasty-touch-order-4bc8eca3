@@ -59,7 +59,8 @@ const KioskView = () => {
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
-  
+  const [cartRef, setCartRef] = useState<HTMLDivElement | null>(null);
+
   const { toast } = useToast();
   
   const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -923,26 +924,30 @@ const KioskView = () => {
         />
       )}
 
-      <Cart 
-        cart={cart} 
-        isOpen={isCartOpen} 
-        onToggleOpen={toggleCart} 
-        onUpdateQuantity={handleUpdateCartItemQuantity} 
-        onRemoveItem={handleRemoveCartItem} 
-        onClearCart={() => setCart([])} 
-        onPlaceOrder={handlePlaceOrder} 
-        placingOrder={placingOrder} 
-        orderPlaced={orderPlaced} 
-        calculateSubtotal={calculateSubtotal} 
-        calculateTax={calculateTax} 
-        getFormattedOptions={getFormattedOptions}
-        getFormattedToppings={getFormattedToppings}
-        restaurant={restaurant}
-        orderType={orderType}
-        tableNumber={tableNumber}
-        uiLanguage={uiLanguage}
-        t={t}
-      />
+      <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
+        maxHeight: "60vh"
+      }}>
+        <Cart 
+          cart={cart} 
+          isOpen={isCartOpen} 
+          onToggleOpen={toggleCart} 
+          onUpdateQuantity={handleUpdateCartItemQuantity} 
+          onRemoveItem={handleRemoveCartItem} 
+          onClearCart={() => setCart([])} 
+          onPlaceOrder={handlePlaceOrder} 
+          placingOrder={placingOrder} 
+          orderPlaced={orderPlaced} 
+          calculateSubtotal={calculateSubtotal} 
+          calculateTax={calculateTax} 
+          getFormattedOptions={getFormattedOptions}
+          getFormattedToppings={getFormattedToppings}
+          restaurant={restaurant}
+          orderType={orderType}
+          tableNumber={tableNumber}
+          uiLanguage={uiLanguage}
+          t={t}
+        />
+      </div>
 
       {selectedItem && (
         <ItemCustomizationDialog 
@@ -960,7 +965,7 @@ const KioskView = () => {
           onSpecialInstructionsChange={setSpecialInstructions}
           shouldShowToppingCategory={shouldShowToppingCategory}
           t={t}
-          currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
+          currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
         />
       )}
     </div>
