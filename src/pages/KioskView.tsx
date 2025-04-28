@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -699,7 +698,6 @@ const KioskView = () => {
 
   const fetchCategories = async () => {
     try {
-      // Try to get from cache first
       if (!restaurant) return;
       const cachedCategories = getCacheItem<CategoryWithItems[]>('categories', restaurant.id);
       if (cachedCategories) {
@@ -718,7 +716,6 @@ const KioskView = () => {
       const menuData = await getMenuForRestaurant(data.id);
       setCategories(menuData);
       
-      // Cache the results
       setCacheItem('categories', menuData, data.id);
       
       if (menuData.length > 0) {
@@ -737,7 +734,6 @@ const KioskView = () => {
   const fetchToppings = async () => {
     if (!selectedCategory?.id || !restaurant?.id) return;
     try {
-      // Try to get from cache first
       const cacheKey = `toppings_${selectedCategory.id}`;
       const cachedToppings = getCacheItem<Topping[]>(cacheKey, restaurant.id);
       if (cachedToppings) {
@@ -765,7 +761,6 @@ const KioskView = () => {
           : topping.tax_percentage
       }));
 
-      // Cache the results
       setCacheItem(cacheKey, updatedToppings, restaurant.id);
       
       setToppings(updatedToppings);
@@ -942,10 +937,11 @@ const KioskView = () => {
         calculateTax={calculateTax} 
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
-        t={t}
+        restaurant={restaurant}
         orderType={orderType}
         tableNumber={tableNumber}
-        currency={restaurant?.currency}
+        uiLanguage={uiLanguage}
+        t={t}
       />
 
       {selectedItem && (
