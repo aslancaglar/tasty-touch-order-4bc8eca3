@@ -20,11 +20,11 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   t
 }) => {
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
-
+  
   useEffect(() => {
     const cacheImages = async () => {
       const imagePromises = items
-        .filter(item => item.in_stock && item.image)
+        .filter(item => item.image)
         .map(async item => {
           const cachedUrl = await getCachedImageUrl(item.image || '');
           return { id: item.id, url: cachedUrl };
@@ -76,4 +76,3 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
 };
 
 export default MenuItemGrid;
-

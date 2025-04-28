@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -29,11 +28,6 @@ import InactivityDialog from "@/components/kiosk/InactivityDialog";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
-};
-
-type SelectedToppingCategory = {
-  categoryId: string;
-  toppingIds: string[];
 };
 
 const KioskView = () => {
@@ -208,12 +202,7 @@ const KioskView = () => {
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         
-        const menuData = await getMenuForRestaurant(restaurantData.id);
-        setCategories(menuData);
-        
-        if (menuData.length > 0) {
-          setActiveCategory(menuData[0].id);
-        }
+        await fetchCategories();
         
         setLoading(false);
       } catch (error) {
@@ -249,7 +238,6 @@ const KioskView = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'menu_items',
-          filter: `category_id=in.(${categories.map(c => `'${c.id}'`).join(',')})`,
         },
         async (payload) => {
           console.log("Received stock update:", payload);
@@ -257,12 +245,25 @@ const KioskView = () => {
           // Update the menu items in the state
           setCategories(prevCategories => {
             return prevCategories.map(category => {
-              if (category.items.some(item => item.id === payload.new.id)) {
+              // Find if this category contains the updated item
+              const hasItem = category.items.some(item => item.id === payload.new.id);
+              
+              if (hasItem) {
+                console.log(`Updating item ${payload.new.id} in category ${category.name}`);
                 return {
                   ...category,
                   items: category.items.map(item => 
                     item.id === payload.new.id 
-                      ? { ...item, in_stock: payload.new.in_stock }
+                      ? { 
+                          ...item, 
+                          in_stock: payload.new.in_stock,
+                          // Update any other fields that might have changed
+                          price: payload.new.price,
+                          name: payload.new.name,
+                          description: payload.new.description,
+                          image: payload.new.image,
+                          promotion_price: payload.new.promotion_price
+                        }
                       : item
                   )
                 };
@@ -270,15 +271,30 @@ const KioskView = () => {
               return category;
             });
           });
+          
+          // If the current active category contains the updated item, refresh UI
+          const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
+          if (activeItems.some(item => item.id === payload.new.id)) {
+            console.log("Active category contains updated item - refreshing UI");
+            // Force a re-render of the active menu items
+            setActiveCategory(prev => {
+              // Toggle and then reset to trigger a re-render
+              const tempCategory = categories.find(c => c.id !== prev)?.id || null;
+              setTimeout(() => setActiveCategory(prev), 10);
+              return tempCategory;
+            });
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Supabase channel status:", status);
+      });
 
     return () => {
       console.log("Cleaning up realtime subscription");
       supabase.removeChannel(channel);
     };
-  }, [restaurant?.id, categories]);
+  }, [restaurant?.id, categories, activeCategory]);
 
   const handleStartOrder = () => {
     fullReset();
@@ -801,9 +817,12 @@ const KioskView = () => {
       if (!data) throw new Error("Restaurant not found");
       
       const menuData = await getMenuForRestaurant(data.id);
+      console.log("Fetched fresh menu data:", menuData);
+      
       setCategories(menuData);
       
-      setCacheItem('categories', menuData, data.id);
+      // Don't cache menu data to ensure fresh stock status
+      // setCacheItem('categories', menuData, data.id);
       
       if (menuData.length > 0) {
         setActiveCategory(menuData[0].id);
@@ -905,6 +924,16 @@ const KioskView = () => {
     };
     
     fetchRestaurantAndMenu();
+    
+    // Set up a periodic refresh as a fallback in case realtime updates fail
+    const refreshInterval = setInterval(() => {
+      console.log("Performing periodic menu refresh");
+      if (restaurant?.id && !showWelcome && !showOrderTypeSelection) {
+        fetchCategories();
+      }
+    }, 60000); // Refresh every minute
+    
+    return () => clearInterval(refreshInterval);
   }, [restaurantSlug, navigate, toast]);
 
   if (loading && !restaurant) {
