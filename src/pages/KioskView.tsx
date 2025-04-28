@@ -23,6 +23,8 @@ import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
+import { useInactivityTimer } from "@/hooks/useInactivityTimer";
+import InactivityDialog from "@/components/kiosk/InactivityDialog";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -100,7 +102,11 @@ const KioskView = () => {
       multipleSelection: "Sélection multiple",
       selectUpTo: "Sélectionnez jusqu'à",
       maxSelectionsReached: "Nombre maximum de sélections atteint",
-      maxSelectionsMessage: "Vous ne pouvez sélectionner que {max} éléments dans cette catégorie."
+      maxSelectionsMessage: "Vous ne pouvez sélectionner que {max} éléments dans cette catégorie.",
+      inactivityTitle: "Êtes-vous toujours là ?",
+      inactivityMessage: "Voulez-vous continuer votre commande ?",
+      yes: "Oui",
+      no: "Non"
     },
     en: {
       restaurantNotFound: "Restaurant not found",
@@ -120,7 +126,11 @@ const KioskView = () => {
       multipleSelection: "Multiple selection",
       selectUpTo: "Select up to",
       maxSelectionsReached: "Maximum selections reached",
-      maxSelectionsMessage: "You can only select {max} items in this category."
+      maxSelectionsMessage: "You can only select {max} items in this category.",
+      inactivityTitle: "Are you still there?",
+      inactivityMessage: "Do you want to continue your order?",
+      yes: "Yes",
+      no: "No"
     },
     tr: {
       restaurantNotFound: "Restoran bulunamadı",
@@ -140,13 +150,29 @@ const KioskView = () => {
       multipleSelection: "Çoklu seçim",
       selectUpTo: "En fazla seçin",
       maxSelectionsReached: "Maksimum seçimlere ulaşıldı",
-      maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz."
+      maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz.",
+      inactivityTitle: "Hala orada mısınız?",
+      inactivityMessage: "Siparişinize devam etmek istiyor musunuz?",
+      yes: "Evet",
+      no: "Hayır"
     }
   };
   
   const t = (key: keyof typeof translations.en) => {
     return translations[uiLanguage][key];
   };
+
+  const resetToWelcome = () => {
+    setShowWelcome(true);
+    setShowOrderTypeSelection(false);
+    setCart([]);
+    setIsCartOpen(false);
+    if (categories.length > 0) {
+      setActiveCategory(categories[0].id);
+    }
+  };
+
+  const { showDialog, setShowDialog, resetTimer } = useInactivityTimer(resetToWelcome);
 
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
@@ -968,6 +994,13 @@ const KioskView = () => {
           currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
         />
       )}
+
+      <InactivityDialog
+        isOpen={showDialog}
+        onContinue={resetTimer}
+        onCancel={resetToWelcome}
+        t={t}
+      />
     </div>
   );
 };
