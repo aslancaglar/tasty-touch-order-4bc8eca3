@@ -4,11 +4,11 @@ import { Clock } from "lucide-react";
 import { Restaurant, OrderType } from "@/types/database-types";
 
 interface KioskHeaderProps {
-  restaurant: Restaurant;
+  restaurant: Restaurant | null;
   orderType: OrderType;
   tableNumber: string | null;
   t: (key: string) => string;
-  onBack?: () => void; // Added this prop to match usage in KioskView
+  onBack?: () => void;
 }
 
 const KioskHeader: React.FC<KioskHeaderProps> = ({
@@ -18,6 +18,23 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
   t,
   onBack
 }) => {
+  // If restaurant is null, render a minimal header to prevent errors
+  if (!restaurant) {
+    return (
+      <div className="h-48 bg-cover bg-center relative bg-gray-800">
+        <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div className="absolute inset-0 flex items-center p-6">
+          <div className="flex items-center">
+            <div className="h-20 w-20 rounded-full border-2 border-white mr-4 bg-gray-600"></div>
+            <div>
+              <h1 className="text-white text-3xl font-bold">{t("loading")}</h1>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-48 bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`

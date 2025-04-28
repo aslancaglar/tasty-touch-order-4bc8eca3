@@ -28,9 +28,9 @@ interface CartButtonProps {
   onClick: () => void;
   uiLanguage?: "fr" | "en" | "tr";
   currency?: string;
-  cart?: CartItem[]; // Added to match usage in KioskView
-  toggleCart?: () => void; // Added to match usage in KioskView
-  currencySymbol?: string; // Added to match usage in KioskView
+  cart?: CartItem[];
+  toggleCart?: () => void;
+  currencySymbol?: string;
 }
 
 const translations = {
@@ -46,12 +46,12 @@ const translations = {
 };
 
 const CartButton: React.FC<CartButtonProps> = ({
-  itemCount,
-  total,
+  itemCount = 0,
+  total = 0,
   onClick,
   uiLanguage = "fr",
   currency = "EUR",
-  cart = [], // Provide default values
+  cart = [],
   toggleCart,
   currencySymbol: providedCurrencySymbol
 }) => {
