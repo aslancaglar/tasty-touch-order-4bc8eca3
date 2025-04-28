@@ -24,11 +24,13 @@ const RestaurantManage = () => {
     const fetchRestaurant = async () => {
       try {
         setLoading(true);
+        console.log("Fetching restaurant with ID:", restaurantId);
+        
         // Using getRestaurants instead of getRestaurantById
         const restaurantsData = await getRestaurants();
         
         // Find the restaurant with the matching ID
-        const data = restaurantsData.find(restaurant => restaurant.id === restaurantId) || null;
+        const data = restaurantsData.find(r => r.id === restaurantId) || null;
         
         if (data) {
           console.log("Restaurant found:", data);
@@ -41,7 +43,6 @@ const RestaurantManage = () => {
             variant: "destructive"
           });
         }
-        setLoading(false);
       } catch (error) {
         console.error("Error fetching restaurant:", error);
         toast({
@@ -49,6 +50,7 @@ const RestaurantManage = () => {
           description: "Failed to fetch restaurant details. Please try again.",
           variant: "destructive"
         });
+      } finally {
         setLoading(false);
       }
     };
@@ -122,9 +124,7 @@ const RestaurantManage = () => {
           </TabsContent>
           
           <TabsContent value="settings">
-            <SettingsTab 
-              restaurant={restaurant} 
-            />
+            <SettingsTab restaurant={restaurant} />
           </TabsContent>
           
           <TabsContent value="cache">
