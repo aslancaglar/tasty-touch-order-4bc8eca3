@@ -25,7 +25,6 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
-import { calculateCartTotals } from "@/utils/price-utils";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -821,54 +820,6 @@ const KioskView = () => {
     }
   };
 
-  const enableRealtimeForMenuItems = () => {
-    try {
-      const channel = supabase
-        .channel('menu-items-status')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'menu_items',
-            filter: 'in_stock=eq.true OR in_stock=eq.false'
-          },
-          (payload) => {
-            console.info('Menu item stock status changed:', payload);
-            
-            setCategories(prevCategories => {
-              const updatedCategories = prevCategories.map(category => {
-                const itemIndex = category.items.findIndex(item => item.id === payload.new.id);
-                
-                if (itemIndex === -1) return category;
-                
-                const updatedItems = [...category.items];
-                updatedItems[itemIndex] = {
-                  ...updatedItems[itemIndex],
-                  in_stock: payload.new.in_stock
-                };
-                
-                return {
-                  ...category,
-                  items: updatedItems
-                };
-              });
-              
-              return updatedCategories;
-            });
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (error) {
-      console.error("Error setting up realtime updates:", error);
-      return () => {};
-    }
-  };
-
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -911,11 +862,6 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
-  useEffect(() => {
-    const cleanupFn = enableRealtimeForMenuItems();
-    return cleanupFn;
-  }, [restaurant?.id]);
-
   if (loading && !restaurant) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -943,7 +889,10 @@ const KioskView = () => {
     return (
       <WelcomePage 
         restaurant={restaurant} 
-        onStart={handleStartOrder}
+        onStart={() => {
+          fullReset();
+          handleStartOrder();
+        }}
         uiLanguage={uiLanguage} 
       />
     );
@@ -981,7 +930,6 @@ const KioskView = () => {
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-  const cartTotal = calculateCartTotals(cart).total;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1020,7 +968,7 @@ const KioskView = () => {
       {!isCartOpen && !cartIsEmpty && (
         <CartButton 
           itemCount={cartItemCount} 
-          total={cartTotal} 
+          total={calculateCartTotal()} 
           onClick={toggleCart} 
           uiLanguage={uiLanguage} 
           currency={restaurant.currency} 
