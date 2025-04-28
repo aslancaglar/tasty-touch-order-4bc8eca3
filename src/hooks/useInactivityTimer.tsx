@@ -84,7 +84,7 @@ export const useInactivityTimer = (onReset: () => void) => {
           setShowDialog(false); // Close dialog first
           setTimeout(() => {
             inactiveRef.current = true;
-            onReset(); // Then reset to welcome page after a short delay
+            onReset(); // Then reset to welcome page after a short delay - this is the "No" action
           }, 100);
         }, DIALOG_TIMEOUT);
       }
