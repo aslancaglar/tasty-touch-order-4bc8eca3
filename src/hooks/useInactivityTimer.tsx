@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const INACTIVITY_TIMEOUT = 60000; // 60 seconds
 const DIALOG_TIMEOUT = 10000; // 10 seconds
@@ -7,7 +7,7 @@ const DIALOG_TIMEOUT = 10000; // 10 seconds
 export const useInactivityTimer = (onReset: () => void) => {
   const [showDialog, setShowDialog] = useState(false);
   const [lastActivity, setLastActivity] = useState(Date.now());
-  const [dialogTimeoutId, setDialogTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const dialogTimeoutIdRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetTimer = useCallback(() => {
     // Only reset the timer if the dialog is not showing
@@ -18,23 +18,23 @@ export const useInactivityTimer = (onReset: () => void) => {
 
   const handleContinue = useCallback(() => {
     // Clear the auto-reset timeout when user clicks continue
-    if (dialogTimeoutId) {
-      clearTimeout(dialogTimeoutId);
-      setDialogTimeoutId(null);
+    if (dialogTimeoutIdRef.current) {
+      clearTimeout(dialogTimeoutIdRef.current);
+      dialogTimeoutIdRef.current = null;
     }
     setLastActivity(Date.now());
     setShowDialog(false);
-  }, [dialogTimeoutId]);
+  }, []);
 
   const handleCancel = useCallback(() => {
     // Clear the auto-reset timeout when user clicks cancel
-    if (dialogTimeoutId) {
-      clearTimeout(dialogTimeoutId);
-      setDialogTimeoutId(null);
+    if (dialogTimeoutIdRef.current) {
+      clearTimeout(dialogTimeoutIdRef.current);
+      dialogTimeoutIdRef.current = null;
     }
     setShowDialog(false);
     onReset();
-  }, [dialogTimeoutId, onReset]);
+  }, [onReset]);
 
   useEffect(() => {
     const events = [
@@ -64,14 +64,11 @@ export const useInactivityTimer = (onReset: () => void) => {
         setShowDialog(true);
         
         // Set timer to auto-reset after dialog timeout
-        const timeoutId = setTimeout(() => {
-          if (showDialog) { // If dialog is still shown after 10 seconds
-            onReset();
-            setShowDialog(false);
-          }
+        dialogTimeoutIdRef.current = setTimeout(() => {
+          console.log("Auto-closing dialog after timeout");
+          onReset();
+          setShowDialog(false);
         }, DIALOG_TIMEOUT);
-        
-        setDialogTimeoutId(timeoutId);
       }
     }, 1000);
 
@@ -80,11 +77,34 @@ export const useInactivityTimer = (onReset: () => void) => {
         document.removeEventListener(event, handleActivity);
       });
       clearInterval(checkInactivity);
-      if (dialogTimeoutId) {
-        clearTimeout(dialogTimeoutId);
+      if (dialogTimeoutIdRef.current) {
+        clearTimeout(dialogTimeoutIdRef.current);
       }
     };
-  }, [lastActivity, showDialog, onReset, resetTimer, dialogTimeoutId]);
+  }, [lastActivity, showDialog, onReset, resetTimer]);
+
+  // Side effect to ensure dialog auto-closes after appearing
+  useEffect(() => {
+    if (showDialog) {
+      console.log("Dialog shown, setting auto-close timer");
+      // Make sure we don't have multiple timers
+      if (dialogTimeoutIdRef.current) {
+        clearTimeout(dialogTimeoutIdRef.current);
+      }
+      
+      dialogTimeoutIdRef.current = setTimeout(() => {
+        console.log("Auto-closing dialog after timeout");
+        onReset();
+        setShowDialog(false);
+      }, DIALOG_TIMEOUT);
+      
+      return () => {
+        if (dialogTimeoutIdRef.current) {
+          clearTimeout(dialogTimeoutIdRef.current);
+        }
+      };
+    }
+  }, [showDialog, onReset]);
 
   return {
     showDialog,
