@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -163,10 +164,18 @@ const KioskView = () => {
   };
 
   const resetToWelcome = () => {
+    console.log("Resetting to welcome page - cleaning up all state");
     setShowWelcome(true);
     setShowOrderTypeSelection(false);
     setCart([]);
     setIsCartOpen(false);
+    setSelectedItem(null);
+    setSelectedOptions([]);
+    setSelectedToppings([]);
+    setQuantity(1);
+    setSpecialInstructions("");
+    setOrderType(null);
+    setTableNumber(null);
     if (categories.length > 0) {
       setActiveCategory(categories[0].id);
     }
