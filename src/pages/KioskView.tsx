@@ -830,6 +830,39 @@ const KioskView = () => {
     }
   };
 
+  const handleRefreshMenu = async () => {
+    try {
+      setLoading(true);
+      setRefreshTrigger(prev => prev + 1);
+      
+      if (!restaurant) return;
+      
+      const menuData = await getMenuForRestaurant(restaurant.id);
+      setCategories(menuData);
+      
+      if (menuData.length > 0) {
+        setActiveCategory(menuData[0].id);
+      }
+      
+      setCacheItem('categories', menuData, restaurant.id);
+      
+      toast({
+        title: t("menuRefreshed"),
+        description: t("menuRefreshSuccess")
+      });
+      
+      setLoading(false);
+    } catch (error) {
+      console.error("Error refreshing menu:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh menu",
+        variant: "destructive"
+      });
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
