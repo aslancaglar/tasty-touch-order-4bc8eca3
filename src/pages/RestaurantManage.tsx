@@ -61,6 +61,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
 import CacheManagement from "@/components/restaurant/CacheManagement";
+import { useParams } from "react-router-dom";
 
 interface OrdersTabProps {
   restaurantId: string;
@@ -860,8 +861,6 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onUpdate }) => {
   );
 };
 
-// Import the CacheManagement component at the top with other imports
-
 const RestaurantManage = () => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -916,7 +915,6 @@ const RestaurantManage = () => {
 
   return (
     <AdminLayout>
-      
       {restaurant && (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-4">
@@ -938,4 +936,53 @@ const RestaurantManage = () => {
               <TabsTrigger value="orders">Orders</TabsTrigger>
               <TabsTrigger value="menu">Menu</TabsTrigger>
               <TabsTrigger value="toppings">Toppings</TabsTrigger>
-              <
+              <TabsTrigger value="stock">Stock</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="cache">Cache</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="orders">
+              <OrdersTab restaurantId={restaurant.id} />
+            </TabsContent>
+            
+            <TabsContent value="menu">
+              <MenuTab restaurantId={restaurant.id} />
+            </TabsContent>
+            
+            <TabsContent value="toppings">
+              <ToppingsTab restaurantId={restaurant.id} />
+            </TabsContent>
+            
+            <TabsContent value="stock">
+              <StockTab restaurantId={restaurant.id} />
+            </TabsContent>
+            
+            <TabsContent value="settings">
+              <SettingsTab 
+                restaurant={restaurant} 
+                onUpdate={() => {
+                  // Refetch restaurant data
+                  const fetchRestaurant = async () => {
+                    try {
+                      const data = await getRestaurantById(restaurant.id);
+                      setRestaurant(data);
+                    } catch (error) {
+                      console.error("Error fetching restaurant:", error);
+                    }
+                  };
+                  fetchRestaurant();
+                }} 
+              />
+            </TabsContent>
+            
+            <TabsContent value="cache">
+              <CacheManagement restaurantId={restaurant.id} />
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
+    </AdminLayout>
+  );
+};
+
+export default RestaurantManage;
