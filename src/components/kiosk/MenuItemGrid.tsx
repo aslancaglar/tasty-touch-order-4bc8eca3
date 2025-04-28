@@ -22,10 +22,19 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   restaurantId
 }) => {
   React.useEffect(() => {
-    if (items.length > 0 && restaurantId) {
+    if (items?.length > 0 && restaurantId) {
       setCache(cacheKeys.menuItems(restaurantId), items);
     }
   }, [items, restaurantId]);
+
+  // If no items or null, show a placeholder message
+  if (!items || items.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">{t("No items available in this category")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -18,10 +18,23 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   restaurantId
 }) => {
   React.useEffect(() => {
-    if (categories.length > 0 && restaurantId) {
+    if (categories?.length > 0 && restaurantId) {
       setCache(cacheKeys.categories(restaurantId), categories);
     }
   }, [categories, restaurantId]);
+
+  // If categories is empty, show a placeholder
+  if (!categories || categories.length === 0) {
+    return (
+      <div className="p-4">
+        <div className="space-y-2">
+          <div className="w-full flex items-center p-3 rounded-lg text-left transition-colors bg-gray-200">
+            <div className="animate-pulse h-16 w-full bg-gray-300 rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">
