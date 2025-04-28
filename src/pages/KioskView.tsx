@@ -498,6 +498,53 @@ const KioskView = () => {
       .join('; ');
   };
 
+  // Handle start ordering from welcome screen
+  const handleStartOrdering = () => {
+    setShowWelcome(false);
+    setShowOrderTypeSelection(true);
+  };
+
+  // Handle order type selection
+  const handleSelectOrderType = (type: OrderType, tableNum?: string) => {
+    setOrderType(type);
+    if (tableNum) {
+      setTableNumber(tableNum);
+    }
+    setShowOrderTypeSelection(false);
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-violet-700" />
+      </div>
+    );
+  }
+
+  // Show welcome page
+  if (showWelcome && restaurant) {
+    return (
+      <WelcomePage
+        restaurant={restaurant}
+        onStart={handleStartOrdering}
+        uiLanguage={uiLanguage as "fr" | "en" | "tr"}
+      />
+    );
+  }
+
+  // Show order type selection
+  if (showOrderTypeSelection) {
+    return (
+      <OrderTypeSelection
+        isOpen={showOrderTypeSelection}
+        onClose={() => setShowOrderTypeSelection(false)}
+        onSelectOrderType={handleSelectOrderType}
+        uiLanguage={uiLanguage as "fr" | "en" | "tr"}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <KioskHeader 
