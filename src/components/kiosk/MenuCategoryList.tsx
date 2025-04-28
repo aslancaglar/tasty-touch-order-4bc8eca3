@@ -18,7 +18,7 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   restaurantId
 }) => {
   React.useEffect(() => {
-    if (categories.length > 0) {
+    if (categories.length > 0 && restaurantId) {
       setCache(cacheKeys.categories(restaurantId), categories);
     }
   }, [categories, restaurantId]);

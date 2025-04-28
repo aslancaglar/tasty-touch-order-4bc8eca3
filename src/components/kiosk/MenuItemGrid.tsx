@@ -22,7 +22,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   restaurantId
 }) => {
   React.useEffect(() => {
-    if (items.length > 0) {
+    if (items.length > 0 && restaurantId) {
       setCache(cacheKeys.menuItems(restaurantId), items);
     }
   }, [items, restaurantId]);
