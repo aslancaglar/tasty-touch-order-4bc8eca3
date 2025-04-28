@@ -76,4 +76,3 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
 };
 
 export default MenuItemGrid;
-
