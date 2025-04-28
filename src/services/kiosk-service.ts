@@ -12,6 +12,7 @@ import {
   ToppingCategory,
   Topping
 } from "@/types/database-types";
+import { getFromCache, saveToCache } from "@/utils/cache-utils";
 
 // Restaurant services
 export const getRestaurants = async (): Promise<Restaurant[]> => {
@@ -94,6 +95,13 @@ export const getRestaurantBySlug = async (slug: string): Promise<Restaurant | nu
 // Menu Category services
 export const getCategoriesByRestaurantId = async (restaurantId: string): Promise<MenuCategory[]> => {
   console.log("Fetching categories for restaurant:", restaurantId);
+  
+  const cachedCategories = getFromCache<MenuCategory[]>('menu_categories', restaurantId);
+  if (cachedCategories) {
+    console.log("Using cached menu categories");
+    return cachedCategories;
+  }
+  
   const { data, error } = await supabase
     .from("menu_categories")
     .select("*")
@@ -105,6 +113,8 @@ export const getCategoriesByRestaurantId = async (restaurantId: string): Promise
     throw error;
   }
 
+  saveToCache('menu_categories', restaurantId, data);
+  
   return data;
 };
 
@@ -156,6 +166,33 @@ export const deleteCategory = async (id: string): Promise<void> => {
 
 // Menu Item services
 export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuItem[]> => {
+  const { data: categoryData } = await supabase
+    .from("menu_categories")
+    .select("restaurant_id")
+    .eq("id", categoryId)
+    .single();
+  
+  const restaurantId = categoryData?.restaurant_id;
+  
+  if (restaurantId) {
+    const cachedMenuItems = getFromCache<MenuItem[]>(`menu_items_${categoryId}`, restaurantId);
+    if (cachedMenuItems) {
+      console.log(`Using cached menu items for category ${categoryId}`);
+      
+      const cachedMenuItemsWithToppingCategories = await Promise.all(
+        cachedMenuItems.map(async (item) => {
+          const cachedToppingCategories = getFromCache<string[]>(`topping_categories_${item.id}`, restaurantId);
+          return {
+            ...item,
+            topping_categories: cachedToppingCategories || []
+          };
+        })
+      );
+      
+      return cachedMenuItemsWithToppingCategories;
+    }
+  }
+
   const { data: menuItems, error } = await supabase
     .from("menu_items")
     .select("*")
@@ -172,24 +209,72 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
         .from("menu_item_topping_categories")
         .select("topping_category_id")
         .eq("menu_item_id", item.id)
-        .order("display_order", { ascending: true }); // Order by display_order
+        .order("display_order", { ascending: true });
 
       if (relationsError) {
         console.error("Error fetching menu item topping category relations:", relationsError);
         return { ...item, topping_categories: [] };
       }
+      
+      const toppingCategories = toppingCategoryRelations.map(tc => tc.topping_category_id);
+      
+      if (restaurantId) {
+        saveToCache(`topping_categories_${item.id}`, restaurantId, toppingCategories);
+      }
 
       return {
         ...item,
-        topping_categories: toppingCategoryRelations.map(tc => tc.topping_category_id)
+        topping_categories: toppingCategories
       };
     })
   );
+  
+  if (restaurantId) {
+    saveToCache(`menu_items_${categoryId}`, restaurantId, menuItemsWithToppingCategories);
+  }
 
   return menuItemsWithToppingCategories;
 };
 
 export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
+  let restaurantId: string | null = null;
+  
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.includes('menu_items_')) {
+      try {
+        const cacheData = localStorage.getItem(key);
+        if (cacheData) {
+          const parsed = JSON.parse(cacheData);
+          if (parsed && parsed.data) {
+            const items = parsed.data as MenuItem[];
+            const matchingItem = items.find(item => item.id === id);
+            if (matchingItem) {
+              const keyParts = key.split('_');
+              restaurantId = keyParts[1];
+              break;
+            }
+          }
+        }
+      } catch (e) {
+      }
+    }
+  }
+  
+  if (restaurantId) {
+    const cachedMenuItem = getFromCache<MenuItem>(`menu_item_${id}`, restaurantId);
+    if (cachedMenuItem) {
+      console.log(`Using cached menu item for ${id}`);
+      
+      const cachedToppingCategories = getFromCache<string[]>(`topping_categories_${id}`, restaurantId);
+      
+      return {
+        ...cachedMenuItem,
+        topping_categories: cachedToppingCategories || []
+      };
+    }
+  }
+
   const { data, error } = await supabase
     .from("menu_items")
     .select("*")
@@ -208,7 +293,7 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     .from("menu_item_topping_categories")
     .select("topping_category_id")
     .eq("menu_item_id", id)
-    .order("display_order", { ascending: true }); // Order by display_order
+    .order("display_order", { ascending: true });
 
   if (relationsError) {
     console.error("Error fetching menu item topping category relations:", relationsError);
@@ -218,9 +303,29 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     };
   }
 
+  const toppingCategories = toppingCategoryRelations.map(tc => tc.topping_category_id);
+  
+  if (!restaurantId) {
+    try {
+      const { data: categoryData } = await supabase
+        .from("menu_categories")
+        .select("restaurant_id")
+        .eq("id", data.category_id)
+        .single();
+      
+      restaurantId = categoryData?.restaurant_id || null;
+    } catch (e) {
+    }
+  }
+  
+  if (restaurantId) {
+    saveToCache(`menu_item_${id}`, restaurantId, data);
+    saveToCache(`topping_categories_${id}`, restaurantId, toppingCategories);
+  }
+
   return {
     ...data,
-    topping_categories: toppingCategoryRelations.map(tc => tc.topping_category_id)
+    topping_categories: toppingCategories
   };
 };
 
@@ -248,7 +353,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
     const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
       menu_item_id: data.id,
       topping_category_id: categoryId,
-      display_order: index // Save the order based on array index
+      display_order: index
     }));
 
     const { error: relationError } = await supabase
@@ -301,7 +406,7 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
       const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
         menu_item_id: id,
         topping_category_id: categoryId,
-        display_order: index // Add display_order based on the array index
+        display_order: index
       }));
 
       const { error: insertError } = await supabase
@@ -335,6 +440,25 @@ export const deleteMenuItem = async (id: string): Promise<void> => {
 
 // Menu Item Options services
 export const getMenuItemOptions = async (menuItemId: string): Promise<MenuItemOption[]> => {
+  let restaurantId: string | null = null;
+  
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.includes(`menu_item_${menuItemId}`)) {
+      const parts = key.split('_');
+      restaurantId = parts[1];
+      break;
+    }
+  }
+  
+  if (restaurantId) {
+    const cachedOptions = getFromCache<MenuItemOption[]>(`menu_item_options_${menuItemId}`, restaurantId);
+    if (cachedOptions) {
+      console.log(`Using cached menu item options for ${menuItemId}`);
+      return cachedOptions;
+    }
+  }
+
   const { data, error } = await supabase
     .from("menu_item_options")
     .select("*")
@@ -344,12 +468,50 @@ export const getMenuItemOptions = async (menuItemId: string): Promise<MenuItemOp
     console.error("Error fetching menu item options:", error);
     throw error;
   }
+  
+  if (restaurantId) {
+    saveToCache(`menu_item_options_${menuItemId}`, restaurantId, data);
+  }
 
   return data;
 };
 
 // Option Choices services
 export const getOptionChoices = async (optionId: string): Promise<OptionChoice[]> => {
+  let restaurantId: string | null = null;
+  let menuItemId: string | null = null;
+  
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.includes('menu_item_options_')) {
+      try {
+        const cacheData = localStorage.getItem(key);
+        if (cacheData) {
+          const parsed = JSON.parse(cacheData);
+          if (parsed && parsed.data) {
+            const options = parsed.data as MenuItemOption[];
+            const matchingOption = options.find(opt => opt.id === optionId);
+            if (matchingOption) {
+              const keyParts = key.split('_');
+              restaurantId = keyParts[1];
+              menuItemId = matchingOption.menu_item_id;
+              break;
+            }
+          }
+        }
+      } catch (e) {
+      }
+    }
+  }
+  
+  if (restaurantId) {
+    const cachedChoices = getFromCache<OptionChoice[]>(`option_choices_${optionId}`, restaurantId);
+    if (cachedChoices) {
+      console.log(`Using cached option choices for ${optionId}`);
+      return cachedChoices;
+    }
+  }
+
   const { data, error } = await supabase
     .from("option_choices")
     .select("*")
@@ -358,6 +520,10 @@ export const getOptionChoices = async (optionId: string): Promise<OptionChoice[]
   if (error) {
     console.error("Error fetching option choices:", error);
     throw error;
+  }
+  
+  if (restaurantId) {
+    saveToCache(`option_choices_${optionId}`, restaurantId, data);
   }
 
   return data;
@@ -567,6 +733,13 @@ export const getOrderItemsByOrderId = async (orderId: string) => {
 // Topping Category services
 export const getToppingCategoriesByRestaurantId = async (restaurantId: string): Promise<ToppingCategory[]> => {
   console.log("Fetching topping categories for restaurant:", restaurantId);
+  
+  const cachedToppingCategories = getFromCache<ToppingCategory[]>('topping_categories', restaurantId);
+  if (cachedToppingCategories) {
+    console.log("Using cached topping categories");
+    return cachedToppingCategories;
+  }
+  
   const { data, error } = await supabase
     .from("topping_categories")
     .select("*")
@@ -576,6 +749,8 @@ export const getToppingCategoriesByRestaurantId = async (restaurantId: string): 
     console.error("Error fetching topping categories:", error);
     throw error;
   }
+  
+  saveToCache('topping_categories', restaurantId, data);
 
   return data;
 };
@@ -628,6 +803,27 @@ export const deleteToppingCategory = async (id: string): Promise<void> => {
 
 // Topping services
 export const getToppingsByCategory = async (categoryId: string): Promise<Topping[]> => {
+  let restaurantId: string | null = null;
+  
+  try {
+    const { data: categoryData } = await supabase
+      .from("topping_categories")
+      .select("restaurant_id")
+      .eq("id", categoryId)
+      .single();
+    
+    restaurantId = categoryData?.restaurant_id || null;
+  } catch (e) {
+  }
+  
+  if (restaurantId) {
+    const cachedToppings = getFromCache<Topping[]>(`toppings_${categoryId}`, restaurantId);
+    if (cachedToppings) {
+      console.log(`Using cached toppings for category ${categoryId}`);
+      return cachedToppings;
+    }
+  }
+
   const { data, error } = await supabase
     .from("toppings")
     .select("*")
@@ -636,6 +832,10 @@ export const getToppingsByCategory = async (categoryId: string): Promise<Topping
   if (error) {
     console.error("Error fetching toppings:", error);
     throw error;
+  }
+  
+  if (restaurantId) {
+    saveToCache(`toppings_${categoryId}`, restaurantId, data);
   }
 
   return data;
@@ -689,6 +889,12 @@ export const deleteTopping = async (id: string): Promise<void> => {
 
 // Helper function to get all toppings for a restaurant with their categories
 export const getToppingsForRestaurant = async (restaurantId: string) => {
+  const cachedToppingsWithCategories = getFromCache<any[]>('toppings_with_categories', restaurantId);
+  if (cachedToppingsWithCategories) {
+    console.log("Using cached toppings with categories");
+    return cachedToppingsWithCategories;
+  }
+  
   const categories = await getToppingCategoriesByRestaurantId(restaurantId);
   
   const categoriesWithToppings = await Promise.all(
@@ -700,6 +906,8 @@ export const getToppingsForRestaurant = async (restaurantId: string) => {
       };
     })
   );
+  
+  saveToCache('toppings_with_categories', restaurantId, categoriesWithToppings);
 
   return categoriesWithToppings;
 };
@@ -718,7 +926,6 @@ export const duplicateRestaurant = async (restaurantId: string): Promise<Restaur
     throw error;
   }
 
-  // Fetch the newly created restaurant
   const { data: newRestaurant, error: fetchError } = await supabase
     .from("restaurants")
     .select("*")

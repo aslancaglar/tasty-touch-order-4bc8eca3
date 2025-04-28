@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -782,6 +781,7 @@ const KioskView = () => {
               handleSelectItem={handleSelectItem}
               currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
               t={t}
+              restaurantId={restaurant.id}
             />
           </div>
         </div>
