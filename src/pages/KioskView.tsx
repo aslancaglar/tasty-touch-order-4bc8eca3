@@ -921,3 +921,64 @@ const KioskView = () => {
           <div className="w-3/4 p-4">
             {restaurant ? (
               <>
+                <MenuItemGrid
+                  items={(categories.find(c => c.id === activeCategory)?.items || []).filter(item => item.in_stock)}
+                  onSelectItem={handleSelectItem}
+                  loading={loading}
+                  currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
+                />
+                {selectedItem && (
+                  <ItemCustomizationDialog
+                    item={selectedItem}
+                    isOpen={!!selectedItem}
+                    onClose={() => setSelectedItem(null)}
+                    onAddToCart={handleAddToCart}
+                    selectedOptions={selectedOptions}
+                    selectedToppings={selectedToppings}
+                    onToggleChoice={handleToggleChoice}
+                    onToggleTopping={handleToggleTopping}
+                    quantity={quantity}
+                    setQuantity={setQuantity}
+                    specialInstructions={specialInstructions}
+                    setSpecialInstructions={setSpecialInstructions}
+                    t={t}
+                    currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
+                    shouldShowToppingCategory={shouldShowToppingCategory}
+                  />
+                )}
+                {showDialog && (
+                  <InactivityDialog
+                    onContinue={handleContinue}
+                    onCancel={handleCancel}
+                    t={t}
+                  />
+                )}
+                <Cart
+                  isOpen={isCartOpen}
+                  onClose={() => setIsCartOpen(false)}
+                  cart={cart}
+                  onUpdateQuantity={handleUpdateCartItemQuantity}
+                  onRemoveItem={handleRemoveCartItem}
+                  onPlaceOrder={handlePlaceOrder}
+                  subtotal={calculateSubtotal()}
+                  tax={calculateTax()}
+                  total={calculateCartTotal()}
+                  placingOrder={placingOrder}
+                  orderPlaced={orderPlaced}
+                  getFormattedOptions={getFormattedOptions}
+                  getFormattedToppings={getFormattedToppings}
+                  currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
+                  cartRef={cartRef}
+                  orderType={orderType}
+                  tableNumber={tableNumber}
+                />
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default KioskView;
