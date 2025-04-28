@@ -1,257 +1,258 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Package, PackageOpen } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { sendKioskRefreshSignal } from "@/integrations/supabase/client";
-import { supabase } from "@/integrations/supabase/client";
-import { MenuItem, Topping, Restaurant } from "@/types/database-types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  getCategoriesByRestaurantId,
+  getMenuItemsByCategory,
+  getToppingCategoriesByRestaurantId,
+  getToppingsByCategory,
+  updateMenuItem,
+  updateTopping,
+} from "@/services/kiosk-service";
+import { Restaurant, MenuCategory, MenuItem, ToppingCategory, Topping } from "@/types/database-types";
 
 interface StockTabProps {
-  restaurantId: string;
-  menuItems?: MenuItem[];
-  toppings?: Topping[];
-  onUpdateMenuItemStock?: (id: string, inStock: boolean) => Promise<void>;
-  onUpdateToppingStock?: (id: string, inStock: boolean) => Promise<void>;
+  restaurant: Restaurant;
 }
 
-const StockTab: React.FC<StockTabProps> = (props) => {
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [menuItems, setMenuItems] = useState<(MenuItem & { category_name?: string })[]>([]);
-  const [toppings, setToppings] = useState<(Topping & { category_name?: string })[]>([]);
-  const [loading, setLoading] = useState(false);
+const StockTab = ({ restaurant }: StockTabProps) => {
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
+  const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
+  const [toppings, setToppings] = useState<Record<string, Topping[]>>({});
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  
-  const restaurantId = props.restaurantId;
 
   useEffect(() => {
-    if (props.menuItems && props.toppings) {
-      setMenuItems(props.menuItems as (MenuItem & { category_name?: string })[]);
-      setToppings(props.toppings as (Topping & { category_name?: string })[]);
-    } else {
-      fetchMenuItemsAndToppings();
-    }
-  }, [restaurantId]);
+    const fetchCategories = async () => {
+      try {
+        const data = await getCategoriesByRestaurantId(restaurant.id);
+        setCategories(data);
+        fetchMenuItems(data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load categories",
+          variant: "destructive",
+        });
+      }
+    };
 
-  const fetchMenuItemsAndToppings = async () => {
+    const fetchToppingCategories = async () => {
+      try {
+        const data = await getToppingCategoriesByRestaurantId(restaurant.id);
+        setToppingCategories(data);
+        fetchToppings(data);
+      } catch (error) {
+        console.error("Error fetching topping categories:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load topping categories",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchCategories();
+    fetchToppingCategories();
+  }, [restaurant.id, toast]);
+
+  const fetchMenuItems = async (categories: MenuCategory[]) => {
     try {
       setLoading(true);
-      const { data: menuItemsData, error: menuItemsError } = await supabase
-        .from('menu_items')
-        .select(`
-          id,
-          name,
-          in_stock,
-          category_id,
-          menu_categories(name)
-        `)
-        .eq('menu_categories.restaurant_id', restaurantId);
-
-      if (menuItemsError) throw menuItemsError;
-
-      const { data: toppingsData, error: toppingsError } = await supabase
-        .from('toppings')
-        .select(`
-          id,
-          name,
-          in_stock,
-          category_id,
-          topping_categories(name)
-        `)
-        .eq('topping_categories.restaurant_id', restaurantId);
-
-      if (toppingsError) throw toppingsError;
-
-      const formattedMenuItems = menuItemsData.map((item: any) => ({
-        ...item,
-        category_name: item.menu_categories?.name || 'Unknown'
-      }));
-
-      const formattedToppings = toppingsData.map((topping: any) => ({
-        ...topping,
-        category_name: topping.topping_categories?.name || 'Unknown'
-      }));
-
-      setMenuItems(formattedMenuItems);
-      setToppings(formattedToppings);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching stock data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load inventory data",
-        variant: "destructive",
-      });
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateMenuItemStock = async (id: string, inStock: boolean) => {
-    try {
-      if (props.onUpdateMenuItemStock) {
-        await props.onUpdateMenuItemStock(id, inStock);
-      } else {
-        const { error } = await supabase
-          .from('menu_items')
-          .update({ in_stock: inStock })
-          .eq('id', id);
-        
-        if (error) throw error;
-        
-        setMenuItems(prev => 
-          prev.map(item => item.id === id ? { ...item, in_stock: inStock } : item)
-        );
+      const itemsByCategory: Record<string, MenuItem[]> = {};
+      
+      for (const category of categories) {
+        const items = await getMenuItemsByCategory(category.id);
+        itemsByCategory[category.id] = items;
       }
       
-      toast({
-        title: "Stock updated",
-        description: `Item is now ${inStock ? 'in stock' : 'out of stock'}`,
-      });
+      setMenuItems(itemsByCategory);
     } catch (error) {
-      console.error("Error updating menu item stock:", error);
+      console.error("Error fetching menu items:", error);
       toast({
         title: "Error",
-        description: "Failed to update menu item stock",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleUpdateToppingStock = async (id: string, inStock: boolean) => {
-    try {
-      if (props.onUpdateToppingStock) {
-        await props.onUpdateToppingStock(id, inStock);
-      } else {
-        const { error } = await supabase
-          .from('toppings')
-          .update({ in_stock: inStock })
-          .eq('id', id);
-        
-        if (error) throw error;
-        
-        setToppings(prev => 
-          prev.map(topping => topping.id === id ? { ...topping, in_stock: inStock } : topping)
-        );
-      }
-      
-      toast({
-        title: "Stock updated",
-        description: `Topping is now ${inStock ? 'in stock' : 'out of stock'}`,
-      });
-    } catch (error) {
-      console.error("Error updating topping stock:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update topping stock",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleRefreshKiosk = async () => {
-    try {
-      console.log(`Sending refresh signal for restaurant: ${restaurantId}`);
-      setIsRefreshing(true);
-      
-      const result = await sendKioskRefreshSignal(restaurantId);
-      console.log("Refresh signal result:", result);
-      
-      toast({
-        title: "Refresh signal sent",
-        description: "All connected kiosks will refresh their view shortly.",
-      });
-    } catch (error) {
-      console.error("Error refreshing kiosk:", error);
-      toast({
-        title: "Error",
-        description: "Failed to send refresh signal.",
+        description: "Failed to load menu items",
         variant: "destructive",
       });
     } finally {
-      setIsRefreshing(false);
+      setLoading(false);
+    }
+  };
+
+  const fetchToppings = async (categories: ToppingCategory[]) => {
+    try {
+      const toppingsByCategory: Record<string, Topping[]> = {};
+      
+      for (const category of categories) {
+        const items = await getToppingsByCategory(category.id);
+        toppingsByCategory[category.id] = items;
+      }
+      
+      setToppings(toppingsByCategory);
+    } catch (error) {
+      console.error("Error fetching toppings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load toppings",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMenuItemStockToggle = async (item: MenuItem) => {
+    try {
+      const updatedItem = await updateMenuItem(item.id, {
+        ...item,
+        in_stock: !item.in_stock,
+      });
+
+      setMenuItems(prev => ({
+        ...prev,
+        [item.category_id]: prev[item.category_id].map(menuItem =>
+          menuItem.id === item.id ? updatedItem : menuItem
+        ),
+      }));
+
+      toast({
+        title: "Success",
+        description: `${item.name} is now ${!item.in_stock ? 'in' : 'out of'} stock`,
+      });
+    } catch (error) {
+      console.error("Error updating stock status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update stock status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToppingStockToggle = async (topping: Topping) => {
+    try {
+      const updatedTopping = await updateTopping(topping.id, {
+        ...topping,
+        in_stock: !topping.in_stock,
+      });
+
+      setToppings(prev => ({
+        ...prev,
+        [topping.category_id]: prev[topping.category_id].map(t =>
+          t.id === topping.id ? updatedTopping : t
+        ),
+      }));
+
+      toast({
+        title: "Success",
+        description: `${topping.name} is now ${!topping.in_stock ? 'in' : 'out of'} stock`,
+      });
+    } catch (error) {
+      console.error("Error updating topping stock status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update topping stock status",
+        variant: "destructive",
+      });
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-48">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-700" />
-      </div>
-    );
+    return <div>Loading stock management...</div>;
   }
 
   return (
-    <div className="grid gap-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Inventory Management</h2>
-        <Button 
-          onClick={handleRefreshKiosk}
-          disabled={isRefreshing}
-          className="bg-kiosk-primary"
-        >
-          {isRefreshing ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh Kiosk View
-            </>
-          )}
-        </Button>
-      </div>
+    <Tabs defaultValue="menu-items">
+      <TabsList className="mb-4">
+        <TabsTrigger value="menu-items">Menu Items</TabsTrigger>
+        <TabsTrigger value="toppings">Toppings</TabsTrigger>
+      </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Menu Items</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {menuItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between border p-4 rounded-lg">
-                <div>
-                  <h3 className="font-medium">{item.name}</h3>
-                  <p className="text-sm text-gray-500">{item.category_name}</p>
-                </div>
-                <Switch
-                  checked={item.in_stock}
-                  onCheckedChange={async (checked) => {
-                    await handleUpdateMenuItemStock(item.id, checked);
-                  }}
-                />
+      <TabsContent value="menu-items">
+        <div className="space-y-6">
+          {categories.map((category) => (
+            <Card key={category.id} className="p-6">
+              <h3 className="text-lg font-semibold mb-4">{category.name}</h3>
+              <div className="space-y-4">
+                {menuItems[category.id]?.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div className="flex items-center space-x-4">
+                      {item.image && (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="h-12 w-12 object-cover rounded-md"
+                        />
+                      )}
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {item.in_stock ? (
+                        <Package className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <PackageOpen className="h-4 w-4 text-red-500" />
+                      )}
+                      <Switch
+                        checked={item.in_stock}
+                        onCheckedChange={() => handleMenuItemStockToggle(item)}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </Card>
+          ))}
+        </div>
+      </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Toppings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {toppings.map((topping) => (
-              <div key={topping.id} className="flex items-center justify-between border p-4 rounded-lg">
-                <div>
-                  <h3 className="font-medium">{topping.name}</h3>
-                  <p className="text-sm text-gray-500">{topping.category_name}</p>
-                </div>
-                <Switch
-                  checked={topping.in_stock}
-                  onCheckedChange={async (checked) => {
-                    await handleUpdateToppingStock(topping.id, checked);
-                  }}
-                />
+      <TabsContent value="toppings">
+        <div className="space-y-6">
+          {toppingCategories.map((category) => (
+            <Card key={category.id} className="p-6">
+              <h3 className="text-lg font-semibold mb-4">{category.name}</h3>
+              <div className="space-y-4">
+                {toppings[category.id]?.map((topping) => (
+                  <div
+                    key={topping.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium">{topping.name}</p>
+                      <p className="text-sm text-gray-600">
+                        €{topping.price.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {topping.in_stock ? (
+                        <Package className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <PackageOpen className="h-4 w-4 text-red-500" />
+                      )}
+                      <Switch
+                        checked={topping.in_stock}
+                        onCheckedChange={() => handleToppingStockToggle(topping)}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            </Card>
+          ))}
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 };
 

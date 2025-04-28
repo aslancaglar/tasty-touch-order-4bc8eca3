@@ -166,9 +166,7 @@ const RestaurantManage = () => {
             
             <TabsContent value="stock">
               {restaurant && (
-                <StockTab 
-                  restaurantId={restaurant.id}
-                />
+                <StockTab restaurant={restaurant} />
               )}
             </TabsContent>
           </Tabs>

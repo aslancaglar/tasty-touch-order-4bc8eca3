@@ -9,35 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      kiosk_refresh_signals: {
-        Row: {
-          created_at: string
-          id: string
-          restaurant_id: string
-          timestamp: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          restaurant_id: string
-          timestamp?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          restaurant_id?: string
-          timestamp?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kiosk_refresh_signals_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       menu_categories: {
         Row: {
           created_at: string
