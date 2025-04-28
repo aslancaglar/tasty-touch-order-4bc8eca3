@@ -3,16 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  getRestaurantBySlug, 
-  getMenuForRestaurant, 
-  getMenuItemWithOptions,
-  createOrder,
-  createOrderItems,
-  createOrderItemOptions,
-  createOrderItemToppings
-} from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType, Topping } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
@@ -234,6 +224,50 @@ const KioskView = () => {
       fullReset();
     }
   }, [showWelcome, fullReset]);
+
+  useEffect(() => {
+    if (!restaurant?.id) return;
+
+    console.log("Setting up realtime subscription for menu items");
+    
+    const channel = supabase
+      .channel('menu-items-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'menu_items',
+          filter: `category_id=in.(${categories.map(c => `'${c.id}'`).join(',')})`,
+        },
+        async (payload) => {
+          console.log("Received stock update:", payload);
+          
+          // Update the menu items in the state
+          setCategories(prevCategories => {
+            return prevCategories.map(category => {
+              if (category.items.some(item => item.id === payload.new.id)) {
+                return {
+                  ...category,
+                  items: category.items.map(item => 
+                    item.id === payload.new.id 
+                      ? { ...item, in_stock: payload.new.in_stock }
+                      : item
+                  )
+                };
+              }
+              return category;
+            });
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log("Cleaning up realtime subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [restaurant?.id, categories]);
 
   const handleStartOrder = () => {
     fullReset();
