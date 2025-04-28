@@ -4,22 +4,19 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { MenuItem } from "@/types/database-types";
-import CachedImage from "@/components/CachedImage";
 
 interface MenuItemGridProps {
   items: MenuItem[];
   handleSelectItem: (item: MenuItem) => void;
   currencySymbol: string;
   t: (key: string) => string;
-  restaurantId: string;
 }
 
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
   currencySymbol,
-  t,
-  restaurantId
+  t
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -28,16 +25,12 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         .map(item => (
           <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
             <div 
-              className="h-40 bg-cover bg-center cursor-pointer relative" 
+              className="h-40 bg-cover bg-center cursor-pointer" 
+              style={{
+                backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
+              }}
               onClick={() => handleSelectItem(item)}
-            >
-              <CachedImage
-                src={item.image || 'https://via.placeholder.com/400x300'}
-                alt={item.name}
-                restaurantId={restaurantId}
-                className="w-full h-full object-cover"
-              />
-            </div>
+            ></div>
             <div className="p-4">
               <div className="flex justify-between">
                 <h3 className="font-bold text-lg">{item.name}</h3>
