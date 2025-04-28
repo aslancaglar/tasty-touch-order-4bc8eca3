@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,35 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
   onCancel,
   t
 }) => {
+  // Add a timer reference to track when the component was mounted
+  const timerRef = useRef<number | null>(null);
+  
+  // When dialog becomes visible, start a timer that will automatically dismiss it
+  useEffect(() => {
+    if (isOpen) {
+      console.log("Dialog opened, setting timeout");
+      // Clear any existing timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      // Set new timer for auto-cancellation (10 seconds)
+      timerRef.current = window.setTimeout(() => {
+        console.log("Dialog auto-timeout triggered");
+        onCancel();
+      }, 10000); // 10 seconds
+    }
+    
+    // Cleanup function to clear the timer if component unmounts or dialog closes
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isOpen, onCancel]);
+
   return (
     <Dialog 
       open={isOpen} 

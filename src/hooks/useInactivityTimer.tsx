@@ -78,14 +78,17 @@ export const useInactivityTimer = (onReset: () => void) => {
       if (!showDialog && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
         setShowDialog(true);
         
-        // Set timer to auto-reset after dialog timeout
+        // Set timer to auto-reset after dialog timeout - make sure it works!
+        console.log("Setting up auto-close dialog timer");
+        if (dialogTimeoutIdRef.current) {
+          clearTimeout(dialogTimeoutIdRef.current);
+        }
+        
         dialogTimeoutIdRef.current = setTimeout(() => {
-          console.log("Auto-closing dialog after timeout");
-          setShowDialog(false); // Close dialog first
-          setTimeout(() => {
-            inactiveRef.current = true;
-            onReset(); // Then reset to welcome page after a short delay - this is the "No" action
-          }, 100);
+          console.log("Auto-closing dialog after timeout - redirecting to welcome page");
+          setShowDialog(false);
+          inactiveRef.current = true;
+          onReset(); // Reset to welcome page after timeout
         }, DIALOG_TIMEOUT);
       }
     }, 1000);
@@ -100,6 +103,27 @@ export const useInactivityTimer = (onReset: () => void) => {
       }
     };
   }, [lastActivity, showDialog, onReset, resetTimer]);
+
+  // Add an effect to handle the dialog auto-closing
+  useEffect(() => {
+    // When dialog is shown, ensure the timeout is set
+    if (showDialog && !dialogTimeoutIdRef.current) {
+      console.log("Dialog shown, setting up automatic timeout");
+      dialogTimeoutIdRef.current = setTimeout(() => {
+        console.log("Dialog timeout triggered - redirecting to welcome");
+        setShowDialog(false);
+        inactiveRef.current = true;
+        onReset(); // Reset to welcome page after dialog timeout
+      }, DIALOG_TIMEOUT);
+    }
+    
+    return () => {
+      // Cleanup timeout if component unmounts while dialog is showing
+      if (dialogTimeoutIdRef.current) {
+        clearTimeout(dialogTimeoutIdRef.current);
+      }
+    };
+  }, [showDialog, onReset]);
 
   return {
     showDialog,
