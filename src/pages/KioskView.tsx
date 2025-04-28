@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -57,6 +58,8 @@ const KioskView = () => {
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const [toppings, setToppings] = useState<Topping[]>([]);
   
   const { toast } = useToast();
   
@@ -622,7 +625,7 @@ const KioskView = () => {
         quantity: item.quantity,
         price: item.itemPrice,
         special_instructions: item.specialInstructions || null
-      }));
+      })));
       const orderItemOptionsToCreate = [];
       const orderItemToppingsToCreate = [];
       for (let i = 0; i < cart.length; i++) {
@@ -697,7 +700,8 @@ const KioskView = () => {
   const fetchCategories = async () => {
     try {
       // Try to get from cache first
-      const cachedCategories = getCacheItem<MenuCategory[]>('categories', restaurant.id);
+      if (!restaurant) return;
+      const cachedCategories = getCacheItem<CategoryWithItems[]>('categories', restaurant.id);
       if (cachedCategories) {
         console.log("Using cached categories");
         setCategories(cachedCategories || []);
@@ -708,7 +712,7 @@ const KioskView = () => {
         return;
       }
 
-      const data = await getRestaurantBySlug(restaurantSlug);
+      const data = await getRestaurantBySlug(restaurantSlug || '');
       if (!data) throw new Error("Restaurant not found");
       
       const menuData = await getMenuForRestaurant(data.id);
@@ -934,4 +938,37 @@ const KioskView = () => {
         onPlaceOrder={handlePlaceOrder} 
         placingOrder={placingOrder} 
         orderPlaced={orderPlaced} 
-        calculateSubtotal={calculateSubtotal}
+        calculateSubtotal={calculateSubtotal} 
+        calculateTax={calculateTax} 
+        getFormattedOptions={getFormattedOptions}
+        getFormattedToppings={getFormattedToppings}
+        t={t}
+        orderType={orderType}
+        tableNumber={tableNumber}
+        currency={restaurant?.currency}
+      />
+
+      {selectedItem && (
+        <ItemCustomizationDialog 
+          item={selectedItem} 
+          isOpen={!!selectedItem} 
+          onClose={() => setSelectedItem(null)} 
+          onAddToCart={handleAddToCart}
+          selectedOptions={selectedOptions}
+          onToggleChoice={handleToggleChoice}
+          selectedToppings={selectedToppings}
+          onToggleTopping={handleToggleTopping}
+          quantity={quantity}
+          onQuantityChange={setQuantity}
+          specialInstructions={specialInstructions}
+          onSpecialInstructionsChange={setSpecialInstructions}
+          shouldShowToppingCategory={shouldShowToppingCategory}
+          t={t}
+          currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
+        />
+      )}
+    </div>
+  );
+};
+
+export default KioskView;
