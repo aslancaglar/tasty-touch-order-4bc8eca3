@@ -2,18 +2,27 @@
 import React from "react";
 import { UtensilsCrossed } from "lucide-react";
 import { MenuCategory } from "@/types/database-types";
+import { cacheKeys, getCache, setCache } from "@/utils/cache-utils";
 
 interface MenuCategoryListProps {
   categories: MenuCategory[];
   activeCategory: string | null;
   setActiveCategory: (categoryId: string) => void;
+  restaurantId: string;
 }
 
 const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   categories,
   activeCategory,
-  setActiveCategory
+  setActiveCategory,
+  restaurantId
 }) => {
+  React.useEffect(() => {
+    if (categories.length > 0) {
+      setCache(cacheKeys.categories(restaurantId), categories);
+    }
+  }, [categories, restaurantId]);
+
   return (
     <div className="p-4">
       <div className="space-y-2">

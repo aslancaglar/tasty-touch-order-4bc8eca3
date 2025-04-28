@@ -4,20 +4,29 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { MenuItem } from "@/types/database-types";
+import { cacheKeys, getCache, setCache } from "@/utils/cache-utils";
 
 interface MenuItemGridProps {
   items: MenuItem[];
   handleSelectItem: (item: MenuItem) => void;
   currencySymbol: string;
   t: (key: string) => string;
+  restaurantId: string;
 }
 
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
   currencySymbol,
-  t
+  t,
+  restaurantId
 }) => {
+  React.useEffect(() => {
+    if (items.length > 0) {
+      setCache(cacheKeys.menuItems(restaurantId), items);
+    }
+  }, [items, restaurantId]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {items
