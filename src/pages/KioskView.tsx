@@ -25,6 +25,7 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
+import { calculateCartTotals } from "@/utils/price-utils";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -864,6 +865,7 @@ const KioskView = () => {
       };
     } catch (error) {
       console.error("Error setting up realtime updates:", error);
+      return () => {};
     }
   };
 
@@ -912,7 +914,9 @@ const KioskView = () => {
   useEffect(() => {
     const cleanup = enableRealtimeForMenuItems();
     return () => {
-      if (cleanup) cleanup();
+      if (cleanup) {
+        cleanup();
+      }
     };
   }, [restaurant?.id]);
 
@@ -943,10 +947,7 @@ const KioskView = () => {
     return (
       <WelcomePage 
         restaurant={restaurant} 
-        onStart={() => {
-          fullReset();
-          handleStartOrder();
-        }}
+        onStart={handleStartOrder}
         uiLanguage={uiLanguage} 
       />
     );
@@ -984,6 +985,7 @@ const KioskView = () => {
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
+  const cartTotal = calculateCartTotals(cart).total;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1022,7 +1024,7 @@ const KioskView = () => {
       {!isCartOpen && !cartIsEmpty && (
         <CartButton 
           itemCount={cartItemCount} 
-          total={calculateCartTotal()} 
+          total={cartTotal} 
           onClick={toggleCart} 
           uiLanguage={uiLanguage} 
           currency={restaurant.currency} 
