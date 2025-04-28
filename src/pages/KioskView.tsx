@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { useInactivityReset } from "@/hooks/useInactivityReset";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -148,31 +147,6 @@ const KioskView = () => {
   const t = (key: keyof typeof translations.en) => {
     return translations[uiLanguage][key];
   };
-
-  const resetToWelcome = () => {
-    setShowWelcome(true);
-    setShowOrderTypeSelection(false);
-    setOrderType(null);
-    setTableNumber(null);
-    setCart([]);
-    setSelectedItem(null);
-    setSelectedOptions([]);
-    setSelectedToppings([]);
-    setQuantity(1);
-    setSpecialInstructions("");
-    setIsCartOpen(false);
-    setOrderPlaced(false);
-    if (categories.length > 0) {
-      setActiveCategory(categories[0].id);
-    }
-  };
-
-  useInactivityReset(() => {
-    if (!showWelcome) {
-      console.log("Inactivity detected - resetting to welcome screen");
-      resetToWelcome();
-    }
-  });
 
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
