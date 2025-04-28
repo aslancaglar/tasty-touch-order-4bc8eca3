@@ -14,13 +14,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Function to send a refresh signal through Supabase
 export const sendKioskRefreshSignal = async (restaurantId: string) => {
   try {
-    // Insert a record into a channel table that kiosks can listen to
+    // Insert a record into the kiosk_refresh_signals table that kiosks can listen to
     const { data, error } = await supabase
       .from('kiosk_refresh_signals')
-      .insert([{ 
+      .insert({
         restaurant_id: restaurantId,
         timestamp: new Date().toISOString()
-      }]);
+      });
     
     if (error) throw error;
     return true;
