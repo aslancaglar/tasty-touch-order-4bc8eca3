@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -9,7 +8,6 @@ import { sendKioskRefreshSignal } from "@/integrations/supabase/client";
 import { supabase } from "@/integrations/supabase/client";
 import { MenuItem, Topping, Restaurant } from "@/types/database-types";
 
-// Define interfaces for the component props
 interface StockTabProps {
   restaurantId: string;
   menuItems?: MenuItem[];
@@ -18,7 +16,6 @@ interface StockTabProps {
   onUpdateToppingStock?: (id: string, inStock: boolean) => Promise<void>;
 }
 
-// Make all the props optional since we're handling fetching internally
 const StockTab: React.FC<StockTabProps> = (props) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [menuItems, setMenuItems] = useState<(MenuItem & { category_name?: string })[]>([]);
@@ -26,16 +23,13 @@ const StockTab: React.FC<StockTabProps> = (props) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   
-  // Get the restaurantId from props
   const restaurantId = props.restaurantId;
 
   useEffect(() => {
-    // Check if we have menuItems and toppings from props
     if (props.menuItems && props.toppings) {
       setMenuItems(props.menuItems as (MenuItem & { category_name?: string })[]);
       setToppings(props.toppings as (Topping & { category_name?: string })[]);
     } else {
-      // If not provided through props, fetch them
       fetchMenuItemsAndToppings();
     }
   }, [restaurantId]);
@@ -43,7 +37,6 @@ const StockTab: React.FC<StockTabProps> = (props) => {
   const fetchMenuItemsAndToppings = async () => {
     try {
       setLoading(true);
-      // Fetch menu items
       const { data: menuItemsData, error: menuItemsError } = await supabase
         .from('menu_items')
         .select(`
@@ -57,7 +50,6 @@ const StockTab: React.FC<StockTabProps> = (props) => {
 
       if (menuItemsError) throw menuItemsError;
 
-      // Fetch toppings
       const { data: toppingsData, error: toppingsError } = await supabase
         .from('toppings')
         .select(`
@@ -71,7 +63,6 @@ const StockTab: React.FC<StockTabProps> = (props) => {
 
       if (toppingsError) throw toppingsError;
 
-      // Transform the data to add category_name
       const formattedMenuItems = menuItemsData.map((item: any) => ({
         ...item,
         category_name: item.menu_categories?.name || 'Unknown'
@@ -108,7 +99,6 @@ const StockTab: React.FC<StockTabProps> = (props) => {
         
         if (error) throw error;
         
-        // Update local state
         setMenuItems(prev => 
           prev.map(item => item.id === id ? { ...item, in_stock: inStock } : item)
         );
@@ -140,7 +130,6 @@ const StockTab: React.FC<StockTabProps> = (props) => {
         
         if (error) throw error;
         
-        // Update local state
         setToppings(prev => 
           prev.map(topping => topping.id === id ? { ...topping, in_stock: inStock } : topping)
         );
@@ -159,11 +148,15 @@ const StockTab: React.FC<StockTabProps> = (props) => {
       });
     }
   };
-  
+
   const handleRefreshKiosk = async () => {
     try {
+      console.log(`Sending refresh signal for restaurant: ${restaurantId}`);
       setIsRefreshing(true);
-      await sendKioskRefreshSignal(restaurantId);
+      
+      const result = await sendKioskRefreshSignal(restaurantId);
+      console.log("Refresh signal result:", result);
+      
       toast({
         title: "Refresh signal sent",
         description: "All connected kiosks will refresh their view shortly.",

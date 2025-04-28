@@ -14,6 +14,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Function to send a refresh signal through Supabase
 export const sendKioskRefreshSignal = async (restaurantId: string) => {
   try {
+    console.log(`Sending kiosk refresh signal for restaurant: ${restaurantId}`);
+    
     // Insert a record into the kiosk_refresh_signals table that kiosks can listen to
     const { data, error } = await supabase
       .from('kiosk_refresh_signals')
@@ -22,7 +24,12 @@ export const sendKioskRefreshSignal = async (restaurantId: string) => {
         timestamp: new Date().toISOString()
       });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error inserting kiosk refresh signal:', error);
+      throw error;
+    }
+    
+    console.log('Successfully inserted kiosk refresh signal:', data);
     return true;
   } catch (error) {
     console.error('Error sending kiosk refresh signal:', error);

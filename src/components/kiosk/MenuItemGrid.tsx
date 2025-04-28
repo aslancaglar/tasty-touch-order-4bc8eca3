@@ -52,11 +52,16 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
 
   // Listen for refresh signals if restaurantId is provided
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId) {
+      console.log("No restaurantId provided to MenuItemGrid, skipping refresh signal subscription");
+      return;
+    }
 
+    console.log(`Setting up kiosk refresh subscription for restaurant: ${restaurantId}`);
+    
     // Subscribe to the refresh signals channel
     const channel = supabase
-      .channel('kiosk-refresh')
+      .channel('schema-db-changes')
       .on(
         'postgres_changes',
         {
@@ -71,9 +76,12 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           window.location.reload();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Supabase channel status: ${status}`);
+      });
 
     return () => {
+      console.log('Cleaning up kiosk refresh subscription');
       supabase.removeChannel(channel);
     };
   }, [restaurantId]);
