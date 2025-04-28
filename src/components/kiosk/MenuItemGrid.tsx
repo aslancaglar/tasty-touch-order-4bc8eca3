@@ -106,6 +106,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     cacheImages();
   }, [items]);
 
+  // Make sure we're only showing in-stock items
   const inStockItems = items.filter(item => item.in_stock);
 
   return (
