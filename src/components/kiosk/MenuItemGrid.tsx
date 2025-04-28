@@ -1,9 +1,10 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { MenuItem } from "@/types/database-types";
+import { getCachedImageUrl } from "@/utils/image-cache";
 
 interface MenuItemGridProps {
   items: MenuItem[];
@@ -18,6 +19,29 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   currencySymbol,
   t
 }) => {
+  const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const cacheImages = async () => {
+      const imagePromises = items
+        .filter(item => item.in_stock && item.image)
+        .map(async item => {
+          const cachedUrl = await getCachedImageUrl(item.image || '');
+          return { id: item.id, url: cachedUrl };
+        });
+
+      const cachedUrls = await Promise.all(imagePromises);
+      const newCachedImages = cachedUrls.reduce((acc, { id, url }) => ({
+        ...acc,
+        [id]: url
+      }), {});
+
+      setCachedImages(newCachedImages);
+    };
+
+    cacheImages();
+  }, [items]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {items
@@ -27,7 +51,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
             <div 
               className="h-40 bg-cover bg-center cursor-pointer" 
               style={{
-                backgroundImage: `url(${item.image || 'https://via.placeholder.com/400x300'})`
+                backgroundImage: `url(${cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'})`
               }}
               onClick={() => handleSelectItem(item)}
             ></div>
@@ -52,3 +76,4 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
 };
 
 export default MenuItemGrid;
+
