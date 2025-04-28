@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -916,6 +915,13 @@ const KioskView = () => {
           }} 
           onSelectOrderType={handleOrderTypeSelected} 
           uiLanguage={uiLanguage} 
+        />
+        
+        <InactivityDialog
+          isOpen={showDialog}
+          onContinue={handleContinue}
+          onCancel={handleCancel}
+          t={t}
         />
       </>
     );

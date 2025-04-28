@@ -76,10 +76,10 @@ export const useInactivityTimer = (onReset: () => void) => {
       const timeSinceLastActivity = now - lastActivity;
 
       if (!showDialog && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+        console.log("Inactivity detected, showing dialog");
         setShowDialog(true);
         
-        // Set timer to auto-reset after dialog timeout - make sure it works!
-        console.log("Setting up auto-close dialog timer");
+        // Set timer to auto-reset after dialog timeout
         if (dialogTimeoutIdRef.current) {
           clearTimeout(dialogTimeoutIdRef.current);
         }
@@ -103,27 +103,6 @@ export const useInactivityTimer = (onReset: () => void) => {
       }
     };
   }, [lastActivity, showDialog, onReset, resetTimer]);
-
-  // Add an effect to handle the dialog auto-closing
-  useEffect(() => {
-    // When dialog is shown, ensure the timeout is set
-    if (showDialog && !dialogTimeoutIdRef.current) {
-      console.log("Dialog shown, setting up automatic timeout");
-      dialogTimeoutIdRef.current = setTimeout(() => {
-        console.log("Dialog timeout triggered - redirecting to welcome");
-        setShowDialog(false);
-        inactiveRef.current = true;
-        onReset(); // Reset to welcome page after dialog timeout
-      }, DIALOG_TIMEOUT);
-    }
-    
-    return () => {
-      // Cleanup timeout if component unmounts while dialog is showing
-      if (dialogTimeoutIdRef.current) {
-        clearTimeout(dialogTimeoutIdRef.current);
-      }
-    };
-  }, [showDialog, onReset]);
 
   return {
     showDialog,

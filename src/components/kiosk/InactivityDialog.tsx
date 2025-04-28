@@ -29,7 +29,8 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
   // When dialog becomes visible, start a timer that will automatically dismiss it
   useEffect(() => {
     if (isOpen) {
-      console.log("Dialog opened, setting timeout");
+      console.log("Inactivity Dialog opened, setting timeout for auto-cancel");
+      
       // Clear any existing timer
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -38,7 +39,7 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
       
       // Set new timer for auto-cancellation (10 seconds)
       timerRef.current = window.setTimeout(() => {
-        console.log("Dialog auto-timeout triggered");
+        console.log("Dialog auto-timeout triggered, executing cancel");
         onCancel();
       }, 10000); // 10 seconds
     }
@@ -60,7 +61,7 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
       }}
     >
       <DialogContent 
-        className="sm:max-w-[425px]" 
+        className="sm:max-w-[425px] z-[100]" 
         onPointerDownOutside={(e) => {
           // Prevent closing when clicking outside
           e.preventDefault();
