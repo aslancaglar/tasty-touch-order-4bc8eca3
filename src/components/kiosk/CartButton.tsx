@@ -2,7 +2,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
-import { CartItem } from "@/types/database-types";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -27,10 +26,7 @@ interface CartButtonProps {
   total: number;
   onClick: () => void;
   uiLanguage?: "fr" | "en" | "tr";
-  currency?: string;
-  cart?: CartItem[];
-  toggleCart?: () => void;
-  currencySymbol?: string;
+  currency?: string; // Updated to require currency
 }
 
 const translations = {
@@ -46,45 +42,26 @@ const translations = {
 };
 
 const CartButton: React.FC<CartButtonProps> = ({
-  itemCount = 0,
-  total = 0,
+  itemCount,
+  total,
   onClick,
   uiLanguage = "fr",
-  currency = "EUR",
-  cart = [],
-  toggleCart,
-  currencySymbol: providedCurrencySymbol
+  currency = "EUR" // Default to EUR if not provided
 }) => {
-  // If cart is provided, calculate itemCount and total from it
-  const calculatedItemCount = cart.length > 0 
-    ? cart.reduce((sum, item) => sum + item.quantity, 0)
-    : itemCount;
-  
-  const calculatedTotal = cart.length > 0
-    ? cart.reduce((sum, item) => sum + (item.itemPrice * item.quantity), 0)
-    : total;
-  
-  // Use provided currencySymbol or calculate it
-  const currencySymbol = providedCurrencySymbol || getCurrencySymbol(currency);
-  
-  // If count is 0, don't show button
-  if (calculatedItemCount === 0) return null;
-  
+  if (itemCount === 0) return null;
   const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
-  
-  // Use provided toggleCart or fall back to onClick
-  const handleClick = toggleCart || onClick;
+  const currencySymbol = getCurrencySymbol(currency);
   
   return (
     <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center">
       <Button 
-        onClick={handleClick} 
+        onClick={onClick} 
         className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl py-[40px] px-[100px] font-bold"
       >
         <ShoppingCart className="h-12 w-12 mr-2" />
-        <span className="font-bold">{calculatedItemCount}</span>
+        <span className="font-bold">{itemCount}</span>
         <span className="mx-2">|</span>
-        <span className="font-bold">{calculatedTotal.toFixed(2)} {currencySymbol}</span>
+        <span className="font-bold">{total.toFixed(2)} {currencySymbol}</span>
         <span className="ml-3 font-semibold">{t("viewCart")}</span>
       </Button>
     </div>

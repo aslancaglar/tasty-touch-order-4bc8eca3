@@ -1,3 +1,4 @@
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -162,10 +163,4 @@ export interface CartItem {
   }[];
   specialInstructions?: string;
   itemPrice: number;
-}
-
-// Adding the missing SelectedToppingCategory type
-export interface SelectedToppingCategory {
-  categoryId: string;
-  toppingIds: string[];
 }

@@ -8,30 +8,23 @@ import { getCachedImageUrl } from "@/utils/image-cache";
 
 interface MenuItemGridProps {
   items: MenuItem[];
-  handleSelectItem?: (item: MenuItem) => void; // Made optional to match old usage
+  handleSelectItem: (item: MenuItem) => void;
   currencySymbol: string;
   t: (key: string) => string;
-  loading?: boolean; // Added for KioskView usage
-  onSelectItem?: (item: MenuItem) => Promise<void>; // Added for KioskView usage
 }
 
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
   currencySymbol,
-  t,
-  loading,
-  onSelectItem
+  t
 }) => {
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
-  
-  // Use either onSelectItem or handleSelectItem, with preference to onSelectItem
-  const selectItemHandler = onSelectItem || handleSelectItem || ((item: MenuItem) => {});
-  
+
   useEffect(() => {
     const cacheImages = async () => {
       const imagePromises = items
-        .filter(item => item.image)
+        .filter(item => item.in_stock && item.image)
         .map(async item => {
           const cachedUrl = await getCachedImageUrl(item.image || '');
           return { id: item.id, url: cachedUrl };
@@ -60,7 +53,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
               style={{
                 backgroundImage: `url(${cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'})`
               }}
-              onClick={() => selectItemHandler(item)}
+              onClick={() => handleSelectItem(item)}
             ></div>
             <div className="p-4">
               <div className="flex justify-between">
@@ -69,7 +62,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
               </div>
               <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
               <Button 
-                onClick={() => selectItemHandler(item)} 
+                onClick={() => handleSelectItem(item)} 
                 className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0"
               >
                 {t("addToCart")}
@@ -83,3 +76,4 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
 };
 
 export default MenuItemGrid;
+

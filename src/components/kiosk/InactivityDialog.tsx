@@ -15,25 +15,20 @@ interface InactivityDialogProps {
   onContinue: () => void;
   onCancel: () => void;
   t: (key: string) => string;
-  showDialog?: boolean; // Added this prop to match usage in KioskView
 }
 
 const InactivityDialog: React.FC<InactivityDialogProps> = ({
   isOpen,
   onContinue,
   onCancel,
-  t,
-  showDialog // Added this prop
+  t
 }) => {
-  // Use showDialog if provided, otherwise use isOpen
-  const dialogIsOpen = typeof showDialog !== 'undefined' ? showDialog : isOpen;
-  
   // Add a timer reference to track when the component was mounted
   const timerRef = useRef<number | null>(null);
   
   // When dialog becomes visible, start a timer that will automatically dismiss it
   useEffect(() => {
-    if (dialogIsOpen) {
+    if (isOpen) {
       console.log("Inactivity Dialog opened, setting timeout for auto-cancel");
       
       // Clear any existing timer
@@ -56,11 +51,11 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
         timerRef.current = null;
       }
     };
-  }, [dialogIsOpen, onCancel]);
+  }, [isOpen, onCancel]);
 
   return (
     <Dialog 
-      open={dialogIsOpen} 
+      open={isOpen} 
       onOpenChange={(open) => {
         if (!open) onCancel();
       }}

@@ -12,7 +12,7 @@ import {
   createOrderItemOptions,
   createOrderItemToppings
 } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType, Topping, SelectedToppingCategory } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType, Topping } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
@@ -28,6 +28,11 @@ import InactivityDialog from "@/components/kiosk/InactivityDialog";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
+};
+
+type SelectedToppingCategory = {
+  categoryId: string;
+  toppingIds: string[];
 };
 
 const KioskView = () => {
@@ -178,81 +183,57 @@ const KioskView = () => {
   const { showDialog, handleContinue, handleCancel, fullReset } = useInactivityTimer(resetToWelcome);
 
   useEffect(() => {
+    const fetchRestaurantAndMenu = async () => {
+      if (!restaurantSlug) {
+        navigate('/');
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        const restaurantData = await getRestaurantBySlug(restaurantSlug);
+        
+        if (!restaurantData) {
+          toast({
+            title: t("restaurantNotFound"),
+            description: t("sorryNotFound"),
+            variant: "destructive"
+          });
+          navigate('/');
+          return;
+        }
+        
+        setRestaurant(restaurantData);
+        const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
+        setUiLanguage(lang);
+        
+        const menuData = await getMenuForRestaurant(restaurantData.id);
+        setCategories(menuData);
+        
+        if (menuData.length > 0) {
+          setActiveCategory(menuData[0].id);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
+        toast({
+          title: t("restaurantNotFound"),
+          description: t("sorryNotFound"),
+          variant: "destructive"
+        });
+        setLoading(false);
+      }
+    };
+    
+    fetchRestaurantAndMenu();
+  }, [restaurantSlug, navigate, toast]);
+
+  useEffect(() => {
     if (showWelcome) {
       fullReset();
     }
   }, [showWelcome, fullReset]);
-
-  useEffect(() => {
-    if (!restaurant?.id) return;
-
-    console.log("Setting up realtime subscription for menu items");
-    
-    const channel = supabase
-      .channel('menu-items-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'menu_items',
-        },
-        async (payload) => {
-          console.log("Received stock update:", payload);
-          
-          // Update the menu items in the state
-          setCategories(prevCategories => {
-            return prevCategories.map(category => {
-              // Find if this category contains the updated item
-              const hasItem = category.items.some(item => item.id === payload.new.id);
-              
-              if (hasItem) {
-                console.log(`Updating item ${payload.new.id} in category ${category.name}`);
-                return {
-                  ...category,
-                  items: category.items.map(item => 
-                    item.id === payload.new.id 
-                      ? { 
-                          ...item, 
-                          in_stock: payload.new.in_stock,
-                          // Update any other fields that might have changed
-                          price: payload.new.price,
-                          name: payload.new.name,
-                          description: payload.new.description,
-                          image: payload.new.image,
-                          promotion_price: payload.new.promotion_price
-                        }
-                      : item
-                  )
-                };
-              }
-              return category;
-            });
-          });
-          
-          // If the current active category contains the updated item, refresh UI
-          const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
-          if (activeItems.some(item => item.id === payload.new.id)) {
-            console.log("Active category contains updated item - refreshing UI");
-            // Force a re-render of the active menu items
-            setActiveCategory(prev => {
-              // Toggle and then reset to trigger a re-render
-              const tempCategory = categories.find(c => c.id !== prev)?.id || null;
-              setTimeout(() => setActiveCategory(prev), 10);
-              return tempCategory;
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log("Supabase channel status:", status);
-      });
-
-    return () => {
-      console.log("Cleaning up realtime subscription");
-      supabase.removeChannel(channel);
-    };
-  }, [restaurant?.id, categories, activeCategory]);
 
   const handleStartOrder = () => {
     fullReset();
@@ -775,12 +756,9 @@ const KioskView = () => {
       if (!data) throw new Error("Restaurant not found");
       
       const menuData = await getMenuForRestaurant(data.id);
-      console.log("Fetched fresh menu data:", menuData);
-      
       setCategories(menuData);
       
-      // Don't cache menu data to ensure fresh stock status
-      // setCacheItem('categories', menuData, data.id);
+      setCacheItem('categories', menuData, data.id);
       
       if (menuData.length > 0) {
         setActiveCategory(menuData[0].id);
@@ -882,135 +860,172 @@ const KioskView = () => {
     };
     
     fetchRestaurantAndMenu();
-    
-    // Set up a periodic refresh as a fallback in case realtime updates fail
-    const refreshInterval = setInterval(() => {
-      console.log("Performing periodic menu refresh");
-      if (restaurant?.id && !showWelcome && !showOrderTypeSelection) {
-        fetchCategories();
-      }
-    }, 60000); // Refresh every minute
-    
-    return () => {
-      if (refreshInterval) clearInterval(refreshInterval);
-    };
-  }, [restaurantSlug]);
+  }, [restaurantSlug, navigate, toast]);
+
+  if (loading && !restaurant) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
+      </div>
+    );
+  }
+
+  if (!restaurant) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
+          <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
+          <Button onClick={() => navigate('/')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t("backToHome")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showWelcome) {
+    return (
+      <WelcomePage 
+        restaurant={restaurant} 
+        onStart={() => {
+          fullReset();
+          handleStartOrder();
+        }}
+        uiLanguage={uiLanguage} 
+      />
+    );
+  }
+
+  if (showOrderTypeSelection) {
+    return (
+      <>
+        <div 
+          className="fixed inset-0 bg-cover bg-center bg-black/50" 
+          style={{
+            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+          }} 
+        />
+        <OrderTypeSelection 
+          isOpen={showOrderTypeSelection} 
+          onClose={() => {
+            setShowOrderTypeSelection(false);
+            setShowWelcome(true);
+          }} 
+          onSelectOrderType={handleOrderTypeSelected} 
+          uiLanguage={uiLanguage} 
+        />
+        
+        <InactivityDialog
+          isOpen={showDialog}
+          onContinue={handleContinue}
+          onCancel={handleCancel}
+          t={t}
+        />
+      </>
+    );
+  }
+
+  const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartIsEmpty = cart.length === 0;
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <KioskHeader 
-        restaurant={restaurant} 
-        onBack={() => navigate('/')} 
-        orderType={orderType || null}
+        restaurant={restaurant}
+        orderType={orderType}
         tableNumber={tableNumber}
         t={t}
       />
 
-      {loading ? (
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="animate-spin h-6 w-6" />
+      <div className="flex flex-1 overflow-hidden">
+        <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+          <MenuCategoryList 
+            categories={categories}
+            activeCategory={activeCategory}
+            setActiveCategory={setActiveCategory}
+          />
         </div>
-      ) : showWelcome ? (
-        <WelcomePage 
-          restaurant={restaurant} 
-          onStart={handleStartOrder}
-          onStartOrder={handleStartOrder} 
-          uiLanguage={uiLanguage}
+
+        <div className="flex-1 overflow-y-auto pb-24">
+          <div className="p-6">
+            <h2 className="text-xl font-bold mb-4">
+              {categories.find(c => c.id === activeCategory)?.name || t("menu")}
+            </h2>
+            
+            <MenuItemGrid 
+              items={activeItems}
+              handleSelectItem={handleSelectItem}
+              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
+              t={t}
+            />
+          </div>
+        </div>
+      </div>
+
+      {!isCartOpen && !cartIsEmpty && (
+        <CartButton 
+          itemCount={cartItemCount} 
+          total={calculateCartTotal()} 
+          onClick={toggleCart} 
+          uiLanguage={uiLanguage} 
+          currency={restaurant.currency} 
         />
-      ) : showOrderTypeSelection ? (
-        <OrderTypeSelection 
-          isOpen={showOrderTypeSelection}
-          onClose={() => setShowOrderTypeSelection(false)}
-          onSelectOrderType={handleOrderTypeSelected}
-          onOrderTypeSelected={handleOrderTypeSelected} 
+      )}
+
+      <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
+        maxHeight: "60vh"
+      }}>
+        <Cart 
+          cart={cart} 
+          isOpen={isCartOpen} 
+          onToggleOpen={toggleCart} 
+          onUpdateQuantity={handleUpdateCartItemQuantity} 
+          onRemoveItem={handleRemoveCartItem} 
+          onClearCart={() => setCart([])} 
+          onPlaceOrder={handlePlaceOrder} 
+          placingOrder={placingOrder} 
+          orderPlaced={orderPlaced} 
+          calculateSubtotal={calculateSubtotal} 
+          calculateTax={calculateTax} 
+          getFormattedOptions={getFormattedOptions}
+          getFormattedToppings={getFormattedToppings}
+          restaurant={restaurant}
+          orderType={orderType}
+          tableNumber={tableNumber}
           uiLanguage={uiLanguage}
           t={t}
         />
-      ) : (
-        <div className="flex flex-grow">
-          <div className="w-1/4 p-4">
-            <MenuCategoryList
-              categories={categories}
-              activeCategory={activeCategory}
-              setActiveCategory={setActiveCategory}
-            />
-            <CartButton 
-              cart={cart} 
-              toggleCart={toggleCart} 
-              currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
-              itemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-              total={calculateCartTotal()}
-              onClick={toggleCart}
-            />
-          </div>
-          <div className="w-3/4 p-4">
-            {restaurant ? (
-              <>
-                <MenuItemGrid
-                  items={(categories.find(c => c.id === activeCategory)?.items || []).filter(item => item.in_stock)}
-                  onSelectItem={handleSelectItem}
-                  loading={loading}
-                  currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
-                  t={t}
-                  handleSelectItem={handleSelectItem}
-                />
-                {selectedItem && (
-                  <ItemCustomizationDialog
-                    item={selectedItem}
-                    isOpen={!!selectedItem}
-                    onClose={() => setSelectedItem(null)}
-                    onAddToCart={handleAddToCart}
-                    selectedOptions={selectedOptions}
-                    selectedToppings={selectedToppings}
-                    onToggleChoice={handleToggleChoice}
-                    onToggleTopping={handleToggleTopping}
-                    quantity={quantity}
-                    setQuantity={setQuantity}
-                    specialInstructions={specialInstructions}
-                    setSpecialInstructions={setSpecialInstructions}
-                    t={t}
-                    currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
-                    shouldShowToppingCategory={shouldShowToppingCategory}
-                  />
-                )}
-                {showDialog && (
-                  <InactivityDialog
-                    isOpen={showDialog}
-                    onContinue={handleContinue}
-                    onCancel={handleCancel}
-                    t={t}
-                    showDialog={showDialog}
-                  />
-                )}
-                <Cart
-                  isOpen={isCartOpen}
-                  onClose={() => setIsCartOpen(false)}
-                  onToggleOpen={() => setIsCartOpen(!isCartOpen)}
-                  cart={cart}
-                  onUpdateQuantity={handleUpdateCartItemQuantity}
-                  onRemoveItem={handleRemoveCartItem}
-                  onPlaceOrder={handlePlaceOrder}
-                  subtotal={calculateSubtotal()}
-                  tax={calculateTax()}
-                  total={calculateCartTotal()}
-                  placingOrder={placingOrder}
-                  orderPlaced={orderPlaced}
-                  getFormattedOptions={getFormattedOptions}
-                  getFormattedToppings={getFormattedToppings}
-                  calculateSubtotal={calculateSubtotal}
-                  calculateTax={calculateTax}
-                  currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
-                  cartRef={cartRef}
-                  restaurant={restaurant}
-                  orderType={orderType}
-                  tableNumber={tableNumber}
-                  uiLanguage={uiLanguage}
-                />
-              </>
-            ) : null}
-          </div>
-        </div>
+      </div>
+
+      {selectedItem && (
+        <ItemCustomizationDialog 
+          item={selectedItem} 
+          isOpen={!!selectedItem} 
+          onClose={() => setSelectedItem(null)} 
+          onAddToCart={handleAddToCart}
+          selectedOptions={selectedOptions}
+          onToggleChoice={handleToggleChoice}
+          selectedToppings={selectedToppings}
+          onToggleTopping={handleToggleTopping}
+          quantity={quantity}
+          onQuantityChange={setQuantity}
+          specialInstructions={specialInstructions}
+          onSpecialInstructionsChange={setSpecialInstructions}
+          shouldShowToppingCategory={shouldShowToppingCategory}
+          t={t}
+          currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
+        />
       )}
+
+      <InactivityDialog
+        isOpen={showDialog}
+        onContinue={handleContinue}
+        onCancel={handleCancel}
+        t={t}
+      />
     </div>
   );
 };
