@@ -9,46 +9,40 @@ import { sendKioskRefreshSignal } from "@/integrations/supabase/client";
 import { supabase } from "@/integrations/supabase/client";
 import { MenuItem, Topping, Restaurant } from "@/types/database-types";
 
+// Define interfaces for the component props
 interface StockTabProps {
   restaurantId: string;
-  menuItems: any[];
-  toppings: any[];
-  onUpdateMenuItemStock: (id: string, inStock: boolean) => Promise<void>;
-  onUpdateToppingStock: (id: string, inStock: boolean) => Promise<void>;
+  menuItems?: MenuItem[];
+  toppings?: Topping[];
+  onUpdateMenuItemStock?: (id: string, inStock: boolean) => Promise<void>;
+  onUpdateToppingStock?: (id: string, inStock: boolean) => Promise<void>;
 }
 
-// Let's also add a variant that accepts a restaurant object
-interface RestaurantStockTabProps {
-  restaurant: Restaurant;
-}
-
-const StockTab: React.FC<StockTabProps | RestaurantStockTabProps> = (props) => {
+// Make all the props optional since we're handling fetching internally
+const StockTab: React.FC<StockTabProps> = (props) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [toppings, setToppings] = useState<Topping[]>([]);
+  const [menuItems, setMenuItems] = useState<(MenuItem & { category_name?: string })[]>([]);
+  const [toppings, setToppings] = useState<(Topping & { category_name?: string })[]>([]);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   
-  // Determine if we're using restaurantId or restaurant object
-  const restaurantId = 'restaurant' in props 
-    ? props.restaurant.id 
-    : props.restaurantId;
-  
-  // If we have direct menuItems and toppings props, use those
-  const hasDirectProps = 'menuItems' in props && 'toppings' in props;
+  // Get the restaurantId from props
+  const restaurantId = props.restaurantId;
 
   useEffect(() => {
-    // If we don't have direct props, fetch the data
-    if (!hasDirectProps) {
+    // Check if we have menuItems and toppings from props
+    if (props.menuItems && props.toppings) {
+      setMenuItems(props.menuItems as (MenuItem & { category_name?: string })[]);
+      setToppings(props.toppings as (Topping & { category_name?: string })[]);
+    } else {
+      // If not provided through props, fetch them
       fetchMenuItemsAndToppings();
-    } else if ('menuItems' in props && 'toppings' in props) {
-      // Use the direct props
-      setMenuItems(props.menuItems);
-      setToppings(props.toppings);
     }
   }, [restaurantId]);
 
   const fetchMenuItemsAndToppings = async () => {
     try {
+      setLoading(true);
       // Fetch menu items
       const { data: menuItemsData, error: menuItemsError } = await supabase
         .from('menu_items')
@@ -90,6 +84,7 @@ const StockTab: React.FC<StockTabProps | RestaurantStockTabProps> = (props) => {
 
       setMenuItems(formattedMenuItems);
       setToppings(formattedToppings);
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching stock data:", error);
       toast({
@@ -97,22 +92,27 @@ const StockTab: React.FC<StockTabProps | RestaurantStockTabProps> = (props) => {
         description: "Failed to load inventory data",
         variant: "destructive",
       });
+      setLoading(false);
     }
   };
 
   const handleUpdateMenuItemStock = async (id: string, inStock: boolean) => {
     try {
-      const { error } = await supabase
-        .from('menu_items')
-        .update({ in_stock: inStock })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      // Update local state
-      setMenuItems(prev => 
-        prev.map(item => item.id === id ? { ...item, in_stock: inStock } : item)
-      );
+      if (props.onUpdateMenuItemStock) {
+        await props.onUpdateMenuItemStock(id, inStock);
+      } else {
+        const { error } = await supabase
+          .from('menu_items')
+          .update({ in_stock: inStock })
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        // Update local state
+        setMenuItems(prev => 
+          prev.map(item => item.id === id ? { ...item, in_stock: inStock } : item)
+        );
+      }
       
       toast({
         title: "Stock updated",
@@ -130,17 +130,21 @@ const StockTab: React.FC<StockTabProps | RestaurantStockTabProps> = (props) => {
 
   const handleUpdateToppingStock = async (id: string, inStock: boolean) => {
     try {
-      const { error } = await supabase
-        .from('toppings')
-        .update({ in_stock: inStock })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      // Update local state
-      setToppings(prev => 
-        prev.map(topping => topping.id === id ? { ...topping, in_stock: inStock } : topping)
-      );
+      if (props.onUpdateToppingStock) {
+        await props.onUpdateToppingStock(id, inStock);
+      } else {
+        const { error } = await supabase
+          .from('toppings')
+          .update({ in_stock: inStock })
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        // Update local state
+        setToppings(prev => 
+          prev.map(topping => topping.id === id ? { ...topping, in_stock: inStock } : topping)
+        );
+      }
       
       toast({
         title: "Stock updated",
@@ -175,6 +179,14 @@ const StockTab: React.FC<StockTabProps | RestaurantStockTabProps> = (props) => {
       setIsRefreshing(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-48">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-700" />
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6">
