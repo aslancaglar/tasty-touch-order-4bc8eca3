@@ -8,11 +8,13 @@ export const useInactivityTimer = (onReset: () => void) => {
   const [showDialog, setShowDialog] = useState(false);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const dialogTimeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+  const inactiveRef = useRef<boolean>(false);
 
   const resetTimer = useCallback(() => {
     // Only reset the timer if the dialog is not showing
     if (!showDialog) {
       setLastActivity(Date.now());
+      inactiveRef.current = false;
     }
   }, [showDialog]);
 
@@ -24,6 +26,7 @@ export const useInactivityTimer = (onReset: () => void) => {
     }
     setLastActivity(Date.now());
     setShowDialog(false);
+    inactiveRef.current = false;
   }, []);
 
   const handleCancel = useCallback(() => {
@@ -33,8 +36,20 @@ export const useInactivityTimer = (onReset: () => void) => {
       dialogTimeoutIdRef.current = null;
     }
     setShowDialog(false);
+    inactiveRef.current = false;
     onReset();
   }, [onReset]);
+
+  // Called when we want to perform a complete reset of the timer
+  const fullReset = useCallback(() => {
+    if (dialogTimeoutIdRef.current) {
+      clearTimeout(dialogTimeoutIdRef.current);
+      dialogTimeoutIdRef.current = null;
+    }
+    setShowDialog(false);
+    setLastActivity(Date.now());
+    inactiveRef.current = false;
+  }, []);
 
   useEffect(() => {
     const events = [
@@ -68,6 +83,7 @@ export const useInactivityTimer = (onReset: () => void) => {
           console.log("Auto-closing dialog after timeout");
           setShowDialog(false); // Close dialog first
           setTimeout(() => {
+            inactiveRef.current = true;
             onReset(); // Then reset to welcome page after a short delay
           }, 100);
         }, DIALOG_TIMEOUT);
@@ -85,34 +101,10 @@ export const useInactivityTimer = (onReset: () => void) => {
     };
   }, [lastActivity, showDialog, onReset, resetTimer]);
 
-  // Side effect to ensure dialog auto-closes after appearing
-  useEffect(() => {
-    if (showDialog) {
-      console.log("Dialog shown, setting auto-close timer");
-      // Make sure we don't have multiple timers
-      if (dialogTimeoutIdRef.current) {
-        clearTimeout(dialogTimeoutIdRef.current);
-      }
-      
-      dialogTimeoutIdRef.current = setTimeout(() => {
-        console.log("Auto-closing dialog after timeout");
-        setShowDialog(false); // Close dialog first
-        setTimeout(() => {
-          onReset(); // Then reset to welcome page after a short delay
-        }, 100);
-      }, DIALOG_TIMEOUT);
-      
-      return () => {
-        if (dialogTimeoutIdRef.current) {
-          clearTimeout(dialogTimeoutIdRef.current);
-        }
-      };
-    }
-  }, [showDialog, onReset]);
-
   return {
     showDialog,
     handleContinue,
-    handleCancel
+    handleCancel,
+    fullReset
   };
 };

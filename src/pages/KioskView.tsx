@@ -172,7 +172,7 @@ const KioskView = () => {
     }
   };
 
-  const { showDialog, handleContinue, handleCancel } = useInactivityTimer(resetToWelcome);
+  const { showDialog, handleContinue, handleCancel, fullReset } = useInactivityTimer(resetToWelcome);
 
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
@@ -221,7 +221,14 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
+  useEffect(() => {
+    if (showWelcome) {
+      fullReset();
+    }
+  }, [showWelcome, fullReset]);
+
   const handleStartOrder = () => {
+    fullReset();
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
   };
@@ -874,7 +881,10 @@ const KioskView = () => {
     return (
       <WelcomePage 
         restaurant={restaurant} 
-        onStart={handleStartOrder} 
+        onStart={() => {
+          fullReset();
+          handleStartOrder();
+        }}
         uiLanguage={uiLanguage} 
       />
     );
