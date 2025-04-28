@@ -66,8 +66,10 @@ export const useInactivityTimer = (onReset: () => void) => {
         // Set timer to auto-reset after dialog timeout
         dialogTimeoutIdRef.current = setTimeout(() => {
           console.log("Auto-closing dialog after timeout");
-          onReset();
-          setShowDialog(false);
+          setShowDialog(false); // Close dialog first
+          setTimeout(() => {
+            onReset(); // Then reset to welcome page after a short delay
+          }, 100);
         }, DIALOG_TIMEOUT);
       }
     }, 1000);
@@ -94,8 +96,10 @@ export const useInactivityTimer = (onReset: () => void) => {
       
       dialogTimeoutIdRef.current = setTimeout(() => {
         console.log("Auto-closing dialog after timeout");
-        onReset();
-        setShowDialog(false);
+        setShowDialog(false); // Close dialog first
+        setTimeout(() => {
+          onReset(); // Then reset to welcome page after a short delay
+        }, 100);
       }, DIALOG_TIMEOUT);
       
       return () => {
