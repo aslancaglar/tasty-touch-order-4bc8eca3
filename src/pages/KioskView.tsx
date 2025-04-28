@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -13,7 +12,7 @@ import {
   createOrderItemOptions,
   createOrderItemToppings
 } from "@/services/kiosk-service";
-import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType, Topping } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
@@ -23,6 +22,7 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
+import { setCacheItem, getCacheItem } from "@/services/cache-service";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -622,7 +622,7 @@ const KioskView = () => {
         quantity: item.quantity,
         price: item.itemPrice,
         special_instructions: item.specialInstructions || null
-      })));
+      }));
       const orderItemOptionsToCreate = [];
       const orderItemToppingsToCreate = [];
       for (let i = 0; i < cart.length; i++) {
@@ -693,6 +693,133 @@ const KioskView = () => {
       )
     );
   };
+
+  const fetchCategories = async () => {
+    try {
+      // Try to get from cache first
+      const cachedCategories = getCacheItem<MenuCategory[]>('categories', restaurant.id);
+      if (cachedCategories) {
+        console.log("Using cached categories");
+        setCategories(cachedCategories || []);
+        if (cachedCategories.length > 0) {
+          setActiveCategory(cachedCategories[0].id);
+        }
+        setLoading(false);
+        return;
+      }
+
+      const data = await getRestaurantBySlug(restaurantSlug);
+      if (!data) throw new Error("Restaurant not found");
+      
+      const menuData = await getMenuForRestaurant(data.id);
+      setCategories(menuData);
+      
+      // Cache the results
+      setCacheItem('categories', menuData, data.id);
+      
+      if (menuData.length > 0) {
+        setActiveCategory(menuData[0].id);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      toast({
+        title: t("restaurantNotFound"),
+        description: t("sorryNotFound"),
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchToppings = async () => {
+    if (!selectedCategory?.id || !restaurant?.id) return;
+    try {
+      // Try to get from cache first
+      const cacheKey = `toppings_${selectedCategory.id}`;
+      const cachedToppings = getCacheItem<Topping[]>(cacheKey, restaurant.id);
+      if (cachedToppings) {
+        console.log("Using cached toppings for category:", selectedCategory.id);
+        setToppings(cachedToppings);
+        setSelectedCategory(prev => prev ? {
+          ...prev,
+          toppings: cachedToppings
+        } : prev);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('toppings')
+        .select('*')
+        .eq('category_id', selectedCategory.id)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      
+      const updatedToppings = data.map(topping => ({
+        ...topping,
+        tax_percentage: typeof topping.tax_percentage === 'string' 
+          ? parseFloat(topping.tax_percentage) 
+          : topping.tax_percentage
+      }));
+
+      // Cache the results
+      setCacheItem(cacheKey, updatedToppings, restaurant.id);
+      
+      setToppings(updatedToppings);
+      setSelectedCategory(prev => prev ? {
+        ...prev,
+        toppings: updatedToppings
+      } : prev);
+    } catch (error) {
+      console.error('Error fetching toppings:', error);
+      toast({
+        title: "Error",
+        description: "Unable to load toppings",
+        variant: "destructive"
+      });
+    }
+  };
+
+  useEffect(() => {
+    const fetchRestaurantAndMenu = async () => {
+      if (!restaurantSlug) {
+        navigate('/');
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        const restaurantData = await getRestaurantBySlug(restaurantSlug);
+        
+        if (!restaurantData) {
+          toast({
+            title: t("restaurantNotFound"),
+            description: t("sorryNotFound"),
+            variant: "destructive"
+          });
+          navigate('/');
+          return;
+        }
+        
+        setRestaurant(restaurantData);
+        const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
+        setUiLanguage(lang);
+        
+        await fetchCategories();
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
+        toast({
+          title: t("restaurantNotFound"),
+          description: t("sorryNotFound"),
+          variant: "destructive"
+        });
+        setLoading(false);
+      }
+    };
+    
+    fetchRestaurantAndMenu();
+  }, [restaurantSlug, navigate, toast]);
 
   if (loading && !restaurant) {
     return (
@@ -807,37 +934,4 @@ const KioskView = () => {
         onPlaceOrder={handlePlaceOrder} 
         placingOrder={placingOrder} 
         orderPlaced={orderPlaced} 
-        calculateSubtotal={calculateSubtotal} 
-        calculateTax={calculateTax} 
-        getFormattedOptions={getFormattedOptions} 
-        getFormattedToppings={getFormattedToppings} 
-        restaurant={restaurant} 
-        orderType={orderType} 
-        tableNumber={tableNumber} 
-        showOrderSummaryOnly={false} 
-        uiLanguage={uiLanguage} 
-      />
-
-      <ItemCustomizationDialog 
-        selectedItem={selectedItem}
-        setSelectedItem={setSelectedItem}
-        quantity={quantity}
-        setQuantity={setQuantity}
-        specialInstructions={specialInstructions}
-        setSpecialInstructions={setSpecialInstructions}
-        selectedOptions={selectedOptions}
-        selectedToppings={selectedToppings}
-        handleToggleChoice={handleToggleChoice}
-        handleToggleTopping={handleToggleTopping}
-        handleAddToCart={handleAddToCart}
-        calculateItemPrice={calculateItemPrice}
-        getCurrencySymbol={getCurrencySymbol}
-        restaurant={restaurant}
-        t={t}
-        shouldShowToppingCategory={shouldShowToppingCategory}
-      />
-    </div>
-  );
-};
-
-export default KioskView;
+        calculateSubtotal={calculateSubtotal}

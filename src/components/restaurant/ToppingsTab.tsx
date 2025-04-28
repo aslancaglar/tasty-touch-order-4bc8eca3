@@ -10,9 +10,12 @@ import { supabase } from "@/integrations/supabase/client";
 import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
+import { setCacheItem, getCacheItem, clearCache } from "@/services/cache-service";
+
 interface ToppingCategoryWithToppings extends ToppingCategory {
   toppings?: Topping[];
 }
+
 interface ToppingsTabProps {
   restaurant: {
     id: string;
@@ -20,6 +23,7 @@ interface ToppingsTabProps {
     currency?: string;
   };
 }
+
 const getCurrencySymbol = (currency: string): string => {
   switch (currency) {
     case 'EUR':
@@ -32,6 +36,7 @@ const getCurrencySymbol = (currency: string): string => {
       return currency;
   }
 };
+
 const ToppingsTab = ({
   restaurant
 }: ToppingsTabProps) => {
@@ -53,35 +58,63 @@ const ToppingsTab = ({
   const [isUpdatingTopping, setIsUpdatingTopping] = useState(false);
   const [isDeletingTopping, setIsDeletingTopping] = useState(false);
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
+
   useEffect(() => {
     fetchCategories();
   }, [restaurant.id]);
+
   useEffect(() => {
-    fetchToppings();
-  }, [selectedCategory?.id]);
+    fetchToppings(categories);
+  }, [categories, selectedCategory?.id]);
+
   const fetchCategories = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('topping_categories').select('*').eq('restaurant_id', restaurant.id).order('created_at', {
-        ascending: true
-      });
+      // Try to get from cache first
+      const cachedCategories = getCacheItem<ToppingCategory[]>('topping_categories', restaurant.id);
+      if (cachedCategories) {
+        console.log("Using cached topping categories");
+        setCategories(cachedCategories);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('topping_categories')
+        .select('*')
+        .eq('restaurant_id', restaurant.id)
+        .order('created_at', { ascending: true });
+
       if (error) throw error;
-      console.log("Fetched categories:", data);
+      
+      // Cache the results
+      setCacheItem('topping_categories', data, restaurant.id);
+      
       setCategories(data || []);
     } catch (error) {
       console.error('Error fetching topping categories:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de charger les catégories de compléments",
+        description: "Failed to load topping categories",
         variant: "destructive"
       });
     }
   };
-  const fetchToppings = async () => {
+
+  const fetchToppings = async (categories: ToppingCategory[]) => {
     if (!selectedCategory?.id) return;
     try {
+      // Try to get from cache first
+      const cacheKey = `toppings_${selectedCategory.id}`;
+      const cachedToppings = getCacheItem<Topping[]>(cacheKey, restaurant.id);
+      if (cachedToppings) {
+        console.log("Using cached toppings for category:", selectedCategory.id);
+        setToppings(cachedToppings);
+        setSelectedCategory(prev => prev ? {
+          ...prev,
+          toppings: cachedToppings
+        } : prev);
+        return;
+      }
+
       const {
         data,
         error
@@ -99,6 +132,8 @@ const ToppingsTab = ({
           ...prev,
           toppings: updatedToppings
         } : prev);
+        // Cache the results
+        setCacheItem(cacheKey, updatedToppings, restaurant.id);
       } else {
         setToppings([]);
         setSelectedCategory(prev => prev ? {
@@ -115,14 +150,17 @@ const ToppingsTab = ({
       });
     }
   };
+
   const handleDeleteCategory = async () => {
     if (!selectedCategoryToDelete?.id) return;
+
     try {
       setIsDeletingCategory(true);
       const {
         error
       } = await supabase.from('topping_categories').delete().eq('id', selectedCategoryToDelete.id);
       if (error) throw error;
+
       toast({
         title: "Succès",
         description: "Catégorie supprimée avec succès"
@@ -140,36 +178,46 @@ const ToppingsTab = ({
       setIsDeletingCategory(false);
     }
   };
+
   const handleCreateTopping = async (formData: ToppingFormValues) => {
     try {
       setIsCreatingTopping(true);
-      const {
-        data: newTopping,
-        error
-      } = await supabase.from('toppings').insert([{
-        name: formData.name,
-        price: parseFloat(formData.price),
-        tax_percentage: parseFloat(formData.tax_percentage || "10"),
-        category_id: selectedCategory?.id
-      }]).select().single();
-      if (error) throw error;
-      toast({
-        title: "Succès",
-        description: "Complément créé avec succès"
-      });
-      fetchToppings();
-      setShowCreateToppingDialog(false);
-    } catch (error) {
-      console.error('Error creating topping:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer le complément",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreatingTopping(false);
+      const { data: newTopping, error } = await supabase
+        .from('toppings')
+        .insert([{
+          name: formData.name,
+          price: parseFloat(formData.price),
+          tax_percentage: parseFloat(formData.tax_percentage || "10"),
+          category_id: selectedCategory?.id
+        }])
+        .select()
+        .single();
+
+    if (error) throw error;
+    
+    // Clear cache for this category
+    if (selectedCategory) {
+      clearCache(restaurant.id);
     }
-  };
+    
+    toast({
+      title: "Success",
+      description: "Topping created successfully"
+    });
+    fetchToppings(categories);
+    setShowCreateToppingDialog(false);
+  } catch (error) {
+    console.error('Error creating topping:', error);
+    toast({
+      title: "Erreur",
+      description: "Impossible de créer le complément",
+      variant: "destructive"
+    });
+  } finally {
+    setIsCreatingTopping(false);
+  }
+};
+
   const handleUpdateTopping = async (toppingId: string, formData: ToppingFormValues) => {
     try {
       setIsUpdatingTopping(true);
@@ -181,11 +229,12 @@ const ToppingsTab = ({
         tax_percentage: parseFloat(formData.tax_percentage || "10")
       }).eq('id', toppingId);
       if (error) throw error;
+
       toast({
         title: "Succès",
         description: "Complément mis à jour avec succès"
       });
-      fetchToppings();
+      fetchToppings(categories);
       setShowUpdateToppingDialog(false);
     } catch (error) {
       console.error('Error updating topping:', error);
@@ -198,19 +247,22 @@ const ToppingsTab = ({
       setIsUpdatingTopping(false);
     }
   };
+
   const handleDeleteTopping = async () => {
     if (!selectedTopping?.id) return;
+
     try {
       setIsDeletingTopping(true);
       const {
         error
       } = await supabase.from('toppings').delete().eq('id', selectedTopping.id);
       if (error) throw error;
+
       toast({
         title: "Succès",
         description: "Complément supprimé avec succès"
       });
-      fetchToppings();
+      fetchToppings(categories);
       setShowDeleteToppingDialog(false);
     } catch (error) {
       console.error('Error deleting topping:', error);
@@ -223,7 +275,9 @@ const ToppingsTab = ({
       setIsDeletingTopping(false);
     }
   };
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Toppings Categories</h2>
         <p className="text-muted-foreground">Manage toppings categories available in your restaurant.</p>
@@ -235,7 +289,12 @@ const ToppingsTab = ({
       </Button>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map(category => <div key={category.id} className={`border rounded-lg p-4 cursor-pointer transition-all ${selectedCategory?.id === category.id ? 'ring-2 ring-[#9b87f5] bg-[#9b87f5]/5' : 'hover:border-[#9b87f5]'}`} onClick={() => setSelectedCategory(category)}>
+        {categories.map(category => (
+          <div
+            key={category.id}
+            className={`border rounded-lg p-4 cursor-pointer transition-all ${selectedCategory?.id === category.id ? 'ring-2 ring-[#9b87f5] bg-[#9b87f5]/5' : 'hover:border-[#9b87f5]'}`}
+            onClick={() => setSelectedCategory(category)}
+          >
             <div className="flex items-center space-x-3">
               
               <div className="flex-1">
@@ -245,28 +304,38 @@ const ToppingsTab = ({
                 </p>
               </div>
               <div className="flex space-x-1">
-                <Button variant="ghost" size="icon" onClick={e => {
-              e.stopPropagation();
-              setSelectedCategory(category);
-              setShowUpdateCategoryDialog(true);
-            }}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setSelectedCategory(category);
+                    setShowUpdateCategoryDialog(true);
+                  }}
+                >
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={e => {
-              e.stopPropagation();
-              setSelectedCategoryToDelete(category);
-              setShowDeleteCategoryDialog(true);
-            }}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setSelectedCategoryToDelete(category);
+                    setShowDeleteCategoryDialog(true);
+                  }}
+                >
                   <Trash className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             </div>
-          </div>)}
+          </div>
+        ))}
       </div>
 
       <Separator />
 
-      {selectedCategory && <div>
+      {selectedCategory && (
+        <div>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">Menu Items - {selectedCategory.name}</h2>
@@ -281,7 +350,8 @@ const ToppingsTab = ({
           </div>
 
           {/* Displaying toppings */}
-          {selectedCategory?.toppings?.map(topping => <div key={topping.id} className="flex items-center justify-between py-2">
+          {selectedCategory?.toppings?.map(topping => (
+            <div key={topping.id} className="flex items-center justify-between py-2">
               <div>
                 <p className="font-medium">{topping.name}</p>
                 <div className="text-sm font-medium text-muted-foreground">
@@ -290,21 +360,31 @@ const ToppingsTab = ({
                 </div>
               </div>
               <div className="space-x-2">
-                <Button variant="ghost" size="icon" onClick={() => {
-            setSelectedTopping(topping);
-            setShowUpdateToppingDialog(true);
-          }}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedTopping(topping);
+                    setShowUpdateToppingDialog(true);
+                  }}
+                >
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => {
-            setSelectedTopping(topping);
-            setShowDeleteToppingDialog(true);
-          }}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedTopping(topping);
+                    setShowDeleteToppingDialog(true);
+                  }}
+                >
                   <Trash className="h-4 w-4" />
                 </Button>
               </div>
-            </div>)}
-        </div>}
+            </div>
+          ))}
+        </div>
+      )}
 
       <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
         <DialogContent>
@@ -460,6 +540,8 @@ const ToppingsTab = ({
           </Button>
         </DialogContent>
       </Dialog>
-    </div>;
+    </div>
+  );
 };
+
 export default ToppingsTab;
