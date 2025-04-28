@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MenuItemWithOptions } from "@/types/database-types";
 
 interface ItemCustomizationDialogProps {
@@ -66,15 +67,15 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   
   // Function to check if a category has toppings
   const categoryHasToppings = (category: any) => {
-    return category.toppings && Array.isArray(category.toppings) && category.toppings.length > 0;
+    return category && category.toppings && Array.isArray(category.toppings) && category.toppings.length > 0;
   };
   
   // Check if there are any topping categories to display
-  const hasToppingCategories = selectedItem.toppingCategories && 
+  const hasToppingCategories = 
+    selectedItem.toppingCategories && 
     Array.isArray(selectedItem.toppingCategories) && 
-    selectedItem.toppingCategories.length > 0 &&
     selectedItem.toppingCategories.some(category => 
-      shouldShowToppingCategory(category) && categoryHasToppings(category)
+      category && shouldShowToppingCategory(category) && categoryHasToppings(category)
     );
   
   return (
@@ -82,7 +83,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       <DialogContent className="w-[95vw] max-w-[95vw] md:w-[85vw] md:max-w-[85vw]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">{selectedItem.name}</DialogTitle>
-          <DialogDescription>{selectedItem.description}</DialogDescription>
+          {selectedItem.description && (
+            <DialogDescription>{selectedItem.description}</DialogDescription>
+          )}
         </DialogHeader>
         
         <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
@@ -135,65 +138,65 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           {hasToppingCategories && (
             <div className="mb-6">
               <h3 className="text-xl font-bold mb-3">{t("Toppings")}</h3>
-              {selectedItem.toppingCategories
-                .filter(category => shouldShowToppingCategory(category) && categoryHasToppings(category))
-                .map(category => (
-                  <div key={category.id} className="space-y-3 mb-5">
-                    <div className="font-bold text-lg flex flex-wrap items-center">
-                      {category.name} 
-                      {category.required && <span className="text-red-500 ml-1">*</span>}
-                      <span className="ml-2 text-red-600 text-sm font-bold">
-                        {category.max_selections > 0 
-                          ? `(${t("selectUpTo")} ${category.max_selections})` 
-                          : category.min_selections > 0
-                            ? `(${t("minimumSelections")} ${category.min_selections})` 
-                            : `(${t("multipleSelection")})`
-                        }
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                      {category.toppings && category.toppings.length > 0 && 
-                        category.toppings.map(topping => {
-                          const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
-                          const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
-                          return (
-                            <div
-                              key={topping.id}
-                              onClick={() => handleToggleTopping(category.id, topping.id)}
-                              className={`flex items-center justify-between border rounded-md p-3 hover:border-gray-300 cursor-pointer
-                                ${isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200'}
-                              `}
-                            >
-                              <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
-                                {topping.name}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                {topping.price > 0 && (
-                                  <span className="text-sm">
-                                    +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
-                                  </span>
-                                )}
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleToggleTopping(category.id, topping.id);
-                                  }}
-                                  className={`text-5xl px-[10px] rounded-full text-slate-50 font-bold py-[9px] ${
-                                    isSelected ? 'bg-green-700 hover:bg-green-600' : 'bg-violet-800 hover:bg-violet-700'
-                                  }`}
-                                >
-                                  {isSelected ? <Check className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
+              {selectedItem.toppingCategories?.filter(
+                category => category && shouldShowToppingCategory(category) && categoryHasToppings(category)
+              ).map(category => (
+                <div key={category.id} className="space-y-3 mb-5">
+                  <div className="font-bold text-lg flex flex-wrap items-center">
+                    {category.name} 
+                    {category.required && <span className="text-red-500 ml-1">*</span>}
+                    <span className="ml-2 text-red-600 text-sm font-bold">
+                      {category.max_selections > 0 
+                        ? `(${t("selectUpTo")} ${category.max_selections})` 
+                        : category.min_selections > 0
+                          ? `(${t("minimumSelections")} ${category.min_selections})` 
+                          : `(${t("multipleSelection")})`
+                      }
+                    </span>
                   </div>
-                ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {category.toppings && category.toppings.length > 0 && 
+                      category.toppings.map(topping => {
+                        const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
+                        const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
+                        return (
+                          <div
+                            key={topping.id}
+                            onClick={() => handleToggleTopping(category.id, topping.id)}
+                            className={`flex items-center justify-between border rounded-md p-3 hover:border-gray-300 cursor-pointer
+                              ${isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200'}
+                            `}
+                          >
+                            <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
+                              {topping.name}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {topping.price > 0 && (
+                                <span className="text-sm">
+                                  +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
+                                </span>
+                              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleTopping(category.id, topping.id);
+                                }}
+                                className={`text-5xl px-[10px] rounded-full text-slate-50 font-bold py-[9px] ${
+                                  isSelected ? 'bg-green-700 hover:bg-green-600' : 'bg-violet-800 hover:bg-violet-700'
+                                }`}
+                              >
+                                {isSelected ? <Check className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
