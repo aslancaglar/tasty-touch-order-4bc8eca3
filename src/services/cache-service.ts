@@ -1,4 +1,3 @@
-
 const CACHE_PREFIX = 'kiosk_cache_';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -32,11 +31,21 @@ export const getCacheItem = <T>(key: string, restaurantId: string): T | null => 
   return cacheData.data;
 };
 
-export const clearCache = (restaurantId: string) => {
+export const clearCache = (restaurantId: string, specificKey?: string) => {
+  if (specificKey) {
+    const cacheKey = `${CACHE_PREFIX}${restaurantId}_${specificKey}`;
+    localStorage.removeItem(cacheKey);
+    return;
+  }
+  
+  const keysToRemove: string[] = [];
+  
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key?.startsWith(`${CACHE_PREFIX}${restaurantId}`)) {
-      localStorage.removeItem(key);
+    if (key && key.startsWith(`${CACHE_PREFIX}${restaurantId}`)) {
+      keysToRemove.push(key);
     }
   }
+  
+  keysToRemove.forEach(key => localStorage.removeItem(key));
 };

@@ -69,7 +69,6 @@ const ToppingsTab = ({
 
   const fetchCategories = async () => {
     try {
-      // Try to get from cache first
       const cachedCategories = getCacheItem<ToppingCategory[]>('topping_categories', restaurant.id);
       if (cachedCategories) {
         console.log("Using cached topping categories");
@@ -85,7 +84,6 @@ const ToppingsTab = ({
 
       if (error) throw error;
       
-      // Cache the results
       setCacheItem('topping_categories', data, restaurant.id);
       
       setCategories(data || []);
@@ -102,7 +100,6 @@ const ToppingsTab = ({
   const fetchToppings = async (categories: ToppingCategory[]) => {
     if (!selectedCategory?.id) return;
     try {
-      // Try to get from cache first
       const cacheKey = `toppings_${selectedCategory.id}`;
       const cachedToppings = getCacheItem<Topping[]>(cacheKey, restaurant.id);
       if (cachedToppings) {
@@ -132,7 +129,6 @@ const ToppingsTab = ({
           ...prev,
           toppings: updatedToppings
         } : prev);
-        // Cache the results
         setCacheItem(cacheKey, updatedToppings, restaurant.id);
       } else {
         setToppings([]);
@@ -193,42 +189,47 @@ const ToppingsTab = ({
         .select()
         .single();
 
-    if (error) throw error;
-    
-    // Clear cache for this category
-    if (selectedCategory) {
-      clearCache(restaurant.id);
+      if (error) throw error;
+      
+      if (selectedCategory) {
+        clearCache(restaurant.id, `toppings_${selectedCategory.id}`);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Topping created successfully"
+      });
+      fetchToppings(categories);
+      setShowCreateToppingDialog(false);
+    } catch (error) {
+      console.error('Error creating topping:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le complément",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingTopping(false);
     }
-    
-    toast({
-      title: "Success",
-      description: "Topping created successfully"
-    });
-    fetchToppings(categories);
-    setShowCreateToppingDialog(false);
-  } catch (error) {
-    console.error('Error creating topping:', error);
-    toast({
-      title: "Erreur",
-      description: "Impossible de créer le complément",
-      variant: "destructive"
-    });
-  } finally {
-    setIsCreatingTopping(false);
-  }
-};
+  };
 
   const handleUpdateTopping = async (toppingId: string, formData: ToppingFormValues) => {
     try {
       setIsUpdatingTopping(true);
-      const {
-        error
-      } = await supabase.from('toppings').update({
-        name: formData.name,
-        price: parseFloat(formData.price),
-        tax_percentage: parseFloat(formData.tax_percentage || "10")
-      }).eq('id', toppingId);
+      const { error } = await supabase
+        .from('toppings')
+        .update({
+          name: formData.name,
+          price: parseFloat(formData.price),
+          tax_percentage: parseFloat(formData.tax_percentage || "10")
+        })
+        .eq('id', toppingId);
+        
       if (error) throw error;
+
+      if (selectedCategory) {
+        clearCache(restaurant.id, `toppings_${selectedCategory.id}`);
+      }
 
       toast({
         title: "Succès",
@@ -253,10 +254,16 @@ const ToppingsTab = ({
 
     try {
       setIsDeletingTopping(true);
-      const {
-        error
-      } = await supabase.from('toppings').delete().eq('id', selectedTopping.id);
+      const { error } = await supabase
+        .from('toppings')
+        .delete()
+        .eq('id', selectedTopping.id);
+        
       if (error) throw error;
+
+      if (selectedCategory) {
+        clearCache(restaurant.id, `toppings_${selectedCategory.id}`);
+      }
 
       toast({
         title: "Succès",
