@@ -898,16 +898,34 @@ const KioskView = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      <KioskHeader restaurant={restaurant} onBack={() => navigate('/')} />
+      <KioskHeader 
+        restaurant={restaurant} 
+        onBack={() => navigate('/')} 
+        orderType={orderType || null}
+        tableNumber={tableNumber}
+        t={t}
+      />
 
       {loading ? (
         <div className="flex items-center justify-center h-full">
           <Loader2 className="animate-spin h-6 w-6" />
         </div>
       ) : showWelcome ? (
-        <WelcomePage restaurant={restaurant} onStartOrder={handleStartOrder} />
+        <WelcomePage 
+          restaurant={restaurant} 
+          onStart={handleStartOrder}
+          onStartOrder={handleStartOrder} 
+          uiLanguage={uiLanguage}
+        />
       ) : showOrderTypeSelection ? (
-        <OrderTypeSelection onOrderTypeSelected={handleOrderTypeSelected} t={t} />
+        <OrderTypeSelection 
+          isOpen={showOrderTypeSelection}
+          onClose={() => setShowOrderTypeSelection(false)}
+          onSelectOrderType={handleOrderTypeSelected}
+          onOrderTypeSelected={handleOrderTypeSelected} 
+          uiLanguage={uiLanguage}
+          t={t}
+        />
       ) : (
         <div className="flex flex-grow">
           <div className="w-1/4 p-4">
@@ -916,7 +934,14 @@ const KioskView = () => {
               activeCategory={activeCategory}
               setActiveCategory={setActiveCategory}
             />
-            <CartButton cart={cart} toggleCart={toggleCart} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />
+            <CartButton 
+              cart={cart} 
+              toggleCart={toggleCart} 
+              currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
+              itemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              total={calculateCartTotal()}
+              onClick={toggleCart}
+            />
           </div>
           <div className="w-3/4 p-4">
             {restaurant ? (
@@ -926,6 +951,8 @@ const KioskView = () => {
                   onSelectItem={handleSelectItem}
                   loading={loading}
                   currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
+                  t={t}
+                  handleSelectItem={handleSelectItem}
                 />
                 {selectedItem && (
                   <ItemCustomizationDialog
@@ -948,14 +975,17 @@ const KioskView = () => {
                 )}
                 {showDialog && (
                   <InactivityDialog
+                    isOpen={showDialog}
                     onContinue={handleContinue}
                     onCancel={handleCancel}
                     t={t}
+                    showDialog={showDialog}
                   />
                 )}
                 <Cart
                   isOpen={isCartOpen}
                   onClose={() => setIsCartOpen(false)}
+                  onToggleOpen={() => setIsCartOpen(!isCartOpen)}
                   cart={cart}
                   onUpdateQuantity={handleUpdateCartItemQuantity}
                   onRemoveItem={handleRemoveCartItem}
@@ -967,10 +997,14 @@ const KioskView = () => {
                   orderPlaced={orderPlaced}
                   getFormattedOptions={getFormattedOptions}
                   getFormattedToppings={getFormattedToppings}
+                  calculateSubtotal={calculateSubtotal}
+                  calculateTax={calculateTax}
                   currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
                   cartRef={cartRef}
+                  restaurant={restaurant}
                   orderType={orderType}
                   tableNumber={tableNumber}
+                  uiLanguage={uiLanguage}
                 />
               </>
             ) : null}
