@@ -172,7 +172,7 @@ const KioskView = () => {
     }
   };
 
-  const { showDialog, setShowDialog, resetTimer } = useInactivityTimer(resetToWelcome);
+  const { showDialog, handleContinue, handleCancel } = useInactivityTimer(resetToWelcome);
 
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
@@ -997,8 +997,8 @@ const KioskView = () => {
 
       <InactivityDialog
         isOpen={showDialog}
-        onContinue={resetTimer}
-        onCancel={resetToWelcome}
+        onContinue={handleContinue}
+        onCancel={handleCancel}
         t={t}
       />
     </div>
