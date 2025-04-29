@@ -1,3 +1,4 @@
+
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -300,7 +301,7 @@ const Restaurants = () => {
       setLoading(true);
       const allRestaurants = await getRestaurants();
       
-      // Filter restaurants for non-admin users to show only owned restaurants
+      // Admin users should see all restaurants, non-admin users only see their own
       if (!isAdmin && user) {
         try {
           const ownedRestaurants = await getOwnedRestaurants();
@@ -346,7 +347,7 @@ const Restaurants = () => {
     }
     setStats({});
     setLoadingStats(true);
-  }, [user]);
+  }, [user, isAdmin]); // Add isAdmin to the dependency array to re-fetch when admin status changes
 
   useEffect(() => {
     const getStats = async () => {
