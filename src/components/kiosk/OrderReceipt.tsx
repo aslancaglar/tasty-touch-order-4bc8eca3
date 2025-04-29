@@ -109,7 +109,11 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         <div className="logo">{sanitizeText(restaurant.name)}</div>
         {restaurant.location && <div>{sanitizeText(restaurant.location)}</div>}
         <div>{currentDate}</div>
-        <div className="order-number">{t("order")} #{orderNumber}</div>
+        <div className="order-number-container" style={{ backgroundColor: "#000", padding: "4px 8px", marginTop: "5px", marginBottom: "5px" }}>
+          <div className="order-number" style={{ color: "#fff", fontSize: "2em", fontWeight: "bold" }}>
+            {t("order")} #{orderNumber}
+          </div>
+        </div>
         {orderType === "dine-in" && <div>{t("dineIn")}</div>}
         {orderType === "takeaway" && <div>{t("takeaway")}</div>}
       </div>

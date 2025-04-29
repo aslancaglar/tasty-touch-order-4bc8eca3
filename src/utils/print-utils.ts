@@ -174,9 +174,15 @@ export const printReceipt = (elementId: string) => {
             font-weight: 600;
           }
           /* Order number style */
+          .order-number-container {
+            background-color: #000000;
+            padding: 4px 8px;
+            margin: 8px 0;
+          }
           .order-number {
-            font-size: 18px;
+            font-size: 24px;
             font-weight: 900;
+            color: white;
           }
           @media print {
             html, body {
