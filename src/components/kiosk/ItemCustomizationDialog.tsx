@@ -88,13 +88,13 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="w-[95vw] max-w-[95vw] md:w-[85vw] md:max-w-[85vw] p-3 pt-6 max-h-[95vh]">
-        <DialogHeader className="pb-1">
+      <DialogContent className="w-[95vw] max-w-[95vw] min-h-[95vh] max-h-[95vh] p-4 flex flex-col">
+        <DialogHeader className="pb-2">
           <DialogTitle className="text-xl font-bold">{item.name}</DialogTitle>
           {item.description && <DialogDescription className="text-sm">{item.description}</DialogDescription>}
         </DialogHeader>
         
-        <div className="space-y-4 overflow-y-auto pr-2 pb-1 max-h-[calc(95vh-160px)]">
+        <div className="space-y-4 overflow-y-auto pr-2 flex-grow">
           {item.options && item.options.map(option => (
             <div key={option.id} className="space-y-1">
               <Label className="font-medium">
@@ -146,7 +146,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                     }
                   </span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-1">
+                <div className="grid grid-cols-3 gap-1">
                   {category.toppings.map(topping => {
                     const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
                     const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
@@ -222,7 +222,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           </div>
         </div>
         
-        <DialogFooter className="mt-2 pt-1">
+        <DialogFooter className="mt-3 pt-2">
           <div className="w-full">
             <Button 
               onClick={onAddToCart} 
