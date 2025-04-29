@@ -8,9 +8,10 @@ import {
   ChevronRight,
   LogOut
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 type SidebarItem = {
   title: string;
@@ -18,7 +19,7 @@ type SidebarItem = {
   href: string;
 };
 
-const sidebarItems: SidebarItem[] = [
+const adminSidebarItems: SidebarItem[] = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
@@ -37,6 +38,28 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(true);
   const { signOut, user } = useAuth();
   const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error("Error checking admin status:", error);
+        return;
+      }
+      
+      setIsAdmin(data?.is_admin || false);
+    };
+    
+    checkAdminStatus();
+  }, [user]);
 
   const handleSignOut = async () => {
     try {
@@ -53,6 +76,13 @@ export function Sidebar() {
       });
     }
   };
+
+  // Redirect non-admins accessing admin routes
+  useEffect(() => {
+    if (user && !isAdmin && (location.pathname === '/' || location.pathname === '/restaurants' || location.pathname.startsWith('/restaurant/'))) {
+      window.location.href = '/owner';
+    }
+  }, [user, isAdmin, location.pathname]);
 
   return (
     <div className={cn(
@@ -75,7 +105,7 @@ export function Sidebar() {
       
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
-          {sidebarItems.map((item) => (
+          {isAdmin && adminSidebarItems.map((item) => (
             <li key={item.href}>
               <Link
                 to={item.href}
@@ -108,7 +138,7 @@ export function Sidebar() {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium truncate max-w-[120px]">{user?.email || "Admin User"}</p>
-                <p className="text-xs text-gray-500">Admin</p>
+                <p className="text-xs text-gray-500">{isAdmin ? 'Admin' : 'Restaurant Owner'}</p>
               </div>
             </div>
             <button
