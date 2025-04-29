@@ -43,7 +43,8 @@ const Index = () => {
     return <Navigate to="/auth" />;
   }
 
-  // If user is a restaurant owner but not an admin, redirect to owner dashboard
+  // Modified logic: Only redirect restaurant owners to owner dashboard if they're not accessing a different specific route
+  // We'll let the RestaurantOwnerRoute components handle access control for specific routes
   if (isOwner && !isAdmin) {
     return <Navigate to="/owner" />;
   }
