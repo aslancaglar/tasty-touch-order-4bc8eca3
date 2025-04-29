@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Check, MinusCircle, PlusCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -87,21 +88,21 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="w-[95vw] max-w-[95vw] md:w-[85vw] md:max-w-[85vw]">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{item.name}</DialogTitle>
-          <DialogDescription>{item.description}</DialogDescription>
+      <DialogContent className="w-[95vw] max-w-[95vw] md:w-[85vw] md:max-w-[85vw] p-3 pt-6 max-h-[95vh]">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="text-xl font-bold">{item.name}</DialogTitle>
+          {item.description && <DialogDescription className="text-sm">{item.description}</DialogDescription>}
         </DialogHeader>
         
-        <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-4 overflow-y-auto pr-2 pb-1 max-h-[calc(95vh-160px)]">
           {item.options && item.options.map(option => (
-            <div key={option.id} className="space-y-2">
+            <div key={option.id} className="space-y-1">
               <Label className="font-medium">
                 {option.name}
                 {option.required && <span className="text-red-500 ml-1">*</span>}
                 {option.multiple && <span className="text-sm text-gray-500 ml-2">({t("multipleSelection")})</span>}
               </Label>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {option.choices.map(choice => {
                   const selectedOption = selectedOptions.find(o => o.optionId === option.id);
                   const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
@@ -109,7 +110,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                     <div 
                       key={choice.id} 
                       className={`
-                        flex items-center justify-between p-3 border rounded-md cursor-pointer
+                        flex items-center justify-between p-2 border rounded-md cursor-pointer
                         ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
                       `} 
                       onClick={() => onToggleChoice(option.id, choice.id, !!option.multiple)}
@@ -134,18 +135,18 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           {item.toppingCategories && item.toppingCategories
             .filter(category => shouldShowToppingCategory(category))
             .map(category => (
-              <div key={category.id} className="space-y-3">
-                <div className="font-bold text-xl flex items-center">
+              <div key={category.id} className="space-y-2">
+                <div className="font-bold text-lg flex items-center">
                   {category.name} 
                   {category.required && <span className="text-red-500 ml-1">*</span>}
-                  <span className="ml-2 text-red-600 text-base mx-[10px] font-bold">
+                  <span className="ml-2 text-red-600 text-sm font-bold">
                     {category.max_selections > 0 
                       ? `(${t("selectUpTo")} ${category.max_selections})` 
                       : `(${t("multipleSelection")})`
                     }
                   </span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-1">
                   {category.toppings.map(topping => {
                     const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
                     const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
@@ -153,12 +154,12 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                       <div
                         key={topping.id}
                         onClick={() => onToggleTopping(category.id, topping.id)}
-                        className="flex items-center justify-between border rounded-md p-3 hover:border-gray-300 cursor-pointer"
+                        className="flex items-center justify-between border rounded-md p-2 hover:border-gray-300 cursor-pointer"
                       >
                         <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
                           {topping.name}
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           {topping.price > 0 && (
                             <span className="text-sm">
                               +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
@@ -171,7 +172,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                               e.stopPropagation();
                               onToggleTopping(category.id, topping.id);
                             }}
-                            className={`text-5xl px-[10px] rounded-full text-slate-50 font-bold py-[9px] ${
+                            className={`text-5xl px-[8px] rounded-full text-slate-50 font-bold py-[7px] ${
                               isSelected ? 'bg-green-700 hover:bg-green-600' : 'bg-violet-800 hover:bg-violet-700'
                             }`}
                           >
@@ -185,21 +186,23 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               </div>
             ))}
 
-          <div>
+          <div className="flex justify-between items-center pt-1">
             <Label className="font-medium">{t("quantity")}</Label>
-            <div className="flex items-center space-x-4 mt-2">
+            <div className="flex items-center space-x-3">
               <Button 
                 variant="outline" 
                 size="icon" 
                 onClick={() => quantity > 1 && onQuantityChange(quantity - 1)}
+                className="h-8 w-8"
               >
                 <MinusCircle className="h-4 w-4" />
               </Button>
-              <span className="font-medium text-lg">{quantity}</span>
+              <span className="font-medium text-lg min-w-[20px] text-center">{quantity}</span>
               <Button 
                 variant="outline" 
                 size="icon" 
                 onClick={() => onQuantityChange(quantity + 1)}
+                className="h-8 w-8"
               >
                 <PlusCircle className="h-4 w-4" />
               </Button>
@@ -214,15 +217,16 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               value={specialInstructions}
               onChange={(e) => onSpecialInstructionsChange(e.target.value)}
               className="mt-1"
+              rows={2}
             />
           </div>
         </div>
         
-        <DialogFooter>
+        <DialogFooter className="mt-2 pt-1">
           <div className="w-full">
             <Button 
               onClick={onAddToCart} 
-              className="w-full bg-kiosk-primary text-2xl py-[30px]"
+              className="w-full bg-kiosk-primary text-xl py-6"
             >
               {t("addToCart")} - {calculateItemPrice().toFixed(2)} {currencySymbol}
             </Button>
