@@ -1,4 +1,3 @@
-
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -294,7 +293,7 @@ const Restaurants = () => {
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
   const { toast } = useToast();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, getOwnedRestaurants } = useAuth();
 
   const fetchRestaurants = async () => {
     try {
@@ -303,21 +302,24 @@ const Restaurants = () => {
       
       // Filter restaurants for non-admin users to show only owned restaurants
       if (!isAdmin && user) {
-        // Get owned restaurants
-        const { getOwnedRestaurants } = useAuth();
-        const ownedRestaurants = await getOwnedRestaurants();
-        
-        if (ownedRestaurants && ownedRestaurants.length > 0) {
-          // Get the IDs of owned restaurants
-          const ownedIds = ownedRestaurants.map((r: any) => r.id);
+        try {
+          const ownedRestaurants = await getOwnedRestaurants();
           
-          // Filter the restaurants to only include owned ones
-          const filteredRestaurants = allRestaurants.filter(
-            restaurant => ownedIds.includes(restaurant.id)
-          );
-          
-          setRestaurants(filteredRestaurants);
-        } else {
+          if (ownedRestaurants && ownedRestaurants.length > 0) {
+            // Get the IDs of owned restaurants
+            const ownedIds = ownedRestaurants.map((r) => r.id);
+            
+            // Filter the restaurants to only include owned ones
+            const filteredRestaurants = allRestaurants.filter(
+              restaurant => ownedIds.includes(restaurant.id)
+            );
+            
+            setRestaurants(filteredRestaurants);
+          } else {
+            setRestaurants([]);
+          }
+        } catch (error) {
+          console.error("Error fetching owned restaurants:", error);
           setRestaurants([]);
         }
       } else {
