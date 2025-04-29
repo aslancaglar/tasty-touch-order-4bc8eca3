@@ -1,3 +1,4 @@
+
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -293,13 +294,36 @@ const Restaurants = () => {
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const fetchRestaurants = async () => {
     try {
       setLoading(true);
-      const data = await getRestaurants();
-      setRestaurants(data);
+      const allRestaurants = await getRestaurants();
+      
+      // Filter restaurants for non-admin users to show only owned restaurants
+      if (!isAdmin && user) {
+        // Get owned restaurants
+        const { getOwnedRestaurants } = useAuth();
+        const ownedRestaurants = await getOwnedRestaurants();
+        
+        if (ownedRestaurants && ownedRestaurants.length > 0) {
+          // Get the IDs of owned restaurants
+          const ownedIds = ownedRestaurants.map((r: any) => r.id);
+          
+          // Filter the restaurants to only include owned ones
+          const filteredRestaurants = allRestaurants.filter(
+            restaurant => ownedIds.includes(restaurant.id)
+          );
+          
+          setRestaurants(filteredRestaurants);
+        } else {
+          setRestaurants([]);
+        }
+      } else {
+        // Admin users see all restaurants
+        setRestaurants(allRestaurants);
+      }
     } catch (error) {
       console.error("Error fetching restaurants:", error);
       toast({
@@ -349,10 +373,10 @@ const Restaurants = () => {
         <div>
           <h1 className="text-3xl font-bold">Restaurants</h1>
           <p className="text-muted-foreground">
-            Manage all the restaurants on your platform
+            {isAdmin ? "Manage all restaurants on your platform" : "Manage your restaurants"}
           </p>
         </div>
-        <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} />
+        {isAdmin && <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} />}
       </div>
 
       {!user ? (
@@ -380,7 +404,9 @@ const Restaurants = () => {
       ) : (
         <div className="text-center py-20">
           <p className="text-lg text-muted-foreground mb-4">No restaurants found</p>
-          <p className="text-muted-foreground mb-6">Start by adding your first restaurant</p>
+          <p className="text-muted-foreground mb-6">
+            {isAdmin ? "Start by adding your first restaurant" : "You don't have any restaurants assigned to you"}
+          </p>
         </div>
       )}
     </AdminLayout>
