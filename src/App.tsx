@@ -26,6 +26,9 @@ import RestaurantManage from "./pages/RestaurantManage";
 import KioskView from "./pages/KioskView";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import OwnerDashboard from "./pages/OwnerDashboard";
+import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
+import OwnerLogin from "./pages/OwnerLogin";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -37,6 +40,7 @@ const App = () => (
           <Routes>
             {/* Auth Routes */}
             <Route path="/auth" element={<Auth />} />
+            <Route path="/owner/login" element={<OwnerLogin />} />
             
             {/* Admin Routes - Protected */}
             <Route path="/" element={
@@ -52,6 +56,18 @@ const App = () => (
             <Route path="/restaurant/:id" element={
               <ProtectedRoute>
                 <RestaurantManage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Restaurant Owner Routes - Protected */}
+            <Route path="/owner" element={
+              <ProtectedRoute>
+                <OwnerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/owner/restaurant/:id" element={
+              <ProtectedRoute>
+                <OwnerRestaurantManage />
               </ProtectedRoute>
             } />
             
