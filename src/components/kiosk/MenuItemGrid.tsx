@@ -1,10 +1,10 @@
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ImageOff } from "lucide-react";
 import { MenuItem } from "@/types/database-types";
-import { getCachedImageUrl, precacheImages } from "@/utils/image-cache";
+import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 
 interface MenuItemGridProps {
   items: MenuItem[];
@@ -14,6 +14,66 @@ interface MenuItemGridProps {
   restaurantId?: string;
   refreshTrigger?: number;
 }
+
+// Individual menu item component, memoized to prevent re-renders
+const MenuItemCard = memo(({
+  item,
+  handleSelectItem,
+  t,
+  currencySymbol,
+  cachedImageUrl,
+  hasImageFailed
+}: {
+  item: MenuItem,
+  handleSelectItem: (item: MenuItem) => void,
+  t: (key: string) => string,
+  currencySymbol: string,
+  cachedImageUrl: string,
+  hasImageFailed: boolean
+}) => {
+  const handleItemClick = useCallback(() => {
+    handleSelectItem(item);
+  }, [item, handleSelectItem]);
+
+  const formattedPrice = useMemo(() => {
+    return parseFloat(item.price.toString()).toFixed(2);
+  }, [item.price]);
+
+  return (
+    <Card className="overflow-hidden hover:shadow-md transition-shadow select-none">
+      <div 
+        className="h-40 bg-cover bg-center cursor-pointer relative select-none" 
+        style={{
+          backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
+          backgroundColor: hasImageFailed ? '#f0f0f0' : undefined
+        }}
+        onClick={handleItemClick}
+      >
+        {hasImageFailed && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+            <ImageOff className="h-10 w-10 text-gray-400" />
+          </div>
+        )}
+      </div>
+      <div className="p-4 select-none">
+        <div className="flex justify-between">
+          <h3 className="font-bold text-lg truncate">{item.name}</h3>
+          <p className="font-bold whitespace-nowrap">{formattedPrice} {currencySymbol}</p>
+        </div>
+        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+        <Button 
+          onClick={handleItemClick} 
+          className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0"
+        >
+          {t("addToCart")}
+          <ChevronRight className="h-4 w-4 ml-2" />
+        </Button>
+      </div>
+    </Card>
+  );
+});
+
+MenuItemCard.displayName = 'MenuItemCard';
 
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
@@ -27,71 +87,171 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const [loadingImages, setLoadingImages] = useState<boolean>(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const isMounted = useRef<boolean>(true);
+  const visibleItemsRef = useRef<Set<string>>(new Set());
+  const imagePreloadQueue = useRef<string[]>([]);
+  const isPreloadingRef = useRef<boolean>(false);
+
+  // We only want in-stock items
+  const filteredItems = useMemo(() => {
+    return items.filter(item => item.in_stock);
+  }, [items]);
+  
+  // Pre-cache only visible items with intersection observer
+  const setupIntersectionObserver = useCallback(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const itemId = entry.target.getAttribute('data-item-id');
+        if (!itemId) return;
+        
+        if (entry.isIntersecting) {
+          // Item is visible, add to visible items set
+          visibleItemsRef.current.add(itemId);
+          
+          // Get the image URL for this item
+          const item = filteredItems.find(i => i.id === itemId);
+          if (item?.image && !item.image.startsWith('data:') && !cachedImages[itemId]) {
+            // Add to preload queue if not already cached
+            if (!imagePreloadQueue.current.includes(item.image)) {
+              imagePreloadQueue.current.push(item.image);
+              processImageQueue();
+            }
+          }
+        } else {
+          // Item is no longer visible
+          visibleItemsRef.current.delete(itemId);
+        }
+      });
+    }, {
+      rootMargin: '100px', // Start loading when item is 100px from viewport
+      threshold: 0.1 // Trigger when at least 10% of the item is visible
+    });
+    
+    // Observe all menu item elements
+    setTimeout(() => {
+      document.querySelectorAll('[data-item-id]').forEach(element => {
+        observer.observe(element);
+      });
+    }, 100);
+    
+    return observer;
+  }, [filteredItems, cachedImages]);
+
+  // Process image queue one at a time
+  const processImageQueue = useCallback(async () => {
+    if (isPreloadingRef.current || imagePreloadQueue.current.length === 0) return;
+    
+    isPreloadingRef.current = true;
+    const url = imagePreloadQueue.current.shift();
+    
+    if (url) {
+      try {
+        const cachedUrl = await getCachedImageUrl(url);
+        
+        // Find the item that uses this image
+        if (isMounted.current) {
+          setCachedImages(prev => {
+            const itemsWithImage = filteredItems.filter(item => item.image === url);
+            if (itemsWithImage.length === 0) return prev;
+            
+            const updates: Record<string, string> = {};
+            itemsWithImage.forEach(item => {
+              updates[item.id] = cachedUrl;
+            });
+            
+            return { ...prev, ...updates };
+          });
+        }
+      } catch (err) {
+        console.error(`Error caching image: ${url}`, err);
+      }
+    }
+    
+    isPreloadingRef.current = false;
+    
+    // Process next image after a small delay
+    if (imagePreloadQueue.current.length > 0) {
+      setTimeout(processImageQueue, 50);
+    }
+  }, [filteredItems]);
+
+  // Effect to initialize intersection observer
+  useEffect(() => {
+    const observer = setupIntersectionObserver();
+    
+    return () => {
+      if (observer) observer.disconnect();
+    };
+  }, [setupIntersectionObserver]);
 
   // Pre-cache all images when component mounts or items change
   useEffect(() => {
-    const imageUrls = items
-      .filter(item => item.in_stock && item.image)
-      .map(item => item.image || '');
+    const imageUrls = filteredItems
+      .filter(item => item.image)
+      .map(item => item.image || '')
+      .slice(0, 10); // Limit initial preload to first 10 images
     
     if (imageUrls.length > 0) {
-      // Attempt to precache all images
+      // Attempt to precache the first few images
       precacheImages(imageUrls)
         .catch(err => console.error("Error pre-caching images:", err));
     }
-  }, [items, refreshTrigger]);
+  }, [filteredItems, refreshTrigger]);
 
   useEffect(() => {
     isMounted.current = true;
     setLoadingImages(true);
     
     const cacheImages = async () => {
-      const inStockItems = items.filter(item => item.in_stock);
-      console.log(`Caching images for ${inStockItems.length} menu items`);
+      if (filteredItems.length === 0) {
+        setLoadingImages(false);
+        return;
+      }
+      
+      console.log(`Caching images for ${filteredItems.length} menu items`);
       
       try {
-        // Process images in smaller batches to be more responsive
-        const batchSize = 5;
+        // Get storage information
+        const storageInfo = await getStorageEstimate();
+        const usedPercent = (storageInfo.used / storageInfo.quota) * 100;
+        console.log(`Storage usage: ${(storageInfo.used / (1024 * 1024)).toFixed(2)}MB / ${(storageInfo.quota / (1024 * 1024)).toFixed(2)}MB (${usedPercent.toFixed(1)}%)`);
+        
+        // Process first batch of images synchronously for initial display
+        const initialBatch = filteredItems.slice(0, 5);
         const newCachedImages: Record<string, string> = {};
         const newFailedImages = new Set<string>();
         
-        for (let i = 0; i < inStockItems.length; i += batchSize) {
-          const batch = inStockItems.slice(i, i + batchSize);
-          const imagePromises = batch
-            .filter(item => item.image)
-            .map(async item => {
-              try {
-                const cachedUrl = await getCachedImageUrl(item.image || '');
-                if (!cachedUrl || cachedUrl === item.image) {
-                  newFailedImages.add(item.id);
-                }
-                return { id: item.id, url: cachedUrl || item.image || '' };
-              } catch (error) {
-                console.error(`Error caching image for item ${item.id}:`, error);
-                newFailedImages.add(item.id);
-                return { id: item.id, url: item.image || '' };
-              }
-            });
-
-          const cachedUrls = await Promise.all(imagePromises);
+        for (const item of initialBatch) {
+          if (!item.image) continue;
           
-          cachedUrls.forEach(({ id, url }) => {
-            newCachedImages[id] = url;
-          });
-          
-          // Update state after each batch if component is still mounted
-          if (isMounted.current && i + batchSize >= inStockItems.length) {
-            setCachedImages(prev => ({ ...prev, ...newCachedImages }));
-            setFailedImages(new Set([...failedImages, ...newFailedImages]));
+          try {
+            const cachedUrl = await getCachedImageUrl(item.image);
+            if (!cachedUrl || cachedUrl === item.image) {
+              newFailedImages.add(item.id);
+            }
+            newCachedImages[item.id] = cachedUrl || item.image || '';
+          } catch (error) {
+            console.error(`Error caching image for item ${item.id}:`, error);
+            newFailedImages.add(item.id);
+            newCachedImages[item.id] = item.image || '';
           }
         }
         
         if (isMounted.current) {
-          setCachedImages(newCachedImages);
-          setFailedImages(newFailedImages);
+          setCachedImages(prev => ({ ...prev, ...newCachedImages }));
+          setFailedImages(new Set([...failedImages, ...newFailedImages]));
           setLoadingImages(false);
-          console.log(`Finished caching ${Object.keys(newCachedImages).length} images`);
         }
+        
+        // Queue remaining images to be loaded in background
+        const remainingItems = filteredItems.slice(5);
+        const remainingUrls = remainingItems
+          .filter(item => item.image)
+          .map(item => item.image || '');
+        
+        imagePreloadQueue.current = [...remainingUrls];
+        processImageQueue();
       } catch (error) {
         console.error("Error in image caching process:", error);
         if (isMounted.current) {
@@ -100,7 +260,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       }
     };
 
-    if (items.length > 0) {
+    if (filteredItems.length > 0) {
       cacheImages();
     } else {
       setLoadingImages(false);
@@ -109,57 +269,30 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     // Cleanup function
     return () => {
       isMounted.current = false;
+      imagePreloadQueue.current = [];
     };
-  }, [items, refreshTrigger]);
+  }, [filteredItems, refreshTrigger]);
 
-  const handleImageError = (itemId: string) => {
+  const handleImageError = useCallback((itemId: string) => {
     setFailedImages(prev => new Set([...prev, itemId]));
-  };
-
-  const getImageUrl = (item: MenuItem): string => {
-    return cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300';
-  };
+  }, []);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
-      {items
-        .filter(item => item.in_stock)
-        .map(item => (
-          <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow select-none">
-            <div 
-              className="h-40 bg-cover bg-center cursor-pointer relative select-none" 
-              style={{
-                backgroundImage: !failedImages.has(item.id) 
-                  ? `url(${getImageUrl(item)})` 
-                  : 'none',
-                backgroundColor: failedImages.has(item.id) ? '#f0f0f0' : undefined
-              }}
-              onClick={() => handleSelectItem(item)}
-            >
-              {failedImages.has(item.id) && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-                  <ImageOff className="h-10 w-10 text-gray-400" />
-                </div>
-              )}
-            </div>
-            <div className="p-4 select-none">
-              <div className="flex justify-between">
-                <h3 className="font-bold text-lg">{item.name}</h3>
-                <p className="font-bold">{parseFloat(item.price.toString()).toFixed(2)} {currencySymbol}</p>
-              </div>
-              <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
-              <Button 
-                onClick={() => handleSelectItem(item)} 
-                className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0"
-              >
-                {t("addToCart")}
-                <ChevronRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-          </Card>
-        ))}
+      {filteredItems.map(item => (
+        <div key={item.id} data-item-id={item.id}>
+          <MenuItemCard
+            item={item}
+            handleSelectItem={handleSelectItem}
+            t={t}
+            currencySymbol={currencySymbol}
+            cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'}
+            hasImageFailed={failedImages.has(item.id)}
+          />
+        </div>
+      ))}
     </div>
   );
 };
 
-export default MenuItemGrid;
+export default memo(MenuItemGrid);
