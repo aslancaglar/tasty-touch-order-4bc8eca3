@@ -293,52 +293,13 @@ const Restaurants = () => {
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
   const { toast } = useToast();
-  const { user, isAdmin, getOwnedRestaurants } = useAuth();
+  const { user } = useAuth();
 
-  // Create separate function to debug and log any issues
   const fetchRestaurants = async () => {
     try {
-      console.log("Fetching restaurants, isAdmin:", isAdmin);
       setLoading(true);
-      const allRestaurants = await getRestaurants();
-      console.log("All restaurants fetched:", allRestaurants.length);
-      
-      // Admins see all restaurants
-      if (isAdmin) {
-        console.log("User is admin, showing all restaurants");
-        setRestaurants(allRestaurants);
-      } 
-      // Non-admin users only see their own restaurants
-      else if (user) {
-        try {
-          console.log("User is not admin, fetching owned restaurants");
-          const ownedRestaurants = await getOwnedRestaurants();
-          console.log("Owned restaurants:", ownedRestaurants);
-          
-          if (ownedRestaurants && ownedRestaurants.length > 0) {
-            // Get the IDs of owned restaurants
-            const ownedIds = ownedRestaurants.map((r) => r.id);
-            console.log("Owned restaurant IDs:", ownedIds);
-            
-            // Filter the restaurants to only include owned ones
-            const filteredRestaurants = allRestaurants.filter(
-              restaurant => ownedIds.includes(restaurant.id)
-            );
-            
-            console.log("Filtered restaurants:", filteredRestaurants.length);
-            setRestaurants(filteredRestaurants);
-          } else {
-            console.log("No owned restaurants found");
-            setRestaurants([]);
-          }
-        } catch (error) {
-          console.error("Error fetching owned restaurants:", error);
-          setRestaurants([]);
-        }
-      } else {
-        console.log("No user logged in");
-        setRestaurants([]);
-      }
+      const data = await getRestaurants();
+      setRestaurants(data);
     } catch (error) {
       console.error("Error fetching restaurants:", error);
       toast({
@@ -359,7 +320,7 @@ const Restaurants = () => {
     }
     setStats({});
     setLoadingStats(true);
-  }, [user, isAdmin]); // Re-fetch when admin status changes
+  }, [user]);
 
   useEffect(() => {
     const getStats = async () => {
@@ -388,10 +349,10 @@ const Restaurants = () => {
         <div>
           <h1 className="text-3xl font-bold">Restaurants</h1>
           <p className="text-muted-foreground">
-            {isAdmin ? "Manage all restaurants on your platform" : "Manage your restaurants"}
+            Manage all the restaurants on your platform
           </p>
         </div>
-        {isAdmin && <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} />}
+        <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} />
       </div>
 
       {!user ? (
@@ -419,19 +380,7 @@ const Restaurants = () => {
       ) : (
         <div className="text-center py-20">
           <p className="text-lg text-muted-foreground mb-4">No restaurants found</p>
-          {!isAdmin && (
-            <p className="text-muted-foreground mb-6">
-              You don't have any restaurants assigned to you
-            </p>
-          )}
-          {isAdmin && (
-            <div className="flex flex-col items-center">
-              <p className="text-muted-foreground mb-6">
-                Start by adding your first restaurant
-              </p>
-              <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} />
-            </div>
-          )}
+          <p className="text-muted-foreground mb-6">Start by adding your first restaurant</p>
         </div>
       )}
     </AdminLayout>

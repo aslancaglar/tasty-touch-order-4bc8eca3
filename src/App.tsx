@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import RestaurantOwnerRoute from "@/components/auth/RestaurantOwnerRoute";
 
 // Create the QueryClient with optimized settings
 const queryClient = new QueryClient({
@@ -51,9 +50,9 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/restaurant/:id" element={
-              <RestaurantOwnerRoute>
+              <ProtectedRoute>
                 <RestaurantManage />
-              </RestaurantOwnerRoute>
+              </ProtectedRoute>
             } />
             
             {/* Public Kiosk Routes */}
