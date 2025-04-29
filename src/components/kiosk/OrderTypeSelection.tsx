@@ -25,7 +25,7 @@ const translations = {
   },
   tr: {
     title: "Nasıl sipariş vermek istersiniz?",
-    dineIn: "Yerinde Yeme",
+    dineIn: "Masaya Servis",
     takeaway: "Paket Servis"
   }
 };
