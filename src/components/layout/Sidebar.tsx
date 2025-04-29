@@ -6,9 +6,10 @@ import {
   Store,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  Settings
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,27 +17,55 @@ type SidebarItem = {
   title: string;
   icon: React.ElementType;
   href: string;
+  showForAdmin?: boolean;
+  showForOwner?: boolean;
 };
-
-const sidebarItems: SidebarItem[] = [
-  {
-    title: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/",
-  },
-  {
-    title: "Restaurants",
-    icon: Store,
-    href: "/restaurants",
-  },
-];
 
 export function Sidebar() {
   const location = useLocation();
-  // Set the default state to collapsed
   const [collapsed, setCollapsed] = useState(true);
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdmin, isRestaurantOwner } = useAuth();
   const { toast } = useToast();
+  const [isOwner, setIsOwner] = useState(false);
+
+  useEffect(() => {
+    const checkOwnership = async () => {
+      if (user) {
+        const owner = await isRestaurantOwner();
+        setIsOwner(owner);
+      }
+    };
+    
+    checkOwnership();
+  }, [user, isRestaurantOwner]);
+
+  const sidebarItems: SidebarItem[] = [
+    {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/",
+      showForAdmin: true
+    },
+    {
+      title: "Restaurants",
+      icon: Store,
+      href: "/restaurants",
+      showForAdmin: true
+    },
+    {
+      title: "My Restaurants",
+      icon: Store,
+      href: "/owner",
+      showForOwner: true
+    },
+  ];
+
+  const filteredItems = sidebarItems.filter(item => {
+    if (item.showForAdmin && isAdmin) return true;
+    if (item.showForOwner && isOwner) return true;
+    if (!item.showForAdmin && !item.showForOwner) return true;
+    return false;
+  });
 
   const handleSignOut = async () => {
     try {
@@ -75,7 +104,7 @@ export function Sidebar() {
       
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
-          {sidebarItems.map((item) => (
+          {filteredItems.map((item) => (
             <li key={item.href}>
               <Link
                 to={item.href}
@@ -108,7 +137,9 @@ export function Sidebar() {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium truncate max-w-[120px]">{user?.email || "Admin User"}</p>
-                <p className="text-xs text-gray-500">Admin</p>
+                <p className="text-xs text-gray-500">
+                  {isAdmin ? "Admin" : isOwner ? "Restaurant Owner" : "User"}
+                </p>
               </div>
             </div>
             <button

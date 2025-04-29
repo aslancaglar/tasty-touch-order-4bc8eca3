@@ -480,6 +480,45 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurant_owners: {
+        Row: {
+          created_at: string
+          id: string
+          restaurant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          restaurant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          restaurant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_owners_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_owners_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurant_print_config: {
         Row: {
           api_key: string | null
@@ -753,6 +792,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      get_owned_restaurants: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          currency: string
+          id: string
+          image_url: string | null
+          location: string | null
+          name: string
+          slug: string
+          ui_language: string
+          updated_at: string
+        }[]
+      }
       get_popular_items: {
         Args: { limit_count: number }
         Returns: Json
@@ -760,6 +813,10 @@ export type Database = {
       get_popular_restaurants: {
         Args: { limit_count: number }
         Returns: Json
+      }
+      is_restaurant_owner: {
+        Args: { restaurant_uuid: string }
+        Returns: boolean
       }
     }
     Enums: {
