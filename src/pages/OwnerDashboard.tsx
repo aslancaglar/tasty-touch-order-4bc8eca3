@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Loader2, Store } from "lucide-react";
+import { Loader2, Store, LogOut } from "lucide-react";
 import { Restaurant } from "@/types/database-types";
 import { useToast } from "@/hooks/use-toast";
 
 const OwnerDashboard = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -53,6 +53,22 @@ const OwnerDashboard = () => {
     fetchOwnerRestaurants();
   }, [user, toast]);
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of your account",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was a problem signing out",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -63,7 +79,17 @@ const OwnerDashboard = () => {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6">Restaurant Owner Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Restaurant Owner Dashboard</h1>
+        <Button 
+          variant="outline" 
+          onClick={handleSignOut}
+          className="flex items-center gap-2"
+        >
+          <LogOut size={18} />
+          Sign Out
+        </Button>
+      </div>
       
       {restaurants.length === 0 ? (
         <div className="text-center py-10">
