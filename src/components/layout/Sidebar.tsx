@@ -34,28 +34,39 @@ const adminSidebarItems: SidebarItem[] = [
 
 export function Sidebar() {
   const location = useLocation();
-  // Set the default state to collapsed
   const [collapsed, setCollapsed] = useState(true);
   const { signOut, user } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (!user) return;
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
-      
-      if (error) {
-        console.error("Error checking admin status:", error);
+      if (!user) {
+        setIsAdmin(false);
+        setIsLoading(false);
         return;
       }
       
-      setIsAdmin(data?.is_admin || false);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          console.error("Error checking admin status:", error);
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(data?.is_admin || false);
+        }
+      } catch (error) {
+        console.error("Exception checking admin status:", error);
+        setIsAdmin(false);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     checkAdminStatus();
@@ -77,12 +88,15 @@ export function Sidebar() {
     }
   };
 
-  // Redirect non-admins accessing admin routes
-  useEffect(() => {
-    if (user && !isAdmin && (location.pathname === '/' || location.pathname === '/restaurants' || location.pathname.startsWith('/restaurant/'))) {
-      window.location.href = '/owner';
-    }
-  }, [user, isAdmin, location.pathname]);
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-screen bg-white border-r border-gray-200 w-16">
+        <div className="flex-1 py-4 flex items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(

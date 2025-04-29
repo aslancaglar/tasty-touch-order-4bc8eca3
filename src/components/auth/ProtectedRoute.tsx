@@ -19,6 +19,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user) {
+        setIsAdmin(false);
         setCheckingAdmin(false);
         return;
       }
@@ -51,6 +52,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     }
   }, [user]);
 
+  // Show loading spinner while authentication is being checked
   if (loading || checkingAdmin) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -59,21 +61,21 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     );
   }
 
+  // Redirect to login if not authenticated
   if (!user) {
-    // Redirect to the login page with a return url
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // If this route requires admin access and user is not an admin
+  // Handle admin-required routes for non-admin users
   if (requireAdmin && !isAdmin) {
     console.log("Access denied: User is not an admin");
-    // Redirect restaurant owners to their dashboard
     return <Navigate to="/owner" replace />;
   }
 
-  // If user is admin but trying to access owner routes, redirect to admin dashboard
+  // Handle owner routes for admin users
+  // Only redirect if specifically on the /owner route, not child routes
   if (isAdmin && location.pathname === '/owner') {
-    console.log("Redirecting admin to admin dashboard");
+    console.log("Admin user detected on owner route, redirecting to admin dashboard");
     return <Navigate to="/" replace />;
   }
 
