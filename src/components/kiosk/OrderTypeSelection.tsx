@@ -1,4 +1,3 @@
-
 import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -36,6 +35,7 @@ const OrderTypeSelection = ({
   onSelectOrderType,
   uiLanguage = "fr"
 }: OrderTypeSelectionProps) => {
+  
   const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
   
   const handleSelectDineIn = () => {
