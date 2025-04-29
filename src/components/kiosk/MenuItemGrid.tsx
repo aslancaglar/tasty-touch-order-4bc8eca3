@@ -121,13 +121,13 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
       {items
         .filter(item => item.in_stock)
         .map(item => (
-          <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
+          <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow select-none">
             <div 
-              className="h-40 bg-cover bg-center cursor-pointer relative" 
+              className="h-40 bg-cover bg-center cursor-pointer relative select-none" 
               style={{
                 backgroundImage: !failedImages.has(item.id) 
                   ? `url(${getImageUrl(item)})` 
@@ -142,7 +142,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
                 </div>
               )}
             </div>
-            <div className="p-4">
+            <div className="p-4 select-none">
               <div className="flex justify-between">
                 <h3 className="font-bold text-lg">{item.name}</h3>
                 <p className="font-bold">{parseFloat(item.price.toString()).toFixed(2)} {currencySymbol}</p>

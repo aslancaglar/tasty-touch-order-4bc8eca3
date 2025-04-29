@@ -905,9 +905,43 @@ const KioskView = () => {
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
 
+  useEffect(() => {
+    // Add a style tag to prevent selection throughout the kiosk view
+    const styleTag = document.createElement('style');
+    styleTag.innerHTML = `
+      .kiosk-view {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+      
+      .kiosk-view * {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+      
+      /* Only allow selection in the special instructions textarea */
+      .kiosk-view textarea {
+        user-select: text;
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+      }
+    `;
+    document.head.appendChild(styleTag);
+    
+    // Clean up on unmount
+    return () => {
+      document.head.removeChild(styleTag);
+    };
+  }, []);
+
   if (loading && !restaurant) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen kiosk-view">
         <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
       </div>
     );
@@ -915,7 +949,7 @@ const KioskView = () => {
 
   if (!restaurant) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen kiosk-view">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
           <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
@@ -930,20 +964,22 @@ const KioskView = () => {
 
   if (showWelcome) {
     return (
-      <WelcomePage 
-        restaurant={restaurant} 
-        onStart={() => {
-          fullReset();
-          handleStartOrder();
-        }}
-        uiLanguage={uiLanguage} 
-      />
+      <div className="kiosk-view">
+        <WelcomePage 
+          restaurant={restaurant} 
+          onStart={() => {
+            fullReset();
+            handleStartOrder();
+          }}
+          uiLanguage={uiLanguage} 
+        />
+      </div>
     );
   }
 
   if (showOrderTypeSelection) {
     return (
-      <>
+      <div className="kiosk-view">
         <div 
           className="fixed inset-0 bg-cover bg-center bg-black/50" 
           style={{
@@ -966,7 +1002,7 @@ const KioskView = () => {
           onCancel={handleCancel}
           t={t}
         />
-      </>
+      </div>
     );
   }
 
@@ -975,7 +1011,7 @@ const KioskView = () => {
   const cartIsEmpty = cart.length === 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col kiosk-view">
       <KioskHeader 
         restaurant={restaurant}
         orderType={orderType}

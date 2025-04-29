@@ -88,13 +88,13 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="w-[85vw] max-w-[85vw] min-h-[85vh] max-h-[85vh] p-4 flex flex-col">
+      <DialogContent className="w-[85vw] max-w-[85vw] min-h-[85vh] max-h-[85vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
           <DialogTitle className="text-xl font-bold">{item.name}</DialogTitle>
           {item.description && <DialogDescription className="text-sm">{item.description}</DialogDescription>}
         </DialogHeader>
         
-        <div className="space-y-4 overflow-y-auto pr-2 flex-grow">
+        <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none">
           {item.options && item.options.map(option => (
             <div key={option.id} className="space-y-1">
               <Label className="font-medium">
@@ -110,7 +110,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                     <div 
                       key={choice.id} 
                       className={`
-                        flex items-center justify-between p-2 border rounded-md cursor-pointer
+                        flex items-center justify-between p-2 border rounded-md cursor-pointer select-none
                         ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
                       `} 
                       onClick={() => onToggleChoice(option.id, choice.id, !!option.multiple)}
@@ -154,7 +154,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                       <div
                         key={topping.id}
                         onClick={() => onToggleTopping(category.id, topping.id)}
-                        className="flex items-center justify-between border rounded-md p-2 hover:border-gray-300 cursor-pointer"
+                        className="flex items-center justify-between border rounded-md p-2 hover:border-gray-300 cursor-pointer select-none"
                       >
                         <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
                           {topping.name}
