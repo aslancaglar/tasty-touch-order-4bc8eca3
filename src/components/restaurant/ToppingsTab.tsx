@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -64,11 +65,18 @@ const ToppingsTab = ({
   }, [restaurant.id]);
 
   useEffect(() => {
-    fetchToppings(categories);
+    if (selectedCategory?.id) {
+      fetchToppings(categories);
+    }
   }, [categories, selectedCategory?.id]);
 
   const fetchCategories = async () => {
     try {
+      // Always clear the cache before fetching to ensure we get fresh data
+      clearCache(restaurant.id, 'topping_categories');
+      console.log("Fetching topping categories for restaurant:", restaurant.id);
+      
+      // Try to get from cache first
       const cachedCategories = getCacheItem<ToppingCategory[]>('topping_categories', restaurant.id);
       if (cachedCategories) {
         console.log("Using cached topping categories");
@@ -76,6 +84,7 @@ const ToppingsTab = ({
         return;
       }
 
+      // If not in cache, fetch from database
       const { data, error } = await supabase
         .from('topping_categories')
         .select('*')
@@ -84,8 +93,8 @@ const ToppingsTab = ({
 
       if (error) throw error;
       
+      console.log("Fetched topping categories:", data);
       setCacheItem('topping_categories', data, restaurant.id);
-      
       setCategories(data || []);
     } catch (error) {
       console.error('Error fetching topping categories:', error);
@@ -161,7 +170,11 @@ const ToppingsTab = ({
         title: "Succès",
         description: "Catégorie supprimée avec succès"
       });
-      fetchCategories();
+      
+      // Clear the cache and fetch updated categories
+      clearCache(restaurant.id, 'topping_categories');
+      await fetchCategories();
+      
       setShowDeleteCategoryDialog(false);
     } catch (error) {
       console.error('Error deleting topping category:', error);
@@ -283,6 +296,101 @@ const ToppingsTab = ({
     }
   };
 
+  const handleCreateCategory = async (values: any) => {
+    setIsCreatingCategory(true);
+    try {
+      const {
+        name,
+        description,
+        min_selections,
+        max_selections,
+        conditionToppingIds
+      } = values;
+      console.log("Creating category with values:", values);
+      const {
+        data,
+        error
+      } = await supabase.from('topping_categories').insert([{
+        name,
+        description,
+        restaurant_id: restaurant.id,
+        min_selections,
+        max_selections,
+        show_if_selection_id: conditionToppingIds && conditionToppingIds.length > 0 ? conditionToppingIds : null
+      }]).select().single();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Succès",
+        description: "Catégorie créée avec succès"
+      });
+      
+      // Clear the cache and fetch updated categories
+      clearCache(restaurant.id, 'topping_categories');
+      await fetchCategories();
+      
+      setShowCreateCategoryDialog(false);
+    } catch (error) {
+      console.error('Error creating topping category:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer la catégorie",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
+
+  const handleUpdateCategory = async (values: any) => {
+    if (!selectedCategory) return;
+    
+    setIsUpdatingCategory(true);
+    try {
+      const {
+        name,
+        description,
+        min_selections,
+        max_selections,
+        conditionToppingIds
+      } = values;
+      console.log("Updating category with values:", values);
+      console.log("Selected condition toppings:", conditionToppingIds);
+      const {
+        error
+      } = await supabase.from('topping_categories').update({
+        name,
+        description,
+        min_selections,
+        max_selections,
+        show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null
+      }).eq('id', selectedCategory.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Succès",
+        description: "Catégorie mise à jour avec succès"
+      });
+      
+      // Clear the cache and fetch updated categories
+      clearCache(restaurant.id, 'topping_categories');
+      await fetchCategories();
+      
+      setShowUpdateCategoryDialog(false);
+    } catch (error) {
+      console.error('Error updating topping category:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour la catégorie",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingCategory(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -399,46 +507,11 @@ const ToppingsTab = ({
             <DialogTitle>Créer une catégorie</DialogTitle>
             <DialogDescription>Créez une nouvelle catégorie de compléments</DialogDescription>
           </DialogHeader>
-          <ToppingCategoryForm restaurantId={restaurant.id} onSubmit={async values => {
-          setIsCreatingCategory(true);
-          try {
-            const {
-              name,
-              description,
-              min_selections,
-              max_selections,
-              conditionToppingIds
-            } = values;
-            console.log("Creating category with values:", values);
-            const {
-              data,
-              error
-            } = await supabase.from('topping_categories').insert([{
-              name,
-              description,
-              restaurant_id: restaurant.id,
-              min_selections,
-              max_selections,
-              show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null
-            }]).select().single();
-            if (error) throw error;
-            toast({
-              title: "Succès",
-              description: "Catégorie créée avec succès"
-            });
-            fetchCategories();
-            setShowCreateCategoryDialog(false);
-          } catch (error) {
-            console.error('Error creating topping category:', error);
-            toast({
-              title: "Erreur",
-              description: "Impossible de créer la catégorie",
-              variant: "destructive"
-            });
-          } finally {
-            setIsCreatingCategory(false);
-          }
-        }} isLoading={isCreatingCategory} />
+          <ToppingCategoryForm 
+            restaurantId={restaurant.id} 
+            onSubmit={handleCreateCategory} 
+            isLoading={isCreatingCategory} 
+          />
         </DialogContent>
       </Dialog>
 
@@ -448,51 +521,18 @@ const ToppingsTab = ({
             <DialogTitle>Modifier la catégorie</DialogTitle>
             <DialogDescription>Modifiez les détails de cette catégorie</DialogDescription>
           </DialogHeader>
-          {selectedCategory && <ToppingCategoryForm restaurantId={restaurant.id} initialValues={{
-          name: selectedCategory.name,
-          description: selectedCategory.description || "",
-          min_selections: selectedCategory.min_selections || 0,
-          max_selections: selectedCategory.max_selections || 0,
-          show_if_selection_id: selectedCategory.show_if_selection_id || []
-        }} onSubmit={async values => {
-          setIsUpdatingCategory(true);
-          try {
-            const {
-              name,
-              description,
-              min_selections,
-              max_selections,
-              conditionToppingIds
-            } = values;
-            console.log("Updating category with values:", values);
-            console.log("Selected condition toppings:", conditionToppingIds);
-            const {
-              error
-            } = await supabase.from('topping_categories').update({
-              name,
-              description,
-              min_selections,
-              max_selections,
-              show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null
-            }).eq('id', selectedCategory.id);
-            if (error) throw error;
-            toast({
-              title: "Succès",
-              description: "Catégorie mise à jour avec succès"
-            });
-            fetchCategories();
-            setShowUpdateCategoryDialog(false);
-          } catch (error) {
-            console.error('Error updating topping category:', error);
-            toast({
-              title: "Erreur",
-              description: "Impossible de mettre à jour la catégorie",
-              variant: "destructive"
-            });
-          } finally {
-            setIsUpdatingCategory(false);
-          }
-        }} isLoading={isUpdatingCategory} />}
+          {selectedCategory && <ToppingCategoryForm 
+            restaurantId={restaurant.id} 
+            initialValues={{
+              name: selectedCategory.name,
+              description: selectedCategory.description || "",
+              min_selections: selectedCategory.min_selections || 0,
+              max_selections: selectedCategory.max_selections || 0,
+              show_if_selection_id: selectedCategory.show_if_selection_id || []
+            }} 
+            onSubmit={handleUpdateCategory} 
+            isLoading={isUpdatingCategory} 
+          />}
         </DialogContent>
       </Dialog>
 
@@ -528,11 +568,16 @@ const ToppingsTab = ({
           <DialogHeader>
             <DialogTitle>Modifier le complément</DialogTitle>
           </DialogHeader>
-          {selectedTopping && <ToppingForm onSubmit={values => handleUpdateTopping(selectedTopping.id, values)} initialValues={{
-          name: selectedTopping.name,
-          price: selectedTopping.price?.toString() || "0",
-          tax_percentage: selectedTopping.tax_percentage?.toString() || "10"
-        }} isLoading={isUpdatingTopping} currency={restaurant.currency} />}
+          {selectedTopping && <ToppingForm 
+            onSubmit={values => handleUpdateTopping(selectedTopping.id, values)} 
+            initialValues={{
+              name: selectedTopping.name,
+              price: selectedTopping.price?.toString() || "0",
+              tax_percentage: selectedTopping.tax_percentage?.toString() || "10"
+            }} 
+            isLoading={isUpdatingTopping} 
+            currency={restaurant.currency} 
+          />}
         </DialogContent>
       </Dialog>
 
@@ -542,9 +587,14 @@ const ToppingsTab = ({
             <DialogTitle>Supprimer le complément</DialogTitle>
           </DialogHeader>
           <p>Êtes-vous sûr de vouloir supprimer le complément "{selectedTopping?.name}" ?</p>
-          <Button onClick={handleDeleteTopping} className="bg-red-500 text-white" disabled={isDeletingTopping}>
-            {isDeletingTopping ? "Suppression..." : "Supprimer"}
-          </Button>
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button variant="outline" onClick={() => setShowDeleteToppingDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleDeleteTopping} variant="destructive" disabled={isDeletingTopping}>
+              {isDeletingTopping ? "Suppression..." : "Supprimer"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
