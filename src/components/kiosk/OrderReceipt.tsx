@@ -123,30 +123,13 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
               <span>{item.quantity}x {sanitizeText(item.menuItem.name)}</span>
               <span>{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
             </div>
-            {(getFormattedOptions(item) || getFormattedToppings(item)) && (
+            {getFormattedOptions(item) && (
               <div className="item-details text-xs">
                 {/* Options */}
                 {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                   <div key={`${item.id}-option-${idx}`} className="item">
                     <span>+ {sanitizeText(option)}</span>
                     <span></span>
-                  </div>
-                ))}
-                {/* Grouped toppings by category, show price if > 0 */}
-                {getGroupedToppings(item).map((group, groupIdx) => (
-                  <div key={`${item.id}-cat-${groupIdx}`}>
-                    <div style={{ fontWeight: 600, paddingLeft: 0 }}>{sanitizeText(group.category)}:</div>
-                    {group.toppings.map((topping, topIdx) => {
-                      const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                      const toppingRef = category?.toppings.find(t => t.name === topping);
-                      const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                      return (
-                        <div key={`${item.id}-cat-${groupIdx}-topping-${topIdx}`} className="item">
-                          <span style={{ paddingLeft: 6 }}>+ {sanitizeText(topping)}</span>
-                          <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
-                        </div>
-                      )
-                    })}
                   </div>
                 ))}
               </div>
