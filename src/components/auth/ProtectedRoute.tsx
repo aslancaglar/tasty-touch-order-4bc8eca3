@@ -66,13 +66,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
 
   // If this route requires admin access and user is not an admin
   if (requireAdmin && !isAdmin) {
-    // Redirect non-admin users to the owner dashboard
     console.log("Access denied: User is not an admin");
-    return <Navigate to="/owner" replace />;
-  }
-
-  // If this is the root path ("/") and user is not an admin, redirect to owner dashboard
-  if (location.pathname === "/" && !isAdmin) {
+    // Redirect restaurant owners to their dashboard
     return <Navigate to="/owner" replace />;
   }
 
