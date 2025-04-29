@@ -24,7 +24,6 @@ const queryClient = new QueryClient({
 import Dashboard from "./pages/Dashboard";
 import Restaurants from "./pages/Restaurants";
 import RestaurantManage from "./pages/RestaurantManage";
-import RestaurantOwnerDashboard from "./pages/RestaurantOwnerDashboard";
 import KioskView from "./pages/KioskView";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
@@ -54,13 +53,6 @@ const App = () => (
             <Route path="/restaurant/:id" element={
               <RestaurantOwnerRoute>
                 <RestaurantManage />
-              </RestaurantOwnerRoute>
-            } />
-            
-            {/* Restaurant Owner Routes */}
-            <Route path="/owner" element={
-              <RestaurantOwnerRoute requireSpecificRestaurant={false}>
-                <RestaurantOwnerDashboard />
               </RestaurantOwnerRoute>
             } />
             

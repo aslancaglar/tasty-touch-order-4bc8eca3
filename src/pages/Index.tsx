@@ -6,16 +6,21 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const Index = () => {
-  const { user, loading, isAdmin, isRestaurantOwner } = useAuth();
-  const [isOwner, setIsOwner] = useState(false);
+  const { user, loading, isAdmin } = useAuth();
+  const [ownedRestaurant, setOwnedRestaurant] = useState<string | null>(null);
   const [checkingOwner, setCheckingOwner] = useState(true);
 
   useEffect(() => {
     const checkOwnership = async () => {
       if (user) {
         try {
-          const owner = await isRestaurantOwner();
-          setIsOwner(owner);
+          const { getOwnedRestaurants } = useAuth();
+          const restaurants = await getOwnedRestaurants();
+          
+          if (restaurants && restaurants.length > 0) {
+            // Get the first restaurant ID (assuming owner is linked to only one restaurant)
+            setOwnedRestaurant(restaurants[0].id);
+          }
         } catch (error) {
           console.error("Error checking restaurant ownership:", error);
         } finally {
@@ -29,7 +34,7 @@ const Index = () => {
     if (!loading) {
       checkOwnership();
     }
-  }, [user, loading, isRestaurantOwner]);
+  }, [user, loading]);
 
   if (loading || checkingOwner) {
     return (
@@ -43,10 +48,9 @@ const Index = () => {
     return <Navigate to="/auth" />;
   }
 
-  // Modified logic: Only redirect restaurant owners to owner dashboard if they're not accessing a different specific route
-  // We'll let the RestaurantOwnerRoute components handle access control for specific routes
-  if (isOwner && !isAdmin) {
-    return <Navigate to="/owner" />;
+  // If user owns a restaurant and is not an admin, redirect them directly to their restaurant management page
+  if (ownedRestaurant && !isAdmin) {
+    return <Navigate to={`/restaurant/${ownedRestaurant}`} />;
   }
 
   // If user is an admin, show the admin dashboard

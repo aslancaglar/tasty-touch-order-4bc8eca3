@@ -6,38 +6,43 @@ import {
   Store,
   ChevronLeft,
   ChevronRight,
-  LogOut,
-  Settings
+  LogOut
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { Restaurant } from "@/types/database-types";
 
 type SidebarItem = {
   title: string;
   icon: React.ElementType;
   href: string;
   showForAdmin?: boolean;
-  showForOwner?: boolean;
 };
 
 export function Sidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(true);
-  const { signOut, user, isAdmin, isRestaurantOwner } = useAuth();
+  const { signOut, user, isAdmin, getOwnedRestaurants } = useAuth();
   const { toast } = useToast();
-  const [isOwner, setIsOwner] = useState(false);
+  const [ownedRestaurant, setOwnedRestaurant] = useState<Restaurant | null>(null);
 
   useEffect(() => {
-    const checkOwnership = async () => {
-      if (user) {
-        const owner = await isRestaurantOwner();
-        setIsOwner(owner);
+    const loadOwnedRestaurant = async () => {
+      if (!user || isAdmin) return;
+
+      try {
+        const restaurants = await getOwnedRestaurants();
+        if (restaurants && restaurants.length > 0) {
+          setOwnedRestaurant(restaurants[0]);
+        }
+      } catch (error) {
+        console.error("Error fetching owned restaurant:", error);
       }
     };
     
-    checkOwnership();
-  }, [user, isRestaurantOwner]);
+    loadOwnedRestaurant();
+  }, [user, isAdmin, getOwnedRestaurants]);
 
   const sidebarItems: SidebarItem[] = [
     {
@@ -51,20 +56,23 @@ export function Sidebar() {
       icon: Store,
       href: "/restaurants",
       showForAdmin: true
-    },
-    {
-      title: "My Restaurants",
-      icon: Store,
-      href: "/owner",
-      showForOwner: true
-    },
+    }
   ];
 
-  const filteredItems = sidebarItems.filter(item => {
-    if (item.showForAdmin && isAdmin) return true;
-    if (item.showForOwner && isOwner) return true;
-    if (!item.showForAdmin && !item.showForOwner) return true;
-    return false;
+  // Add the owned restaurant link dynamically if the user is a restaurant owner
+  const filteredItems = [...sidebarItems];
+
+  if (ownedRestaurant && !isAdmin) {
+    filteredItems.push({
+      title: ownedRestaurant.name,
+      icon: Store,
+      href: `/restaurant/${ownedRestaurant.id}`,
+    });
+  }
+
+  const adminItems = filteredItems.filter(item => {
+    if (!item.showForAdmin) return true;
+    return isAdmin && item.showForAdmin;
   });
 
   const handleSignOut = async () => {
@@ -104,7 +112,7 @@ export function Sidebar() {
       
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
-          {filteredItems.map((item) => (
+          {adminItems.map((item) => (
             <li key={item.href}>
               <Link
                 to={item.href}
@@ -138,7 +146,7 @@ export function Sidebar() {
               <div className="ml-3">
                 <p className="text-sm font-medium truncate max-w-[120px]">{user?.email || "Admin User"}</p>
                 <p className="text-xs text-gray-500">
-                  {isAdmin ? "Admin" : isOwner ? "Restaurant Owner" : "User"}
+                  {isAdmin ? "Admin" : ownedRestaurant ? "Restaurant Owner" : "User"}
                 </p>
               </div>
             </div>

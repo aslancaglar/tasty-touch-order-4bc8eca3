@@ -6,13 +6,9 @@ import { Loader2 } from "lucide-react";
 
 interface RestaurantOwnerRouteProps {
   children: React.ReactNode;
-  requireSpecificRestaurant?: boolean;
 }
 
-const RestaurantOwnerRoute = ({ 
-  children, 
-  requireSpecificRestaurant = true 
-}: RestaurantOwnerRouteProps) => {
+const RestaurantOwnerRoute = ({ children }: RestaurantOwnerRouteProps) => {
   const { user, loading, isAdmin } = useAuth();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [checkingAccess, setCheckingAccess] = useState(true);
@@ -21,7 +17,7 @@ const RestaurantOwnerRoute = ({
   
   useEffect(() => {
     const checkOwnership = async () => {
-      if (!user) {
+      if (!user || !restaurantId) {
         setHasAccess(false);
         setCheckingAccess(false);
         return;
@@ -37,15 +33,9 @@ const RestaurantOwnerRoute = ({
 
         const { isRestaurantOwner } = useAuth();
         
-        if (requireSpecificRestaurant && restaurantId) {
-          // Check if user owns this specific restaurant
-          const isOwner = await isRestaurantOwner(restaurantId);
-          setHasAccess(isOwner);
-        } else {
-          // Check if user is an owner of any restaurant
-          const isOwner = await isRestaurantOwner();
-          setHasAccess(isOwner);
-        }
+        // Check if user owns this specific restaurant
+        const isOwner = await isRestaurantOwner(restaurantId);
+        setHasAccess(isOwner);
       } catch (error) {
         console.error("Error checking restaurant ownership:", error);
         setHasAccess(false);
@@ -57,7 +47,7 @@ const RestaurantOwnerRoute = ({
     if (!loading) {
       checkOwnership();
     }
-  }, [user, loading, restaurantId, isAdmin, requireSpecificRestaurant]);
+  }, [user, loading, restaurantId, isAdmin]);
 
   if (loading || checkingAccess) {
     return (
@@ -73,7 +63,7 @@ const RestaurantOwnerRoute = ({
   }
 
   if (hasAccess === false) {
-    // Redirect to restaurants page if authenticated but not an owner
+    // Redirect to restaurants page if authenticated but not an owner of this restaurant
     return <Navigate to="/restaurants" state={{ from: location }} replace />;
   }
 
