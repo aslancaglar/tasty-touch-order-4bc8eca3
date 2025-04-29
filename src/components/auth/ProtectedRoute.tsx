@@ -71,6 +71,12 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     return <Navigate to="/owner" replace />;
   }
 
+  // If user is admin but trying to access owner routes, redirect to admin dashboard
+  if (isAdmin && location.pathname === '/owner') {
+    console.log("Redirecting admin to admin dashboard");
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 };
 
