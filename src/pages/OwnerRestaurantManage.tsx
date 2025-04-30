@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -143,7 +142,7 @@ const OwnerRestaurantManage = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className={`grid ${isMobile ? 'grid-cols-3' : 'grid-cols-4'} gap-1`}>
+            <TabsList className="grid grid-cols-4 gap-1">
               <TabsTrigger value="menu" className="flex items-center justify-center">
                 <UtensilsCrossed className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
                 {!isMobile && t("restaurant.menu")}
