@@ -176,7 +176,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
           <DialogTitle className="text-xl font-bold">{item.name}</DialogTitle>
-          {item.description && <DialogDescription className="text-sm">{item.description}</DialogDescription>}
+          {item.description && <DialogDescription className="text-xl">{item.description}</DialogDescription>}
         </DialogHeader>
         
         <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none">
