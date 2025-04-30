@@ -45,18 +45,6 @@ const OwnerDashboard = () => {
 
         // Set restaurants data
         setRestaurants(data || []);
-        
-        // Get user's preferred language from profile if available
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('preferred_language')
-          .eq('id', user.id)
-          .single();
-        
-        if (!profileError && profileData?.preferred_language) {
-          setLanguage(profileData.preferred_language as SupportedLanguage);
-        }
-        
         setLoading(false);
       } catch (error) {
         console.error("Exception when fetching restaurants:", error);

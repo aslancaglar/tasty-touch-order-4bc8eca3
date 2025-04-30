@@ -60,7 +60,7 @@ export function Sidebar() {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('is_admin, preferred_language')
+          .select('is_admin')
           .eq('id', user.id)
           .single();
         
@@ -69,11 +69,6 @@ export function Sidebar() {
           setIsAdmin(false);
         } else {
           setIsAdmin(data?.is_admin || false);
-          
-          // Set language from profile if available
-          if (data?.preferred_language) {
-            setLanguage(data.preferred_language as SupportedLanguage);
-          }
         }
       } catch (error) {
         console.error("Exception checking user profile:", error);
