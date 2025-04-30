@@ -1,7 +1,7 @@
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import React, { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Controller } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,61 +14,60 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import ImageUpload from "@/components/ImageUpload";
+import { Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import ImageUpload from "@/components/ImageUpload";
-import { Loader2 } from "lucide-react";
-import { ToppingCategory } from "@/types/database-types";
 import { getToppingCategoriesByRestaurantId } from "@/services/kiosk-service";
+import { ToppingCategory } from "@/types/database-types";
 
+// Define the form schema with Zod for validation
 const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Menu item name must be at least 2 characters.",
-  }),
+  name: z.string().min(1, "Menu item name is required"),
   description: z.string().optional(),
-  price: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-    message: "Price must be a valid number greater than 0",
-  }),
-  promotion_price: z.string().refine((val) => val === "" || (!isNaN(Number(val)) && Number(val) >= 0), {
-    message: "Promotional price must be a valid number",
-  }).optional(),
-  image: z.string().optional(),
-  topping_categories: z.array(z.string()).optional(),
-  tax_percentage: z.string().refine((val) => 
-    val === "" || (!isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100),
-    { message: "Enter a valid VAT rate (0-100%)" }
+  price: z.string().min(1, "Price is required").refine(
+    (value) => !isNaN(Number(value)) && Number(value) >= 0,
+    { message: "Price must be a non-negative number" }
+  ),
+  promotion_price: z.string().refine(
+    (value) => value === "" || (!isNaN(Number(value)) && Number(value) >= 0),
+    { message: "Promotion price must be a non-negative number" }
   ).optional(),
+  image: z.string().optional(),
+  tax_percentage: z.string().refine(
+    (value) => value === "" || (!isNaN(Number(value)) && Number(value) >= 0 && Number(value) <= 100),
+    { message: "Tax percentage must be between 0 and 100" }
+  ).optional(),
+  topping_categories: z.array(z.string()).optional(),
+  display_order: z.string().refine(
+    (val) => !isNaN(Number(val)),
+    { message: "Display order must be a number" }
+  ),
 });
 
-type MenuItemFormValues = z.infer<typeof formSchema>;
-
 interface MenuItemFormProps {
-  onSubmit: (values: MenuItemFormValues) => void;
-  initialValues?: {
-    name: string;
-    description?: string;
-    price: string;
-    promotion_price?: string;
-    image?: string;
-    topping_categories?: string[];
-    tax_percentage?: string;
-  };
+  onSubmit: (values: z.infer<typeof formSchema>) => void;
+  initialValues?: Partial<z.infer<typeof formSchema>>;
   isLoading?: boolean;
-  restaurantId?: string;
+  restaurantId: string;
 }
 
-const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId }: MenuItemFormProps) => {
-  const [imageUrl, setImageUrl] = useState<string>(initialValues?.image || "");
+const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: MenuItemFormProps) => {
+  const [imageUrl, setImageUrl] = useState<string | undefined>(initialValues?.image || undefined);
   const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
-  const [loadingToppingCategories, setLoadingToppingCategories] = useState(false);
+  const [selectedToppingCategories, setSelectedToppingCategories] = useState<string[]>(
+    initialValues?.topping_categories || []
+  );
 
-  const form = useForm<MenuItemFormValues>({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: initialValues?.name || "",
@@ -76,55 +75,57 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
       price: initialValues?.price || "",
       promotion_price: initialValues?.promotion_price || "",
       image: initialValues?.image || "",
-      topping_categories: initialValues?.topping_categories || [],
       tax_percentage: initialValues?.tax_percentage || "10",
+      topping_categories: initialValues?.topping_categories || [],
+      display_order: initialValues?.display_order || "0",
     },
   });
 
   useEffect(() => {
     const fetchToppingCategories = async () => {
       if (!restaurantId) return;
+      
       try {
-        setLoadingToppingCategories(true);
         const data = await getToppingCategoriesByRestaurantId(restaurantId);
         setToppingCategories(data);
-        setLoadingToppingCategories(false);
       } catch (error) {
         console.error("Error fetching topping categories:", error);
-        setLoadingToppingCategories(false);
       }
     };
 
     fetchToppingCategories();
   }, [restaurantId]);
-  
-  const handleImageChange = (url: string) => {
+
+  const handleImageUpload = (url: string) => {
     setImageUrl(url);
     form.setValue("image", url);
   };
 
-  // Helper: move topping category up or down
-  const moveToppingCategory = (from: number, to: number) => {
-    const current = form.getValues("topping_categories") || [];
-    if (to < 0 || to >= current.length) return;
-    const updated = [...current];
-    const [removed] = updated.splice(from, 1);
-    updated.splice(to, 0, removed);
-    form.setValue("topping_categories", updated);
+  const handleToppingCategoryToggle = (categoryId: string) => {
+    setSelectedToppingCategories(prev => {
+      if (prev.includes(categoryId)) {
+        const updated = prev.filter(id => id !== categoryId);
+        form.setValue("topping_categories", updated);
+        return updated;
+      } else {
+        const updated = [...prev, categoryId];
+        form.setValue("topping_categories", updated);
+        return updated;
+      }
+    });
   };
 
-  const handleSubmit = (values: MenuItemFormValues) => {
-    console.log("Submitting form with values:", values);
-    onSubmit(values);
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    onSubmit({
+      ...values,
+      image: imageUrl,
+      topping_categories: selectedToppingCategories,
+    });
   };
-
-  const selectedToppingCategories = (form.watch("topping_categories") || []).map(
-    (id: string) => toppingCategories.find((cat) => cat.id === id)
-  ).filter(Boolean);
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -132,7 +133,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
             <FormItem>
               <FormLabel>Name</FormLabel>
               <FormControl>
-                <Input placeholder="Burger" {...field} />
+                <Input placeholder="Menu item name" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -146,12 +147,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="Delicious burger with fresh ingredients" 
-                  className="resize-none" 
-                  {...field} 
-                  value={field.value || ""}
-                />
+                <Textarea placeholder="Menu item description" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -164,23 +160,23 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price (€ VAT incl.)</FormLabel>
+                <FormLabel>Price</FormLabel>
                 <FormControl>
-                  <Input placeholder="9.99" {...field} />
+                  <Input type="number" step="0.01" placeholder="0.00" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-
+          
           <FormField
             control={form.control}
             name="promotion_price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Promotional Price (€ VAT incl.)</FormLabel>
+                <FormLabel>Promotion Price (optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="7.99" {...field} value={field.value || ""} />
+                  <Input type="number" step="0.01" placeholder="0.00" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -190,19 +186,34 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
 
         <FormField
           control={form.control}
+          name="display_order"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Display Order</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="Display order (e.g. 1, 2, 3)" 
+                  type="number" 
+                  {...field} 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="tax_percentage"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>VAT (%)</FormLabel>
+              <FormLabel>Tax Percentage</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.01}
-                  placeholder="10"
-                  {...field}
-                  value={field.value ?? "10"}
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="10" 
+                  {...field} 
                 />
               </FormControl>
               <FormMessage />
@@ -218,9 +229,9 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
               <FormLabel>Image</FormLabel>
               <FormControl>
                 <ImageUpload
-                  value={imageUrl}
-                  onChange={handleImageChange}
-                  label="Upload menu item image"
+                  onImageUploaded={handleImageUpload}
+                  existingImageUrl={imageUrl}
+                  clearable
                 />
               </FormControl>
               <FormMessage />
@@ -229,102 +240,35 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading = false, restaurantId
         />
 
         {toppingCategories.length > 0 && (
-          <FormField
-            control={form.control}
-            name="topping_categories"
-            render={({ field }) => (
-              <FormItem>
-                <div className="mb-2">
-                  <FormLabel>Topping Categories</FormLabel>
-                  <p className="text-sm text-muted-foreground">
-                    Select and reorder which topping categories can be applied to this item. Drag to reorder.
-                  </p>
+          <FormItem>
+            <FormLabel>Topping Categories</FormLabel>
+            <div className="space-y-2 mt-2">
+              {toppingCategories.map((category) => (
+                <div key={category.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`topping-${category.id}`}
+                    checked={selectedToppingCategories.includes(category.id)}
+                    onCheckedChange={() => handleToppingCategoryToggle(category.id)}
+                  />
+                  <Label htmlFor={`topping-${category.id}`}>{category.name}</Label>
                 </div>
-                {/* Selection list (with checkboxes) */}
-                <div className="space-y-2">
-                  {toppingCategories.map((category) => {
-                    const index = field.value?.indexOf(category.id) ?? -1;
-                    return (
-                      <div key={category.id} className="flex items-center gap-2">
-                        <Checkbox
-                          checked={field.value?.includes(category.id)}
-                          onCheckedChange={(checked) => {
-                            const currentValues = field.value || [];
-                            if (checked) {
-                              // Add to end
-                              field.onChange([...currentValues, category.id]);
-                            } else {
-                              // Remove
-                              field.onChange(currentValues.filter((value) => value !== category.id));
-                            }
-                          }}
-                        />
-                        <span className="flex-1">
-                          {category.name}
-                          {category.description && (
-                            <span className="text-xs text-muted-foreground ml-2">{category.description}</span>
-                          )}
-                        </span>
-                        {/* Show arrows if selected */}
-                        {field.value?.includes(category.id) && (
-                          <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="ml-1"
-                              onClick={() =>
-                                moveToppingCategory(index, index - 1)
-                              }
-                              disabled={index === 0}
-                            >
-                              ↑
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="ml-1"
-                              onClick={() =>
-                                moveToppingCategory(index, index + 1)
-                              }
-                              disabled={index === field.value.length - 1}
-                            >
-                              ↓
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Ordered preview */}
-                {field.value && field.value.length > 1 && (
-                  <div className="mt-3">
-                    <div className="text-xs mb-1 font-medium text-muted-foreground">
-                      Display Order:
-                    </div>
-                    <ol className="list-decimal list-inside text-sm">
-                      {selectedToppingCategories.map((cat: ToppingCategory, i) =>
-                        <li key={cat.id}>{cat.name}</li>
-                      )}
-                    </ol>
-                  </div>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              ))}
+            </div>
+          </FormItem>
         )}
 
-        <Button type="submit" className="w-full bg-kiosk-primary" disabled={isLoading}>
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isLoading}
+        >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Saving...
             </>
           ) : (
-            "Save Menu Item"
+            <>Save</>
           )}
         </Button>
       </form>

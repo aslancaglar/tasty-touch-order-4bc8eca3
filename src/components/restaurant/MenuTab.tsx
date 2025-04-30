@@ -5,20 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, Loader2, Utensils } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
 import { 
   Restaurant, 
   MenuCategory, 
@@ -36,13 +22,85 @@ import {
 } from "@/services/kiosk-service";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
-import SortableCategory from "./SortableCategory";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MenuTabProps {
   restaurant: Restaurant;
 }
+
+// CategoryCard component to replace SortableCategory
+const CategoryCard = ({ 
+  category, 
+  isSelected, 
+  onSelect, 
+  onEdit, 
+  onDelete, 
+  isMobile 
+}: { 
+  category: MenuCategory; 
+  isSelected: boolean; 
+  onSelect: () => void; 
+  onEdit: () => void; 
+  onDelete: () => void;
+  isMobile?: boolean;
+}) => {
+  return (
+    <div
+      className={`border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${
+        isSelected ? 'border-kiosk-primary bg-muted/50' : 'border-border hover:border-muted-foreground'
+      }`}
+      onClick={onSelect}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="p-2 bg-primary/10 rounded-md w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
+            {category.icon ? (
+              <img 
+                src={category.icon} 
+                alt={category.name}
+                className="w-full h-full object-cover rounded"
+              />
+            ) : (
+              <div className="w-full h-full bg-muted rounded flex items-center justify-center">
+                <Utensils className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+              </div>
+            )}
+          </div>
+          <div className="overflow-hidden">
+            <h3 className="font-medium text-sm sm:text-base truncate">{category.name}</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+              {category.description || "No description"}
+            </p>
+            <span className="text-xs text-muted-foreground">Order: {category.display_order || 0}</span>
+          </div>
+        </div>
+        <div className="flex space-x-1 sm:space-x-2 ml-1">
+          <Button
+            variant="ghost"
+            size={isMobile ? "xs" : "icon"}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size={isMobile ? "xs" : "icon"}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const MenuTab = ({ restaurant }: MenuTabProps) => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -87,51 +145,6 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
     return CURRENCY_SYMBOLS[code] || code;
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleUpdateCategoryOrder = async (categories: MenuCategory[]) => {
-    try {
-      const updates = categories.map((category, index) => ({
-        id: category.id,
-        name: category.name,
-        restaurant_id: category.restaurant_id,
-        display_order: index
-      }));
-
-      const { error } = await supabase
-        .from('menu_categories')
-        .upsert(updates, { onConflict: 'id' });
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error updating category order:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update category order",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-
-    if (active.id !== over.id) {
-      setCategories((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        const newCategories = arrayMove(items, oldIndex, newIndex);
-        handleUpdateCategoryOrder(newCategories);
-        return newCategories;
-      });
-    }
-  };
-
   useEffect(() => {
     const fetchCategories = async () => {
       if (!restaurant?.id) return;
@@ -139,9 +152,13 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       try {
         setLoading(true);
         const data = await getCategoriesByRestaurantId(restaurant.id);
-        setCategories(data);
-        if (data.length > 0) {
-          setSelectedCategory(data[0]);
+        // Sort categories by display_order
+        const sortedCategories = [...data].sort((a, b) => 
+          (a.display_order || 0) - (b.display_order || 0)
+        );
+        setCategories(sortedCategories);
+        if (sortedCategories.length > 0) {
+          setSelectedCategory(sortedCategories[0]);
         }
         setLoading(false);
       } catch (error) {
@@ -165,7 +182,11 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       try {
         setLoading(true);
         const items = await getMenuItemsByCategory(selectedCategory.id);
-        setMenuItems(items);
+        // Sort menu items by display_order
+        const sortedItems = [...items].sort((a, b) => 
+          (a.display_order || 0) - (b.display_order || 0)
+        );
+        setMenuItems(sortedItems);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching menu items:", error);
@@ -189,10 +210,14 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         description: values.description || null,
         image_url: values.image_url || null,
         icon: "utensils",
-        restaurant_id: restaurant.id
+        restaurant_id: restaurant.id,
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0
       });
       
-      setCategories(prevCategories => [...prevCategories, newCategory]);
+      const updatedCategories = [...categories, newCategory].sort((a, b) => 
+        (a.display_order || 0) - (b.display_order || 0)
+      );
+      setCategories(updatedCategories);
       if (!selectedCategory) {
         setSelectedCategory(newCategory);
       }
@@ -223,12 +248,15 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         name: values.name,
         description: values.description || null,
         image_url: values.image_url || null,
-        icon: values.icon || "utensils"
+        icon: values.icon || "utensils",
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0
       });
       
-      setCategories(categories.map(cat => 
+      const updatedCategories = categories.map(cat => 
         cat.id === categoryId ? updatedCategory : cat
-      ));
+      ).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+      
+      setCategories(updatedCategories);
       
       toast({
         title: "Success",
@@ -292,10 +320,15 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         image: values.image || null,
         category_id: selectedCategory.id,
         topping_categories: values.topping_categories || [],
-        in_stock: true // Add the in_stock property with a default value of true
+        in_stock: true,
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
+        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : 10
       });
       
-      setMenuItems(prev => [...prev, newMenuItem]);
+      const updatedItems = [...menuItems, newMenuItem].sort((a, b) => 
+        (a.display_order || 0) - (b.display_order || 0)
+      );
+      setMenuItems(updatedItems);
       
       toast({
         title: "Success",
@@ -328,12 +361,15 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
         image: values.image || null,
         topping_categories: values.topping_categories || [],
-        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : null
+        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : null,
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0
       });
       
-      setMenuItems(menuItems.map(item => 
+      const updatedItems = menuItems.map(item => 
         item.id === selectedItem.id ? updatedMenuItem : item
-      ));
+      ).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+      
+      setMenuItems(updatedItems);
       
       toast({
         title: "Success",
@@ -395,36 +431,25 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         Add Category
       </Button>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <SortableContext
-            items={categories}
-            strategy={verticalListSortingStrategy}
-          >
-            {categories.map((category) => (
-              <SortableCategory
-                key={category.id}
-                category={category}
-                isSelected={selectedCategory?.id === category.id}
-                onSelect={() => setSelectedCategory(category)}
-                onEdit={() => {
-                  setSelectedCategory(category);
-                  setShowUpdateCategoryDialog(true);
-                }}
-                onDelete={() => {
-                  setCategoryToDelete(category);
-                  setShowDeleteCategoryDialog(true);
-                }}
-                isMobile={isMobile}
-              />
-            ))}
-          </SortableContext>
-        </div>
-      </DndContext>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        {categories.map((category) => (
+          <CategoryCard
+            key={category.id}
+            category={category}
+            isSelected={selectedCategory?.id === category.id}
+            onSelect={() => setSelectedCategory(category)}
+            onEdit={() => {
+              setSelectedCategory(category);
+              setShowUpdateCategoryDialog(true);
+            }}
+            onDelete={() => {
+              setCategoryToDelete(category);
+              setShowDeleteCategoryDialog(true);
+            }}
+            isMobile={isMobile}
+          />
+        ))}
+      </div>
 
       <Separator className="my-4 sm:my-6" />
 
@@ -463,14 +488,17 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                   <div>
                     <h3 className="font-medium">{item.name}</h3>
                     <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{item.description}</p>
-                    <p className="text-sm font-medium mt-1">
-                      {getCurrencySymbol(restaurant.currency)}{parseFloat(item.price.toString()).toFixed(2)}
-                      {item.promotion_price && (
-                        <span className="ml-2 line-through text-muted-foreground">
-                          {getCurrencySymbol(restaurant.currency)}{parseFloat(item.promotion_price.toString()).toFixed(2)}
-                        </span>
-                      )}
-                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-sm font-medium">
+                        {getCurrencySymbol(restaurant.currency)}{parseFloat(item.price.toString()).toFixed(2)}
+                        {item.promotion_price && (
+                          <span className="ml-2 line-through text-muted-foreground">
+                            {getCurrencySymbol(restaurant.currency)}{parseFloat(item.promotion_price.toString()).toFixed(2)}
+                          </span>
+                        )}
+                      </p>
+                      <span className="text-xs text-muted-foreground">Order: {item.display_order || 0}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex space-x-2 self-end sm:self-center mt-2 sm:mt-0">
@@ -524,6 +552,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
           <CategoryForm 
             onSubmit={handleAddCategory}
             isLoading={isCreatingCategory}
+            initialValues={{ display_order: "0" }}
           />
         </DialogContent>
       </Dialog>
@@ -539,7 +568,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
               initialValues={{
                 name: selectedCategory.name,
                 description: selectedCategory.description || "",
-                icon: selectedCategory.icon || ""
+                icon: selectedCategory.icon || "",
+                display_order: selectedCategory.display_order?.toString() || "0"
               }}
               isLoading={isUpdatingCategory}
             />
@@ -573,6 +603,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
             onSubmit={handleAddMenuItem}
             isLoading={isCreatingItem}
             restaurantId={restaurant.id}
+            initialValues={{ display_order: "0" }}
           />
         </DialogContent>
       </Dialog>
@@ -592,7 +623,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                 promotion_price: selectedItem.promotion_price ? selectedItem.promotion_price.toString() : "",
                 image: selectedItem.image || "",
                 topping_categories: selectedItem.topping_categories || [],
-                tax_percentage: selectedItem.tax_percentage ? selectedItem.tax_percentage.toString() : "10"
+                tax_percentage: selectedItem.tax_percentage ? selectedItem.tax_percentage.toString() : "10",
+                display_order: selectedItem.display_order?.toString() || "0"
               }}
               isLoading={isUpdatingItem}
               restaurantId={restaurant.id}
