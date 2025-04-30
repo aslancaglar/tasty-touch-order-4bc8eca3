@@ -27,7 +27,11 @@ interface StatCardProps {
   value: ReactNode; // Change to ReactNode to accept loading skeletons
   description: string;
   icon: React.ElementType;
-  trend?: { value: string; positive: boolean };
+  trend?: { 
+    value: string; 
+    positive: boolean;
+    fromLastMonthText: string; // Added this property to the type
+  };
 }
 
 const StatCard = ({
