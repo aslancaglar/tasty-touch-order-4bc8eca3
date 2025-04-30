@@ -20,7 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ImageUpload from "@/components/ImageUpload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
+import { useTranslation } from "@/utils/language-utils";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -298,10 +298,8 @@ const Restaurants = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Get the user's preferred language (in a real app, this could come from user settings)
-  // For now, we'll use the default language
-  const language: SupportedLanguage = DEFAULT_LANGUAGE;
-  const { t } = useTranslation(language);
+  // Always use English for admin pages
+  const { t } = useTranslation('en');
 
   const fetchRestaurants = async () => {
     try {

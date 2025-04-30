@@ -36,7 +36,11 @@ const createSidebarItems = (t: (key: string) => string): SidebarItem[] => [
   },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  forceDefaultLanguage?: boolean;
+}
+
+export function Sidebar({ forceDefaultLanguage = false }: SidebarProps) {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(true);
   const { signOut, user } = useAuth();
@@ -44,7 +48,9 @@ export function Sidebar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
-  const { t } = useTranslation(language);
+  
+  // If forceDefaultLanguage is true, use English, otherwise use the language from state
+  const { t } = useTranslation(forceDefaultLanguage ? 'en' : language);
   
   // Generate sidebar items with translations
   const adminSidebarItems = createSidebarItems(t);
@@ -52,6 +58,11 @@ export function Sidebar() {
   // Check if we're in a restaurant management page and extract the ID
   useEffect(() => {
     const checkRestaurantLanguage = async () => {
+      // Skip language detection from restaurant if we're forcing default language
+      if (forceDefaultLanguage) {
+        return;
+      }
+      
       const match = location.pathname.match(/\/owner\/restaurant\/([^/]+)/);
       if (match && match[1]) {
         const restaurantId = match[1];
@@ -91,7 +102,7 @@ export function Sidebar() {
     };
     
     checkRestaurantLanguage();
-  }, [location.pathname, user]);
+  }, [location.pathname, user, forceDefaultLanguage]);
 
   useEffect(() => {
     const checkUserProfile = async () => {

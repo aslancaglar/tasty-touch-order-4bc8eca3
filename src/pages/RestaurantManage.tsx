@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -22,17 +21,17 @@ import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
 import SettingsTab from "@/components/restaurant/SettingsTab";
 import StockTab from "@/components/restaurant/StockTab";
-import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { useTranslation } from "@/utils/language-utils";
 
 const RestaurantManage = () => {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("menu");
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState<SupportedLanguage>('fr');
   
   const { toast } = useToast();
-  const { t } = useTranslation(language);
+  // Always use English for admin pages
+  const { t } = useTranslation('en');
   
   useEffect(() => {
     const fetchRestaurant = async () => {
@@ -46,14 +45,6 @@ const RestaurantManage = () => {
         if (foundRestaurant) {
           console.log("Restaurant found:", foundRestaurant);
           setRestaurant(foundRestaurant);
-          
-          // Set language based on restaurant settings
-          if (foundRestaurant.ui_language && 
-              (foundRestaurant.ui_language === 'fr' || 
-               foundRestaurant.ui_language === 'en' ||
-               foundRestaurant.ui_language === 'tr')) {
-            setLanguage(foundRestaurant.ui_language as SupportedLanguage);
-          }
         } else {
           toast({
             title: "Error",
@@ -79,14 +70,6 @@ const RestaurantManage = () => {
   const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
     console.log("Restaurant updated:", updatedRestaurant);
     setRestaurant(updatedRestaurant);
-    
-    // Update language when restaurant settings are changed
-    if (updatedRestaurant.ui_language && 
-        (updatedRestaurant.ui_language === 'fr' || 
-         updatedRestaurant.ui_language === 'en' ||
-         updatedRestaurant.ui_language === 'tr')) {
-      setLanguage(updatedRestaurant.ui_language as SupportedLanguage);
-    }
   };
 
   if (loading && !restaurant) {
