@@ -19,6 +19,7 @@ const toppingSchema = z.object({
   display_order: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
     message: "L'ordre d'affichage doit être un nombre valide supérieur ou égal à 0",
   }),
+  in_stock: z.boolean().default(true),
 });
 
 export type ToppingFormValues = z.infer<typeof toppingSchema>;
@@ -30,6 +31,7 @@ interface ToppingFormProps {
     price: string;
     tax_percentage?: string;
     display_order?: string;
+    in_stock?: boolean;
   };
   isLoading?: boolean;
   currency?: string;
@@ -48,6 +50,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
       price: initialValues?.price || "0",
       tax_percentage: initialValues?.tax_percentage || "10",
       display_order: initialValues?.display_order || "0",
+      in_stock: initialValues?.in_stock !== undefined ? initialValues.in_stock : true,
     },
   });
 

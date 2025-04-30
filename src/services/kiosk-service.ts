@@ -631,7 +631,8 @@ export const getToppingsByCategory = async (categoryId: string): Promise<Topping
   const { data, error } = await supabase
     .from("toppings")
     .select("*")
-    .eq("category_id", categoryId);
+    .eq("category_id", categoryId)
+    .order('display_order', { ascending: true }); // Order by display_order
 
   if (error) {
     console.error("Error fetching toppings:", error);
