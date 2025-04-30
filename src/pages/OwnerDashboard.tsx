@@ -44,7 +44,16 @@ const OwnerDashboard = () => {
         }
 
         // Set restaurants data
-        setRestaurants(data || []);
+        const restaurantData = data || [];
+        setRestaurants(restaurantData);
+        
+        // Set language based on the first restaurant if available
+        if (restaurantData.length > 0 && restaurantData[0].ui_language) {
+          const restaurantLanguage = restaurantData[0].ui_language as SupportedLanguage;
+          console.log("Setting language from restaurant:", restaurantLanguage);
+          setLanguage(restaurantLanguage);
+        }
+        
         setLoading(false);
       } catch (error) {
         console.error("Exception when fetching restaurants:", error);

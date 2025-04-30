@@ -49,6 +49,50 @@ export function Sidebar() {
   // Generate sidebar items with translations
   const adminSidebarItems = createSidebarItems(t);
 
+  // Check if we're in a restaurant management page and extract the ID
+  useEffect(() => {
+    const checkRestaurantLanguage = async () => {
+      const match = location.pathname.match(/\/owner\/restaurant\/([^/]+)/);
+      if (match && match[1]) {
+        const restaurantId = match[1];
+        try {
+          const { data, error } = await supabase
+            .from('restaurants')
+            .select('ui_language')
+            .eq('id', restaurantId)
+            .single();
+          
+          if (!error && data?.ui_language) {
+            console.log("Setting sidebar language from restaurant:", data.ui_language);
+            setLanguage(data.ui_language as SupportedLanguage);
+          }
+        } catch (error) {
+          console.error("Error fetching restaurant language:", error);
+        }
+      } else {
+        // If we're not in a restaurant page, try to get the language from the first owned restaurant
+        if (user) {
+          try {
+            const { data: ownedRestaurants, error: ownedError } = await supabase
+              .rpc('get_owned_restaurants');
+              
+            if (!ownedError && ownedRestaurants && ownedRestaurants.length > 0) {
+              const firstRestaurant = ownedRestaurants[0];
+              if (firstRestaurant.ui_language) {
+                console.log("Setting sidebar language from first restaurant:", firstRestaurant.ui_language);
+                setLanguage(firstRestaurant.ui_language as SupportedLanguage);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching owned restaurants:", error);
+          }
+        }
+      }
+    };
+    
+    checkRestaurantLanguage();
+  }, [location.pathname, user]);
+
   useEffect(() => {
     const checkUserProfile = async () => {
       if (!user) {
