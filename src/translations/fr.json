@@ -37,5 +37,42 @@
   },
   "cart": {
     "viewCart": "Voir le panier"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bienvenue sur votre tableau de bord TastyTouch",
+    "totalRevenue": "Revenu Total",
+    "revenueDesc": "Revenus de tous les temps pour tous les restaurants",
+    "restaurants": "Restaurants",
+    "restaurantsDesc": "Restaurants actifs sur la plateforme",
+    "totalOrders": "Commandes Totales",
+    "totalOrdersDesc": "Commandes traitées ce mois-ci",
+    "dailyOrders": "Commandes Journalières",
+    "dailyOrdersDesc": "Commandes traitées aujourd'hui",
+    "popularItems": "Articles Populaires",
+    "popularItemsDesc": "Articles les plus commandés",
+    "popularRestaurants": "Restaurants Populaires",
+    "popularRestaurantsDesc": "Restaurants les plus performants",
+    "fromLastMonth": "par rapport au mois dernier"
+  },
+  "sidebar": {
+    "dashboard": "Tableau de bord",
+    "restaurants": "Restaurants",
+    "signOut": "Déconnexion",
+    "admin": "Administrateur",
+    "owner": "Propriétaire de Restaurant"
+  },
+  "restaurants": {
+    "title": "Restaurants",
+    "subtitle": "Gérez tous les restaurants sur votre plateforme",
+    "add": "Ajouter un Restaurant",
+    "orders": "Commandes",
+    "revenue": "Revenu",
+    "viewKiosk": "Voir la Borne",
+    "manage": "Gérer",
+    "noRestaurants": "Aucun restaurant trouvé",
+    "startAdding": "Commencez par ajouter votre premier restaurant",
+    "needLogin": "Vous devez être connecté pour voir et gérer les restaurants",
+    "signIn": "Se Connecter"
   }
 }

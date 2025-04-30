@@ -37,5 +37,42 @@
   },
   "cart": {
     "viewCart": "Sepeti Görüntüle"
+  },
+  "dashboard": {
+    "title": "Kontrol Paneli",
+    "welcome": "TastyTouch Yönetici Kontrol Panelinize Hoş Geldiniz",
+    "totalRevenue": "Toplam Gelir",
+    "revenueDesc": "Tüm restoranlardaki tüm zamanlara ait gelir",
+    "restaurants": "Restoranlar",
+    "restaurantsDesc": "Platformdaki aktif restoranlar",
+    "totalOrders": "Toplam Siparişler",
+    "totalOrdersDesc": "Bu ay işlenen siparişler",
+    "dailyOrders": "Günlük Siparişler",
+    "dailyOrdersDesc": "Bugün işlenen siparişler",
+    "popularItems": "Popüler Ürünler",
+    "popularItemsDesc": "En çok sipariş edilen menü öğeleri",
+    "popularRestaurants": "Popüler Restoranlar",
+    "popularRestaurantsDesc": "En iyi performans gösteren restoranlar",
+    "fromLastMonth": "geçen aya göre"
+  },
+  "sidebar": {
+    "dashboard": "Kontrol Paneli",
+    "restaurants": "Restoranlar",
+    "signOut": "Çıkış Yap",
+    "admin": "Yönetici",
+    "owner": "Restoran Sahibi"
+  },
+  "restaurants": {
+    "title": "Restoranlar",
+    "subtitle": "Platformunuzdaki tüm restoranları yönetin",
+    "add": "Restoran Ekle",
+    "orders": "Siparişler",
+    "revenue": "Gelir",
+    "viewKiosk": "Kiosk'u Görüntüle",
+    "manage": "Yönet",
+    "noRestaurants": "Restoran bulunamadı",
+    "startAdding": "İlk restoranınızı ekleyerek başlayın",
+    "needLogin": "Restoranları görüntülemek ve yönetmek için giriş yapmanız gerekiyor",
+    "signIn": "Giriş Yap"
   }
 }

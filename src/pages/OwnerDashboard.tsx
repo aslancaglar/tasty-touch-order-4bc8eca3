@@ -9,12 +9,18 @@ import { Link } from "react-router-dom";
 import { Loader2, Store, LogOut } from "lucide-react";
 import { Restaurant } from "@/types/database-types";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 
 const OwnerDashboard = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+
+  // Get the user's preferred language (in a real app, this could come from user settings)
+  // For now, we'll use the default language
+  const language: SupportedLanguage = DEFAULT_LANGUAGE;
+  const { t } = useTranslation(language);
 
   useEffect(() => {
     const fetchOwnerRestaurants = async () => {
@@ -29,7 +35,7 @@ const OwnerDashboard = () => {
         if (error) {
           console.error("Error fetching restaurants:", error);
           toast({
-            title: "Error",
+            title: t("order.error"),
             description: "Could not load your restaurants. Please try again.",
             variant: "destructive",
           });
@@ -41,7 +47,7 @@ const OwnerDashboard = () => {
       } catch (error) {
         console.error("Exception when fetching restaurants:", error);
         toast({
-          title: "Error",
+          title: t("order.error"),
           description: "An unexpected error occurred. Please try again.",
           variant: "destructive",
         });
@@ -51,7 +57,7 @@ const OwnerDashboard = () => {
     };
 
     fetchOwnerRestaurants();
-  }, [user, toast]);
+  }, [user, toast, t]);
 
   const handleSignOut = async () => {
     try {
@@ -62,7 +68,7 @@ const OwnerDashboard = () => {
       });
     } catch (error) {
       toast({
-        title: "Error",
+        title: t("order.error"),
         description: "There was a problem signing out",
         variant: "destructive",
       });
@@ -80,29 +86,29 @@ const OwnerDashboard = () => {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Restaurant Owner Dashboard</h1>
+        <h1 className="text-3xl font-bold">{t("restaurants.title")}</h1>
         <Button 
           variant="outline" 
           onClick={handleSignOut}
           className="flex items-center gap-2"
         >
           <LogOut size={18} />
-          Sign Out
+          {t("sidebar.signOut")}
         </Button>
       </div>
       
       {restaurants.length === 0 ? (
         <div className="text-center py-10">
           <Store className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-semibold">No restaurants found</h2>
+          <h2 className="text-2xl font-semibold">{t("restaurants.noRestaurants")}</h2>
           <p className="text-muted-foreground mt-2">
-            You don't have any restaurants assigned to you.
+            {t("restaurants.startAdding")}
           </p>
         </div>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Your Restaurants</CardTitle>
+            <CardTitle>{t("restaurants.title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -121,7 +127,7 @@ const OwnerDashboard = () => {
                     <TableCell className="text-right">
                       <Button asChild>
                         <Link to={`/owner/restaurant/${restaurant.id}`}>
-                          Manage Restaurant
+                          {t("restaurants.manage")}
                         </Link>
                       </Button>
                     </TableCell>

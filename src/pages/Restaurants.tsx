@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ImageUpload from "@/components/ImageUpload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -39,7 +40,7 @@ function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[code] || code;
 }
 
-const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => void }) => {
+const AddRestaurantDialog = ({ onRestaurantAdded, t }: { onRestaurantAdded: () => void, t: (key: string) => string }) => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -113,7 +114,7 @@ const AddRestaurantDialog = ({ onRestaurantAdded }: { onRestaurantAdded: () => v
       <DialogTrigger asChild>
         <Button className="bg-kiosk-primary">
           <Plus className="mr-2 h-4 w-4" />
-          Add Restaurant
+          {t("restaurants.add")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
@@ -198,10 +199,12 @@ const RestaurantCard = ({
   restaurant,
   stats,
   loadingStats,
+  t
 }: {
   restaurant: Restaurant;
   stats: RestaurantStats | undefined;
   loadingStats: boolean;
+  t: (key: string) => string;
 }) => {
   const currencySymbol = getCurrencySymbol(restaurant.currency || "EUR");
   
@@ -221,7 +224,7 @@ const RestaurantCard = ({
         <div className="text-sm text-muted-foreground mb-4">{restaurant.location}</div>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-muted-foreground">Orders</p>
+            <p className="text-muted-foreground">{t("restaurants.orders")}</p>
             {loadingStats ? (
               <Skeleton className="h-6 w-16" />
             ) : (
@@ -229,7 +232,7 @@ const RestaurantCard = ({
             )}
           </div>
           <div>
-            <p className="text-muted-foreground">Revenue</p>
+            <p className="text-muted-foreground">{t("restaurants.revenue")}</p>
             {loadingStats ? (
               <Skeleton className="h-6 w-20" />
             ) : (
@@ -242,13 +245,13 @@ const RestaurantCard = ({
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Button variant="outline" asChild>
             <Link to={`/r/${restaurant.slug}`}>
-              View Kiosk
+              {t("restaurants.viewKiosk")}
             </Link>
           </Button>
           <Button variant="default" className="bg-kiosk-primary" asChild>
             <Link to={`/restaurant/${restaurant.id}`}>
               <Settings className="mr-2 h-4 w-4" />
-              Manage
+              {t("restaurants.manage")}
             </Link>
           </Button>
         </div>
@@ -294,6 +297,11 @@ const Restaurants = () => {
   const [loadingStats, setLoadingStats] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  // Get the user's preferred language (in a real app, this could come from user settings)
+  // For now, we'll use the default language
+  const language: SupportedLanguage = DEFAULT_LANGUAGE;
+  const { t } = useTranslation(language);
 
   const fetchRestaurants = async () => {
     try {
@@ -347,19 +355,19 @@ const Restaurants = () => {
     <AdminLayout>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Restaurants</h1>
+          <h1 className="text-3xl font-bold">{t("restaurants.title")}</h1>
           <p className="text-muted-foreground">
-            Manage all the restaurants on your platform
+            {t("restaurants.subtitle")}
           </p>
         </div>
-        <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} />
+        <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} t={t} />
       </div>
 
       {!user ? (
         <div className="text-center py-10">
-          <p className="text-lg mb-3">You need to be logged in to view and manage restaurants</p>
+          <p className="text-lg mb-3">{t("restaurants.needLogin")}</p>
           <Button asChild>
-            <Link to="/auth">Sign In</Link>
+            <Link to="/auth">{t("restaurants.signIn")}</Link>
           </Button>
         </div>
       ) : loading ? (
@@ -374,13 +382,14 @@ const Restaurants = () => {
               restaurant={restaurant}
               stats={stats[restaurant.id]}
               loadingStats={loadingStats}
+              t={t}
             />
           ))}
         </div>
       ) : (
         <div className="text-center py-20">
-          <p className="text-lg text-muted-foreground mb-4">No restaurants found</p>
-          <p className="text-muted-foreground mb-6">Start by adding your first restaurant</p>
+          <p className="text-lg text-muted-foreground mb-4">{t("restaurants.noRestaurants")}</p>
+          <p className="text-muted-foreground mb-6">{t("restaurants.startAdding")}</p>
         </div>
       )}
     </AdminLayout>

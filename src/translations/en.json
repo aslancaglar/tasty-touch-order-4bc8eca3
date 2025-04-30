@@ -37,5 +37,42 @@
   },
   "cart": {
     "viewCart": "View Cart"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to your TastyTouch Admin Dashboard",
+    "totalRevenue": "Total Revenue",
+    "revenueDesc": "All-time revenue across all restaurants",
+    "restaurants": "Restaurants",
+    "restaurantsDesc": "Active restaurants on the platform",
+    "totalOrders": "Total Orders",
+    "totalOrdersDesc": "Orders processed this month",
+    "dailyOrders": "Daily Orders",
+    "dailyOrdersDesc": "Orders processed today",
+    "popularItems": "Popular Items",
+    "popularItemsDesc": "Most ordered menu items",
+    "popularRestaurants": "Popular Restaurants",
+    "popularRestaurantsDesc": "Top performing restaurants",
+    "fromLastMonth": "from last month"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "restaurants": "Restaurants",
+    "signOut": "Sign Out",
+    "admin": "Admin",
+    "owner": "Restaurant Owner"
+  },
+  "restaurants": {
+    "title": "Restaurants",
+    "subtitle": "Manage all the restaurants on your platform",
+    "add": "Add Restaurant",
+    "orders": "Orders",
+    "revenue": "Revenue",
+    "viewKiosk": "View Kiosk",
+    "manage": "Manage",
+    "noRestaurants": "No restaurants found",
+    "startAdding": "Start by adding your first restaurant",
+    "needLogin": "You need to be logged in to view and manage restaurants",
+    "signIn": "Sign In"
   }
 }

@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -12,23 +11,27 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 
 type SidebarItem = {
   title: string;
   icon: React.ElementType;
   href: string;
+  translationKey: string;
 };
 
-const adminSidebarItems: SidebarItem[] = [
+const createSidebarItems = (t: (key: string) => string): SidebarItem[] => [
   {
-    title: "Dashboard",
+    title: t("sidebar.dashboard"),
     icon: LayoutDashboard,
     href: "/",
+    translationKey: "sidebar.dashboard"
   },
   {
-    title: "Restaurants",
+    title: t("sidebar.restaurants"),
     icon: Store,
     href: "/restaurants",
+    translationKey: "sidebar.restaurants"
   },
 ];
 
@@ -39,6 +42,14 @@ export function Sidebar() {
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Get the user's preferred language (in a real app, this could come from user settings)
+  // For now, we'll use the default language
+  const language: SupportedLanguage = DEFAULT_LANGUAGE;
+  const { t } = useTranslation(language);
+  
+  // Generate sidebar items with translations
+  const adminSidebarItems = createSidebarItems(t);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -152,7 +163,7 @@ export function Sidebar() {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium truncate max-w-[120px]">{user?.email || "Admin User"}</p>
-                <p className="text-xs text-gray-500">{isAdmin ? 'Admin' : 'Restaurant Owner'}</p>
+                <p className="text-xs text-gray-500">{isAdmin ? t("sidebar.admin") : t("sidebar.owner")}</p>
               </div>
             </div>
             <button
@@ -160,14 +171,14 @@ export function Sidebar() {
               className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-primary hover:bg-primary/5 rounded-lg"
             >
               <LogOut size={18} className="mr-2" />
-              Sign Out
+              {t("sidebar.signOut")}
             </button>
           </div>
         ) : (
           <button
             onClick={handleSignOut}
             className="w-full flex justify-center p-2 text-gray-600 hover:text-primary hover:bg-primary/5 rounded-lg"
-            title="Sign Out"
+            title={t("sidebar.signOut")}
           >
             <LogOut size={20} />
           </button>

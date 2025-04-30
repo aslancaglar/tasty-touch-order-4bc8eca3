@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReactNode } from "react";
+import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Define proper types for our API responses
 interface PopularItem {
@@ -53,7 +55,9 @@ const StatCard = ({
             className={`ml-1 h-3 w-3 ${trend.positive ? "text-green-500" : "text-red-500"}`}
             style={{ transform: trend.positive ? "none" : "rotate(135deg)" }}
           />
-          <span className="ml-1 text-muted-foreground">from last month</span>
+          <span className="ml-1 text-muted-foreground">
+            {trend.fromLastMonthText}
+          </span>
         </div>
       )}
     </CardContent>
@@ -131,13 +135,15 @@ const fetchPopularRestaurants = async (): Promise<PopularRestaurant[]> => {
 interface PopularItemsProps {
   items: PopularItem[] | undefined;
   isLoading: boolean;
+  title: string;
+  description: string;
 }
 
-const PopularItems = ({ items, isLoading }: PopularItemsProps) => (
+const PopularItems = ({ items, isLoading, title, description }: PopularItemsProps) => (
   <Card className="col-span-2">
     <CardHeader>
-      <CardTitle>Popular Items</CardTitle>
-      <CardDescription>Most ordered menu items</CardDescription>
+      <CardTitle>{title}</CardTitle>
+      <CardDescription>{description}</CardDescription>
     </CardHeader>
     <CardContent>
       <div className="space-y-4">
@@ -182,13 +188,15 @@ const PopularItems = ({ items, isLoading }: PopularItemsProps) => (
 interface PopularRestaurantsProps {
   data: PopularRestaurant[] | undefined;
   isLoading: boolean;
+  title: string;
+  description: string;
 }
 
-const PopularRestaurants = ({ data, isLoading }: PopularRestaurantsProps) => (
+const PopularRestaurants = ({ data, isLoading, title, description }: PopularRestaurantsProps) => (
   <Card>
     <CardHeader>
-      <CardTitle>Popular Restaurants</CardTitle>
-      <CardDescription>Top performing restaurants</CardDescription>
+      <CardTitle>{title}</CardTitle>
+      <CardDescription>{description}</CardDescription>
     </CardHeader>
     <CardContent>
       <div className="space-y-4">
@@ -227,6 +235,12 @@ const PopularRestaurants = ({ data, isLoading }: PopularRestaurantsProps) => (
 );
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  // Get the user's preferred language (in a real app, this could come from user settings)
+  // For now, we'll use the default language
+  const language: SupportedLanguage = DEFAULT_LANGUAGE;
+  const { t } = useTranslation(language);
+
   const {
     data: stats,
     isLoading: isStatsLoading,
@@ -257,47 +271,57 @@ const Dashboard = () => {
   return (
     <AdminLayout>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to your TastyTouch Admin Dashboard</p>
+        <h1 className="text-3xl font-bold">{t("dashboard.title")}</h1>
+        <p className="text-muted-foreground">{t("dashboard.welcome")}</p>
       </div>
 
       {statsError && <div className="mb-4 text-red-500 font-medium">Failed to load stats.</div>}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Revenue"
+          title={t("dashboard.totalRevenue")}
           value={
             isStatsLoading ? <Skeleton className="h-8 w-32" /> : `$${stats?.revenue?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
           }
-          description="All-time revenue across all restaurants"
+          description={t("dashboard.revenueDesc")}
           icon={BadgeDollarSign}
-          trend={{ value: "12.5%", positive: true }}
+          trend={{ value: "12.5%", positive: true, fromLastMonthText: t("dashboard.fromLastMonth") }}
         />
         <StatCard
-          title="Restaurants"
+          title={t("dashboard.restaurants")}
           value={isStatsLoading ? <Skeleton className="h-8 w-12" /> : stats?.restaurants ?? 0}
-          description="Active restaurants on the platform"
+          description={t("dashboard.restaurantsDesc")}
           icon={ChefHat}
-          trend={{ value: "2", positive: true }}
+          trend={{ value: "2", positive: true, fromLastMonthText: t("dashboard.fromLastMonth") }}
         />
         <StatCard
-          title="Total Orders"
+          title={t("dashboard.totalOrders")}
           value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.monthlyOrders ?? 0}
-          description="Orders processed this month"
+          description={t("dashboard.totalOrdersDesc")}
           icon={ShoppingBag}
-          trend={{ value: "5.2%", positive: true }}
+          trend={{ value: "5.2%", positive: true, fromLastMonthText: t("dashboard.fromLastMonth") }}
         />
         <StatCard
-          title="Daily Orders"
+          title={t("dashboard.dailyOrders")}
           value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.dailyOrders ?? 0}
-          description="Orders processed today"
+          description={t("dashboard.dailyOrdersDesc")}
           icon={Store}
-          trend={{ value: "15.3%", positive: true }}
+          trend={{ value: "15.3%", positive: true, fromLastMonthText: t("dashboard.fromLastMonth") }}
         />
       </div>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <PopularItems items={popularItems} isLoading={isItemsLoading} />
-        <PopularRestaurants data={popularRestaurants} isLoading={isRestaurantsLoading} />
+        <PopularItems 
+          items={popularItems} 
+          isLoading={isItemsLoading} 
+          title={t("dashboard.popularItems")} 
+          description={t("dashboard.popularItemsDesc")} 
+        />
+        <PopularRestaurants 
+          data={popularRestaurants} 
+          isLoading={isRestaurantsLoading} 
+          title={t("dashboard.popularRestaurants")} 
+          description={t("dashboard.popularRestaurantsDesc")} 
+        />
       </div>
     </AdminLayout>
   );
