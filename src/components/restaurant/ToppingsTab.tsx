@@ -124,7 +124,7 @@ const ToppingsTab = ({
       const {
         data,
         error
-      } = await supabase.from('toppings').select('*').eq('category_id', selectedCategory.id).order('created_at', {
+      } = await supabase.from('toppings').select('*').eq('category_id', selectedCategory.id).order('display_order', {
         ascending: true
       });
       if (error) throw error;
@@ -197,6 +197,7 @@ const ToppingsTab = ({
           name: formData.name,
           price: parseFloat(formData.price),
           tax_percentage: parseFloat(formData.tax_percentage || "10"),
+          display_order: parseInt(formData.display_order || "0"),
           category_id: selectedCategory?.id
         }])
         .select()
@@ -234,7 +235,8 @@ const ToppingsTab = ({
         .update({
           name: formData.name,
           price: parseFloat(formData.price),
-          tax_percentage: parseFloat(formData.tax_percentage || "10")
+          tax_percentage: parseFloat(formData.tax_percentage || "10"),
+          display_order: parseInt(formData.display_order || "0")
         })
         .eq('id', toppingId);
         
@@ -472,6 +474,7 @@ const ToppingsTab = ({
                 <div className="text-sm font-medium text-muted-foreground">
                   <span>{currencySymbol}{parseFloat(topping.price.toString()).toFixed(2)}</span>
                   <span className="ml-2">TVA: {topping.tax_percentage || 10}%</span>
+                  <span className="ml-2">Ordre: {topping.display_order || 0}</span>
                 </div>
               </div>
               <div className="space-x-2">
@@ -573,7 +576,8 @@ const ToppingsTab = ({
             initialValues={{
               name: selectedTopping.name,
               price: selectedTopping.price?.toString() || "0",
-              tax_percentage: selectedTopping.tax_percentage?.toString() || "10"
+              tax_percentage: selectedTopping.tax_percentage?.toString() || "10",
+              display_order: selectedTopping.display_order?.toString() || "0"
             }} 
             isLoading={isUpdatingTopping} 
             currency={restaurant.currency} 

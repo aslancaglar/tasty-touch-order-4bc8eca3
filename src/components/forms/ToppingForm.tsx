@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,9 @@ const toppingSchema = z.object({
   tax_percentage: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100, {
     message: "La TVA doit être un pourcentage entre 0 et 100",
   }),
+  display_order: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
+    message: "L'ordre d'affichage doit être un nombre valide supérieur ou égal à 0",
+  }),
 });
 
 export type ToppingFormValues = z.infer<typeof toppingSchema>;
@@ -25,6 +29,7 @@ interface ToppingFormProps {
     name: string;
     price: string;
     tax_percentage?: string;
+    display_order?: string;
   };
   isLoading?: boolean;
   currency?: string;
@@ -42,6 +47,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
       name: initialValues?.name || "",
       price: initialValues?.price || "0",
       tax_percentage: initialValues?.tax_percentage || "10",
+      display_order: initialValues?.display_order || "0",
     },
   });
 
@@ -88,6 +94,20 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
               <FormLabel>TVA (%)</FormLabel>
               <FormControl>
                 <Input placeholder="10" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="display_order"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Ordre d'affichage</FormLabel>
+              <FormControl>
+                <Input placeholder="0" type="number" min="0" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

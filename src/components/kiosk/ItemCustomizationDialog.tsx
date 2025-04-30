@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
 import { Textarea } from "@/components/ui/textarea";
+
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
   isOpen: boolean;
@@ -78,6 +79,13 @@ const ToppingCategory = memo(({
   t: (key: string) => string;
   currencySymbol: string;
 }) => {
+  // Sort toppings by display_order
+  const sortedToppings = [...category.toppings].sort((a, b) => {
+    const orderA = a.display_order ?? 1000;
+    const orderB = b.display_order ?? 1000;
+    return orderA - orderB;
+  });
+
   return <div className="space-y-2">
       <div className="font-bold text-lg flex items-center">
         {category.name} 
@@ -87,7 +95,7 @@ const ToppingCategory = memo(({
         </span>
       </div>
       <div className="grid grid-cols-3 gap-1">
-        {category.toppings.map(topping => {
+        {sortedToppings.map(topping => {
         const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
         return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border rounded-md p-2 hover:border-gray-300 cursor-pointer select-none">
               <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>

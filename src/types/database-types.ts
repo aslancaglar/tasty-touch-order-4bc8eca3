@@ -72,6 +72,7 @@ export type ToppingCategory = {
   updated_at: string;
   show_if_selection_type?: string[] | null;
   show_if_selection_id?: string[] | null;
+  display_order?: number | null; // Added display_order property
 };
 
 export type Topping = {
@@ -83,6 +84,7 @@ export type Topping = {
   created_at: string;
   updated_at: string;
   in_stock: boolean; // Added this property to match the database schema
+  display_order?: number | null; // Added display_order property
 };
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
