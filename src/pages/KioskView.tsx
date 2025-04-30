@@ -1079,17 +1079,22 @@ const KioskView = () => {
   const cartIsEmpty = cart.length === 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col kiosk-view">
-      <KioskHeader 
-        restaurant={restaurant}
-        orderType={orderType}
-        tableNumber={tableNumber}
-        t={t}
-        onRefresh={handleRefreshMenu}
-      />
+    <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+      {/* Fixed height header - 12vh */}
+      <div className="h-[12vh] min-h-[120px] flex-shrink-0">
+        <KioskHeader 
+          restaurant={restaurant}
+          orderType={orderType}
+          tableNumber={tableNumber}
+          t={t}
+          onRefresh={handleRefreshMenu}
+        />
+      </div>
 
+      {/* Content area with fixed sidebar and scrollable menu grid */}
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+        {/* Fixed width sidebar - 16vw */}
+        <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
           <MenuCategoryList 
             categories={categories}
             activeCategory={activeCategory}
@@ -1097,7 +1102,8 @@ const KioskView = () => {
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto pb-24">
+        {/* Scrollable menu grid area */}
+        <div className="flex-1 overflow-y-auto">
           <div className="p-6">
             <h2 className="text-xl font-bold mb-4">
               {categories.find(c => c.id === activeCategory)?.name || t("menu")}

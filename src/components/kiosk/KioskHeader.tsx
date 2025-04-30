@@ -20,7 +20,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
   onRefresh
 }) => {
   return (
-    <div className="h-48 bg-cover bg-center relative" style={{
+    <div className="h-full w-full bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
     }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>

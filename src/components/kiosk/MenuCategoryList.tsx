@@ -23,7 +23,7 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   });
 
   return (
-    <div className="p-4">
+    <div className="h-full p-4 overflow-y-auto">
       <div className="space-y-2">
         {sortedCategories.map(category => (
           <button 
