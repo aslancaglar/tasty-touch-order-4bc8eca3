@@ -7,20 +7,29 @@ import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 
 interface ImageUploadProps {
-  value: string;
-  onChange: (url: string) => void;
+  value?: string;
+  onChange?: (url: string) => void;
+  onImageUploaded?: (url: string) => void;  // Added this prop
+  existingImageUrl?: string;  // Added this prop
   label?: string;
   uploadFolder?: string;
+  clearable?: boolean;  // Added this prop
 }
 
 const ImageUpload = ({ 
   value, 
-  onChange, 
+  onChange,
+  onImageUploaded,
+  existingImageUrl,
   label = "Image", 
-  uploadFolder = "restaurant-covers"
+  uploadFolder = "restaurant-covers",
+  clearable = false
 }: ImageUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
+  
+  // Use value or existingImageUrl (for backward compatibility)
+  const imageUrl = value || existingImageUrl || "";
   
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -58,7 +67,15 @@ const ImageUpload = ({
         .getPublicUrl(filePath);
 
       // Set the image URL
-      onChange(publicUrlData.publicUrl);
+      const publicUrl = publicUrlData.publicUrl;
+      
+      if (onChange) {
+        onChange(publicUrl);
+      }
+      
+      if (onImageUploaded) {
+        onImageUploaded(publicUrl);
+      }
       
       toast({
         title: "Success",
@@ -81,14 +98,20 @@ const ImageUpload = ({
   };
 
   const removeImage = () => {
-    onChange("");
+    if (onChange) {
+      onChange("");
+    }
+    
+    if (onImageUploaded) {
+      onImageUploaded("");
+    }
   };
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">{label}</span>
-        {value && (
+        {imageUrl && clearable && (
           <Button 
             type="button" 
             variant="ghost" 
@@ -102,10 +125,10 @@ const ImageUpload = ({
         )}
       </div>
       
-      {value ? (
+      {imageUrl ? (
         <div className="relative aspect-video w-full overflow-hidden rounded-md border">
           <img
-            src={value}
+            src={imageUrl}
             alt={label}
             className="h-full w-full object-cover"
           />

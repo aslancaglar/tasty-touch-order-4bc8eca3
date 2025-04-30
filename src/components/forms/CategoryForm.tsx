@@ -119,9 +119,9 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
               <FormLabel>Icon</FormLabel>
               <FormControl>
                 <ImageUpload
-                  onImageUploaded={handleIconUpload}
-                  existingImageUrl={iconUrl}
-                  clearable
+                  value={iconUrl}
+                  onChange={handleIconUpload}
+                  clearable={true}
                 />
               </FormControl>
               <FormMessage />

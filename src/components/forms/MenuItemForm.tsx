@@ -229,9 +229,9 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
               <FormLabel>Image</FormLabel>
               <FormControl>
                 <ImageUpload
-                  onImageUploaded={handleImageUpload}
-                  existingImageUrl={imageUrl}
-                  clearable
+                  value={imageUrl}
+                  onChange={handleImageUpload}
+                  clearable={true}
                 />
               </FormControl>
               <FormMessage />

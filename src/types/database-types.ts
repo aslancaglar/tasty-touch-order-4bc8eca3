@@ -22,6 +22,7 @@ export type MenuCategory = {
   image_url: string | null;
   created_at: string;
   updated_at: string;
+  display_order?: number | null; // Added display_order property
 };
 
 export type MenuItem = {
@@ -37,6 +38,7 @@ export type MenuItem = {
   topping_categories?: string[];
   tax_percentage?: number | null;
   in_stock: boolean;
+  display_order?: number | null; // Added display_order property
 };
 
 export type MenuItemOption = {
