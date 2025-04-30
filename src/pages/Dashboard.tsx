@@ -1,4 +1,3 @@
-
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store } from "lucide-react";
@@ -6,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReactNode } from "react";
-import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
+import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Define proper types for our API responses
@@ -240,9 +239,8 @@ const PopularRestaurants = ({ data, isLoading, title, description }: PopularRest
 
 const Dashboard = () => {
   const { user } = useAuth();
-  // Get the user's preferred language (in a real app, this could come from user settings)
-  // For now, we'll use the default language
-  const language: SupportedLanguage = DEFAULT_LANGUAGE;
+  // Always use English for admin dashboard
+  const language: SupportedLanguage = 'en';
   const { t } = useTranslation(language);
 
   const {
@@ -273,7 +271,7 @@ const Dashboard = () => {
   });
 
   return (
-    <AdminLayout>
+    <AdminLayout useDefaultLanguage={true}>
       <div className="mb-8">
         <h1 className="text-3xl font-bold">{t("dashboard.title")}</h1>
         <p className="text-muted-foreground">{t("dashboard.welcome")}</p>

@@ -19,6 +19,7 @@ const Index = () => {
     return <Navigate to="/auth" />;
   }
 
+  // Pass useDefaultLanguage={true} to Dashboard to force English for admin
   return <Dashboard />;
 };
 
