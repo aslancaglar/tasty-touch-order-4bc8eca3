@@ -96,6 +96,12 @@ export default {
         fadeIn: "fadeIn 0.3s ease-out",
         slideUp: "slideUp 0.4s ease-out",
       },
+      width: {
+        'screen-90': '90vw',
+      },
+      maxWidth: {
+        'screen-90': '90vw',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

@@ -38,6 +38,7 @@ import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import SortableCategory from "./SortableCategory";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MenuTabProps {
   restaurant: Restaurant;
@@ -48,6 +49,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
   const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
   
   const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false);
   const [showUpdateCategoryDialog, setShowUpdateCategoryDialog] = useState(false);
@@ -380,15 +382,15 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Menu Categories</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-xl sm:text-2xl font-bold">Menu Categories</h2>
+        <p className="text-muted-foreground text-sm">
           Manage menu categories available in your restaurant.
         </p>
       </div>
 
-      <Button onClick={() => setShowCreateCategoryDialog(true)} className="bg-kiosk-primary">
+      <Button onClick={() => setShowCreateCategoryDialog(true)} className="bg-kiosk-primary w-full sm:w-auto">
         <Plus className="mr-2 h-4 w-4" />
         Add Category
       </Button>
@@ -398,7 +400,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <SortableContext
             items={categories}
             strategy={verticalListSortingStrategy}
@@ -417,46 +419,50 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                   setCategoryToDelete(category);
                   setShowDeleteCategoryDialog(true);
                 }}
+                isMobile={isMobile}
               />
             ))}
           </SortableContext>
         </div>
       </DndContext>
 
-      <Separator />
+      <Separator className="my-4 sm:my-6" />
 
       {selectedCategory && (
         <div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4">
             <div>
-              <h2 className="text-2xl font-bold">Menu Items - {selectedCategory.name}</h2>
-              <p className="text-muted-foreground">
+              <h2 className="text-xl sm:text-2xl font-bold">Menu Items - {selectedCategory.name}</h2>
+              <p className="text-sm text-muted-foreground">
                 Manage menu items in the selected category.
               </p>
             </div>
-            <Button onClick={() => setShowCreateItemDialog(true)} className="bg-kiosk-primary">
+            <Button 
+              onClick={() => setShowCreateItemDialog(true)} 
+              className="bg-kiosk-primary w-full sm:w-auto"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Add Menu Item
             </Button>
           </div>
 
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 space-y-3 sm:space-y-4">
             {menuItems.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-3"
               >
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3 sm:space-x-4">
                   {item.image && (
                     <img 
                       src={item.image} 
                       alt={item.name} 
-                      className="h-16 w-16 object-cover rounded-md"
+                      className="h-14 w-14 sm:h-16 sm:w-16 object-cover rounded-md"
                     />
                   )}
                   <div>
                     <h3 className="font-medium">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{item.description}</p>
                     <p className="text-sm font-medium mt-1">
                       {getCurrencySymbol(restaurant.currency)}{parseFloat(item.price.toString()).toFixed(2)}
                       {item.promotion_price && (
@@ -467,7 +473,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                     </p>
                   </div>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 self-end sm:self-center mt-2 sm:mt-0">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -491,13 +497,27 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                 </div>
               </div>
             ))}
+            
+            {menuItems.length === 0 && !loading && (
+              <div className="text-center py-10 border rounded-lg bg-muted/20">
+                <p className="text-muted-foreground">No items found in this category</p>
+                <Button 
+                  onClick={() => setShowCreateItemDialog(true)} 
+                  variant="outline" 
+                  className="mt-4"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add First Menu Item
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Dialogs */}
       <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create Category</DialogTitle>
           </DialogHeader>
@@ -509,7 +529,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       </Dialog>
 
       <Dialog open={showUpdateCategoryDialog} onOpenChange={setShowUpdateCategoryDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Category</DialogTitle>
           </DialogHeader>

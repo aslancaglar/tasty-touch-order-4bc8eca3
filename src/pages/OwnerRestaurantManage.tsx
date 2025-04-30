@@ -14,6 +14,7 @@ import OrdersTab from "@/components/restaurant/OrdersTab";
 import StockTab from "@/components/restaurant/StockTab";
 import SettingsTab from "@/components/restaurant/SettingsTab";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const OwnerRestaurantManage = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ const OwnerRestaurantManage = () => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
+  const isMobile = useIsMobile();
   
   const { toast } = useToast();
   const { t } = useTranslation(language);
@@ -115,55 +117,86 @@ const OwnerRestaurantManage = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center mb-8">
-        <Button variant="ghost" asChild className="mr-4">
+    <div className="container mx-auto py-4 sm:py-8 px-3 sm:px-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-8">
+        <Button variant="ghost" asChild className="self-start">
           <Link to="/owner">
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t("restaurants.backToRestaurants")}
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">{restaurant?.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">{restaurant?.name}</h1>
           <p className="text-muted-foreground">{restaurant?.location || t("restaurants.noLocationDefined")}</p>
+        </div>
+        <div className="ml-0 sm:ml-auto mt-2 sm:mt-0">
+          <Button variant="outline" asChild size={isMobile ? "sm" : "default"}>
+            <Link to={`/r/${restaurant?.slug}`} target="_blank">
+              {t("restaurants.viewKiosk")}
+            </Link>
+          </Button>
         </div>
       </div>
       
       <Card className="mb-8">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle>{t("restaurants.management")}</CardTitle>
-            <Button variant="outline" asChild>
-              <Link to={`/r/${restaurant?.slug}`} target="_blank">
-                {t("restaurants.viewKiosk")}
-              </Link>
-            </Button>
-          </div>
+          <CardTitle>{t("restaurants.management")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-5 mb-8">
-              <TabsTrigger value="menu" className="flex items-center">
-                <UtensilsCrossed className="mr-2 h-4 w-4" />
-                {t("restaurant.menu")}
+            <TabsList className={`grid ${isMobile ? 'grid-cols-3 mb-4' : 'grid-cols-5 mb-8'} gap-1`}>
+              <TabsTrigger value="menu" className="flex items-center justify-center">
+                <UtensilsCrossed className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+                {!isMobile && t("restaurant.menu")}
               </TabsTrigger>
-              <TabsTrigger value="toppings" className="flex items-center">
-                <Cherry className="mr-2 h-4 w-4" />
-                {t("restaurant.toppings")}
+              <TabsTrigger value="toppings" className="flex items-center justify-center">
+                <Cherry className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+                {!isMobile && t("restaurant.toppings")}
               </TabsTrigger>
-              <TabsTrigger value="orders" className="flex items-center">
-                <Receipt className="mr-2 h-4 w-4" />
-                {t("restaurant.orders")}
+              <TabsTrigger value="orders" className="flex items-center justify-center">
+                <Receipt className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+                {!isMobile && t("restaurant.orders")}
               </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center">
-                <Settings className="mr-2 h-4 w-4" />
-                {t("restaurant.settings")}
-              </TabsTrigger>
-              <TabsTrigger value="stock" className="flex items-center">
-                <Package className="mr-2 h-4 w-4" />
-                {t("restaurant.stock")}
-              </TabsTrigger>
+              {isMobile ? (
+                <>
+                  <TabsTrigger value="more" className="flex items-center justify-center col-span-3 mt-1">
+                    {t("restaurant.more")}
+                  </TabsTrigger>
+                </>
+              ) : (
+                <>
+                  <TabsTrigger value="settings" className="flex items-center justify-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    {t("restaurant.settings")}
+                  </TabsTrigger>
+                  <TabsTrigger value="stock" className="flex items-center justify-center">
+                    <Package className="mr-2 h-4 w-4" />
+                    {t("restaurant.stock")}
+                  </TabsTrigger>
+                </>
+              )}
             </TabsList>
+            
+            {isMobile && activeTab === "more" && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button 
+                  variant="outline" 
+                  className="flex-1" 
+                  onClick={() => setActiveTab("settings")}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  {t("restaurant.settings")}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1" 
+                  onClick={() => setActiveTab("stock")}
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  {t("restaurant.stock")}
+                </Button>
+              </div>
+            )}
             
             <TabsContent value="menu">
               <MenuTab restaurant={restaurant} />

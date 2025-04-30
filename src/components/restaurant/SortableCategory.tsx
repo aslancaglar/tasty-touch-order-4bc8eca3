@@ -12,9 +12,10 @@ interface Props {
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  isMobile?: boolean;
 }
 
-const SortableCategory = ({ category, isSelected, onSelect, onEdit, onDelete }: Props) => {
+const SortableCategory = ({ category, isSelected, onSelect, onEdit, onDelete, isMobile }: Props) => {
   const {
     attributes,
     listeners,
@@ -33,17 +34,17 @@ const SortableCategory = ({ category, isSelected, onSelect, onEdit, onDelete }: 
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`border rounded-lg p-4 cursor-pointer transition-all ${
+      className={`border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${
         isSelected ? 'border-kiosk-primary bg-muted/50' : 'border-border hover:border-muted-foreground'
       }`}
       onClick={onSelect}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <button {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
-          <div className="p-2 bg-primary/10 rounded-md w-10 h-10">
+          <div className="p-2 bg-primary/10 rounded-md w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
             {category.icon ? (
               <img 
                 src={category.icon} 
@@ -52,35 +53,37 @@ const SortableCategory = ({ category, isSelected, onSelect, onEdit, onDelete }: 
               />
             ) : (
               <div className="w-full h-full bg-muted rounded flex items-center justify-center">
-                <Utensils className="h-4 w-4 text-muted-foreground" />
+                <Utensils className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
               </div>
             )}
           </div>
-          <div>
-            <h3 className="font-medium">{category.name}</h3>
-            <p className="text-sm text-muted-foreground">{category.description || "No description"}</p>
+          <div className="overflow-hidden">
+            <h3 className="font-medium text-sm sm:text-base truncate">{category.name}</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+              {category.description || "No description"}
+            </p>
           </div>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex space-x-1 sm:space-x-2 ml-1">
           <Button
             variant="ghost"
-            size="icon"
+            size={isMobile ? "xs" : "icon"}
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
             }}
           >
-            <Edit className="h-4 w-4" />
+            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
           <Button
             variant="ghost"
-            size="icon"
+            size={isMobile ? "xs" : "icon"}
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
             }}
           >
-            <Trash2 className="h-4 w-4 text-destructive" />
+            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
           </Button>
         </div>
       </div>
