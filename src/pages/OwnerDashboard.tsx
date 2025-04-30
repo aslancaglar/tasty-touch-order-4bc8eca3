@@ -16,48 +16,61 @@ const OwnerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
-
-  // Get the user's preferred language (in a real app, this could come from user settings)
-  // For now, we'll use the default language
-  const language: SupportedLanguage = DEFAULT_LANGUAGE;
+  const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
   const { t } = useTranslation(language);
 
   useEffect(() => {
     const fetchOwnerRestaurants = async () => {
       try {
-        if (!user) return;
+        if (!user) {
+          setLoading(false);
+          return;
+        }
         
         setLoading(true);
         
         const { data, error } = await supabase
-          .rpc('get_owned_restaurants')
+          .rpc('get_owned_restaurants');
         
         if (error) {
           console.error("Error fetching restaurants:", error);
           toast({
-            title: t("order.error"),
+            title: "Error",
             description: "Could not load your restaurants. Please try again.",
             variant: "destructive",
           });
+          setLoading(false);
           return;
         }
 
-        console.log("Owner restaurants:", data);
+        // Set restaurants data
         setRestaurants(data || []);
+        
+        // Get user's preferred language from profile if available
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('preferred_language')
+          .eq('id', user.id)
+          .single();
+        
+        if (!profileError && profileData?.preferred_language) {
+          setLanguage(profileData.preferred_language as SupportedLanguage);
+        }
+        
+        setLoading(false);
       } catch (error) {
         console.error("Exception when fetching restaurants:", error);
         toast({
-          title: t("order.error"),
+          title: "Error",
           description: "An unexpected error occurred. Please try again.",
           variant: "destructive",
         });
-      } finally {
         setLoading(false);
       }
     };
 
     fetchOwnerRestaurants();
-  }, [user, toast, t]);
+  }, [user, toast]);
 
   const handleSignOut = async () => {
     try {
@@ -68,7 +81,7 @@ const OwnerDashboard = () => {
       });
     } catch (error) {
       toast({
-        title: t("order.error"),
+        title: "Error",
         description: "There was a problem signing out",
         variant: "destructive",
       });
@@ -123,7 +136,7 @@ const OwnerDashboard = () => {
                 {restaurants.map((restaurant) => (
                   <TableRow key={restaurant.id}>
                     <TableCell className="font-medium">{restaurant.name}</TableCell>
-                    <TableCell>{restaurant.location || "No location"}</TableCell>
+                    <TableCell>{restaurant.location || t("restaurants.noLocationDefined")}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild>
                         <Link to={`/owner/restaurant/${restaurant.id}`}>

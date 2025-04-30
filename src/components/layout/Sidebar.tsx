@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -42,17 +43,14 @@ export function Sidebar() {
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Get the user's preferred language (in a real app, this could come from user settings)
-  // For now, we'll use the default language
-  const language: SupportedLanguage = DEFAULT_LANGUAGE;
+  const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
   const { t } = useTranslation(language);
   
   // Generate sidebar items with translations
   const adminSidebarItems = createSidebarItems(t);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
+    const checkUserProfile = async () => {
       if (!user) {
         setIsAdmin(false);
         setIsLoading(false);
@@ -62,25 +60,30 @@ export function Sidebar() {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('is_admin')
+          .select('is_admin, preferred_language')
           .eq('id', user.id)
           .single();
         
         if (error) {
-          console.error("Error checking admin status:", error);
+          console.error("Error checking user profile:", error);
           setIsAdmin(false);
         } else {
           setIsAdmin(data?.is_admin || false);
+          
+          // Set language from profile if available
+          if (data?.preferred_language) {
+            setLanguage(data.preferred_language as SupportedLanguage);
+          }
         }
       } catch (error) {
-        console.error("Exception checking admin status:", error);
+        console.error("Exception checking user profile:", error);
         setIsAdmin(false);
       } finally {
         setIsLoading(false);
       }
     };
     
-    checkAdminStatus();
+    checkUserProfile();
   }, [user]);
 
   const handleSignOut = async () => {
@@ -162,7 +165,7 @@ export function Sidebar() {
                 </span>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium truncate max-w-[120px]">{user?.email || "Admin User"}</p>
+                <p className="text-sm font-medium truncate max-w-[120px]">{user?.email || "User"}</p>
                 <p className="text-xs text-gray-500">{isAdmin ? t("sidebar.admin") : t("sidebar.owner")}</p>
               </div>
             </div>
