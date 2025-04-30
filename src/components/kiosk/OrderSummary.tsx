@@ -11,6 +11,7 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -117,15 +118,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
-  const {
-    toast
-  } = useToast();
-  const {
-    total,
-    subtotal,
-    tax
-  } = calculateCartTotals(cart);
-  const t = (key: keyof typeof translations["en"]) => translations[uiLanguage]?.[key] ?? translations.fr[key];
+  const { toast } = useToast();
+  const { t } = useTranslation(uiLanguage);
+  const { total, subtotal, tax } = calculateCartTotals(cart);
 
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
@@ -148,10 +143,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
-        const {
-          data: printConfig,
-          error
-        } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
+        const { data: printConfig, error } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
         if (error) {
           console.error("Error fetching print configuration:", error);
           return;
@@ -160,8 +152,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         if (shouldUseBrowserPrinting) {
           console.log("Using browser printing for receipt");
           toast({
-            title: t("printing"),
-            description: t("printingPreparation")
+            title: t("order.printing"),
+            description: t("order.printingPreparation")
           });
           setTimeout(() => {
             try {
@@ -170,8 +162,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             } catch (printError) {
               console.error("Error during browser printing:", printError);
               toast({
-                title: t("printError"),
-                description: t("printErrorDesc"),
+                title: t("order.printError"),
+                description: t("order.printErrorDesc"),
                 variant: "destructive"
               });
             }
@@ -205,8 +197,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       } catch (error) {
         console.error("Error during receipt printing:", error);
         toast({
-          title: t("error"),
-          description: t("errorPrinting"),
+          title: t("order.error"),
+          description: t("order.errorPrinting"),
           variant: "destructive"
         });
       }
@@ -297,12 +289,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <DialogTitle className="text-xl font-bold">{t("orderSummary")}</DialogTitle>
+            <DialogTitle className="text-xl font-bold">{t("order.summary")}</DialogTitle>
           </div>
         </DialogHeader>
         
         <div className="p-6">
-          <h3 className="font-bold text-lg mb-4">{t("orderedItems")}</h3>
+          <h3 className="font-bold text-lg mb-4">{t("order.items")}</h3>
           
           <div className="space-y-6 mb-6">
             {cart.map(item => <div key={item.id} className="space-y-2">
@@ -348,16 +340,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           
           <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
-              <span>{t("totalHT")}</span>
+              <span>{t("order.subtotal")}</span>
               <span>{subtotal.toFixed(2)} {currencySymbol}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>{uiLanguage === "fr" ? t("vatWithRate") : t("vat")}</span>
+              <span>{uiLanguage === "fr" ? t("order.vatWithRate") : t("order.vat")}</span>
               <span>{tax.toFixed(2)} {currencySymbol}</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
-              <span>{t("totalTTC")}</span>
+              <span>{t("order.totalTTC")}</span>
               <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
           </div>
@@ -366,12 +358,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         <div className="p-4 bg-gray-50">
           <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[40px] font-normal uppercase">
             <Check className="mr-2 h-5 w-5" />
-            {t("confirm")}
+            {t("order.confirm")}
           </Button>
         </div>
       </DialogContent>
 
-      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
+      <OrderReceipt 
+        restaurant={restaurant} 
+        cart={cart} 
+        orderNumber={orderNumber} 
+        tableNumber={tableNumber} 
+        orderType={orderType} 
+        getFormattedOptions={getFormattedOptions} 
+        getFormattedToppings={getFormattedToppings} 
+        uiLanguage={uiLanguage} 
+      />
     </Dialog>;
 };
 

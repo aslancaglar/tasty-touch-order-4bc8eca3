@@ -1,0 +1,41 @@
+
+{
+  "orderType": {
+    "title": "Comment souhaitez-vous commander ?",
+    "dineIn": "Sur Place",
+    "takeaway": "À Emporter"
+  },
+  "order": {
+    "summary": "Résumé de la commande",
+    "items": "Articles commandés",
+    "subtotal": "Total HT",
+    "vatWithRate": "TVA",
+    "vat": "TVA",
+    "totalTTC": "TOTAL TTC",
+    "confirm": "Confirmer la commande",
+    "printing": "Impression",
+    "printingPreparation": "Préparation de l'impression...",
+    "printError": "Erreur d'impression",
+    "printErrorDesc": "Impossible d'imprimer le reçu. Veuillez réessayer.",
+    "error": "Erreur",
+    "errorPrinting": "Une erreur s'est produite lors de l'impression du reçu."
+  },
+  "receipt": {
+    "order": "Commande",
+    "table": "Table",
+    "subtotal": "Sous-total",
+    "vat": "TVA",
+    "total": "TOTAL",
+    "thanks": "Merci de votre visite!",
+    "seeYouSoon": "A bientôt!",
+    "dineIn": "Sur Place",
+    "takeaway": "À Emporter"
+  },
+  "welcome": {
+    "title": "Bienvenue sur notre borne de commande",
+    "start": "TOUCHEZ POUR COMMANDER"
+  },
+  "cart": {
+    "viewCart": "Voir le panier"
+  }
+}

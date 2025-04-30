@@ -1,0 +1,41 @@
+
+{
+  "orderType": {
+    "title": "How would you like to order?",
+    "dineIn": "Dine-In",
+    "takeaway": "Takeaway"
+  },
+  "order": {
+    "summary": "Order Summary",
+    "items": "Ordered Items",
+    "subtotal": "Subtotal",
+    "vatWithRate": "VAT",
+    "vat": "VAT",
+    "totalTTC": "TOTAL",
+    "confirm": "Confirm Order",
+    "printing": "Printing",
+    "printingPreparation": "Preparing to print...",
+    "printError": "Print Error",
+    "printErrorDesc": "Unable to print receipt. Please try again.",
+    "error": "Error",
+    "errorPrinting": "An error occurred while printing the receipt."
+  },
+  "receipt": {
+    "order": "Order",
+    "table": "Table",
+    "subtotal": "Subtotal",
+    "vat": "VAT",
+    "total": "TOTAL",
+    "thanks": "Thank you for your visit!",
+    "seeYouSoon": "See you soon!",
+    "dineIn": "Dine In",
+    "takeaway": "Takeaway"
+  },
+  "welcome": {
+    "title": "Welcome to our ordering kiosk",
+    "start": "TOUCH TO START ORDERING"
+  },
+  "cart": {
+    "viewCart": "View Cart"
+  }
+}

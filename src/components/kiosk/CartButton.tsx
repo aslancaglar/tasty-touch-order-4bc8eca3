@@ -2,6 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
+import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -25,31 +26,20 @@ interface CartButtonProps {
   itemCount: number;
   total: number;
   onClick: () => void;
-  uiLanguage?: "fr" | "en" | "tr";
-  currency?: string; // Updated to require currency
+  uiLanguage?: SupportedLanguage;
+  currency?: string;
 }
-
-const translations = {
-  fr: {
-    viewCart: "Voir le panier"
-  },
-  en: {
-    viewCart: "View Cart"
-  },
-  tr: {
-    viewCart: "Sepeti Görüntüle"
-  }
-};
 
 const CartButton: React.FC<CartButtonProps> = ({
   itemCount,
   total,
   onClick,
   uiLanguage = "fr",
-  currency = "EUR" // Default to EUR if not provided
+  currency = "EUR"
 }) => {
   if (itemCount === 0) return null;
-  const t = (key: keyof typeof translations["en"]) => translations[uiLanguage][key];
+  
+  const { t } = useTranslation(uiLanguage);
   const currencySymbol = getCurrencySymbol(currency);
   
   return (
@@ -62,7 +52,7 @@ const CartButton: React.FC<CartButtonProps> = ({
         <span className="font-bold">{itemCount}</span>
         <span className="mx-2">|</span>
         <span className="font-bold">{total.toFixed(2)} {currencySymbol}</span>
-        <span className="ml-3 font-semibold">{t("viewCart")}</span>
+        <span className="ml-3 font-semibold">{t("cart.viewCart")}</span>
       </Button>
     </div>
   );

@@ -1,0 +1,41 @@
+
+{
+  "orderType": {
+    "title": "Nasıl sipariş vermek istersiniz?",
+    "dineIn": "Masaya Servis",
+    "takeaway": "Paket Servis"
+  },
+  "order": {
+    "summary": "Sipariş Özeti",
+    "items": "Sipariş Edilen Ürünler",
+    "subtotal": "Ara Toplam",
+    "vatWithRate": "KDV",
+    "vat": "KDV",
+    "totalTTC": "TOPLAM",
+    "confirm": "Siparişi Onayla",
+    "printing": "Yazdırılıyor",
+    "printingPreparation": "Yazdırma hazırlanıyor...",
+    "printError": "Yazdırma Hatası",
+    "printErrorDesc": "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
+    "error": "Hata",
+    "errorPrinting": "Fiş yazdırılırken bir hata oluştu."
+  },
+  "receipt": {
+    "order": "Sipariş",
+    "table": "Masa",
+    "subtotal": "Ara Toplam",
+    "vat": "KDV",
+    "total": "TOPLAM",
+    "thanks": "Ziyaretiniz için teşekkürler!",
+    "seeYouSoon": "Tekrar görüşmek üzere!",
+    "dineIn": "Masaya Servis",
+    "takeaway": "Paket Servis"
+  },
+  "welcome": {
+    "title": "Sipariş kioskumuza hoş geldiniz",
+    "start": "SİPARİŞE BAŞLAMAK İÇİN DOKUNUN"
+  },
+  "cart": {
+    "viewCart": "Sepeti Görüntüle"
+  }
+}
