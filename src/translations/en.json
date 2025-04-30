@@ -73,6 +73,17 @@
     "noRestaurants": "No restaurants found",
     "startAdding": "Start by adding your first restaurant",
     "needLogin": "You need to be logged in to view and manage restaurants",
-    "signIn": "Sign In"
+    "signIn": "Sign In",
+    "notFound": "Restaurant not found",
+    "backToRestaurants": "Back to Restaurants",
+    "noLocationDefined": "No location defined",
+    "management": "Restaurant Management"
+  },
+  "restaurant": {
+    "menu": "Menu",
+    "toppings": "Toppings",
+    "orders": "Orders",
+    "settings": "Settings",
+    "stock": "Stock"
   }
 }

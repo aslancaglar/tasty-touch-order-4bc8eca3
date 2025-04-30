@@ -73,6 +73,17 @@
     "noRestaurants": "Aucun restaurant trouvé",
     "startAdding": "Commencez par ajouter votre premier restaurant",
     "needLogin": "Vous devez être connecté pour voir et gérer les restaurants",
-    "signIn": "Se Connecter"
+    "signIn": "Se Connecter",
+    "notFound": "Restaurant non trouvé",
+    "backToRestaurants": "Retour aux Restaurants",
+    "noLocationDefined": "Aucun emplacement défini",
+    "management": "Gestion du Restaurant"
+  },
+  "restaurant": {
+    "menu": "Menu",
+    "toppings": "Suppléments",
+    "orders": "Commandes",
+    "settings": "Paramètres",
+    "stock": "Stock"
   }
 }
