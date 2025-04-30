@@ -218,10 +218,27 @@ const KioskView = () => {
         setUiLanguage(lang);
         
         const menuData = await getMenuForRestaurant(restaurantData.id);
-        setCategories(menuData);
         
-        if (menuData.length > 0) {
-          setActiveCategory(menuData[0].id);
+        // Sort categories by display_order before setting state
+        const sortedCategories = [...menuData].sort((a, b) => {
+          const orderA = a.display_order ?? 1000;
+          const orderB = b.display_order ?? 1000;
+          return orderA - orderB;
+        });
+        
+        // Also sort the items within each category
+        sortedCategories.forEach(category => {
+          category.items = [...category.items].sort((a, b) => {
+            const orderA = a.display_order ?? 1000;
+            const orderB = b.display_order ?? 1000;
+            return orderA - orderB;
+          });
+        });
+        
+        setCategories(sortedCategories);
+        
+        if (sortedCategories.length > 0) {
+          setActiveCategory(sortedCategories[0].id);
         }
         
         setLoading(false);
@@ -754,9 +771,26 @@ const KioskView = () => {
       const cachedCategories = getCacheItem<CategoryWithItems[]>('categories', restaurant.id);
       if (cachedCategories) {
         console.log("Using cached categories");
-        setCategories(cachedCategories || []);
-        if (cachedCategories.length > 0) {
-          setActiveCategory(cachedCategories[0].id);
+        
+        // Sort cached categories by display_order before using them
+        const sortedCategories = [...cachedCategories].sort((a, b) => {
+          const orderA = a.display_order ?? 1000;
+          const orderB = b.display_order ?? 1000;
+          return orderA - orderB;
+        });
+        
+        // Also sort items within each category
+        sortedCategories.forEach(category => {
+          category.items = [...category.items].sort((a, b) => {
+            const orderA = a.display_order ?? 1000;
+            const orderB = b.display_order ?? 1000;
+            return orderA - orderB;
+          });
+        });
+        
+        setCategories(sortedCategories || []);
+        if (sortedCategories.length > 0) {
+          setActiveCategory(sortedCategories[0].id);
         }
         setLoading(false);
         return;
@@ -766,12 +800,29 @@ const KioskView = () => {
       if (!data) throw new Error("Restaurant not found");
       
       const menuData = await getMenuForRestaurant(data.id);
-      setCategories(menuData);
       
-      setCacheItem('categories', menuData, data.id);
+      // Sort the menuData before setting state or caching
+      const sortedMenuData = [...menuData].sort((a, b) => {
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      });
       
-      if (menuData.length > 0) {
-        setActiveCategory(menuData[0].id);
+      // Also sort items within each category
+      sortedMenuData.forEach(category => {
+        category.items = [...category.items].sort((a, b) => {
+          const orderA = a.display_order ?? 1000;
+          const orderB = b.display_order ?? 1000;
+          return orderA - orderB;
+        });
+      });
+      
+      setCategories(sortedMenuData);
+      
+      setCacheItem('categories', sortedMenuData, data.id);
+      
+      if (sortedMenuData.length > 0) {
+        setActiveCategory(sortedMenuData[0].id);
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -838,13 +889,30 @@ const KioskView = () => {
       if (!restaurant) return;
       
       const menuData = await getMenuForRestaurant(restaurant.id);
-      setCategories(menuData);
       
-      if (menuData.length > 0) {
-        setActiveCategory(menuData[0].id);
+      // Sort the menuData before setting state or caching
+      const sortedMenuData = [...menuData].sort((a, b) => {
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      });
+      
+      // Also sort items within each category
+      sortedMenuData.forEach(category => {
+        category.items = [...category.items].sort((a, b) => {
+          const orderA = a.display_order ?? 1000;
+          const orderB = b.display_order ?? 1000;
+          return orderA - orderB;
+        });
+      });
+      
+      setCategories(sortedMenuData);
+      
+      if (sortedMenuData.length > 0) {
+        setActiveCategory(sortedMenuData[0].id);
       }
       
-      setCacheItem('categories', menuData, restaurant.id);
+      setCacheItem('categories', sortedMenuData, restaurant.id);
       
       toast({
         title: t("menuRefreshed"),

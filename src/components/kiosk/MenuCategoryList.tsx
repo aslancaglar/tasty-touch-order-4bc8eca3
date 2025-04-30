@@ -14,10 +14,18 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   activeCategory,
   setActiveCategory
 }) => {
+  // Sort categories by display_order
+  const sortedCategories = [...categories].sort((a, b) => {
+    // If display_order is null/undefined, treat it as highest number (displayed last)
+    const orderA = a.display_order ?? 1000;
+    const orderB = b.display_order ?? 1000;
+    return orderA - orderB;
+  });
+
   return (
     <div className="p-4">
       <div className="space-y-2">
-        {categories.map(category => (
+        {sortedCategories.map(category => (
           <button 
             key={category.id} 
             onClick={() => setActiveCategory(category.id)} 

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -91,9 +90,16 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const imagePreloadQueue = useRef<string[]>([]);
   const isPreloadingRef = useRef<boolean>(false);
 
-  // We only want in-stock items
+  // Sort items by display_order and filter to only show in-stock items
   const filteredItems = useMemo(() => {
-    return items.filter(item => item.in_stock);
+    return items
+      .filter(item => item.in_stock)
+      .sort((a, b) => {
+        // If display_order is null/undefined, treat it as highest number (displayed last)
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      });
   }, [items]);
   
   // Pre-cache only visible items with intersection observer
