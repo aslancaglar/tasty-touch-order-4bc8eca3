@@ -1,10 +1,11 @@
 
-import React, { memo, useCallback } from "react";
-import { Check, Plus, Minus } from "lucide-react";
+import React, { memo, useCallback, useState } from "react";
+import { Check, Plus, Minus, ChevronUp, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
+
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
   isOpen: boolean;
@@ -70,13 +71,19 @@ const ToppingCategory = memo(({
   selectedCategory,
   onToggleTopping,
   t,
-  currencySymbol
+  currencySymbol,
+  onMoveCategory,
+  index,
+  totalCategories
 }: {
   category: any;
   selectedCategory: any;
   onToggleTopping: (categoryId: string, toppingId: string) => void;
   t: (key: string) => string;
   currencySymbol: string;
+  onMoveCategory?: (index: number, direction: 'up' | 'down') => void;
+  index?: number;
+  totalCategories?: number;
 }) => {
   // Sort toppings by display_order
   const sortedToppings = [...category.toppings].sort((a, b) => {
@@ -94,7 +101,33 @@ const ToppingCategory = memo(({
   } else if (toppingCount === 2) {
     gridCols = "grid-cols-2"; // 2 columns for 2 toppings
   }
-  return <div className="space-y-2">
+  
+  // Show reordering buttons only if the onMoveCategory function is provided
+  const showReorderButtons = !!onMoveCategory && typeof index === 'number' && typeof totalCategories === 'number';
+  
+  return <div className="space-y-2 border border-gray-100 p-3 rounded-md relative">
+      {showReorderButtons && (
+        <div className="absolute right-2 top-2 flex flex-col space-y-1">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7 rounded-full"
+            onClick={() => onMoveCategory(index, 'up')}
+            disabled={index === 0}
+          >
+            <ChevronUp className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7 rounded-full"
+            onClick={() => onMoveCategory(index, 'down')}
+            disabled={index === totalCategories - 1}
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
       <div className="font-bold text-lg flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
@@ -150,6 +183,41 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   currencySymbol
 }) => {
   if (!item) return null;
+  
+  // State for managing the local order of topping categories
+  const [localToppingCategories, setLocalToppingCategories] = useState<any[]>([]);
+
+  // Initialize localToppingCategories when item changes
+  React.useEffect(() => {
+    if (item?.toppingCategories) {
+      setLocalToppingCategories([...item.toppingCategories].sort((a, b) => {
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      }));
+    }
+  }, [item]);
+
+  // Move a category up or down in the order
+  const handleMoveCategory = useCallback((index: number, direction: 'up' | 'down') => {
+    const newCategories = [...localToppingCategories];
+    
+    if (direction === 'up' && index > 0) {
+      // Swap with the category above
+      [newCategories[index], newCategories[index - 1]] = [newCategories[index - 1], newCategories[index]];
+    } else if (direction === 'down' && index < newCategories.length - 1) {
+      // Swap with the category below
+      [newCategories[index], newCategories[index + 1]] = [newCategories[index + 1], newCategories[index]];
+    }
+    
+    // Update display_order property for all categories
+    const updatedCategories = newCategories.map((category, idx) => ({
+      ...category,
+      display_order: idx
+    }));
+    
+    setLocalToppingCategories(updatedCategories);
+  }, [localToppingCategories]);
 
   // Memoized price calculation to prevent recalculation on every render
   const calculateItemPrice = useCallback(() => {
@@ -183,22 +251,17 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
+  
   const handleQuantityDecrease = useCallback(() => {
     if (quantity > 1) onQuantityChange(quantity - 1);
   }, [quantity, onQuantityChange]);
+  
   const handleQuantityIncrease = useCallback(() => {
     onQuantityChange(quantity + 1);
   }, [quantity, onQuantityChange]);
 
-  // Sort topping categories by display_order if they exist
-  const sortedToppingCategories = item.toppingCategories 
-    ? [...item.toppingCategories].sort((a, b) => {
-        const orderA = a.display_order ?? 1000; // Default to a high number if undefined
-        const orderB = b.display_order ?? 1000; 
-        return orderA - orderB;
-      })
-    : [];
-
+  const filteredToppingCategories = localToppingCategories.filter(category => shouldShowToppingCategory(category));
+  
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
   
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
@@ -219,14 +282,17 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               <Option option={option} selectedOption={selectedOptions.find(o => o.optionId === option.id)} onToggleChoice={onToggleChoice} currencySymbol={currencySymbol} />
             </div>)}
 
-          {/* Toppings section - only show if there are toppings, using sorted categories */}
-          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => 
+          {/* Toppings section with reordering controls */}
+          {filteredToppingCategories.map((category, index) => 
             <ToppingCategory 
               key={category.id} 
               category={category} 
-              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
-              onToggleTopping={onToggleTopping} 
-              t={t} 
+              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)}
+              onToggleTopping={onToggleTopping}
+              onMoveCategory={handleMoveCategory}
+              index={index}
+              totalCategories={filteredToppingCategories.length}
+              t={t}
               currencySymbol={currencySymbol} 
             />
           )}
