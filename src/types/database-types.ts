@@ -1,3 +1,4 @@
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -10,7 +11,6 @@ export type Restaurant = {
   updated_at: string;
   ui_language?: string;
   currency?: string; // NEW: ISO 4217 code, e.g. "EUR", "USD", ...
-  pwa_icon?: string | null; // Added for PWA icon support
 };
 
 export type MenuCategory = {

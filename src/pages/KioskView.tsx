@@ -17,9 +17,6 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
-import PwaInstallPrompt from "@/components/kiosk/PwaInstallPrompt";
-import { generateManifest, registerServiceWorker } from "@/utils/pwa-utils";
-
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -27,7 +24,6 @@ type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
-
 const KioskView = () => {
   const {
     restaurantSlug
@@ -188,80 +184,6 @@ const KioskView = () => {
     handleCancel,
     fullReset
   } = useInactivityTimer(resetToWelcome);
-  const manifestUrlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    // Register service worker for PWA functionality
-    registerServiceWorker();
-    
-    // Clean up manifest blob URL when unmounting
-    return () => {
-      if (manifestUrlRef.current) {
-        URL.revokeObjectURL(manifestUrlRef.current);
-      }
-    };
-  }, []);
-  
-  useEffect(() => {
-    // Generate and inject manifest when restaurant data is available
-    if (restaurant) {
-      // Create manifest JSON
-      const manifestContent = generateManifest(restaurant);
-      
-      // Create a blob from the manifest content
-      const manifestBlob = new Blob([manifestContent], { type: 'application/json' });
-      
-      // Create a URL for the blob
-      const manifestURL = URL.createObjectURL(manifestBlob);
-      manifestUrlRef.current = manifestURL;
-      
-      // Create or update the manifest link tag
-      let manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
-      if (!manifestLink) {
-        manifestLink = document.createElement('link') as HTMLLinkElement;
-        manifestLink.rel = 'manifest';
-        document.head.appendChild(manifestLink);
-      }
-      manifestLink.setAttribute('href', manifestURL);
-      
-      // Set theme color
-      let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
-      if (!themeColorMeta) {
-        themeColorMeta = document.createElement('meta') as HTMLMetaElement;
-        themeColorMeta.setAttribute('name', 'theme-color');
-        document.head.appendChild(themeColorMeta);
-      }
-      themeColorMeta.setAttribute('content', '#4f46e5');
-      
-      // Set apple-touch-icon
-      let appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
-      if (!appleTouchIcon) {
-        appleTouchIcon = document.createElement('link') as HTMLLinkElement;
-        appleTouchIcon.rel = 'apple-touch-icon';
-        document.head.appendChild(appleTouchIcon);
-      }
-      appleTouchIcon.setAttribute('href', restaurant.pwa_icon || restaurant.image_url || '/placeholder.svg');
-      
-      // Set apple-mobile-web-app-title
-      let appTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]') as HTMLMetaElement;
-      if (!appTitle) {
-        appTitle = document.createElement('meta') as HTMLMetaElement;
-        appTitle.setAttribute('name', 'apple-mobile-web-app-title');
-        document.head.appendChild(appTitle);
-      }
-      appTitle.setAttribute('content', restaurant.name);
-      
-      // Set application name for Windows
-      let appName = document.querySelector('meta[name="application-name"]') as HTMLMetaElement;
-      if (!appName) {
-        appName = document.createElement('meta') as HTMLMetaElement;
-        appName.setAttribute('name', 'application-name');
-        document.head.appendChild(appName);
-      }
-      appName.setAttribute('content', restaurant.name);
-    }
-  }, [restaurant]);
-
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -986,7 +908,6 @@ const KioskView = () => {
         fullReset();
         handleStartOrder();
       }} uiLanguage={uiLanguage} />
-        {restaurant && <PwaInstallPrompt restaurant={restaurant} uiLanguage={uiLanguage} />}
       </div>;
   }
   if (showOrderTypeSelection) {
@@ -1041,9 +962,6 @@ const KioskView = () => {
       {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
-      
-      {restaurant && <PwaInstallPrompt restaurant={restaurant} uiLanguage={uiLanguage} />}
     </div>;
 };
-
 export default KioskView;
