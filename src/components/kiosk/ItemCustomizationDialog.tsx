@@ -1,3 +1,4 @@
+
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -188,7 +189,18 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   const handleQuantityIncrease = useCallback(() => {
     onQuantityChange(quantity + 1);
   }, [quantity, onQuantityChange]);
+
+  // Sort topping categories by display_order if they exist
+  const sortedToppingCategories = item.toppingCategories 
+    ? [...item.toppingCategories].sort((a, b) => {
+        const orderA = a.display_order ?? 1000; // Default to a high number if undefined
+        const orderB = b.display_order ?? 1000; 
+        return orderA - orderB;
+      })
+    : [];
+
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
+  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
@@ -207,8 +219,17 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               <Option option={option} selectedOption={selectedOptions.find(o => o.optionId === option.id)} onToggleChoice={onToggleChoice} currencySymbol={currencySymbol} />
             </div>)}
 
-          {/* Toppings section - only show if there are toppings */}
-          {item.toppingCategories && item.toppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => <ToppingCategory key={category.id} category={category} selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} onToggleTopping={onToggleTopping} t={t} currencySymbol={currencySymbol} />)}
+          {/* Toppings section - only show if there are toppings, using sorted categories */}
+          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => 
+            <ToppingCategory 
+              key={category.id} 
+              category={category} 
+              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
+              onToggleTopping={onToggleTopping} 
+              t={t} 
+              currencySymbol={currencySymbol} 
+            />
+          )}
         </div>
         
         <DialogFooter className="mt-3 pt-2">
@@ -230,4 +251,5 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       </DialogContent>
     </Dialog>;
 };
+
 export default memo(ItemCustomizationDialog);

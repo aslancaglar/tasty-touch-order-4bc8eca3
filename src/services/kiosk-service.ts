@@ -516,9 +516,81 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
     })
   );
 
+  // Fetch topping categories linked to this menu item
+  const { data: toppingCategoryRelations, error: relError } = await supabase
+    .from("menu_item_topping_categories")
+    .select("topping_category_id, display_order")
+    .eq("menu_item_id", menuItemId)
+    .order("display_order", { ascending: true });
+
+  if (relError) {
+    console.error("Error fetching menu item topping category relations:", relError);
+    return {
+      ...menuItem,
+      options: optionsWithChoices,
+      toppingCategories: []
+    };
+  }
+
+  // Get the ids of the topping categories
+  const toppingCategoryIds = toppingCategoryRelations.map(rel => rel.topping_category_id);
+  
+  // Create a map of id to display_order for sorting later
+  const displayOrderMap = toppingCategoryRelations.reduce((map, rel) => {
+    map[rel.topping_category_id] = rel.display_order ?? 1000; // Default to high number if null
+    return map;
+  }, {} as Record<string, number>);
+
+  if (toppingCategoryIds.length === 0) {
+    return {
+      ...menuItem,
+      options: optionsWithChoices,
+      toppingCategories: []
+    };
+  }
+
+  // Fetch the actual topping categories
+  const { data: toppingCategories, error: tcError } = await supabase
+    .from("topping_categories")
+    .select("*")
+    .in("id", toppingCategoryIds);
+
+  if (tcError) {
+    console.error("Error fetching topping categories:", tcError);
+    return {
+      ...menuItem,
+      options: optionsWithChoices,
+      toppingCategories: []
+    };
+  }
+
+  // Now fetch toppings for each category and create the full structure
+  const toppingCategoriesWithToppings = await Promise.all(
+    toppingCategories.map(async (category) => {
+      const toppings = await getToppingsByCategory(category.id);
+      
+      // Use the display_order from the relation table
+      const relationDisplayOrder = displayOrderMap[category.id];
+      
+      return {
+        ...category,
+        display_order: relationDisplayOrder,  // Use relation display_order for category sorting
+        toppings
+      };
+    })
+  );
+
+  // Sort the topping categories based on display_order from the relation table
+  const sortedCategories = toppingCategoriesWithToppings.sort((a, b) => {
+    const orderA = a.display_order ?? 1000;
+    const orderB = b.display_order ?? 1000;
+    return orderA - orderB;
+  });
+
   return {
     ...menuItem,
-    options: optionsWithChoices
+    options: optionsWithChoices,
+    toppingCategories: sortedCategories
   };
 };
 
