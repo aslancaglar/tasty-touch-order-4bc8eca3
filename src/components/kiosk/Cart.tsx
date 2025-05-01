@@ -189,7 +189,7 @@ const Cart: React.FC<CartProps> = ({
                               <Minus className="h-3 w-3" />
                             </Button>
                             <span className="w-8 text-center font-medium">{item.quantity}</span>
-                            <Button variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}>
+                            <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="h-8 w-8 rounded-full p-0 bg-violet-800 hover:bg-violet-700 text-white">
                               <Plus className="h-3 w-3" />
                             </Button>
                           </div>
