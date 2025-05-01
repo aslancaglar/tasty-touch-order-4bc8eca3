@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
@@ -103,7 +102,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
           );
           
           // Check if we already have ordering info from existing menu item
-          if (initialValues.id) {
+          if (initialValues?.id) {
             const { data: existingOrders } = await supabase
               .from("menu_item_topping_categories")
               .select("*")

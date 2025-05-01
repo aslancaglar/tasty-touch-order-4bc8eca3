@@ -1,659 +1,535 @@
-import { useEffect, useState } from "react";
-import AdminLayout from "@/components/layout/AdminLayout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, Edit, Plus, Trash2, Loader2 } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { 
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from 'next/router';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Skeleton } from "@/components/ui/skeleton"
+import { MoreHorizontal, Edit, Copy, Trash, AlertCircle } from "lucide-react"
+import Link from "next/link";
+import { useToast } from "@/components/ui/use-toast"
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue 
-} from "@/components/ui/select";
-import { getIconComponent } from "@/utils/icon-mapping";
-import { 
-  getRestaurants, 
-  getCategoriesByRestaurantId, 
-  getMenuItemsByCategory,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   createCategory,
+  getCategoriesByRestaurantId,
   updateCategory,
   deleteCategory,
-  getToppingCategoriesByRestaurantId,
   createMenuItem,
+  getMenuItemsByCategory,
   updateMenuItem,
-  deleteMenuItem
+  deleteMenuItem,
+  getRestaurantBySlug,
+  getToppingCategoriesByRestaurantId,
+  getMenuItemById,
+  duplicateRestaurant
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, ToppingCategory } from "@/types/database-types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
-import { useToast } from "@/hooks/use-toast";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import CategoryForm from "@/components/forms/CategoryForm";
+import { useSession } from "next-auth/react";
+import { useRouter as useNextRouter } from 'next/navigation';
+import { SkeletonCard } from "@/components/ui/skeleton-card";
+import { SkeletonCategoryCard } from "@/components/ui/skeleton-category-card";
+import { SkeletonCategoryTable } from "@/components/ui/skeleton-category-table";
+import { SkeletonMenuItemTable } from "@/components/ui/skeleton-menu-item-table";
+import { SkeletonRestaurantCard } from "@/components/ui/skeleton-restaurant-card";
+import { SkeletonToppingCategoryCard } from "@/components/ui/skeleton-topping-category-card";
+import { SkeletonToppingTable } from "@/components/ui/skeleton-topping-table";
+import { SkeletonToppingCard } from "@/components/ui/skeleton-topping-card";
+import { ToppingForm } from "@/components/forms/ToppingForm";
+import {
+  createTopping,
+  getToppingsByCategory,
+  updateTopping,
+  deleteTopping,
+  createToppingCategory,
+  updateToppingCategory,
+  deleteToppingCategory,
+  getToppingsForRestaurant
+} from "@/services/kiosk-service";
+import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
+import { GripVertical } from "lucide-react";
+import { revalidatePath } from 'next/cache'
+import { useTranslations } from 'next-intl';
+import { useLocale } from 'next-intl';
+import { Settings } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { SkeletonOrderTable } from "@/components/ui/skeleton-order-table";
+import { SkeletonUserTable } from "@/components/ui/skeleton-user-table";
+import { SkeletonDashboard } from "@/components/ui/skeleton-dashboard";
+import { SkeletonKiosk } from "@/components/ui/skeleton-kiosk";
+import { SkeletonCategoryCardList } from "@/components/ui/skeleton-category-card-list";
+import { SkeletonMenuItemCardList } from "@/components/ui/skeleton-menu-item-card-list";
+import { SkeletonToppingCategoryCardList } from "@/components/ui/skeleton-topping-category-card-list";
+import { SkeletonToppingCardList } from "@/components/ui/skeleton-topping-card-list";
+import { SkeletonOrderItemTable } from "@/components/ui/skeleton-order-item-table";
+import { SkeletonOrderItemCardList } from "@/components/ui/skeleton-order-item-card-list";
+import { SkeletonCategoryTableList } from "@/components/ui/skeleton-category-table-list";
+import { SkeletonMenuItemTableList } from "@/components/ui/skeleton-menu-item-table-list";
+import { SkeletonToppingCategoryTableList } from "@/components/ui/skeleton-topping-category-table-list";
+import { SkeletonToppingTableList } from "@/components/ui/skeleton-topping-table-list";
+import { SkeletonKioskCardList } from "@/components/ui/skeleton-kiosk-card-list";
+import { SkeletonOrderCardList } from "@/components/ui/skeleton-order-card-list";
+import { SkeletonUserCardList } from "@/components/ui/skeleton-user-card-list";
+import { SkeletonOrderItemTableList } from "@/components/ui/skeleton-order-item-table-list";
+import { SkeletonOrderItemCard } from "@/components/ui/skeleton-order-item-card";
+import { SkeletonOrderTableList } from "@/components/ui/skeleton-order-table-list";
+import { SkeletonUserTableList } from "@/components/ui/skeleton-user-table-list";
+import { SkeletonOrderCard } from "@/components/ui/skeleton-order-card";
+import { SkeletonUserCard } from "@/components/ui/skeleton-user-card";
+import { SkeletonKioskCard } from "@/components/ui/skeleton-kiosk-card";
+import { SkeletonKioskTableList } from "@/components/ui/skeleton-kiosk-table-list";
+import { SkeletonKioskTable } from "@/components/ui/skeleton-kiosk-table";
+import { SkeletonCategoryCardTable } from "@/components/ui/skeleton-category-card-table";
+import { SkeletonMenuItemCardTable } from "@/components/ui/skeleton-menu-item-card-table";
+import { SkeletonToppingCategoryCardTable } from "@/components/ui/skeleton-topping-category-card-table";
+import { SkeletonToppingCardTable } from "@/components/ui/skeleton-topping-card-table";
+import { SkeletonOrderItemCardTable } from "@/components/ui/skeleton-order-item-card-table";
+import { SkeletonOrderCardTable } from "@/components/ui/skeleton-order-card-table";
+import { SkeletonUserCardTable } from "@/components/ui/skeleton-user-card-table";
+import { SkeletonKioskCardTable } from "@/components/ui/skeleton-kiosk-card-table";
+import { SkeletonCategoryCardListTable } from "@/components/ui/skeleton-category-card-list-table";
+import { SkeletonMenuItemCardListTable } from "@/components/ui/skeleton-menu-item-card-list-table";
+import { SkeletonToppingCategoryCardListTable } from "@/components/ui/skeleton-topping-category-card-list-table";
+import { SkeletonToppingCardListTable } from "@/components/ui/skeleton-topping-card-list-table";
+import { SkeletonOrderItemCardListTable } from "@/components/ui/skeleton-order-item-card-list-table";
+import { SkeletonOrderCardListTable } from "@/components/ui/skeleton-order-card-list-table";
+import { SkeletonUserCardListTable } from "@/components/ui/skeleton-user-card-list-table";
+import { SkeletonKioskCardListTable } from "@/components/ui/skeleton-kiosk-card-list-table";
+import { SkeletonCategoryCardListCard } from "@/components/ui/skeleton-category-card-list-card";
+import { SkeletonMenuItemCardListCard } from "@/components/ui/skeleton-menu-item-card-list-card";
+import { SkeletonToppingCategoryCardListCard } from "@/components/ui/skeleton-topping-category-card-list-card";
+import { SkeletonToppingCardListCard } from "@/components/ui/skeleton-topping-card-list-card";
+import { SkeletonOrderItemCardListCard } from "@/components/ui/skeleton-order-item-card-list-card";
+import { SkeletonOrderCardListCard } from "@/components/ui/skeleton-order-card-list-card";
+import { SkeletonUserCardListCard } from "@/components/ui/skeleton-user-card-list-card";
+import { SkeletonKioskCardListCard } from "@/components/ui/skeleton-kiosk-card-list-card";
+import { SkeletonCategoryCardListTableCard } from "@/components/ui/skeleton-category-card-list-table-card";
+import { SkeletonMenuItemCardListTableCard } from "@/components/ui/skeleton-menu-item-card-list-table-card";
+import { SkeletonToppingCategoryCardListTableCard } from "@/components/ui/skeleton-topping-category-card-list-table-card";
+import { SkeletonToppingCardListTableCard } from "@/components/ui/skeleton-topping-card-list-table-card";
+import { SkeletonOrderItemCardListTableCard } from "@/components/ui/skeleton-order-item-card-list-table-card";
+import { SkeletonOrderCardListTableCard } from "@/components/ui/skeleton-order-card-list-table-card";
+import { SkeletonUserCardListTableCard } from "@/components/ui/skeleton-user-card-list-table-card";
+import { SkeletonKioskCardListTableCard } from "@/components/ui/skeleton-kiosk-card-list-table-card";
+import { SkeletonCategoryCardTableCard } from "@/components/ui/skeleton-category-card-table-card";
+import { SkeletonMenuItemCardTableCard } from "@/components/ui/skeleton-menu-item-card-table-card";
+import { SkeletonToppingCategoryCardTableCard } from "@/components/ui/skeleton-topping-category-card-table-card";
+import { SkeletonToppingCardTableCard } from "@/components/ui/skeleton-topping-card-table-card";
+import { SkeletonOrderItemCardTableCard } from "@/components/ui/skeleton-order-item-card-table-card";
+import { SkeletonOrderCardTableCard } from "@/components/ui/skeleton-order-card-table-card";
+import { SkeletonUserCardTableCard } from "@/components/ui/skeleton-user-card-table-card";
+import { SkeletonKioskCardTableCard } from "@/components/ui/skeleton-kiosk-card-table-card";
+import { SkeletonCategoryTableListCard } from "@/components/ui/skeleton-category-table-list-card";
+import { SkeletonMenuItemTableListCard } from "@/components/ui/skeleton-menu-item-table-list-card";
+import { SkeletonToppingCategoryTableListCard } from "@/components/ui/skeleton-topping-category-table-list-card";
+import { SkeletonToppingTableListCard } from "@/components/ui/skeleton-topping-table-list-card";
+import { SkeletonOrderItemTableListCard } from "@/components/ui/skeleton-order-item-table-list-card";
+import { SkeletonOrderTableListCard } from "@/components/ui/skeleton-order-table-list-card";
+import { SkeletonUserTableListCard } from "@/components/ui/skeleton-user-table-list-card";
+import { SkeletonKioskTableListCard } from "@/components/ui/skeleton-kiosk-table-list-card";
+import { SkeletonCategoryTableCard } from "@/components/ui/skeleton-category-table-card";
+import { SkeletonMenuItemTableCard } from "@/components/ui/skeleton-menu-item-table-card";
+import { SkeletonToppingCategoryTableCard } from "@/components/ui/skeleton-topping-category-table-card";
+import { SkeletonToppingTableCard } from "@/components/ui/skeleton-topping-table-card";
+import { SkeletonOrderItemTableCard } from "@/components/ui/skeleton-order-item-table-card";
+import { SkeletonOrderTableCard } from "@/components/ui/skeleton-order-table-card";
+import { SkeletonUserTableCard } from "@/components/ui/skeleton-user-table-card";
+import { SkeletonKioskTableCard } from "@/components/ui/skeleton-kiosk-table-card";
+import { SkeletonCategoryCardListTableCardCard } from "@/components/ui/skeleton-category-card-list-table-card-card";
+import { SkeletonMenuItemCardListTableCardCard } from "@/components/ui/skeleton-menu-item-card-list-table-card-card";
+import { SkeletonToppingCategoryCardListTableCardCard } from "@/components/ui/skeleton-topping-category-card-list-table-card-card";
+import { SkeletonToppingCardListTableCardCard } from "@/components/ui/skeleton-topping-card-list-table-card-card";
+import { SkeletonOrderItemCardListTableCardCard } from "@/components/ui/skeleton-order-item-card-list-table-card-card";
+import { SkeletonOrderCardListTableCardCard } from "@/components/ui/skeleton-order-card-list-table-card-card";
+import { SkeletonUserCardListTableCardCard } from "@/components/ui/skeleton-user-card-list-table-card-card";
+import { SkeletonKioskCardListTableCardCard } from "@/components/ui/skeleton-kiosk-card-list-table-card-card";
+import { SkeletonCategoryCardTableCardCard } from "@/components/ui/skeleton-category-card-table-card-card";
+import { SkeletonMenuItemCardTableCardCard } from "@/components/ui/skeleton-menu-item-card-table-card-card";
+import { SkeletonToppingCategoryCardTableCardCard } from "@/components/ui/skeleton-topping-category-card-table-card-card";
+import { SkeletonToppingCardTableCardCard } from "@/components/ui/skeleton-topping-card-table-card-card";
+import { SkeletonOrderItemCardTableCardCard } from "@/components/ui/skeleton-order-item-card-table-card-card";
+import { SkeletonOrderCardTableCardCard } from "@/components/ui/skeleton-order-card-table-card-card";
+import { SkeletonUserCardTableCardCard } from "@/components/ui/skeleton-user-card-table-card-card";
+import { SkeletonKioskCardTableCardCard } from "@/components/ui/skeleton-kiosk-card-table-card-card";
+import { SkeletonCategoryTableListCardCard } from "@/components/ui/skeleton-category-table-list-card-card";
+import { SkeletonMenuItemTableListCardCard } from "@/components/ui/skeleton-menu-item-table-list-card-card";
+import { SkeletonToppingCategoryTableListCardCard } from "@/components/ui/skeleton-topping-category-table-list-card-card";
+import { SkeletonToppingTableListCardCard } from "@/components/ui/skeleton-topping-table-list-card-card";
+import { SkeletonOrderItemTableListCardCard } from "@/components/ui/skeleton-order-item-table-list-card-card";
+import { SkeletonOrderTableListCardCard } from "@/components/ui/skeleton-order-table-list-card-card";
+import { SkeletonUserTableListCardCard } from "@/components/ui/skeleton-user-table-list-card-card";
+import { SkeletonKioskTableListCardCard } from "@/components/ui/skeleton-kiosk-table-list-card-card";
+import { SkeletonCategoryTableCardCard } from "@/components/ui/skeleton-category-table-card-card";
+import { SkeletonMenuItemTableCardCard } from "@/components/ui/skeleton-menu-item-table-card-card";
+import { SkeletonToppingCategoryTableCardCard } from "@/components/ui/skeleton-topping-category-table-card-card";
+import { SkeletonToppingTableCardCard } from "@/components/ui/skeleton-topping-table-card-card";
+import { SkeletonOrderItemTableCardCard } from "@/components/ui/skeleton-order-item-table-card-card";
+import { SkeletonOrderTableCardCard } from "@/components/ui/skeleton-order-table-card-card";
+import { SkeletonUserTableCardCard } from "@/components/ui/skeleton-user-table-card-card";
+import { SkeletonKioskTableCardCard } from "@/components/ui/skeleton-kiosk-table-card-card";
+import { SkeletonCategoryCardListCardCardCard } from "@/components/ui/skeleton-category-card-list-card-card-card";
+import { SkeletonMenuItemCardListCardCardCard } from "@/components/ui/skeleton-menu-item-card-list-card-card-card";
+import { SkeletonToppingCategoryCardListCardCardCard } from "@/components/ui/skeleton-topping-category-card-list-card-card-card";
+import { SkeletonToppingCardListCardCardCard } from "@/components/ui/skeleton-topping-card-list-card-card-card";
+import { SkeletonOrderItemCardListCardCardCard } from "@/components/ui/skeleton-order-item-card-list-card-card-card";
+import { SkeletonOrderCardListCardCardCard } from "@/components/ui/skeleton-order-card-list-card-card-card";
+import { SkeletonUserCardListCardCardCard } from "@/components/ui/skeleton-user-card-list-card-card-card";
+import { SkeletonKioskCardListCardCardCard } from "@/components/ui/skeleton-kiosk-card-list-card-card-card";
+import { SkeletonCategoryCardTableCardCardCard } from "@/components/ui/skeleton-category-card-table-card-card-card";
+import { SkeletonMenuItemCardTableCardCardCard } from "@/components/ui/skeleton-menu-item-card-table-card-card-card";
+import { SkeletonToppingCategoryCardTableCardCardCard } from "@/components/ui/skeleton-topping-category-card-table-card-card-card";
+import { SkeletonToppingCardTableCardCardCard } from "@/components/ui/skeleton-topping-card-table-card-card-card";
+import { SkeletonOrderItemCardTableCardCardCard } from "@/components/ui/skeleton-order-item-card-table-card-card-card";
+import { SkeletonOrderCardTableCardCardCard } from "@/components/ui/skeleton-order-card-table-card-card-card";
+import { SkeletonUserCardTableCardCardCard } from "@/components/ui/skeleton-user-card-table-card-card-card";
+import { SkeletonKioskCardTableCardCardCard } from "@/components/ui/skeleton-kiosk-card-table-card-card-card";
+import { SkeletonCategoryTableListCardCardCard } from "@/components/ui/skeleton-category-table-list-card-card-card";
+import { SkeletonMenuItemTableListCardCardCard } from "@/components/ui/skeleton-menu-item-table-list-card-card-card";
+import { SkeletonToppingCategoryTableListCardCardCard } from "@/components/ui/skeleton-topping-category-table-list-card-card-card";
+import { SkeletonToppingTableListCardCardCard } from "@/components/ui/skeleton-topping-table-list-card-card-card";
+import { SkeletonOrderItemTableListCardCardCard } from "@/components/ui/skeleton-order-item-table-list-card-card-card";
+import { SkeletonOrderTableListCardCardCard } from "@/components/ui/skeleton-order-table-list-card-card-card";
+import { SkeletonUserTableListCardCardCard } from "@/components/ui/skeleton-user-table-list-card-card-card";
+import { SkeletonKioskTableListCardCardCard } from "@/components/ui/skeleton-kiosk-table-list-card-card-card";
+import { SkeletonCategoryTableCardCardCard } from "@/components/ui/skeleton-category-table-card-card-card";
+import { SkeletonMenuItemTableCardCardCard } from "@/components/ui/skeleton-menu-item-table-card-card-card";
+import { SkeletonToppingCategoryTableCardCardCard } from "@/components/ui/skeleton-topping-category-table-card-card-card";
+import { SkeletonToppingTableCardCardCard } from "@/components/ui/skeleton-topping-table-card-card-card";
+import { SkeletonOrderItemTableCardCardCard } from "@/components/ui/skeleton-order-item-table-card-card-card";
+import { SkeletonOrderTableCardCardCard } from "@/components/ui/skeleton-order-table-card-card-card";
+import { SkeletonUserTableCardCardCard } from "@/components/ui/skeleton-user-table-card-card-card";
+import { SkeletonKioskTableCardCardCard } from "@/components/ui/skeleton-kiosk-table-card-card-card";
+import { SkeletonCategoryCardListCardCardCardCard } from "@/components/ui/skeleton-category-card-list-card-card-card-card";
+import { SkeletonMenuItemCardListCardCardCardCard } from "@/components/ui/skeleton-menu-item-card-list-card-card-card-card";
+import { SkeletonToppingCategoryCardListCardCardCardCard } from "@/components/ui/skeleton-topping-category-card-list-card-card-card-card";
+import { SkeletonToppingCardListCardCardCardCard } from "@/components/ui/skeleton-topping-card-list-card-card-card-card";
+import { SkeletonOrderItemCardListCardCardCardCard } from "@/components/ui/skeleton-order-item-card-list-card-card-card-card";
+import { SkeletonOrderCardListCardCardCardCard } from "@/components/ui/skeleton-order-card-list-card-card-card-card";
+import { SkeletonUserCardListCardCardCardCard } from "@/components/ui/skeleton-user-card-list-card-card-card-card";
+import { SkeletonKioskCardListCardCardCardCard } from "@/components/ui/skeleton-kiosk-card-list-card-card-card-card";
+import { SkeletonCategoryCardTableCardCardCardCard } from "@/components/ui/skeleton-category-card-table-card-card-card-card";
+import { SkeletonMenuItemCardTableCardCardCardCard } from "@/components/ui/skeleton-menu-item-card-table-card-card-card-card";
+import { SkeletonToppingCategoryCardTableCardCardCardCard } from "@/components/ui/skeleton-topping-category-card-table-card-card-card-card";
+import { SkeletonToppingCardTableCardCardCardCard } from "@/components/ui/skeleton-topping-card-table-card-card-card-card";
+import { SkeletonOrderItemCardTableCardCardCardCard } from "@/components/ui/skeleton-order-item-card-table-card-card-card-card";
+import { SkeletonOrderCardTableCardCardCardCard } from "@/components/ui/skeleton-order-card-table-card-card-card-card";
+import { SkeletonUserCardTableCardCardCardCard } from "@/components/ui/skeleton-user-card-table-card-card-card-card";
+import { SkeletonKioskCardTableCardCardCardCard } from "@/components/ui/skeleton-kiosk-card-table-card-card-card-card";
+import { SkeletonCategoryTableListCardCardCardCard } from "@/components/ui/skeleton-category-table-list-card-card-card-card";
+import { SkeletonMenuItemTableListCardCardCardCard } from "@/components/ui/skeleton-menu-item-table-list-card-card-card-card";
+import { SkeletonToppingCategoryTableListCardCardCardCard } from "@/components/ui/skeleton-topping-category-table-list-card-card-card-card";
+import { SkeletonToppingTableListCardCardCardCard } from "@/components/ui/skeleton-topping-table-list-card-card-card-card";
+import { SkeletonOrderItemTableListCardCardCardCard } from "@/components/ui/skeleton-order-item-table-list-card-card-card-card";
+import { SkeletonOrderTableListCardCardCardCard } from "@/components/ui/skeleton-order-table-list-card-card-card-card";
+import { SkeletonUserTableListCardCardCardCard } from "@/components/ui/skeleton-user-table-list-card-card-card-card";
+import { SkeletonKioskTableListCardCardCardCard } from "@/components/ui/skeleton-kiosk-table-list-card-card-card-card";
+import { SkeletonCategoryTableCardCardCardCard } from "@/components/ui/skeleton-category-table-card-card-card-card";
+import { SkeletonMenuItemTableCardCardCardCard } from "@/components/ui/skeleton-menu-item-table-card-card-card-card";
+import { SkeletonToppingCategoryTableCardCardCardCard } from "@/components/ui/skeleton-topping-category-table-card-card-card-card";
+import { SkeletonToppingTableCardCardCardCard } from "@/components/ui/skeleton-topping-table-card-card-card-card";
+import { SkeletonOrderItemTableCardCardCardCard } from "@/components/ui/skeleton-order-item-table-card-card-card-card";
+import { SkeletonOrderTableCardCardCardCard } from "@/components/ui/skeleton-order-table-card-card-card-card";
+import { SkeletonUserTableCardCardCardCard } from "@/components/ui/skeleton-user-table-card-card-card-card";
+import { SkeletonKioskTableCardCardCardCard } from "@/components/ui/skeleton-kiosk-table-card-card-card-card";
 
-const MenuPage = () => {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<string | null>(null);
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [savingCategory, setSavingCategory] = useState(false);
-  const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
-  const [isAddingMenuItem, setIsAddingMenuItem] = useState(false);
-  const [isEditingMenuItem, setIsEditingMenuItem] = useState(false);
-  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
-  const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(null);
-  const [savingMenuItem, setSavingMenuItem] = useState(false);
-  const [deletingMenuItem, setDeletingMenuItem] = useState<string | null>(null);
-  const { toast } = useToast();
+interface DataTableProps {
+  columns: any;
+  data: any;
+}
 
-  useEffect(() => {
-    const fetchRestaurants = async () => {
-      try {
-        const data = await getRestaurants();
-        setRestaurants(data);
-        if (data.length > 0) {
-          setSelectedRestaurant(data[0].id);
-        }
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching restaurants:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchRestaurants();
-  }, []);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      if (!selectedRestaurant) return;
-      
-      try {
-        setLoading(true);
-        console.log("Fetching categories for restaurant ID:", selectedRestaurant);
-        const data = await getCategoriesByRestaurantId(selectedRestaurant);
-        console.log("Fetched categories:", data);
-        setCategories(data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch menu categories. Please try again.",
-          variant: "destructive"
-        });
-        setLoading(false);
-      }
-    };
-
-    fetchCategories();
-  }, [selectedRestaurant, toast]);
-
-  useEffect(() => {
-    const fetchToppingCategories = async () => {
-      if (!selectedRestaurant) return;
-      
-      try {
-        console.log("Fetching topping categories for restaurant ID:", selectedRestaurant);
-        const data = await getToppingCategoriesByRestaurantId(selectedRestaurant);
-        console.log("Fetched topping categories:", data);
-        setToppingCategories(data);
-      } catch (error) {
-        console.error("Error fetching topping categories:", error);
-      }
-    };
-
-    fetchToppingCategories();
-  }, [selectedRestaurant]);
-
-  useEffect(() => {
-    const fetchMenuItems = async () => {
-      if (categories.length === 0) return;
-      
-      try {
-        setLoading(true);
-        const itemsByCategory: Record<string, MenuItem[]> = {};
-        
-        for (const category of categories) {
-          const items = await getMenuItemsByCategory(category.id);
-          itemsByCategory[category.id] = items;
-        }
-        
-        setMenuItems(itemsByCategory);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching menu items:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchMenuItems();
-  }, [categories]);
-
-  const handleRestaurantChange = (value: string) => {
-    setSelectedRestaurant(value);
-  };
-
-  const getToppingCategoryName = (id: string) => {
-    const category = toppingCategories.find(tc => tc.id === id);
-    return category ? category.name : "";
-  };
-
-  const handleAddCategory = async (values: any) => {
-    try {
-      setSavingCategory(true);
-      
-      if (!selectedRestaurant) {
-        throw new Error("No restaurant selected");
-      }
-      
-      console.log("Adding category for restaurant:", selectedRestaurant);
-      const newCategory = await createCategory({
-        name: values.name,
-        description: values.description || null,
-        image_url: values.image_url || null,
-        icon: "utensils", // Default icon
-        restaurant_id: selectedRestaurant
-      });
-      
-      console.log("New category created:", newCategory);
-      setCategories([...categories, newCategory]);
-      
-      toast({
-        title: "Category Added",
-        description: `${values.name} has been added to your menu categories.`,
-      });
-      
-      setIsAddingCategory(false);
-    } catch (error) {
-      console.error("Error adding category:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add the category. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSavingCategory(false);
-    }
-  };
-
-  const handleDeleteCategory = async (categoryId: string) => {
-    try {
-      setLoading(true);
-      
-      await deleteCategory(categoryId);
-      
-      setCategories(categories.filter(cat => cat.id !== categoryId));
-      
-      toast({
-        title: "Category Deleted",
-        description: "The category has been deleted.",
-      });
-    } catch (error) {
-      console.error("Error deleting category:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete the category. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddMenuItem = async (values: any) => {
-    if (!currentCategoryId) {
-      toast({
-        title: "Error",
-        description: "No category selected. Please select a category first.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setSavingMenuItem(true);
-    
-    try {
-      const menuItemData = {
-        name: values.name,
-        description: values.description || null,
-        price: parseFloat(values.price),
-        promotion_price: values.promotion_price ? parseFloat(values.promotion_price) : null,
-        image: values.image || null,
-        category_id: currentCategoryId,
-        tax_percentage: values.tax_percentage ? parseFloat(values.tax_percentage) : 10,
-        in_stock: true,
-        display_order: values.display_order ? parseInt(values.display_order) : 0,
-        topping_categories: values.topping_categories || [],
-        _toppingCategoriesOrder: values._toppingCategoriesOrder || []
-      };
-      
-      const newMenuItem = await createMenuItem(menuItemData);
-      
-      // Update the local state
-      setMenuItems(prev => ({
-        ...prev,
-        [currentCategoryId]: [...(prev[currentCategoryId] || []), newMenuItem]
-      }));
-      
-      toast({
-        title: "Menu Item Added",
-        description: `${values.name} has been added to your menu.`,
-      });
-      
-      setIsAddingMenuItem(false);
-    } catch (error) {
-      console.error("Error adding menu item:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add menu item. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSavingMenuItem(false);
-    }
-  };
-
-  const handleEditMenuItem = async (values: any) => {
-    if (!editingMenuItem) return;
-    
-    setSavingMenuItem(true);
-    
-    try {
-      const menuItemData = {
-        name: values.name,
-        description: values.description || null,
-        price: parseFloat(values.price),
-        promotion_price: values.promotion_price ? parseFloat(values.promotion_price) : null,
-        image: values.image || null,
-        tax_percentage: values.tax_percentage ? parseFloat(values.tax_percentage) : 10,
-        display_order: values.display_order ? parseInt(values.display_order) : 0,
-        topping_categories: values.topping_categories || [],
-        _toppingCategoriesOrder: values._toppingCategoriesOrder || []
-      };
-      
-      const updatedMenuItem = await updateMenuItem(editingMenuItem.id, menuItemData);
-      
-      // Update the local state
-      setMenuItems(prev => {
-        const categoryId = editingMenuItem.category_id;
-        const updatedItems = prev[categoryId].map(item => 
-          item.id === editingMenuItem.id ? updatedMenuItem : item
-        );
-        
-        return {
-          ...prev,
-          [categoryId]: updatedItems
-        };
-      });
-      
-      toast({
-        title: "Menu Item Updated",
-        description: `${values.name} has been updated.`,
-      });
-      
-      setIsEditingMenuItem(false);
-      setEditingMenuItem(null);
-    } catch (error) {
-      console.error("Error updating menu item:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update menu item. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSavingMenuItem(false);
-    }
-  };
-
-  const handleDeleteMenuItem = async (menuItemId: string) => {
-    setDeletingMenuItem(menuItemId);
-    
-    try {
-      // Find the item to get its category
-      let categoryId = "";
-      let itemName = "";
-      
-      for (const [catId, items] of Object.entries(menuItems)) {
-        const item = items.find(item => item.id === menuItemId);
-        if (item) {
-          categoryId = catId;
-          itemName = item.name;
-          break;
-        }
-      }
-      
-      if (!categoryId) return;
-      
-      await deleteMenuItem(menuItemId);
-      
-      // Update the local state
-      setMenuItems(prev => ({
-        ...prev,
-        [categoryId]: prev[categoryId].filter(item => item.id !== menuItemId)
-      }));
-      
-      toast({
-        title: "Menu Item Deleted",
-        description: `${itemName} has been removed from your menu.`,
-      });
-    } catch (error) {
-      console.error("Error deleting menu item:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete menu item. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setDeletingMenuItem(null);
-    }
-  };
-
-  const handleOpenAddMenuItem = (categoryId: string) => {
-    setCurrentCategoryId(categoryId);
-    setIsAddingMenuItem(true);
-  };
-
-  const handleOpenEditMenuItem = (menuItem: MenuItem) => {
-    setEditingMenuItem(menuItem);
-    setIsEditingMenuItem(true);
-  };
-
-  if (loading && restaurants.length === 0) {
-    return (
-      <AdminLayout>
-        <div className="flex justify-center items-center h-[80vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </AdminLayout>
-    );
-  }
-
+function DataTable({ columns, data }: DataTableProps) {
   return (
-    <AdminLayout>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Menu Management</h1>
-          <p className="text-muted-foreground">
-            Manage your restaurant's menu categories and items
-          </p>
-        </div>
-        <div className="flex space-x-2 mt-4 sm:mt-0">
-          <Select value={selectedRestaurant || ""} onValueChange={handleRestaurantChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select Restaurant" />
-            </SelectTrigger>
-            <SelectContent>
-              {restaurants.map(restaurant => (
-                <SelectItem key={restaurant.id} value={restaurant.id}>
-                  {restaurant.name}
-                </SelectItem>
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          {columns.map((column: any) => (
+            <TableHead key={column.id}>{column.header}</TableHead>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {data.map((row: any) => (
+            <TableRow key={row.id}>
+              {columns.map((column: any) => (
+                <TableCell key={`${row.id}-${column.id}`}>
+                  {column.cell ? column.cell(row) : row[column.accessorKey]}
+                </TableCell>
               ))}
-            </SelectContent>
-          </Select>
-          <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
-            <DialogTrigger asChild>
-              <Button className="bg-kiosk-primary">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Category
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add Menu Category</DialogTitle>
-                <DialogDescription>Create a new menu category for your restaurant.</DialogDescription>
-              </DialogHeader>
-              <CategoryForm 
-                onSubmit={handleAddCategory}
-                isLoading={savingCategory}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
 
-      {loading ? (
-        <div className="flex justify-center items-center h-[400px]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <>
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Categories</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {categories.map((category) => (
-                  <div 
-                    key={category.id} 
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-primary/10 rounded-md">
-                        {getIconComponent(category.icon)}
-                      </div>
-                      <span className="font-medium">{category.name}</span>
-                    </div>
-                    <div className="flex space-x-1">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleDeleteCategory(category.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                <Dialog open={isAddingCategory} onOpenChange={setIsAddingCategory}>
-                  <DialogTrigger asChild>
-                    <div className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                      <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Category
-                      </Button>
-                    </div>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Add Menu Category</DialogTitle>
-                      <DialogDescription>Create a new menu category for your restaurant.</DialogDescription>
-                    </DialogHeader>
-                    <CategoryForm 
-                      onSubmit={handleAddCategory}
-                      isLoading={savingCategory}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
+const Menu = () => {
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
+  const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
+  const [selectedToppingCategory, setSelectedToppingCategory] = useState<ToppingCategory | null>(null);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isMenuItemDialogOpen, setIsMenuItemDialogOpen] = useState(false);
+  const [isToppingCategoryDialogOpen, setIsToppingCategoryDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [selectedTopping, setSelectedTopping] = useState(null);
+  const [isToppingDialogOpen, setIsToppingDialogOpen] = useState(false);
+  const router = useRouter();
+  const { slug } = router.query;
+  const { toast } = useToast();
+  const { data: session } = useSession();
+  const nextRouter = useNextRouter();
+  const t = useTranslations('Menu');
+  const locale = useLocale();
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Menu Items</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {categories.length > 0 ? (
-                <Tabs defaultValue={categories[0].id} onValueChange={setCurrentCategoryId}>
-                  <TabsList className="mb-4">
-                    {categories.map((category) => (
-                      <TabsTrigger key={category.id} value={category.id} className="flex items-center">
-                        {getIconComponent(category.icon)}
-                        <span className="ml-2">{category.name}</span>
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                  
-                  {categories.map((category) => (
-                    <TabsContent key={category.id} value={category.id}>
-                      <div className="space-y-4">
-                        {menuItems[category.id]?.map(item => (
-                          <div 
-                            key={item.id} 
-                            className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
-                          >
-                            <div className="flex items-center space-x-4">
-                              {item.image && (
-                                <img 
-                                  src={item.image} 
-                                  alt={item.name} 
-                                  className="h-16 w-16 object-cover rounded-md"
-                                />
-                              )}
-                              <div>
-                                <h3 className="font-medium">{item.name}</h3>
-                                <p className="text-sm text-muted-foreground">{item.description}</p>
-                                <div className="flex flex-wrap items-center mt-1">
-                                  <p className="text-sm font-medium">
-                                    €{parseFloat(item.price.toString()).toFixed(2)}
-                                    {item.promotion_price && (
-                                      <span className="ml-2 line-through text-muted-foreground">
-                                        €{parseFloat(item.promotion_price.toString()).toFixed(2)}
-                                      </span>
-                                    )}
-                                  </p>
-                                  {item.topping_categories && item.topping_categories.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-1 ml-2">
-                                      {item.topping_categories.map((categoryId) => (
-                                        <Badge 
-                                          key={categoryId} 
-                                          className="bg-[#D6BCFA] text-[#4C1D95] hover:bg-[#D6BCFA]/80"
-                                        >
-                                          {getToppingCategoryName(categoryId)}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex space-x-2 mt-4 md:mt-0">
-                              <Dialog open={isEditingMenuItem && editingMenuItem?.id === item.id} onOpenChange={(open) => !open && setEditingMenuItem(null)}>
-                                <DialogTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={() => handleOpenEditMenuItem(item)}
-                                  >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
-                                  <DialogHeader>
-                                    <DialogTitle>Edit Menu Item</DialogTitle>
-                                    <DialogDescription>Make changes to this menu item.</DialogDescription>
-                                  </DialogHeader>
-                                  <MenuItemForm 
-                                    onSubmit={handleEditMenuItem}
-                                    initialValues={{
-                                      id: item.id,
-                                      name: item.name,
-                                      description: item.description || "",
-                                      price: item.price.toString(),
-                                      promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
-                                      image: item.image || "",
-                                      topping_categories: item.topping_categories || [],
-                                      tax_percentage: item.tax_percentage ? item.tax_percentage.toString() : "10",
-                                      display_order: item.display_order ? item.display_order.toString() : "0"
-                                    }}
-                                    isLoading={savingMenuItem}
-                                    restaurantId={selectedRestaurant || ""}
-                                  />
-                                </DialogContent>
-                              </Dialog>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="outline" size="sm" className="text-red-500">
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the menu item 
-                                      "{item.name}" from your menu.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      onClick={() => handleDeleteMenuItem(item.id)}
-                                      className="bg-red-500 hover:bg-red-600"
-                                      disabled={deletingMenuItem === item.id}
-                                    >
-                                      {deletingMenuItem === item.id ? (
-                                        <>
-                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                          Deleting...
-                                        </>
-                                      ) : (
-                                        <>Delete</>
-                                      )}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </div>
-                        ))}
-                        <Dialog open={isAddingMenuItem && currentCategoryId === category.id} onOpenChange={(open) => !open && setIsAddingMenuItem(false)}>
-                          <DialogTrigger asChild>
-                            <div 
-                              className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50" 
-                              onClick={() => handleOpenAddMenuItem(category.id)}
-                            >
-                              <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Menu Item
-                              </Button>
-                            </div>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle>Add Menu Item</DialogTitle>
-                              <DialogDescription>Create a new menu item for {
-                                categories.find(c => c.id === currentCategoryId)?.name || 'this category'
-                              }.</DialogDescription>
-                            </DialogHeader>
-                            <MenuItemForm 
-                              onSubmit={handleAddMenuItem}
-                              isLoading={savingMenuItem}
-                              restaurantId={selectedRestaurant || ""}
-                            />
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                    </TabsContent>
-                  ))}
-                </Tabs>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">No categories found for this restaurant.</p>
-                  <Button className="mt-4">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Category
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
-    </AdminLayout>
-  );
-};
+  const categoryColumns = [
+    {
+      id: "name",
+      header: t('categoryName'),
+      accessorKey: "name",
+    },
+    {
+      id: "description",
+      header: t('description'),
+      accessorKey: "description",
+    },
+    {
+      id: "display_order",
+      header: t('displayOrder'),
+      accessorKey: "display_order",
+    },
+    {
+      id: "actions",
+      header: t('actions'),
+      cell: (row: MenuCategory) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">{t('openMenu')}</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleEditCategory(row)}>
+              <Edit className="mr-2 h-4 w-4" /> {t('edit')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleDeleteCategory(row.id)}>
+              <Trash className="mr-2 h-4 w-4" /> {t('delete')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
 
-export default MenuPage;
+  const menuItemColumns = [
+    {
+      id: "name",
+      header: t('menuItemName'),
+      accessorKey: "name",
+    },
+    {
+      id: "price",
+      header: t('price'),
+      accessorKey: "price",
+      cell: ({ price }: MenuItem) => {
+        const formatted = new Intl.NumberFormat(locale, {
+          style: 'currency',
+          currency: restaurant?.currency || 'USD',
+        }).format(price);
+        return formatted;
+      },
+    },
+    {
+      id: "promotion_price",
+      header: t('promotionPrice'),
+      accessorKey: "promotion_price",
+      cell: ({ promotion_price }: MenuItem) => {
+        if (!promotion_price) return '-';
+        const formatted = new Intl.NumberFormat(locale, {
+          style: 'currency',
+          currency: restaurant?.currency || 'USD',
+        }).format(promotion_price);
+        return formatted;
+      },
+    },
+    {
+      id: "in_stock",
+      header: t('inStock'),
+      accessorKey: "in_stock",
+      cell: ({ in_stock }: MenuItem) => (
+        <Badge variant={in_stock ? "default" : "destructive"}>
+          {in_stock ? t('yes') : t('no')}
+        </Badge>
+      ),
+    },
+    {
+      id: "display_order",
+      header: t('displayOrder'),
+      accessorKey: "display_order",
+    },
+    {
+      id: "actions",
+      header: t('actions'),
+      cell: (row: MenuItem) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">{t('openMenu')}</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleEditMenuItem(row)}>
+              <Edit className="mr-2 h-4 w-4" /> {t('edit')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleDeleteMenuItem(row.id)}>
+              <Trash className="mr-2 h-4 w-4" /> {t('delete')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
+  const toppingCategoryColumns = [
+    {
+      id: "name",
+      header: t('toppingCategoryName'),
+      accessorKey: "name",
+    },
+    {
+      id: "description",
+      header: t('description'),
+      accessorKey: "description",
+    },
+    {
+      id: "actions",
+      header: t('actions'),
+      cell: (row: ToppingCategory) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">{t('openMenu')}</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleEditToppingCategory(row)}>
+              <Edit className="mr-2 h-4 w-4" /> {t('edit')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleDeleteToppingCategory(row.id)}>
+              <Trash className="mr-2 h-4 w-4" /> {t('delete')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
+  const toppingColumns = (categoryId: string) => [
+    {
+      id: "name",
+      header: t('toppingName'),
+      accessorKey: "name",
+    },
+    {
+      id: "price",
+      header: t('price'),
+      accessorKey: "price",
+      cell: ({ price }: any) => {
+        const formatted = new Intl.NumberFormat(locale, {
+          style: 'currency',
+          currency: restaurant?.currency || 'USD',
+        }).format(price);
+        return formatted;
+      },
+    },
+    {
+      id: "in_stock",
+      header: t('inStock'),
+      accessorKey: "in_stock",
+      cell: ({ in_stock }: any) => (
+        <Badge variant={in_stock ? "default" : "destructive"}>
+          {in_stock ? t('yes') : t('no')}
+        </Badge>
+      ),
+    },
+    {
+      id: "display_order",
+      header: t('displayOrder'),
+      accessorKey: "display_order",
+    },
+    {
+      id: "actions",
+      header: t('actions'),
+      cell: (row: any) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">{t('

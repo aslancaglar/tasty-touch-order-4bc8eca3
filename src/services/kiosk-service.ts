@@ -546,6 +546,51 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
     })
   );
 
+  // Get topping categories with their display order
+  const { data: toppingCategoryRelations } = await supabase
+    .from("menu_item_topping_categories")
+    .select("topping_category_id, display_order")
+    .eq("menu_item_id", menuItemId)
+    .order("display_order", { ascending: true });
+  
+  // Get all topping categories for this menu item
+  if (menuItem.topping_categories && menuItem.topping_categories.length > 0) {
+    const toppingCategories = await Promise.all(
+      menuItem.topping_categories.map(async (categoryId) => {
+        const { data: category } = await supabase
+          .from("topping_categories")
+          .select("*")
+          .eq("id", categoryId)
+          .single();
+        
+        if (!category) return null;
+        
+        // Find the display order for this category
+        const relation = toppingCategoryRelations?.find(rel => rel.topping_category_id === categoryId);
+        const display_order = relation ? relation.display_order : null;
+        
+        const toppings = await getToppingsByCategory(categoryId);
+        
+        return {
+          ...category,
+          display_order,
+          toppings,
+          required: category.min_selections && category.min_selections > 0
+        };
+      })
+    );
+    
+    // Filter out any null categories and sort by display_order
+    const filteredCategories = toppingCategories.filter(Boolean);
+    
+    // Return the complete menu item with options, choices, and topping categories
+    return {
+      ...menuItem,
+      options: optionsWithChoices,
+      toppingCategories: filteredCategories
+    };
+  }
+
   return {
     ...menuItem,
     options: optionsWithChoices
