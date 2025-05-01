@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,14 +40,16 @@ const MenuItemCard = memo(({
   }, [item.price]);
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow select-none">
+    <Card 
+      className="overflow-hidden hover:shadow-md transition-shadow select-none cursor-pointer" 
+      onClick={handleItemClick}
+    >
       <div 
-        className="h-40 bg-cover bg-center cursor-pointer relative select-none" 
+        className="h-40 bg-cover bg-center relative select-none" 
         style={{
           backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
           backgroundColor: hasImageFailed ? '#f0f0f0' : undefined
         }}
-        onClick={handleItemClick}
       >
         {hasImageFailed && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
@@ -61,7 +64,6 @@ const MenuItemCard = memo(({
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
         <Button 
-          onClick={handleItemClick} 
           className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0"
         >
           {t("addToCart")}
