@@ -3,15 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  getRestaurantBySlug, 
-  getMenuForRestaurant, 
-  getMenuItemWithOptions,
-  createOrder,
-  createOrderItems,
-  createOrderItemOptions,
-  createOrderItemToppings
-} from "@/services/kiosk-service";
+import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType, Topping } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
@@ -25,18 +17,19 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
-
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
-
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
-
 const KioskView = () => {
-  const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
+  const {
+    restaurantSlug
+  } = useParams<{
+    restaurantSlug: string;
+  }>();
   const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(true);
   const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
@@ -63,9 +56,9 @@ const KioskView = () => {
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const cartRef = useRef<HTMLDivElement | null>(null);
-
-  const { toast } = useToast();
-  
+  const {
+    toast
+  } = useToast();
   const CURRENCY_SYMBOLS: Record<string, string> = {
     EUR: "€",
     USD: "$",
@@ -78,12 +71,10 @@ const KioskView = () => {
     CNY: "¥",
     RUB: "₽"
   };
-  
   const getCurrencySymbol = (currency: string) => {
     const code = currency?.toUpperCase() || "EUR";
     return CURRENCY_SYMBOLS[code] || code;
   };
-  
   const translations = {
     fr: {
       restaurantNotFound: "Restaurant introuvable",
@@ -167,11 +158,9 @@ const KioskView = () => {
       menuRefreshSuccess: "Menü başarıyla yenilendi"
     }
   };
-  
   const t = (key: keyof typeof translations.en) => {
     return translations[uiLanguage][key];
   };
-
   const resetToWelcome = () => {
     console.log("Resetting to welcome page - cleaning up all state");
     setShowWelcome(true);
@@ -189,20 +178,21 @@ const KioskView = () => {
       setActiveCategory(categories[0].id);
     }
   };
-
-  const { showDialog, handleContinue, handleCancel, fullReset } = useInactivityTimer(resetToWelcome);
-
+  const {
+    showDialog,
+    handleContinue,
+    handleCancel,
+    fullReset
+  } = useInactivityTimer(resetToWelcome);
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
         navigate('/');
         return;
       }
-      
       try {
         setLoading(true);
         const restaurantData = await getRestaurantBySlug(restaurantSlug);
-        
         if (!restaurantData) {
           toast({
             title: t("restaurantNotFound"),
@@ -212,20 +202,18 @@ const KioskView = () => {
           navigate('/');
           return;
         }
-        
         setRestaurant(restaurantData);
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
-        
         const menuData = await getMenuForRestaurant(restaurantData.id);
-        
+
         // Sort categories by display_order before setting state
         const sortedCategories = [...menuData].sort((a, b) => {
           const orderA = a.display_order ?? 1000;
           const orderB = b.display_order ?? 1000;
           return orderA - orderB;
         });
-        
+
         // Also sort the items within each category
         sortedCategories.forEach(category => {
           category.items = [...category.items].sort((a, b) => {
@@ -234,13 +222,10 @@ const KioskView = () => {
             return orderA - orderB;
           });
         });
-        
         setCategories(sortedCategories);
-        
         if (sortedCategories.length > 0) {
           setActiveCategory(sortedCategories[0].id);
         }
-        
         setLoading(false);
       } catch (error) {
         console.error("Erreur lors du chargement du restaurant et du menu:", error);
@@ -252,22 +237,18 @@ const KioskView = () => {
         setLoading(false);
       }
     };
-    
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
-
   useEffect(() => {
     if (showWelcome) {
       fullReset();
     }
   }, [showWelcome, fullReset]);
-
   const handleStartOrder = () => {
     fullReset();
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
   };
-
   const handleOrderTypeSelected = (type: OrderType, table?: string) => {
     setOrderType(type);
     if (table) {
@@ -275,20 +256,18 @@ const KioskView = () => {
     }
     setShowOrderTypeSelection(false);
   };
-
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
-      const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
-        .from('menu_item_topping_categories')
-        .select('topping_category_id, display_order')
-        .eq('menu_item_id', menuItemId)
-        .order('display_order', { ascending: true });
-
+      const {
+        data: menuItemToppingCategories,
+        error: toppingCategoriesError
+      } = await supabase.from('menu_item_topping_categories').select('topping_category_id, display_order').eq('menu_item_id', menuItemId).order('display_order', {
+        ascending: true
+      });
       if (toppingCategoriesError) {
         console.error("Erreur lors du chargement des catégories de toppings:", toppingCategoriesError);
         return [];
       }
-
       if (!menuItemToppingCategories.length) {
         return [];
       }
@@ -298,25 +277,22 @@ const KioskView = () => {
         map[relation.topping_category_id] = relation.display_order ?? 1000; // Default to high number if null
         return map;
       }, {} as Record<string, number>);
-
       const toppingCategoryIds = menuItemToppingCategories.map(mtc => mtc.topping_category_id);
-      const { data: toppingCategories, error: categoriesError } = await supabase
-        .from('topping_categories')
-        .select('*')
-        .in('id', toppingCategoryIds);
-
+      const {
+        data: toppingCategories,
+        error: categoriesError
+      } = await supabase.from('topping_categories').select('*').in('id', toppingCategoryIds);
       if (categoriesError) {
         console.error("Erreur lors du chargement des détails des catégories de toppings:", categoriesError);
         return [];
       }
-
       const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
-        const { data: toppings, error: toppingsError } = await supabase
-          .from('toppings')
-          .select('*')
-          .eq('category_id', category.id)
-          .eq('in_stock', true)
-          .order('display_order', { ascending: true }); // Order toppings by display_order
+        const {
+          data: toppings,
+          error: toppingsError
+        } = await supabase.from('toppings').select('*').eq('category_id', category.id).eq('in_stock', true).order('display_order', {
+          ascending: true
+        }); // Order toppings by display_order
 
         if (toppingsError) {
           console.error(`Erreur lors du chargement des ingrédients pour la catégorie ${category.id}:`, toppingsError);
@@ -326,20 +302,21 @@ const KioskView = () => {
             min_selections: category.min_selections || 0,
             max_selections: category.max_selections || 0,
             required: category.min_selections ? category.min_selections > 0 : false,
-            display_order: displayOrderMap[category.id], // Use display_order from relation
+            display_order: displayOrderMap[category.id],
+            // Use display_order from relation
             toppings: [],
             show_if_selection_id: category.show_if_selection_id,
             show_if_selection_type: category.show_if_selection_type
           };
         }
-
         return {
           id: category.id,
           name: category.name,
           min_selections: category.min_selections || 0,
           max_selections: category.max_selections || 0,
           required: category.min_selections ? category.min_selections > 0 : false,
-          display_order: displayOrderMap[category.id], // Use display_order from relation
+          display_order: displayOrderMap[category.id],
+          // Use display_order from relation
           toppings: toppings.map(topping => ({
             id: topping.id,
             name: topping.name,
@@ -353,26 +330,21 @@ const KioskView = () => {
       }));
 
       // Sort by display_order
-      const sortedCategories = toppingCategoriesWithToppings
-        .filter(category => category.toppings.length > 0)
-        .sort((a, b) => {
-          const orderA = a.display_order ?? 1000;
-          const orderB = b.display_order ?? 1000;
-          return orderA - orderB;
-        });
-
+      const sortedCategories = toppingCategoriesWithToppings.filter(category => category.toppings.length > 0).sort((a, b) => {
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      });
       return sortedCategories;
     } catch (error) {
       console.error("Erreur lors de la récupération des catégories de toppings:", error);
       return [];
     }
   };
-
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
       const itemWithOptions = await getMenuItemWithOptions(item.id);
-      
       if (!itemWithOptions) {
         toast({
           title: "Erreur",
@@ -381,19 +353,16 @@ const KioskView = () => {
         });
         return;
       }
-      
       const toppingCategories = await fetchToppingCategories(item.id);
-      
+
       // Always show customization dialog, removing the direct add-to-cart path for items without options/toppings
       const itemWithToppings: MenuItemWithOptions = {
         ...(itemWithOptions as MenuItemWithOptions),
         toppingCategories: toppingCategories || []
       };
-      
       setSelectedItem(itemWithToppings);
       setQuantity(1);
       setSpecialInstructions("");
-      
       if (itemWithOptions.options && itemWithOptions.options.length > 0) {
         const initialOptions = itemWithOptions.options.map(option => {
           if (option.required && !option.multiple) {
@@ -411,7 +380,6 @@ const KioskView = () => {
       } else {
         setSelectedOptions([]);
       }
-      
       if (toppingCategories && toppingCategories.length > 0) {
         const initialToppings = toppingCategories.map(category => ({
           categoryId: category.id,
@@ -421,7 +389,6 @@ const KioskView = () => {
       } else {
         setSelectedToppings([]);
       }
-      
       setLoading(false);
     } catch (error) {
       console.error("Erreur lors du chargement des détails de l'article:", error);
@@ -433,21 +400,17 @@ const KioskView = () => {
       setLoading(false);
     }
   };
-
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
       const optionIndex = prev.findIndex(o => o.optionId === optionId);
-      
       if (optionIndex === -1) {
         return [...prev, {
           optionId,
           choiceIds: [choiceId]
         }];
       }
-      
       const option = prev[optionIndex];
       let newChoiceIds: string[];
-      
       if (multiple) {
         if (option.choiceIds.includes(choiceId)) {
           newChoiceIds = option.choiceIds.filter(id => id !== choiceId);
@@ -457,37 +420,30 @@ const KioskView = () => {
       } else {
         newChoiceIds = [choiceId];
       }
-      
       const newOptions = [...prev];
       newOptions[optionIndex] = {
         ...option,
         choiceIds: newChoiceIds
       };
-      
       return newOptions;
     });
   };
-
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
-      
       if (categoryIndex === -1) {
         return [...prev, {
           categoryId,
           toppingIds: [toppingId]
         }];
       }
-      
       const category = prev[categoryIndex];
       let newToppingIds: string[];
-      
       if (category.toppingIds.includes(toppingId)) {
         newToppingIds = category.toppingIds.filter(id => id !== toppingId);
       } else {
         if (selectedItem?.toppingCategories) {
           const toppingCategory = selectedItem.toppingCategories.find(c => c.id === categoryId);
-          
           if (toppingCategory && toppingCategory.max_selections > 0) {
             if (toppingCategory.max_selections === 1) {
               newToppingIds = [toppingId];
@@ -507,24 +463,19 @@ const KioskView = () => {
           newToppingIds = [...category.toppingIds, toppingId];
         }
       }
-      
       const newToppings = [...prev];
       newToppings[categoryIndex] = {
         ...category,
         toppingIds: newToppingIds
       };
-      
       return newToppings;
     });
   };
-
-  const calculateItemPrice = (
-    item: MenuItemWithOptions,
-    options: { optionId: string; choiceIds: string[] }[],
-    toppings: SelectedToppingCategory[]
-  ): number => {
+  const calculateItemPrice = (item: MenuItemWithOptions, options: {
+    optionId: string;
+    choiceIds: string[];
+  }[], toppings: SelectedToppingCategory[]): number => {
     let price = parseFloat(item.price.toString());
-    
     if (item.options) {
       item.options.forEach(option => {
         const selectedOption = options.find(o => o.optionId === option.id);
@@ -538,7 +489,6 @@ const KioskView = () => {
         }
       });
     }
-    
     if (item.toppingCategories) {
       item.toppingCategories.forEach(category => {
         const selectedToppingCategory = toppings.find(t => t.categoryId === category.id);
@@ -552,55 +502,42 @@ const KioskView = () => {
         }
       });
     }
-    
     return price;
   };
-
   const getFormattedOptions = (item: CartItem): string => {
     if (!item.menuItem.options) return "";
-    
     return item.selectedOptions.flatMap(selectedOption => {
       const option = item.menuItem.options?.find(o => o.id === selectedOption.optionId);
       if (!option) return [];
-      
       return selectedOption.choiceIds.map(choiceId => {
         const choice = option.choices.find(c => c.id === choiceId);
         return choice ? choice.name : "";
       });
     }).filter(Boolean).join(", ");
   };
-
   const getFormattedToppings = (item: CartItem): string => {
     if (!item.menuItem.toppingCategories) return "";
-    
     return item.selectedToppings.flatMap(selectedCategory => {
       const category = item.menuItem.toppingCategories?.find(c => c.id === selectedCategory.categoryId);
       if (!category) return [];
-      
       return selectedCategory.toppingIds.map(toppingId => {
         const topping = category.toppings.find(t => t.id === toppingId);
         return topping ? topping.name : "";
       });
     }).filter(Boolean).join(", ");
   };
-
   const handleAddToCart = () => {
     if (!selectedItem) return;
-    
     const isOptionsValid = selectedItem.options?.every(option => {
       if (!option.required) return true;
-      
       const selected = selectedOptions.find(o => o.optionId === option.id);
       return selected && selected.choiceIds.length > 0;
     }) ?? true;
-    
     const isToppingsValid = selectedItem.toppingCategories?.every(category => {
       if (!category.min_selections || category.min_selections <= 0) return true;
-      
       const selected = selectedToppings.find(t => t.categoryId === category.id);
       return selected && selected.toppingIds.length >= category.min_selections;
     }) ?? true;
-    
     if (!isOptionsValid || !isToppingsValid) {
       toast({
         title: t("selectionsRequired"),
@@ -609,9 +546,7 @@ const KioskView = () => {
       });
       return;
     }
-    
     const itemPrice = calculateItemPrice(selectedItem, selectedOptions, selectedToppings);
-    
     const newItem: CartItem = {
       id: Date.now().toString(),
       menuItem: selectedItem,
@@ -621,27 +556,23 @@ const KioskView = () => {
       specialInstructions: specialInstructions.trim() || undefined,
       itemPrice
     };
-    
     setCart(prev => [newItem, ...prev]);
     setSelectedItem(null);
-    
     toast({
       title: t("addedToCart"),
       description: `${quantity}x ${selectedItem.name} ${t("added")}`
     });
   };
-
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       handleRemoveCartItem(itemId);
       return;
     }
-    
-    setCart(prev => prev.map(item => 
-      item.id === itemId ? { ...item, quantity: newQuantity } : item
-    ));
+    setCart(prev => prev.map(item => item.id === itemId ? {
+      ...item,
+      quantity: newQuantity
+    } : item));
   };
-
   const handleRemoveCartItem = (itemId: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.id !== itemId);
@@ -651,21 +582,17 @@ const KioskView = () => {
       return newCart;
     });
   };
-
   const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
       return total + item.itemPrice * item.quantity;
     }, 0);
   };
-
   const calculateSubtotal = () => {
     return calculateCartTotal();
   };
-
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
   };
-
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
     try {
@@ -737,37 +664,29 @@ const KioskView = () => {
       setPlacingOrder(false);
     }
   };
-
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
-
   const shouldShowToppingCategory = (category: MenuItemWithOptions['toppingCategories'][0]) => {
     if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
       return true;
     }
-    
-    return category.show_if_selection_id.some(toppingId => 
-      selectedToppings.some(catSelection => 
-        catSelection.toppingIds.includes(toppingId)
-      )
-    );
+    return category.show_if_selection_id.some(toppingId => selectedToppings.some(catSelection => catSelection.toppingIds.includes(toppingId)));
   };
-
   const fetchCategories = async () => {
     try {
       if (!restaurant) return;
       const cachedCategories = getCacheItem<CategoryWithItems[]>('categories', restaurant.id);
       if (cachedCategories) {
         console.log("Using cached categories");
-        
+
         // Sort cached categories by display_order before using them
         const sortedCategories = [...cachedCategories].sort((a, b) => {
           const orderA = a.display_order ?? 1000;
           const orderB = b.display_order ?? 1000;
           return orderA - orderB;
         });
-        
+
         // Also sort items within each category
         sortedCategories.forEach(category => {
           category.items = [...category.items].sort((a, b) => {
@@ -776,7 +695,6 @@ const KioskView = () => {
             return orderA - orderB;
           });
         });
-        
         setCategories(sortedCategories || []);
         if (sortedCategories.length > 0) {
           setActiveCategory(sortedCategories[0].id);
@@ -784,19 +702,17 @@ const KioskView = () => {
         setLoading(false);
         return;
       }
-
       const data = await getRestaurantBySlug(restaurantSlug || '');
       if (!data) throw new Error("Restaurant not found");
-      
       const menuData = await getMenuForRestaurant(data.id);
-      
+
       // Sort the menuData before setting state or caching
       const sortedMenuData = [...menuData].sort((a, b) => {
         const orderA = a.display_order ?? 1000;
         const orderB = b.display_order ?? 1000;
         return orderA - orderB;
       });
-      
+
       // Also sort items within each category
       sortedMenuData.forEach(category => {
         category.items = [...category.items].sort((a, b) => {
@@ -805,11 +721,8 @@ const KioskView = () => {
           return orderA - orderB;
         });
       });
-      
       setCategories(sortedMenuData);
-      
       setCacheItem('categories', sortedMenuData, data.id);
-      
       if (sortedMenuData.length > 0) {
         setActiveCategory(sortedMenuData[0].id);
       }
@@ -822,7 +735,6 @@ const KioskView = () => {
       });
     }
   };
-
   const fetchToppings = async () => {
     if (!selectedCategory?.id || !restaurant?.id) return;
     try {
@@ -837,24 +749,18 @@ const KioskView = () => {
         } : prev);
         return;
       }
-
-      const { data, error } = await supabase
-        .from('toppings')
-        .select('*')
-        .eq('category_id', selectedCategory.id)
-        .order('created_at', { ascending: true });
-      
+      const {
+        data,
+        error
+      } = await supabase.from('toppings').select('*').eq('category_id', selectedCategory.id).order('created_at', {
+        ascending: true
+      });
       if (error) throw error;
-      
       const updatedToppings = data.map(topping => ({
         ...topping,
-        tax_percentage: typeof topping.tax_percentage === 'string' 
-          ? parseFloat(topping.tax_percentage) 
-          : topping.tax_percentage
+        tax_percentage: typeof topping.tax_percentage === 'string' ? parseFloat(topping.tax_percentage) : topping.tax_percentage
       }));
-
       setCacheItem(cacheKey, updatedToppings, restaurant.id);
-      
       setToppings(updatedToppings);
       setSelectedCategory(prev => prev ? {
         ...prev,
@@ -869,23 +775,20 @@ const KioskView = () => {
       });
     }
   };
-
   const handleRefreshMenu = async () => {
     try {
       setLoading(true);
       setRefreshTrigger(prev => prev + 1);
-      
       if (!restaurant) return;
-      
       const menuData = await getMenuForRestaurant(restaurant.id);
-      
+
       // Sort the menuData before setting state or caching
       const sortedMenuData = [...menuData].sort((a, b) => {
         const orderA = a.display_order ?? 1000;
         const orderB = b.display_order ?? 1000;
         return orderA - orderB;
       });
-      
+
       // Also sort items within each category
       sortedMenuData.forEach(category => {
         category.items = [...category.items].sort((a, b) => {
@@ -894,20 +797,15 @@ const KioskView = () => {
           return orderA - orderB;
         });
       });
-      
       setCategories(sortedMenuData);
-      
       if (sortedMenuData.length > 0) {
         setActiveCategory(sortedMenuData[0].id);
       }
-      
       setCacheItem('categories', sortedMenuData, restaurant.id);
-      
       toast({
         title: t("menuRefreshed"),
         description: t("menuRefreshSuccess")
       });
-      
       setLoading(false);
     } catch (error) {
       console.error("Error refreshing menu:", error);
@@ -919,18 +817,15 @@ const KioskView = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
         navigate('/');
         return;
       }
-      
       try {
         setLoading(true);
         const restaurantData = await getRestaurantBySlug(restaurantSlug);
-        
         if (!restaurantData) {
           toast({
             title: t("restaurantNotFound"),
@@ -940,13 +835,10 @@ const KioskView = () => {
           navigate('/');
           return;
         }
-        
         setRestaurant(restaurantData);
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
-        
         await fetchCategories();
-        
         setLoading(false);
       } catch (error) {
         console.error("Erreur lors du chargement du restaurant et du menu:", error);
@@ -958,10 +850,8 @@ const KioskView = () => {
         setLoading(false);
       }
     };
-    
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
-
   useEffect(() => {
     // Add a style tag to prevent selection throughout the kiosk view
     const styleTag = document.createElement('style');
@@ -989,24 +879,19 @@ const KioskView = () => {
       }
     `;
     document.head.appendChild(styleTag);
-    
+
     // Clean up on unmount
     return () => {
       document.head.removeChild(styleTag);
     };
   }, []);
-
   if (loading && !restaurant) {
-    return (
-      <div className="flex items-center justify-center h-screen kiosk-view">
+    return <div className="flex items-center justify-center h-screen kiosk-view">
         <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
-      </div>
-    );
+      </div>;
   }
-
   if (!restaurant) {
-    return (
-      <div className="flex items-center justify-center h-screen kiosk-view">
+    return <div className="flex items-center justify-center h-screen kiosk-view">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
           <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
@@ -1015,164 +900,68 @@ const KioskView = () => {
             {t("backToHome")}
           </Button>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (showWelcome) {
-    return (
-      <div className="kiosk-view">
-        <WelcomePage 
-          restaurant={restaurant} 
-          onStart={() => {
-            fullReset();
-            handleStartOrder();
-          }}
-          uiLanguage={uiLanguage} 
-        />
-      </div>
-    );
+    return <div className="kiosk-view">
+        <WelcomePage restaurant={restaurant} onStart={() => {
+        fullReset();
+        handleStartOrder();
+      }} uiLanguage={uiLanguage} />
+      </div>;
   }
-
   if (showOrderTypeSelection) {
-    return (
-      <div className="kiosk-view">
-        <div 
-          className="fixed inset-0 bg-cover bg-center bg-black/50" 
-          style={{
-            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
-          }} 
-        />
-        <OrderTypeSelection 
-          isOpen={showOrderTypeSelection} 
-          onClose={() => {
-            setShowOrderTypeSelection(false);
-            setShowWelcome(true);
-          }} 
-          onSelectOrderType={handleOrderTypeSelected} 
-          uiLanguage={uiLanguage} 
-        />
+    return <div className="kiosk-view">
+        <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+      }} />
+        <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
+        setShowOrderTypeSelection(false);
+        setShowWelcome(true);
+      }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
         
-        <InactivityDialog
-          isOpen={showDialog}
-          onContinue={handleContinue}
-          onCancel={handleCancel}
-          t={t}
-        />
-      </div>
-    );
+        <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+      </div>;
   }
-
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-
-  return (
-    <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+  return <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
-        <KioskHeader 
-          restaurant={restaurant}
-          orderType={orderType}
-          tableNumber={tableNumber}
-          t={t}
-          onRefresh={handleRefreshMenu}
-        />
+        <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
       </div>
 
       {/* Content area with fixed sidebar and scrollable menu grid */}
       <div className="flex flex-1 overflow-hidden">
         {/* Fixed width sidebar - 16vw */}
         <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
-          <MenuCategoryList 
-            categories={categories}
-            activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
-          />
+          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
         </div>
 
         {/* Scrollable menu grid area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+          <div className="pb-[120px]">
             <h2 className="text-xl font-bold mb-4">
               {categories.find(c => c.id === activeCategory)?.name || t("menu")}
             </h2>
             
-            <MenuItemGrid 
-              items={activeItems}
-              handleSelectItem={handleSelectItem}
-              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
-              t={t}
-              restaurantId={restaurant?.id}
-              refreshTrigger={refreshTrigger}
-            />
+            <MenuItemGrid items={activeItems} handleSelectItem={handleSelectItem} currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")} t={t} restaurantId={restaurant?.id} refreshTrigger={refreshTrigger} />
           </div>
         </div>
       </div>
 
-      {!isCartOpen && !cartIsEmpty && (
-        <CartButton 
-          itemCount={cartItemCount} 
-          total={calculateCartTotal()} 
-          onClick={toggleCart} 
-          uiLanguage={uiLanguage} 
-          currency={restaurant.currency} 
-        />
-      )}
+      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} uiLanguage={uiLanguage} currency={restaurant.currency} />}
 
       <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
-        maxHeight: "60vh"
-      }}>
-        <Cart 
-          cart={cart} 
-          isOpen={isCartOpen} 
-          onToggleOpen={toggleCart} 
-          onUpdateQuantity={handleUpdateCartItemQuantity} 
-          onRemoveItem={handleRemoveCartItem} 
-          onClearCart={() => setCart([])} 
-          onPlaceOrder={handlePlaceOrder} 
-          placingOrder={placingOrder} 
-          orderPlaced={orderPlaced} 
-          calculateSubtotal={calculateSubtotal} 
-          calculateTax={calculateTax} 
-          getFormattedOptions={getFormattedOptions}
-          getFormattedToppings={getFormattedToppings}
-          restaurant={restaurant}
-          orderType={orderType}
-          tableNumber={tableNumber}
-          uiLanguage={uiLanguage}
-          t={t}
-        />
+      maxHeight: "60vh"
+    }}>
+        <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} t={t} />
       </div>
 
-      {selectedItem && (
-        <ItemCustomizationDialog 
-          item={selectedItem} 
-          isOpen={!!selectedItem} 
-          onClose={() => setSelectedItem(null)} 
-          onAddToCart={handleAddToCart}
-          selectedOptions={selectedOptions}
-          onToggleChoice={handleToggleChoice}
-          selectedToppings={selectedToppings}
-          onToggleTopping={handleToggleTopping}
-          quantity={quantity}
-          onQuantityChange={setQuantity}
-          specialInstructions={specialInstructions}
-          onSpecialInstructionsChange={setSpecialInstructions}
-          shouldShowToppingCategory={shouldShowToppingCategory}
-          t={t}
-          currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
-        />
-      )}
+      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
 
-      <InactivityDialog
-        isOpen={showDialog}
-        onContinue={handleContinue}
-        onCancel={handleCancel}
-        t={t}
-      />
-    </div>
-  );
+      <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+    </div>;
 };
-
 export default KioskView;
