@@ -96,6 +96,16 @@ const ToppingCategory = memo(({
     return orderA - orderB;
   });
 
+  // Determine the number of columns based on topping count
+  const toppingCount = sortedToppings.length;
+  let gridCols = "grid-cols-3"; // Default 3 columns for 3+ toppings
+  
+  if (toppingCount === 1) {
+    gridCols = "grid-cols-1"; // 1 column for 1 topping
+  } else if (toppingCount === 2) {
+    gridCols = "grid-cols-2"; // 2 columns for 2 toppings
+  }
+
   return (
     <div className="space-y-2">
       <div className="font-bold text-lg flex items-center">
@@ -105,7 +115,7 @@ const ToppingCategory = memo(({
           {category.max_selections > 0 ? `(${t("selectUpTo")} ${category.max_selections})` : `(${t("multipleSelection")})`}
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-1">
+      <div className={`grid ${gridCols} gap-1`}>
         {sortedToppings.map(topping => {
           const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
           return (
