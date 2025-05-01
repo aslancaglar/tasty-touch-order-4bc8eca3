@@ -50,6 +50,16 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Add routes for /r/:slug (public kiosk view) and /restaurant/:id (restaurant management) */}
+            <Route path="/r/:slug" element={<KioskView />} />
+            <Route 
+              path="/restaurant/:restaurantId" 
+              element={
+                <ProtectedRoute>
+                  <OwnerRestaurantManage />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <InstallPWAPrompt />
