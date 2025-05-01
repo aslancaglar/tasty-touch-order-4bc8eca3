@@ -1,10 +1,10 @@
-
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
+
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
   isOpen: boolean;
@@ -209,8 +209,8 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   const sortedToppingCategories = item.toppingCategories ? 
     [...item.toppingCategories].sort((a, b) => {
       // Use the display_order from the category itself which comes from the relation
-      const orderA = a.display_order ?? 1000;
-      const orderB = b.display_order ?? 1000;
+      const orderA = (a as any).display_order ?? 1000;
+      const orderB = (b as any).display_order ?? 1000;
       return orderA - orderB;
     }) : [];
   

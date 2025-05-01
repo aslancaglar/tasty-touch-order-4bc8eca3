@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { getToppingCategoriesByRestaurantId } from "@/services/kiosk-service";
 import { ToppingCategory } from "@/types/database-types";
+import { supabase } from "@/integrations/supabase/client";
 
 // Define the form schema with Zod for validation
 const formSchema = z.object({
@@ -54,8 +55,8 @@ const formSchema = z.object({
 });
 
 interface MenuItemFormProps {
-  onSubmit: (values: z.infer<typeof formSchema>) => void;
-  initialValues?: Partial<z.infer<typeof formSchema>>;
+  onSubmit: (values: z.infer<typeof formSchema> & { _toppingCategoriesOrder?: Array<{id: string, display_order: number}> }) => void;
+  initialValues?: Partial<z.infer<typeof formSchema>> & { id?: string };
   isLoading?: boolean;
   restaurantId: string;
 }
@@ -102,32 +103,41 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
           );
           
           // Check if we already have ordering info from existing menu item
-          const { data: existingOrders } = await supabase
-            .from("menu_item_topping_categories")
-            .select("*")
-            .eq("menu_item_id", initialValues.id || '')
-            .order("display_order", { ascending: true });
-          
-          let ordered: OrderedToppingCategory[] = [];
-          
-          if (existingOrders && existingOrders.length > 0) {
-            // Use existing order information
-            ordered = initialSelectedCategories.map(category => {
-              const orderInfo = existingOrders.find(o => o.topping_category_id === category.id);
-              return {
+          if (initialValues.id) {
+            const { data: existingOrders } = await supabase
+              .from("menu_item_topping_categories")
+              .select("*")
+              .eq("menu_item_id", initialValues.id)
+              .order("display_order", { ascending: true });
+            
+            let ordered: OrderedToppingCategory[] = [];
+            
+            if (existingOrders && existingOrders.length > 0) {
+              // Use existing order information
+              ordered = initialSelectedCategories.map(category => {
+                const orderInfo = existingOrders.find(o => o.topping_category_id === category.id);
+                return {
+                  ...category,
+                  orderIndex: orderInfo ? orderInfo.display_order : 1000
+                };
+              }).sort((a, b) => a.orderIndex - b.orderIndex);
+            } else {
+              // Create new ordering
+              ordered = initialSelectedCategories.map((category, index) => ({
                 ...category,
-                orderIndex: orderInfo ? orderInfo.display_order : 1000
-              };
-            }).sort((a, b) => a.orderIndex - b.orderIndex);
+                orderIndex: index
+              }));
+            }
+            
+            setOrderedCategories(ordered);
           } else {
-            // Create new ordering
-            ordered = initialSelectedCategories.map((category, index) => ({
+            // For new menu items, just use default ordering
+            const ordered = initialSelectedCategories.map((category, index) => ({
               ...category,
               orderIndex: index
             }));
+            setOrderedCategories(ordered);
           }
-          
-          setOrderedCategories(ordered);
         }
       } catch (error) {
         console.error("Error fetching topping categories:", error);

@@ -1,5 +1,4 @@
 
-
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -143,12 +142,13 @@ export interface MenuItemWithOptions extends MenuItem {
     min_selections: number;
     max_selections: number;
     required: boolean;
+    display_order?: number | null; // Added display_order property
     toppings: {
       id: string;
       name: string;
       price: number;
       tax_percentage: number;
-      display_order?: number | null; // Added display_order property
+      display_order?: number | null;
     }[];
     show_if_selection_id?: string[] | null;
     show_if_selection_type?: string[] | null;
