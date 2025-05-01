@@ -227,7 +227,7 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
   console.log("Creating menu item with data:", item);
 
-  const { topping_categories, tax_percentage, _toppingCategoriesOrder, ...menuItemData } = item as any;
+  const { topping_categories, tax_percentage, ...menuItemData } = item as any;
 
   const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
     ? (Number(tax_percentage) || 10)
@@ -245,24 +245,11 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
   }
 
   if (topping_categories && topping_categories.length > 0) {
-    // Use the ordered information if available
-    let toppingCategoryRelations;
-    
-    if (_toppingCategoriesOrder) {
-      // Use explicit order information
-      toppingCategoryRelations = _toppingCategoriesOrder.map((cat: any) => ({
-        menu_item_id: data.id,
-        topping_category_id: cat.id,
-        display_order: cat.display_order
-      }));
-    } else {
-      // Use array order as default
-      toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
-        menu_item_id: data.id,
-        topping_category_id: categoryId,
-        display_order: index
-      }));
-    }
+    const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
+      menu_item_id: data.id,
+      topping_category_id: categoryId,
+      display_order: index // Save the order based on array index
+    }));
 
     const { error: relationError } = await supabase
       .from("menu_item_topping_categories")
@@ -282,7 +269,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
 export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
   console.log("Updating menu item:", id, "with data:", updates);
 
-  const { topping_categories, tax_percentage, _toppingCategoriesOrder, ...menuItemData } = updates as any;
+  const { topping_categories, tax_percentage, ...menuItemData } = updates as any;
   
   const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
     ? (Number(tax_percentage) || 10)
@@ -301,7 +288,6 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
   }
 
   if (topping_categories !== undefined) {
-    // First delete all existing relationships
     const { error: deleteError } = await supabase
       .from("menu_item_topping_categories")
       .delete()
@@ -311,28 +297,12 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
       console.error("Error deleting existing topping category relations:", deleteError);
     }
 
-    // Then insert new relationships if there are any
     if (topping_categories && topping_categories.length > 0) {
-      // Use the ordered information if available
-      let toppingCategoryRelations;
-      
-      if (_toppingCategoriesOrder) {
-        console.log("Using ordered topping categories:", _toppingCategoriesOrder);
-        // Use explicit order information
-        toppingCategoryRelations = _toppingCategoriesOrder.map((cat: any) => ({
-          menu_item_id: id,
-          topping_category_id: cat.id,
-          display_order: cat.display_order
-        }));
-      } else {
-        console.log("Using default ordering for topping categories");
-        // Use array order as default
-        toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
-          menu_item_id: id,
-          topping_category_id: categoryId,
-          display_order: index
-        }));
-      }
+      const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
+        menu_item_id: id,
+        topping_category_id: categoryId,
+        display_order: index // Add display_order based on the array index
+      }));
 
       const { error: insertError } = await supabase
         .from("menu_item_topping_categories")
@@ -545,51 +515,6 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
       };
     })
   );
-
-  // Get topping categories with their display order
-  const { data: toppingCategoryRelations } = await supabase
-    .from("menu_item_topping_categories")
-    .select("topping_category_id, display_order")
-    .eq("menu_item_id", menuItemId)
-    .order("display_order", { ascending: true });
-  
-  // Get all topping categories for this menu item
-  if (menuItem.topping_categories && menuItem.topping_categories.length > 0) {
-    const toppingCategories = await Promise.all(
-      menuItem.topping_categories.map(async (categoryId) => {
-        const { data: category } = await supabase
-          .from("topping_categories")
-          .select("*")
-          .eq("id", categoryId)
-          .single();
-        
-        if (!category) return null;
-        
-        // Make sure we use the correct display order from the relation table
-        const relation = toppingCategoryRelations?.find(rel => rel.topping_category_id === categoryId);
-        const display_order = relation ? relation.display_order : null;
-        
-        const toppings = await getToppingsByCategory(categoryId);
-        
-        return {
-          ...category,
-          display_order,
-          toppings,
-          required: category.min_selections && category.min_selections > 0
-        };
-      })
-    );
-    
-    // Filter out any null categories
-    const filteredCategories = toppingCategories.filter(Boolean);
-    
-    // Return the complete menu item with options, choices, and topping categories
-    return {
-      ...menuItem,
-      options: optionsWithChoices,
-      toppingCategories: filteredCategories
-    };
-  }
 
   return {
     ...menuItem,
