@@ -7,13 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ImageUpload from "@/components/ImageUpload";
+import { Restaurant } from "@/types/database-types";
 
 interface SettingsTabProps {
-  restaurant: any;
+  restaurant: Restaurant;
   onUpdate: () => void;
+  onRestaurantUpdated?: (updatedRestaurant: Restaurant) => void; // Add this prop to make it compatible
 }
 
-const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onUpdate }) => {
+const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onUpdate, onRestaurantUpdated }) => {
   const [restaurantName, setRestaurantName] = React.useState(restaurant?.name || "");
   const [restaurantSlug, setRestaurantSlug] = React.useState(restaurant?.slug || "");
   const [restaurantLocation, setRestaurantLocation] = React.useState(restaurant?.location || "");
@@ -36,19 +38,23 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onUpdate }) => {
     
     try {
       setUpdating(true);
-      const { error } = await supabase
+      
+      const updatedRestaurant = {
+        name: restaurantName,
+        slug: restaurantSlug,
+        location: restaurantLocation,
+        image_url: imageUrl,
+        currency: restaurantCurrency,
+        ui_language: restaurantUiLanguage,
+        pwa_icon: pwaIcon,
+        updated_at: new Date().toISOString()
+      };
+      
+      const { error, data } = await supabase
         .from('restaurants')
-        .update({
-          name: restaurantName,
-          slug: restaurantSlug,
-          location: restaurantLocation,
-          image_url: imageUrl,
-          currency: restaurantCurrency,
-          ui_language: restaurantUiLanguage,
-          pwa_icon: pwaIcon,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', restaurant.id);
+        .update(updatedRestaurant)
+        .eq('id', restaurant.id)
+        .select();
       
       if (error) throw error;
       
@@ -56,7 +62,12 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onUpdate }) => {
         title: "Restaurant Updated",
         description: "Restaurant settings have been updated successfully",
       });
+      
+      // Call both callbacks for compatibility
       onUpdate();
+      if (onRestaurantUpdated && data && data[0]) {
+        onRestaurantUpdated(data[0] as Restaurant);
+      }
     } catch (error: any) {
       console.error("Error updating restaurant:", error);
       toast({
@@ -155,7 +166,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onUpdate }) => {
             />
           </div>
           
-          {/* Add new PWA icon upload field */}
+          {/* PWA icon upload field */}
           <div className="space-y-2">
             <ImageUpload
               label="PWA App Icon (required for app installation)"

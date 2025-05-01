@@ -216,45 +216,45 @@ const KioskView = () => {
       manifestUrlRef.current = manifestURL;
       
       // Create or update the manifest link tag
-      let manifestLink = document.querySelector('link[rel="manifest"]');
+      let manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
       if (!manifestLink) {
-        manifestLink = document.createElement('link');
+        manifestLink = document.createElement('link') as HTMLLinkElement;
         manifestLink.rel = 'manifest';
         document.head.appendChild(manifestLink);
       }
       manifestLink.setAttribute('href', manifestURL);
       
       // Set theme color
-      let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+      let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
       if (!themeColorMeta) {
-        themeColorMeta = document.createElement('meta');
+        themeColorMeta = document.createElement('meta') as HTMLMetaElement;
         themeColorMeta.setAttribute('name', 'theme-color');
         document.head.appendChild(themeColorMeta);
       }
       themeColorMeta.setAttribute('content', '#4f46e5');
       
       // Set apple-touch-icon
-      let appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
+      let appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
       if (!appleTouchIcon) {
-        appleTouchIcon = document.createElement('link');
+        appleTouchIcon = document.createElement('link') as HTMLLinkElement;
         appleTouchIcon.rel = 'apple-touch-icon';
         document.head.appendChild(appleTouchIcon);
       }
       appleTouchIcon.setAttribute('href', restaurant.pwa_icon || restaurant.image_url || '/placeholder.svg');
       
       // Set apple-mobile-web-app-title
-      let appTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+      let appTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]') as HTMLMetaElement;
       if (!appTitle) {
-        appTitle = document.createElement('meta');
+        appTitle = document.createElement('meta') as HTMLMetaElement;
         appTitle.setAttribute('name', 'apple-mobile-web-app-title');
         document.head.appendChild(appTitle);
       }
       appTitle.setAttribute('content', restaurant.name);
       
       // Set application name for Windows
-      let appName = document.querySelector('meta[name="application-name"]');
+      let appName = document.querySelector('meta[name="application-name"]') as HTMLMetaElement;
       if (!appName) {
-        appName = document.createElement('meta');
+        appName = document.createElement('meta') as HTMLMetaElement;
         appName.setAttribute('name', 'application-name');
         document.head.appendChild(appName);
       }

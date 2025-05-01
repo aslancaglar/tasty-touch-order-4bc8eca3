@@ -162,6 +162,7 @@ const RestaurantManage = () => {
               {restaurant && (
                 <SettingsTab 
                   restaurant={restaurant} 
+                  onUpdate={() => {}} 
                   onRestaurantUpdated={handleRestaurantUpdated} 
                 />
               )}
