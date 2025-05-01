@@ -280,8 +280,9 @@ const KioskView = () => {
     try {
       const { data: menuItemToppingCategories, error: toppingCategoriesError } = await supabase
         .from('menu_item_topping_categories')
-        .select('topping_category_id')
-        .eq('menu_item_id', menuItemId);
+        .select('topping_category_id, display_order')
+        .eq('menu_item_id', menuItemId)
+        .order('display_order', { ascending: true });
 
       if (toppingCategoriesError) {
         console.error("Erreur lors du chargement des catégories de toppings:", toppingCategoriesError);
@@ -291,6 +292,12 @@ const KioskView = () => {
       if (!menuItemToppingCategories.length) {
         return [];
       }
+
+      // Create a map of category ID to display order
+      const displayOrderMap = menuItemToppingCategories.reduce((map, relation) => {
+        map[relation.topping_category_id] = relation.display_order ?? 1000; // Default to high number if null
+        return map;
+      }, {} as Record<string, number>);
 
       const toppingCategoryIds = menuItemToppingCategories.map(mtc => mtc.topping_category_id);
       const { data: toppingCategories, error: categoriesError } = await supabase
@@ -308,7 +315,8 @@ const KioskView = () => {
           .from('toppings')
           .select('*')
           .eq('category_id', category.id)
-          .eq('in_stock', true);
+          .eq('in_stock', true)
+          .order('display_order', { ascending: true }); // Order toppings by display_order
 
         if (toppingsError) {
           console.error(`Erreur lors du chargement des ingrédients pour la catégorie ${category.id}:`, toppingsError);
@@ -318,6 +326,7 @@ const KioskView = () => {
             min_selections: category.min_selections || 0,
             max_selections: category.max_selections || 0,
             required: category.min_selections ? category.min_selections > 0 : false,
+            display_order: displayOrderMap[category.id], // Use display_order from relation
             toppings: [],
             show_if_selection_id: category.show_if_selection_id,
             show_if_selection_type: category.show_if_selection_type
@@ -330,18 +339,29 @@ const KioskView = () => {
           min_selections: category.min_selections || 0,
           max_selections: category.max_selections || 0,
           required: category.min_selections ? category.min_selections > 0 : false,
+          display_order: displayOrderMap[category.id], // Use display_order from relation
           toppings: toppings.map(topping => ({
             id: topping.id,
             name: topping.name,
             price: topping.price,
-            tax_percentage: topping.tax_percentage || 0
+            tax_percentage: topping.tax_percentage || 0,
+            display_order: topping.display_order
           })),
           show_if_selection_id: category.show_if_selection_id,
           show_if_selection_type: category.show_if_selection_type
         };
       }));
 
-      return toppingCategoriesWithToppings.filter(category => category.toppings.length > 0);
+      // Sort by display_order
+      const sortedCategories = toppingCategoriesWithToppings
+        .filter(category => category.toppings.length > 0)
+        .sort((a, b) => {
+          const orderA = a.display_order ?? 1000;
+          const orderB = b.display_order ?? 1000;
+          return orderA - orderB;
+        });
+
+      return sortedCategories;
     } catch (error) {
       console.error("Erreur lors de la récupération des catégories de toppings:", error);
       return [];

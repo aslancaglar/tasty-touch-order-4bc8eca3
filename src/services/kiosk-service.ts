@@ -575,6 +575,7 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
       return {
         ...category,
         display_order: relationDisplayOrder,  // Use relation display_order for category sorting
+        required: category.min_selections ? category.min_selections > 0 : false, // Add required property
         toppings
       };
     })

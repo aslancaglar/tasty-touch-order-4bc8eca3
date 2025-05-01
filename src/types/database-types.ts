@@ -143,6 +143,7 @@ export interface MenuItemWithOptions extends MenuItem {
     min_selections: number;
     max_selections: number;
     required: boolean;
+    display_order?: number | null; // Added display_order here
     toppings: {
       id: string;
       name: string;
