@@ -1,6 +1,6 @@
 
 import React, { memo, useCallback } from "react";
-import { Check, MinusCircle, PlusCircle } from "lucide-react";
+import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -133,17 +133,27 @@ const ToppingCategory = memo(({
                     +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
                   </span>
                 )}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={e => {
-                    e.stopPropagation();
-                    onToggleTopping(category.id, topping.id);
-                  }}
-                  className={`text-5xl px-[8px] rounded-full text-slate-50 font-bold py-[7px] ${isSelected ? 'bg-green-700 hover:bg-green-600' : 'bg-violet-800 hover:bg-violet-700'}`}
-                >
-                  {isSelected ? <Check className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
-                </Button>
+                {!isSelected ? (
+                  <Plus 
+                    className="h-6 w-6 text-violet-800 cursor-pointer"
+                    onClick={e => {
+                      e.stopPropagation();
+                      onToggleTopping(category.id, topping.id);
+                    }}
+                  />
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={e => {
+                      e.stopPropagation();
+                      onToggleTopping(category.id, topping.id);
+                    }}
+                    className={`text-5xl px-[8px] rounded-full text-slate-50 font-bold py-[7px] bg-green-700 hover:bg-green-600`}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           );
@@ -255,25 +265,26 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               currencySymbol={currencySymbol} 
             />
           ))}
-
-          {/* Quantity selector - show for all products */}
-          <div className="flex justify-between items-center pt-1">
-            <Label className="font-medium">{t("quantity")}</Label>
-            <div className="flex items-center space-x-3">
-              <Button variant="outline" size="icon" onClick={handleQuantityDecrease} className="h-8 w-8">
-                <MinusCircle className="h-4 w-4" />
-              </Button>
-              <span className="font-medium text-lg min-w-[20px] text-center">{quantity}</span>
-              <Button variant="outline" size="icon" onClick={handleQuantityIncrease} className="h-8 w-8">
-                <PlusCircle className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
         </div>
         
         <DialogFooter className="mt-3 pt-2">
-          <div className="w-full">
-            <Button onClick={onAddToCart} className="w-full bg-kiosk-primary py-[34px] text-3xl">
+          <div className="w-full flex items-center">
+            <div className="flex items-center mr-4">
+              <Button 
+                className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700"
+                onClick={handleQuantityDecrease}
+              >
+                <Minus className="h-6 w-6" />
+              </Button>
+              <span className="font-medium text-2xl min-w-[40px] text-center">{quantity}</span>
+              <Button 
+                className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700"
+                onClick={handleQuantityIncrease}
+              >
+                <Plus className="h-6 w-6" />
+              </Button>
+            </div>
+            <Button onClick={onAddToCart} className="flex-1 bg-kiosk-primary py-[34px] text-3xl">
               {t("addToCart")} - {calculateItemPrice().toFixed(2)} {currencySymbol}
             </Button>
           </div>
