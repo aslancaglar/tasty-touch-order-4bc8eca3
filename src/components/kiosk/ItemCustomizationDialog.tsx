@@ -1,3 +1,4 @@
+
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -104,6 +105,7 @@ const ToppingCategory = memo(({
       <div className={`grid ${gridCols} gap-1`}>
         {sortedToppings.map(topping => {
         const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
+        const buttonSize = "h-10 w-10"; // Same size for both states
         return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border rounded-md p-2 hover:border-gray-300 cursor-pointer select-none">
               <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
                 {topping.name}
@@ -112,15 +114,27 @@ const ToppingCategory = memo(({
                 {topping.price > 0 && <span className="text-sm">
                     +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
                   </span>}
-                {!isSelected ? <Plus onClick={e => {
-              e.stopPropagation();
-              onToggleTopping(category.id, topping.id);
-            }} className="h-6 w-6 text-violet-800 cursor-pointer rounded-full bg-violet-700 py-[24px] px-[24px]" /> : <Button variant="outline" size="icon" onClick={e => {
-              e.stopPropagation();
-              onToggleTopping(category.id, topping.id);
-            }} className={`text-5xl px-[8px] rounded-full text-slate-50 font-bold py-[7px] bg-green-700 hover:bg-green-600`}>
+                {!isSelected ? (
+                  <Plus 
+                    onClick={e => {
+                      e.stopPropagation();
+                      onToggleTopping(category.id, topping.id);
+                    }} 
+                    className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} 
+                  />
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={e => {
+                      e.stopPropagation();
+                      onToggleTopping(category.id, topping.id);
+                    }} 
+                    className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}
+                  >
                     <Check className="h-4 w-4" />
-                  </Button>}
+                  </Button>
+                )}
               </div>
             </div>;
       })}
@@ -213,11 +227,11 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         <DialogFooter className="mt-3 pt-2">
           <div className="w-full flex items-center">
             <div className="flex items-center mr-4">
-              <Button className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700" onClick={handleQuantityDecrease}>
+              <Button className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700 text-white" onClick={handleQuantityDecrease}>
                 <Minus className="h-6 w-6" />
               </Button>
               <span className="font-medium text-2xl min-w-[40px] text-center">{quantity}</span>
-              <Button className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700" onClick={handleQuantityIncrease}>
+              <Button className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700 text-white" onClick={handleQuantityIncrease}>
                 <Plus className="h-6 w-6" />
               </Button>
             </div>
