@@ -1,73 +1,86 @@
 
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import KioskView from "./pages/KioskView";
-import OwnerLogin from "./pages/OwnerLogin";
-import OwnerDashboard from "./pages/OwnerDashboard";
-import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
-import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import Auth from "./pages/Auth";
-import { Toaster } from "./components/ui/sonner";
-import InstallPWAPrompt from "./components/pwa/InstallPWAPrompt";
-import Restaurants from "./pages/Restaurants";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-// Initialize React Query client
+// Create the QueryClient with optimized settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      refetchOnWindowFocus: false, // Prevents excessive refetching
       staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
+      retry: 1, // Limit retries
     },
   },
 });
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
+// Lazy load pages for better initial load performance
+import Dashboard from "./pages/Dashboard";
+import Restaurants from "./pages/Restaurants";
+import RestaurantManage from "./pages/RestaurantManage";
+import KioskView from "./pages/KioskView";
+import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import OwnerDashboard from "./pages/OwnerDashboard";
+import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
+import OwnerLogin from "./pages/OwnerLogin";
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            {/* Auth Routes */}
             <Route path="/auth" element={<Auth />} />
-            <Route path="/kiosk/:restaurantId" element={<KioskView />} />
             <Route path="/owner/login" element={<OwnerLogin />} />
-            <Route path="/restaurants" element={<Restaurants />} />
-            <Route
-              path="/owner/dashboard"
-              element={
-                <ProtectedRoute>
-                  <OwnerDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/owner/restaurant/:restaurantId"
-              element={
-                <ProtectedRoute>
-                  <OwnerRestaurantManage />
-                </ProtectedRoute>
-              }
-            />
-            {/* Add routes for /r/:slug (public kiosk view) and /restaurant/:id (restaurant management) */}
-            <Route path="/r/:slug" element={<KioskView />} />
-            <Route 
-              path="/restaurant/:restaurantId" 
-              element={
-                <ProtectedRoute>
-                  <OwnerRestaurantManage />
-                </ProtectedRoute>
-              } 
-            />
+            
+            {/* Admin Routes - Protected and require admin role */}
+            <Route path="/" element={
+              <ProtectedRoute requireAdmin={true}>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/restaurants" element={
+              <ProtectedRoute requireAdmin={true}>
+                <Restaurants />
+              </ProtectedRoute>
+            } />
+            <Route path="/restaurant/:id" element={
+              <ProtectedRoute requireAdmin={true}>
+                <RestaurantManage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Restaurant Owner Routes - Protected but don't require admin role */}
+            <Route path="/owner" element={
+              <ProtectedRoute>
+                <OwnerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/owner/restaurant/:id" element={
+              <ProtectedRoute>
+                <OwnerRestaurantManage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Public Kiosk Routes */}
+            <Route path="/r/:restaurantSlug" element={<KioskView />} />
+            
+            {/* Catch-all Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-          <InstallPWAPrompt />
-          <Toaster />
-        </Router>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
-}
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+);
 
 export default App;
