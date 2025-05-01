@@ -941,7 +941,7 @@ const KioskView = () => {
 
         {/* Scrollable menu grid area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="pb-[120px]">
+          <div className="pb-[120px] p-4">
             <h2 className="text-xl font-bold mb-4">
               {categories.find(c => c.id === activeCategory)?.name || t("menu")}
             </h2>
