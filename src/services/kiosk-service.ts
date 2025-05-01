@@ -565,7 +565,7 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
         
         if (!category) return null;
         
-        // Find the display order for this category
+        // Make sure we use the correct display order from the relation table
         const relation = toppingCategoryRelations?.find(rel => rel.topping_category_id === categoryId);
         const display_order = relation ? relation.display_order : null;
         
@@ -580,7 +580,7 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
       })
     );
     
-    // Filter out any null categories and sort by display_order
+    // Filter out any null categories
     const filteredCategories = toppingCategories.filter(Boolean);
     
     // Return the complete menu item with options, choices, and topping categories

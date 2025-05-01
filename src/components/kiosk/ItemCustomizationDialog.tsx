@@ -1,3 +1,4 @@
+
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -205,10 +206,10 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
   
-  // Get toppingCategories sorted by their display_order
+  // Important fix: Make sure we're sorting categories by their display_order property
   const sortedToppingCategories = item.toppingCategories ? 
     [...item.toppingCategories].sort((a, b) => {
-      // Use the display_order property correctly
+      // Ensure we use display_order for sorting, defaulting to 1000 if not available
       const orderA = typeof a.display_order === 'number' ? a.display_order : 1000;
       const orderB = typeof b.display_order === 'number' ? b.display_order : 1000;
       return orderA - orderB;
