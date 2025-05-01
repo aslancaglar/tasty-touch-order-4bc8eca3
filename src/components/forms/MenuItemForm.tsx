@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import ImageUpload from "@/components/ImageUpload";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -60,12 +60,19 @@ interface MenuItemFormProps {
   restaurantId: string;
 }
 
+// Define a type for the ordered topping category
+interface OrderedToppingCategory extends ToppingCategory {
+  order: number;
+}
+
 const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: MenuItemFormProps) => {
   const [imageUrl, setImageUrl] = useState<string | undefined>(initialValues?.image || undefined);
   const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
   const [selectedToppingCategories, setSelectedToppingCategories] = useState<string[]>(
     initialValues?.topping_categories || []
   );
+  // Track the order of selected categories
+  const [toppingCategoryOrder, setToppingCategoryOrder] = useState<Record<string, number>>({});
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -88,13 +95,22 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       try {
         const data = await getToppingCategoriesByRestaurantId(restaurantId);
         setToppingCategories(data);
+        
+        // Initialize order values if there are selected categories
+        if (selectedToppingCategories.length > 0) {
+          const orderMap: Record<string, number> = {};
+          selectedToppingCategories.forEach((categoryId, index) => {
+            orderMap[categoryId] = index;
+          });
+          setToppingCategoryOrder(orderMap);
+        }
       } catch (error) {
         console.error("Error fetching topping categories:", error);
       }
     };
 
     fetchToppingCategories();
-  }, [restaurantId]);
+  }, [restaurantId, selectedToppingCategories]);
 
   const handleImageUpload = (url: string) => {
     setImageUrl(url);
@@ -104,24 +120,101 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
   const handleToppingCategoryToggle = (categoryId: string) => {
     setSelectedToppingCategories(prev => {
       if (prev.includes(categoryId)) {
+        // Remove from selected categories
         const updated = prev.filter(id => id !== categoryId);
         form.setValue("topping_categories", updated);
+        
+        // Remove from order tracking
+        const updatedOrder = { ...toppingCategoryOrder };
+        delete updatedOrder[categoryId];
+        setToppingCategoryOrder(updatedOrder);
+        
         return updated;
       } else {
+        // Add to selected categories
         const updated = [...prev, categoryId];
         form.setValue("topping_categories", updated);
+        
+        // Add to order tracking with the next available position
+        setToppingCategoryOrder(prev => ({
+          ...prev,
+          [categoryId]: Object.keys(prev).length
+        }));
+        
         return updated;
       }
     });
   };
+  
+  // Move a category up in the order
+  const moveCategoryUp = (categoryId: string) => {
+    const currentPosition = toppingCategoryOrder[categoryId];
+    if (currentPosition <= 0) return; // Already at the top
+    
+    // Find the category that's one position above
+    const categoryAboveId = Object.keys(toppingCategoryOrder).find(
+      id => toppingCategoryOrder[id] === currentPosition - 1
+    );
+    
+    if (categoryAboveId) {
+      // Swap positions
+      setToppingCategoryOrder(prev => ({
+        ...prev,
+        [categoryId]: currentPosition - 1,
+        [categoryAboveId]: currentPosition
+      }));
+      
+      // Update the form's topping_categories array to reflect the new order
+      const orderedCategories = [...selectedToppingCategories].sort(
+        (a, b) => toppingCategoryOrder[a] - toppingCategoryOrder[b]
+      );
+      form.setValue("topping_categories", orderedCategories);
+    }
+  };
+  
+  // Move a category down in the order
+  const moveCategoryDown = (categoryId: string) => {
+    const currentPosition = toppingCategoryOrder[categoryId];
+    if (currentPosition >= selectedToppingCategories.length - 1) return; // Already at the bottom
+    
+    // Find the category that's one position below
+    const categoryBelowId = Object.keys(toppingCategoryOrder).find(
+      id => toppingCategoryOrder[id] === currentPosition + 1
+    );
+    
+    if (categoryBelowId) {
+      // Swap positions
+      setToppingCategoryOrder(prev => ({
+        ...prev,
+        [categoryId]: currentPosition + 1,
+        [categoryBelowId]: currentPosition
+      }));
+      
+      // Update the form's topping_categories array to reflect the new order
+      const orderedCategories = [...selectedToppingCategories].sort(
+        (a, b) => toppingCategoryOrder[a] - toppingCategoryOrder[b]
+      );
+      form.setValue("topping_categories", orderedCategories);
+    }
+  };
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    // Sort the topping categories by their order before submitting
+    const sortedToppingCategories = [...selectedToppingCategories].sort(
+      (a, b) => toppingCategoryOrder[a] - toppingCategoryOrder[b]
+    );
+    
     onSubmit({
       ...values,
       image: imageUrl,
-      topping_categories: selectedToppingCategories,
+      topping_categories: sortedToppingCategories,
     });
   };
+
+  // Sort the categories by their assigned order for display
+  const sortedSelectedCategories = [...selectedToppingCategories].sort(
+    (a, b) => toppingCategoryOrder[a] - toppingCategoryOrder[b]
+  );
 
   return (
     <Form {...form}>
@@ -255,6 +348,46 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
               ))}
             </div>
           </FormItem>
+        )}
+
+        {sortedSelectedCategories.length > 0 && (
+          <div>
+            <Label className="block mb-2">Selected Categories Order</Label>
+            <div className="space-y-2 border rounded-md p-4">
+              {sortedSelectedCategories.map((categoryId, index) => {
+                const category = toppingCategories.find(c => c.id === categoryId);
+                if (!category) return null;
+                
+                return (
+                  <div key={categoryId} className="flex items-center justify-between bg-slate-50 p-2 rounded">
+                    <span className="font-medium">{category.name}</span>
+                    <div className="flex space-x-1">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => moveCategoryUp(categoryId)}
+                        disabled={index === 0}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => moveCategoryDown(categoryId)}
+                        disabled={index === sortedSelectedCategories.length - 1}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         <Button 
