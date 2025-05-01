@@ -191,14 +191,14 @@ import { SkeletonOrderItemTableCard } from "@/components/ui/skeleton-order-item-
 import { SkeletonOrderTableCard } from "@/components/ui/skeleton-order-table-card";
 import { SkeletonUserTableCard } from "@/components/ui/skeleton-user-table-card";
 import { SkeletonKioskTableCard } from "@/components/ui/skeleton-kiosk-table-card";
-import { SkeletonCategoryCardListTableCardCard } from "@/components/ui/skeleton-category-card-list-table-card-card";
-import { SkeletonMenuItemCardListTableCardCard } from "@/components/ui/skeleton-menu-item-card-list-table-card-card";
-import { SkeletonToppingCategoryCardListTableCardCard } from "@/components/ui/skeleton-topping-category-card-list-table-card-card";
-import { SkeletonToppingCardListTableCardCard } from "@/components/ui/skeleton-topping-card-list-table-card-card";
-import { SkeletonOrderItemCardListTableCardCard } from "@/components/ui/skeleton-order-item-card-list-table-card-card";
-import { SkeletonOrderCardListTableCardCard } from "@/components/ui/skeleton-order-card-list-table-card-card";
-import { SkeletonUserCardListTableCardCard } from "@/components/ui/skeleton-user-card-list-table-card-card";
-import { SkeletonKioskCardListTableCardCard } from "@/components/ui/skeleton-kiosk-card-list-table-card-card";
+import { SkeletonCategoryCardListCardCard } from "@/components/ui/skeleton-category-card-list-card-card";
+import { SkeletonMenuItemCardListCardCard } from "@/components/ui/skeleton-menu-item-card-list-card-card";
+import { SkeletonToppingCategoryCardListCardCard } from "@/components/ui/skeleton-topping-category-card-list-card-card";
+import { SkeletonToppingCardListCardCard } from "@/components/ui/skeleton-topping-card-list-card-card";
+import { SkeletonOrderItemCardListCardCard } from "@/components/ui/skeleton-order-item-card-list-card-card";
+import { SkeletonOrderCardListCardCard } from "@/components/ui/skeleton-order-card-list-card-card";
+import { SkeletonUserCardListCardCard } from "@/components/ui/skeleton-user-card-list-card-card";
+import { SkeletonKioskCardListCardCard } from "@/components/ui/skeleton-kiosk-card-list-card-card";
 import { SkeletonCategoryCardTableCardCard } from "@/components/ui/skeleton-category-card-table-card-card";
 import { SkeletonMenuItemCardTableCardCard } from "@/components/ui/skeleton-menu-item-card-table-card-card";
 import { SkeletonToppingCategoryCardTableCardCard } from "@/components/ui/skeleton-topping-category-card-table-card-card";
@@ -532,4 +532,6 @@ const Menu = () => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">{t('
+              <span className="sr-only">{t('openMenu')}</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
