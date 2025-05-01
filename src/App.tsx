@@ -12,6 +12,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Auth from "./pages/Auth";
 import { Toaster } from "./components/ui/sonner";
 import InstallPWAPrompt from "./components/pwa/InstallPWAPrompt";
+import Restaurants from "./pages/Restaurants";
 
 // Initialize React Query client
 const queryClient = new QueryClient({
@@ -32,6 +33,7 @@ function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/kiosk/:restaurantId" element={<KioskView />} />
             <Route path="/owner/login" element={<OwnerLogin />} />
+            <Route path="/restaurants" element={<Restaurants />} />
             <Route
               path="/owner/dashboard"
               element={
