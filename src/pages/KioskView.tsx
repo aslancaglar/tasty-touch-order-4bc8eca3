@@ -364,41 +364,10 @@ const KioskView = () => {
       
       const toppingCategories = await fetchToppingCategories(item.id);
       
-      if ((!itemWithOptions.options || itemWithOptions.options.length === 0) && 
-          (!toppingCategories || toppingCategories.length === 0)) {
-        const newItem: CartItem = {
-          id: Date.now().toString(),
-          menuItem: {
-            ...itemWithOptions,
-            toppingCategories: []
-          },
-          quantity: 1,
-          selectedOptions: [],
-          selectedToppings: [],
-          itemPrice: parseFloat(itemWithOptions.price.toString())
-        };
-        
-        setCart(prev => [newItem, ...prev]);
-        toast({
-          title: t("addedToCart"),
-          description: `1x ${itemWithOptions.name} ${t("added")}`
-        });
-        setLoading(false);
-        return;
-      }
-      
-      let sortedToppingCategories = toppingCategories;
-      if (item.topping_categories && item.topping_categories.length > 1) {
-        sortedToppingCategories = [...toppingCategories].sort((a, b) => {
-          const indexA = item.topping_categories.indexOf(a.id);
-          const indexB = item.topping_categories.indexOf(b.id);
-          return indexA - indexB;
-        });
-      }
-      
+      // Always show customization dialog, removing the direct add-to-cart path for items without options/toppings
       const itemWithToppings: MenuItemWithOptions = {
         ...(itemWithOptions as MenuItemWithOptions),
-        toppingCategories: sortedToppingCategories
+        toppingCategories: toppingCategories || []
       };
       
       setSelectedItem(itemWithToppings);
@@ -423,8 +392,8 @@ const KioskView = () => {
         setSelectedOptions([]);
       }
       
-      if (sortedToppingCategories.length > 0) {
-        const initialToppings = sortedToppingCategories.map(category => ({
+      if (toppingCategories && toppingCategories.length > 0) {
+        const initialToppings = toppingCategories.map(category => ({
           categoryId: category.id,
           toppingIds: []
         }));

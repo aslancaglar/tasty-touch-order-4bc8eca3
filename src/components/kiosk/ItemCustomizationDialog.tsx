@@ -42,26 +42,36 @@ const Option = memo(({
   onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
   currencySymbol: string;
 }) => {
-  return <div className="space-y-1">
+  return (
+    <div className="space-y-1">
       {option.choices.map(choice => {
-      const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
-      return <div key={choice.id} className={`
+        const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
+        return (
+          <div
+            key={choice.id}
+            className={`
               flex items-center justify-between p-2 border rounded-md cursor-pointer select-none
               ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
-            `} onClick={() => onToggleChoice(option.id, choice.id, !!option.multiple)}>
+            `}
+            onClick={() => onToggleChoice(option.id, choice.id, !!option.multiple)}
+          >
             <div className="flex items-center">
-              <div className={`
+              <div
+                className={`
                 w-5 h-5 mr-3 rounded-full flex items-center justify-center
                 ${isSelected ? 'bg-kiosk-primary text-white' : 'border border-gray-300'}
-              `}>
+              `}
+              >
                 {isSelected && <Check className="h-3 w-3" />}
               </div>
               <span>{choice.name}</span>
             </div>
             {choice.price && choice.price > 0 && <span>+{parseFloat(choice.price.toString()).toFixed(2)} {currencySymbol}</span>}
-          </div>;
-    })}
-    </div>;
+          </div>
+        );
+      })}
+    </div>
+  );
 });
 Option.displayName = 'Option';
 
@@ -86,9 +96,10 @@ const ToppingCategory = memo(({
     return orderA - orderB;
   });
 
-  return <div className="space-y-2">
+  return (
+    <div className="space-y-2">
       <div className="font-bold text-lg flex items-center">
-        {category.name} 
+        {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
         <span className="ml-2 text-red-600 text-sm font-bold">
           {category.max_selections > 0 ? `(${t("selectUpTo")} ${category.max_selections})` : `(${t("multipleSelection")})`}
@@ -96,26 +107,40 @@ const ToppingCategory = memo(({
       </div>
       <div className="grid grid-cols-3 gap-1">
         {sortedToppings.map(topping => {
-        const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
-        return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border rounded-md p-2 hover:border-gray-300 cursor-pointer select-none">
+          const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
+          return (
+            <div
+              key={topping.id}
+              onClick={() => onToggleTopping(category.id, topping.id)}
+              className="flex items-center justify-between border rounded-md p-2 hover:border-gray-300 cursor-pointer select-none"
+            >
               <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
                 {topping.name}
               </span>
               <div className="flex items-center gap-1">
-                {topping.price > 0 && <span className="text-sm">
+                {topping.price > 0 && (
+                  <span className="text-sm">
                     +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
-                  </span>}
-                <Button variant="outline" size="icon" onClick={e => {
-              e.stopPropagation();
-              onToggleTopping(category.id, topping.id);
-            }} className={`text-5xl px-[8px] rounded-full text-slate-50 font-bold py-[7px] ${isSelected ? 'bg-green-700 hover:bg-green-600' : 'bg-violet-800 hover:bg-violet-700'}`}>
+                  </span>
+                )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={e => {
+                    e.stopPropagation();
+                    onToggleTopping(category.id, topping.id);
+                  }}
+                  className={`text-5xl px-[8px] rounded-full text-slate-50 font-bold py-[7px] ${isSelected ? 'bg-green-700 hover:bg-green-600' : 'bg-violet-800 hover:bg-violet-700'}`}
+                >
                   {isSelected ? <Check className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
                 </Button>
               </div>
-            </div>;
-      })}
+            </div>
+          );
+        })}
       </div>
-    </div>;
+    </div>
+  );
 });
 ToppingCategory.displayName = 'ToppingCategory';
 
@@ -171,16 +196,24 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
+
   const handleSpecialInstructionsChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onSpecialInstructionsChange(e.target.value);
   }, [onSpecialInstructionsChange]);
+
   const handleQuantityDecrease = useCallback(() => {
     if (quantity > 1) onQuantityChange(quantity - 1);
   }, [quantity, onQuantityChange]);
+
   const handleQuantityIncrease = useCallback(() => {
     onQuantityChange(quantity + 1);
   }, [quantity, onQuantityChange]);
-  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+
+  const hasCustomizations = (item.options && item.options.length > 0) ||
+                           (item.toppingCategories && item.toppingCategories.length > 0);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
           <DialogTitle className="text-xl font-bold">{item.name}</DialogTitle>
@@ -188,17 +221,47 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         </DialogHeader>
         
         <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none">
-          {item.options && item.options.map(option => <div key={option.id} className="space-y-1">
+          {/* Options section - only show if there are options */}
+          {item.options && item.options.length > 0 && item.options.map(option => (
+            <div key={option.id} className="space-y-1">
               <Label className="font-medium">
                 {option.name}
                 {option.required && <span className="text-red-500 ml-1">*</span>}
                 {option.multiple && <span className="text-sm text-gray-500 ml-2">({t("multipleSelection")})</span>}
               </Label>
-              <Option option={option} selectedOption={selectedOptions.find(o => o.optionId === option.id)} onToggleChoice={onToggleChoice} currencySymbol={currencySymbol} />
-            </div>)}
+              <Option 
+                option={option} 
+                selectedOption={selectedOptions.find(o => o.optionId === option.id)} 
+                onToggleChoice={onToggleChoice} 
+                currencySymbol={currencySymbol} 
+              />
+            </div>
+          ))}
 
-          {item.toppingCategories && item.toppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => <ToppingCategory key={category.id} category={category} selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} onToggleTopping={onToggleTopping} t={t} currencySymbol={currencySymbol} />)}
+          {/* Toppings section - only show if there are toppings */}
+          {item.toppingCategories && item.toppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => (
+            <ToppingCategory 
+              key={category.id} 
+              category={category} 
+              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
+              onToggleTopping={onToggleTopping} 
+              t={t} 
+              currencySymbol={currencySymbol} 
+            />
+          ))}
+          
+          {/* Special instructions - show for all products */}
+          <div className="space-y-1">
+            <Label className="font-medium">Special Instructions</Label>
+            <Textarea 
+              placeholder="Any special requests or instructions..." 
+              value={specialInstructions}
+              onChange={handleSpecialInstructionsChange}
+              className="resize-none"
+            />
+          </div>
 
+          {/* Quantity selector - show for all products */}
           <div className="flex justify-between items-center pt-1">
             <Label className="font-medium">{t("quantity")}</Label>
             <div className="flex items-center space-x-3">
@@ -211,8 +274,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               </Button>
             </div>
           </div>
-          
-          
         </div>
         
         <DialogFooter className="mt-3 pt-2">
@@ -223,6 +284,8 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           </div>
         </DialogFooter>
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 };
+
 export default memo(ItemCustomizationDialog);
