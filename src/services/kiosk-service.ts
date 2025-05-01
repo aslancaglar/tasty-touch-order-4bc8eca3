@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -227,7 +228,7 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
   console.log("Creating menu item with data:", item);
 
-  const { topping_categories, tax_percentage, ...menuItemData } = item as any;
+  const { topping_categories, tax_percentage, _toppingCategoriesOrder, ...menuItemData } = item as any;
 
   const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
     ? (Number(tax_percentage) || 10)
@@ -245,11 +246,24 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
   }
 
   if (topping_categories && topping_categories.length > 0) {
-    const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
-      menu_item_id: data.id,
-      topping_category_id: categoryId,
-      display_order: index // Save the order based on array index
-    }));
+    // Use the ordered information if available
+    let toppingCategoryRelations;
+    
+    if (_toppingCategoriesOrder) {
+      // Use explicit order information
+      toppingCategoryRelations = _toppingCategoriesOrder.map((cat: any) => ({
+        menu_item_id: data.id,
+        topping_category_id: cat.id,
+        display_order: cat.display_order
+      }));
+    } else {
+      // Use array order as default
+      toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
+        menu_item_id: data.id,
+        topping_category_id: categoryId,
+        display_order: index
+      }));
+    }
 
     const { error: relationError } = await supabase
       .from("menu_item_topping_categories")
@@ -269,7 +283,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
 export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
   console.log("Updating menu item:", id, "with data:", updates);
 
-  const { topping_categories, tax_percentage, ...menuItemData } = updates as any;
+  const { topping_categories, tax_percentage, _toppingCategoriesOrder, ...menuItemData } = updates as any;
   
   const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
     ? (Number(tax_percentage) || 10)
@@ -298,11 +312,24 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
     }
 
     if (topping_categories && topping_categories.length > 0) {
-      const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
-        menu_item_id: id,
-        topping_category_id: categoryId,
-        display_order: index // Add display_order based on the array index
-      }));
+      // Use the ordered information if available
+      let toppingCategoryRelations;
+      
+      if (_toppingCategoriesOrder) {
+        // Use explicit order information
+        toppingCategoryRelations = _toppingCategoriesOrder.map((cat: any) => ({
+          menu_item_id: id,
+          topping_category_id: cat.id,
+          display_order: cat.display_order
+        }));
+      } else {
+        // Use array order as default
+        toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
+          menu_item_id: id,
+          topping_category_id: categoryId,
+          display_order: index
+        }));
+      }
 
       const { error: insertError } = await supabase
         .from("menu_item_topping_categories")

@@ -1,3 +1,4 @@
+
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -113,15 +114,26 @@ const ToppingCategory = memo(({
                 {topping.price > 0 && <span className="text-sm">
                     +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
                   </span>}
-                {!isSelected ? <Plus onClick={e => {
-              e.stopPropagation();
-              onToggleTopping(category.id, topping.id);
-            }} className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} /> : <Button variant="outline" size="icon" onClick={e => {
-              e.stopPropagation();
-              onToggleTopping(category.id, topping.id);
-            }} className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}>
+                {!isSelected ? 
+                  <Plus 
+                    onClick={e => {
+                      e.stopPropagation();
+                      onToggleTopping(category.id, topping.id);
+                    }} 
+                    className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} 
+                  /> : 
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={e => {
+                      e.stopPropagation();
+                      onToggleTopping(category.id, topping.id);
+                    }} 
+                    className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}
+                  >
                     <Check className="h-4 w-4" />
-                  </Button>}
+                  </Button>
+                }
               </div>
             </div>;
       })}
@@ -182,13 +194,26 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
+  
   const handleQuantityDecrease = useCallback(() => {
     if (quantity > 1) onQuantityChange(quantity - 1);
   }, [quantity, onQuantityChange]);
+  
   const handleQuantityIncrease = useCallback(() => {
     onQuantityChange(quantity + 1);
   }, [quantity, onQuantityChange]);
+  
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
+  
+  // Get toppingCategories sorted by their display_order
+  const sortedToppingCategories = item.toppingCategories ? 
+    [...item.toppingCategories].sort((a, b) => {
+      // Use the display_order from the category itself which comes from the relation
+      const orderA = a.display_order ?? 1000;
+      const orderB = b.display_order ?? 1000;
+      return orderA - orderB;
+    }) : [];
+  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
@@ -208,7 +233,18 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
             </div>)}
 
           {/* Toppings section - only show if there are toppings */}
-          {item.toppingCategories && item.toppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => <ToppingCategory key={category.id} category={category} selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} onToggleTopping={onToggleTopping} t={t} currencySymbol={currencySymbol} />)}
+          {sortedToppingCategories && sortedToppingCategories
+            .filter(category => shouldShowToppingCategory(category))
+            .map(category => 
+              <ToppingCategory 
+                key={category.id} 
+                category={category} 
+                selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
+                onToggleTopping={onToggleTopping} 
+                t={t} 
+                currencySymbol={currencySymbol} 
+              />
+            )}
         </div>
         
         <DialogFooter className="mt-3 pt-2">
