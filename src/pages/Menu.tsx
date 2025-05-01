@@ -118,6 +118,7 @@ import { SkeletonMenuItemCardList } from "@/components/ui/skeleton-menu-item-car
 import { SkeletonToppingCategoryCardList } from "@/components/ui/skeleton-topping-category-card-list";
 import { SkeletonToppingCardList } from "@/components/ui/skeleton-topping-card-list";
 import { SkeletonOrderItemTable } from "@/components/ui/skeleton-order-item-table";
+import { SkeletonUserCardList } from "@/components/ui/skeleton-user-card-list";
 import { SkeletonOrderItemCardList } from "@/components/ui/skeleton-order-item-card-list";
 import { SkeletonCategoryTableList } from "@/components/ui/skeleton-category-table-list";
 import { SkeletonMenuItemTableList } from "@/components/ui/skeleton-menu-item-table-list";
@@ -125,7 +126,6 @@ import { SkeletonToppingCategoryTableList } from "@/components/ui/skeleton-toppi
 import { SkeletonToppingTableList } from "@/components/ui/skeleton-topping-table-list";
 import { SkeletonKioskCardList } from "@/components/ui/skeleton-kiosk-card-list";
 import { SkeletonOrderCardList } from "@/components/ui/skeleton-order-card-list";
-import { SkeletonUserCardList } from "@/components/ui/skeleton-user-card-list";
 import { SkeletonOrderItemTableList } from "@/components/ui/skeleton-order-item-table-list";
 import { SkeletonOrderItemCard } from "@/components/ui/skeleton-order-item-card";
 import { SkeletonOrderTableList } from "@/components/ui/skeleton-order-table-list";
@@ -341,197 +341,213 @@ const Menu = () => {
   const t = useTranslations('Menu');
   const locale = useLocale();
 
-  const categoryColumns = [
-    {
-      id: "name",
-      header: t('categoryName'),
-      accessorKey: "name",
-    },
-    {
-      id: "description",
-      header: t('description'),
-      accessorKey: "description",
-    },
-    {
-      id: "display_order",
-      header: t('displayOrder'),
-      accessorKey: "display_order",
-    },
-    {
-      id: "actions",
-      header: t('actions'),
-      cell: (row: MenuCategory) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">{t('openMenu')}</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleEditCategory(row)}>
-              <Edit className="mr-2 h-4 w-4" /> {t('edit')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleDeleteCategory(row.id)}>
-              <Trash className="mr-2 h-4 w-4" /> {t('delete')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
-  ];
+  useEffect(() => {
+    const fetchRestaurantData = async () => {
+      if (slug && typeof slug === 'string') {
+        try {
+          const restaurantData = await getRestaurantBySlug(slug);
+          setRestaurant(restaurantData);
 
-  const menuItemColumns = [
-    {
-      id: "name",
-      header: t('menuItemName'),
-      accessorKey: "name",
-    },
-    {
-      id: "price",
-      header: t('price'),
-      accessorKey: "price",
-      cell: ({ price }: MenuItem) => {
-        const formatted = new Intl.NumberFormat(locale, {
-          style: 'currency',
-          currency: restaurant?.currency || 'USD',
-        }).format(price);
-        return formatted;
-      },
-    },
-    {
-      id: "promotion_price",
-      header: t('promotionPrice'),
-      accessorKey: "promotion_price",
-      cell: ({ promotion_price }: MenuItem) => {
-        if (!promotion_price) return '-';
-        const formatted = new Intl.NumberFormat(locale, {
-          style: 'currency',
-          currency: restaurant?.currency || 'USD',
-        }).format(promotion_price);
-        return formatted;
-      },
-    },
-    {
-      id: "in_stock",
-      header: t('inStock'),
-      accessorKey: "in_stock",
-      cell: ({ in_stock }: MenuItem) => (
-        <Badge variant={in_stock ? "default" : "destructive"}>
-          {in_stock ? t('yes') : t('no')}
-        </Badge>
-      ),
-    },
-    {
-      id: "display_order",
-      header: t('displayOrder'),
-      accessorKey: "display_order",
-    },
-    {
-      id: "actions",
-      header: t('actions'),
-      cell: (row: MenuItem) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">{t('openMenu')}</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleEditMenuItem(row)}>
-              <Edit className="mr-2 h-4 w-4" /> {t('edit')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleDeleteMenuItem(row.id)}>
-              <Trash className="mr-2 h-4 w-4" /> {t('delete')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
-  ];
+          if (restaurantData) {
+            const categoriesData = await getCategoriesByRestaurantId(restaurantData.id);
+            setCategories(categoriesData);
 
-  const toppingCategoryColumns = [
-    {
-      id: "name",
-      header: t('toppingCategoryName'),
-      accessorKey: "name",
-    },
-    {
-      id: "description",
-      header: t('description'),
-      accessorKey: "description",
-    },
-    {
-      id: "actions",
-      header: t('actions'),
-      cell: (row: ToppingCategory) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">{t('openMenu')}</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleEditToppingCategory(row)}>
-              <Edit className="mr-2 h-4 w-4" /> {t('edit')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleDeleteToppingCategory(row.id)}>
-              <Trash className="mr-2 h-4 w-4" /> {t('delete')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
-  ];
+            const toppingCategoriesData = await getToppingCategoriesByRestaurantId(restaurantData.id);
+            setToppingCategories(toppingCategoriesData);
+          }
+        } catch (error) {
+          console.error("Failed to fetch restaurant data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
 
-  const toppingColumns = (categoryId: string) => [
-    {
-      id: "name",
-      header: t('toppingName'),
-      accessorKey: "name",
-    },
-    {
-      id: "price",
-      header: t('price'),
-      accessorKey: "price",
-      cell: ({ price }: any) => {
-        const formatted = new Intl.NumberFormat(locale, {
-          style: 'currency',
-          currency: restaurant?.currency || 'USD',
-        }).format(price);
-        return formatted;
-      },
-    },
-    {
-      id: "in_stock",
-      header: t('inStock'),
-      accessorKey: "in_stock",
-      cell: ({ in_stock }: any) => (
-        <Badge variant={in_stock ? "default" : "destructive"}>
-          {in_stock ? t('yes') : t('no')}
-        </Badge>
-      ),
-    },
-    {
-      id: "display_order",
-      header: t('displayOrder'),
-      accessorKey: "display_order",
-    },
-    {
-      id: "actions",
-      header: t('actions'),
-      cell: (row: any) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">{t('openMenu')}</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+    fetchRestaurantData();
+  }, [slug]);
+
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      if (selectedCategory) {
+        try {
+          const items = await getMenuItemsByCategory(selectedCategory.id);
+          setMenuItems(items);
+        } catch (error) {
+          console.error("Failed to fetch menu items:", error);
+        }
+      } else {
+        setMenuItems([]);
+      }
+    };
+
+    fetchMenuItems();
+  }, [selectedCategory]);
+
+  const handleEditCategory = (category: MenuCategory) => {
+    setSelectedCategory(category);
+    setIsCategoryDialogOpen(true);
+  };
+
+  const handleEditMenuItem = (menuItem: MenuItem) => {
+    setSelectedMenuItem(menuItem);
+    setIsMenuItemDialogOpen(true);
+  };
+
+  const handleEditToppingCategory = (toppingCategory: ToppingCategory) => {
+    setSelectedToppingCategory(toppingCategory);
+    setIsToppingCategoryDialogOpen(true);
+  };
+
+  const handleEditTopping = (topping: any) => {
+    setSelectedTopping(topping);
+    setIsToppingDialogOpen(true);
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      await deleteCategory(categoryId);
+      setCategories(categories.filter((category) => category.id !== categoryId));
+      toast({
+        title: t('categoryDeleted'),
+        description: t('categoryDeletedSuccessfully'),
+      });
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+      toast({
+        variant: "destructive",
+        title: t('error'),
+        description: t('categoryDeletionError'),
+      });
+    }
+  };
+
+  const handleDeleteMenuItem = async (menuItemId: string) => {
+    try {
+      await deleteMenuItem(menuItemId);
+      setMenuItems(menuItems.filter((menuItem) => menuItem.id !== menuItemId));
+      toast({
+        title: t('menuItemDeleted'),
+        description: t('menuItemDeletedSuccessfully'),
+      });
+    } catch (error) {
+      console.error("Failed to delete menu item:", error);
+      toast({
+        variant: "destructive",
+        title: t('error'),
+        description: t('menuItemDeletionError'),
+      });
+    }
+  };
+
+  const handleDeleteToppingCategory = async (toppingCategoryId: string) => {
+    try {
+      await deleteToppingCategory(toppingCategoryId);
+      setToppingCategories(toppingCategories.filter((toppingCategory) => toppingCategory.id !== toppingCategoryId));
+      toast({
+        title: t('toppingCategoryDeleted'),
+        description: t('toppingCategoryDeletedSuccessfully'),
+      });
+    } catch (error) {
+      console.error("Failed to delete topping category:", error);
+      toast({
+        variant: "destructive",
+        title: t('error'),
+        description: t('toppingCategoryDeletionError'),
+      });
+    }
+  };
+
+  const handleDeleteTopping = async (toppingId: string) => {
+    try {
+      await deleteTopping(toppingId);
+      // Assuming you have a state for toppings and a function to update it
+      // setAllToppings(allToppings.filter((topping) => topping.id !== toppingId));
+      toast({
+        title: t('toppingDeleted'),
+        description: t('toppingDeletedSuccessfully'),
+      });
+    } catch (error) {
+      console.error("Failed to delete topping:", error);
+      toast({
+        variant: "destructive",
+        title: t('error'),
+        description: t('toppingDeletionError'),
+      });
+    }
+  };
+
+  const handleCategoryCreated = (newCategory: MenuCategory) => {
+    setCategories([...categories, newCategory]);
+    setIsCategoryDialogOpen(false);
+  };
+
+  const handleMenuItemCreated = (newMenuItem: MenuItem) => {
+    setMenuItems([...menuItems, newMenuItem]);
+    setIsMenuItemDialogOpen(false);
+  };
+
+  const handleToppingCategoryCreated = (newToppingCategory: ToppingCategory) => {
+    setToppingCategories([...toppingCategories, newToppingCategory]);
+    setIsToppingCategoryDialogOpen(false);
+  };
+
+  const handleToppingCreated = (newTopping: any) => {
+    // Assuming you have a state for toppings and a function to update it
+    // setAllToppings([...allToppings, newTopping]);
+    setIsToppingDialogOpen(false);
+  };
+
+  const handleCategoryUpdated = (updatedCategory: MenuCategory) => {
+    setCategories(
+      categories.map((category) =>
+        category.id === updatedCategory.id ? updatedCategory : category
+      )
+    );
+    setIsCategoryDialogOpen(false);
+  };
+
+  const handleMenuItemUpdated = (updatedMenuItem: MenuItem) => {
+    setMenuItems(
+      menuItems.map((menuItem) =>
+        menuItem.id === updatedMenuItem.id ? updatedMenuItem : menuItem
+      )
+    );
+    setIsMenuItemDialogOpen(false);
+  };
+
+  const handleToppingCategoryUpdated = (updatedToppingCategory: ToppingCategory) => {
+    setToppingCategories(
+      toppingCategories.map((toppingCategory) =>
+        toppingCategory.id === updatedToppingCategory.id ? updatedToppingCategory : toppingCategory
+      )
+    );
+    setIsToppingCategoryDialogOpen(false);
+  };
+
+  const handleToppingUpdated = (updatedTopping: any) => {
+    // Assuming you have a state for toppings and a function to update it
+    // setAllToppings(
+    //   allToppings.map((topping) =>
+    //     topping.id === updatedTopping.id ? updatedTopping : topping
+    //   )
+    // );
+    setIsToppingDialogOpen(false);
+  };
+
+  const handleDuplicateRestaurant = async () => {
+    if (slug && typeof slug === 'string') {
+      setIsDuplicating(true);
+      try {
+        const newSlug = await duplicateRestaurant(slug);
+        toast({
+          title: t('restaurantDuplicated'),
+          description: t('restaurantDuplicatedSuccessfully'),
+        });
+        nextRouter.push(`/${locale}/menu?slug=${newSlug}`);
+      } catch (error) {
+        console.error("Failed to duplicate restaurant:", error);
+        toast({
+          variant: "destructive",
+          title: t('error'),
+          description: t('restaurantDuplicationError'),
+        });
