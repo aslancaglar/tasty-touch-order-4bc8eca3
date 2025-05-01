@@ -1,4 +1,3 @@
-
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -114,27 +113,15 @@ const ToppingCategory = memo(({
                 {topping.price > 0 && <span className="text-sm">
                     +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
                   </span>}
-                {!isSelected ? (
-                  <Plus 
-                    onClick={e => {
-                      e.stopPropagation();
-                      onToggleTopping(category.id, topping.id);
-                    }} 
-                    className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} 
-                  />
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={e => {
-                      e.stopPropagation();
-                      onToggleTopping(category.id, topping.id);
-                    }} 
-                    className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}
-                  >
+                {!isSelected ? <Plus onClick={e => {
+              e.stopPropagation();
+              onToggleTopping(category.id, topping.id);
+            }} className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} /> : <Button variant="outline" size="icon" onClick={e => {
+              e.stopPropagation();
+              onToggleTopping(category.id, topping.id);
+            }} className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}>
                     <Check className="h-4 w-4" />
-                  </Button>
-                )}
+                  </Button>}
               </div>
             </div>;
       })}
@@ -205,7 +192,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-xl font-bold">{item.name}</DialogTitle>
+          <DialogTitle className="font-bold text-3xl mx-0 my-0">{item.name}</DialogTitle>
           {item.description && <DialogDescription className="text-xl">{item.description}</DialogDescription>}
         </DialogHeader>
         
