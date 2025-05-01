@@ -1,3 +1,5 @@
+
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
