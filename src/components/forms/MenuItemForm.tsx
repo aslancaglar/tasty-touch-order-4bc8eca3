@@ -79,12 +79,12 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
     defaultValues: {
       name: initialValues?.name || "",
       description: initialValues?.description || "",
-      price: initialValues?.price || "",
-      promotion_price: initialValues?.promotion_price || "",
+      price: initialValues?.price?.toString() || "",
+      promotion_price: initialValues?.promotion_price?.toString() || "",
       image: initialValues?.image || "",
-      tax_percentage: initialValues?.tax_percentage || "10",
+      tax_percentage: initialValues?.tax_percentage?.toString() || "10",
       topping_categories: initialValues?.topping_categories || [],
-      display_order: initialValues?.display_order || "0",
+      display_order: initialValues?.display_order?.toString() || "0",
     },
   });
 

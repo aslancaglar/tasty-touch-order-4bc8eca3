@@ -209,8 +209,8 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   const sortedToppingCategories = item.toppingCategories ? 
     [...item.toppingCategories].sort((a, b) => {
       // Use the display_order from the category itself which comes from the relation
-      const orderA = (a as any).display_order ?? 1000;
-      const orderB = (b as any).display_order ?? 1000;
+      const orderA = typeof a.display_order === 'number' ? a.display_order : 1000;
+      const orderB = typeof b.display_order === 'number' ? b.display_order : 1000;
       return orderA - orderB;
     }) : [];
   

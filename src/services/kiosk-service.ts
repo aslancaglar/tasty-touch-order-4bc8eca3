@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Restaurant, 
@@ -302,6 +301,7 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
   }
 
   if (topping_categories !== undefined) {
+    // First delete all existing relationships
     const { error: deleteError } = await supabase
       .from("menu_item_topping_categories")
       .delete()
@@ -311,11 +311,13 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
       console.error("Error deleting existing topping category relations:", deleteError);
     }
 
+    // Then insert new relationships if there are any
     if (topping_categories && topping_categories.length > 0) {
       // Use the ordered information if available
       let toppingCategoryRelations;
       
       if (_toppingCategoriesOrder) {
+        console.log("Using ordered topping categories:", _toppingCategoriesOrder);
         // Use explicit order information
         toppingCategoryRelations = _toppingCategoriesOrder.map((cat: any) => ({
           menu_item_id: id,
@@ -323,6 +325,7 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
           display_order: cat.display_order
         }));
       } else {
+        console.log("Using default ordering for topping categories");
         // Use array order as default
         toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
           menu_item_id: id,

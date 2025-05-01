@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,10 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-  getToppingCategoriesByRestaurantId
+  getToppingCategoriesByRestaurantId,
+  createMenuItem,
+  updateMenuItem,
+  deleteMenuItem
 } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, ToppingCategory } from "@/types/database-types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -41,6 +43,12 @@ const MenuPage = () => {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
   const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
+  const [isAddingMenuItem, setIsAddingMenuItem] = useState(false);
+  const [isEditingMenuItem, setIsEditingMenuItem] = useState(false);
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
+  const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(null);
+  const [savingMenuItem, setSavingMenuItem] = useState(false);
+  const [deletingMenuItem, setDeletingMenuItem] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -198,6 +206,164 @@ const MenuPage = () => {
     }
   };
 
+  const handleAddMenuItem = async (values: any) => {
+    if (!currentCategoryId) {
+      toast({
+        title: "Error",
+        description: "No category selected. Please select a category first.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSavingMenuItem(true);
+    
+    try {
+      const menuItemData = {
+        name: values.name,
+        description: values.description || null,
+        price: parseFloat(values.price),
+        promotion_price: values.promotion_price ? parseFloat(values.promotion_price) : null,
+        image: values.image || null,
+        category_id: currentCategoryId,
+        tax_percentage: values.tax_percentage ? parseFloat(values.tax_percentage) : 10,
+        in_stock: true,
+        display_order: values.display_order ? parseInt(values.display_order) : 0,
+        topping_categories: values.topping_categories || [],
+        _toppingCategoriesOrder: values._toppingCategoriesOrder || []
+      };
+      
+      const newMenuItem = await createMenuItem(menuItemData);
+      
+      // Update the local state
+      setMenuItems(prev => ({
+        ...prev,
+        [currentCategoryId]: [...(prev[currentCategoryId] || []), newMenuItem]
+      }));
+      
+      toast({
+        title: "Menu Item Added",
+        description: `${values.name} has been added to your menu.`,
+      });
+      
+      setIsAddingMenuItem(false);
+    } catch (error) {
+      console.error("Error adding menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add menu item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingMenuItem(false);
+    }
+  };
+
+  const handleEditMenuItem = async (values: any) => {
+    if (!editingMenuItem) return;
+    
+    setSavingMenuItem(true);
+    
+    try {
+      const menuItemData = {
+        name: values.name,
+        description: values.description || null,
+        price: parseFloat(values.price),
+        promotion_price: values.promotion_price ? parseFloat(values.promotion_price) : null,
+        image: values.image || null,
+        tax_percentage: values.tax_percentage ? parseFloat(values.tax_percentage) : 10,
+        display_order: values.display_order ? parseInt(values.display_order) : 0,
+        topping_categories: values.topping_categories || [],
+        _toppingCategoriesOrder: values._toppingCategoriesOrder || []
+      };
+      
+      const updatedMenuItem = await updateMenuItem(editingMenuItem.id, menuItemData);
+      
+      // Update the local state
+      setMenuItems(prev => {
+        const categoryId = editingMenuItem.category_id;
+        const updatedItems = prev[categoryId].map(item => 
+          item.id === editingMenuItem.id ? updatedMenuItem : item
+        );
+        
+        return {
+          ...prev,
+          [categoryId]: updatedItems
+        };
+      });
+      
+      toast({
+        title: "Menu Item Updated",
+        description: `${values.name} has been updated.`,
+      });
+      
+      setIsEditingMenuItem(false);
+      setEditingMenuItem(null);
+    } catch (error) {
+      console.error("Error updating menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update menu item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingMenuItem(false);
+    }
+  };
+
+  const handleDeleteMenuItem = async (menuItemId: string) => {
+    setDeletingMenuItem(menuItemId);
+    
+    try {
+      // Find the item to get its category
+      let categoryId = "";
+      let itemName = "";
+      
+      for (const [catId, items] of Object.entries(menuItems)) {
+        const item = items.find(item => item.id === menuItemId);
+        if (item) {
+          categoryId = catId;
+          itemName = item.name;
+          break;
+        }
+      }
+      
+      if (!categoryId) return;
+      
+      await deleteMenuItem(menuItemId);
+      
+      // Update the local state
+      setMenuItems(prev => ({
+        ...prev,
+        [categoryId]: prev[categoryId].filter(item => item.id !== menuItemId)
+      }));
+      
+      toast({
+        title: "Menu Item Deleted",
+        description: `${itemName} has been removed from your menu.`,
+      });
+    } catch (error) {
+      console.error("Error deleting menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete menu item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingMenuItem(null);
+    }
+  };
+
+  const handleOpenAddMenuItem = (categoryId: string) => {
+    setCurrentCategoryId(categoryId);
+    setIsAddingMenuItem(true);
+  };
+
+  const handleOpenEditMenuItem = (menuItem: MenuItem) => {
+    setEditingMenuItem(menuItem);
+    setIsEditingMenuItem(true);
+  };
+
   if (loading && restaurants.length === 0) {
     return (
       <AdminLayout>
@@ -318,7 +484,7 @@ const MenuPage = () => {
             </CardHeader>
             <CardContent>
               {categories.length > 0 ? (
-                <Tabs defaultValue={categories[0].id}>
+                <Tabs defaultValue={categories[0].id} onValueChange={setCurrentCategoryId}>
                   <TabsList className="mb-4">
                     {categories.map((category) => (
                       <TabsTrigger key={category.id} value={category.id} className="flex items-center">
@@ -372,9 +538,13 @@ const MenuPage = () => {
                               </div>
                             </div>
                             <div className="flex space-x-2 mt-4 md:mt-0">
-                              <Dialog>
+                              <Dialog open={isEditingMenuItem && editingMenuItem?.id === item.id} onOpenChange={(open) => !open && setEditingMenuItem(null)}>
                                 <DialogTrigger asChild>
-                                  <Button variant="outline" size="sm">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => handleOpenEditMenuItem(item)}
+                                  >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
                                   </Button>
@@ -385,48 +555,82 @@ const MenuPage = () => {
                                     <DialogDescription>Make changes to this menu item.</DialogDescription>
                                   </DialogHeader>
                                   <MenuItemForm 
-                                    onSubmit={(values) => {
-                                      console.log("Editing menu item with values:", values);
-                                    }}
+                                    onSubmit={handleEditMenuItem}
                                     initialValues={{
+                                      id: item.id,
                                       name: item.name,
                                       description: item.description || "",
                                       price: item.price.toString(),
                                       promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
                                       image: item.image || "",
                                       topping_categories: item.topping_categories || [],
-                                      tax_percentage: item.tax_percentage ? item.tax_percentage.toString() : "10"
+                                      tax_percentage: item.tax_percentage ? item.tax_percentage.toString() : "10",
+                                      display_order: item.display_order ? item.display_order.toString() : "0"
                                     }}
+                                    isLoading={savingMenuItem}
                                     restaurantId={selectedRestaurant || ""}
                                   />
                                 </DialogContent>
                               </Dialog>
-                              <Button variant="outline" size="sm" className="text-red-500">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="outline" size="sm" className="text-red-500">
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete the menu item 
+                                      "{item.name}" from your menu.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeleteMenuItem(item.id)}
+                                      className="bg-red-500 hover:bg-red-600"
+                                      disabled={deletingMenuItem === item.id}
+                                    >
+                                      {deletingMenuItem === item.id ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          Deleting...
+                                        </>
+                                      ) : (
+                                        <>Delete</>
+                                      )}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </div>
                         ))}
-                        <Dialog>
+                        <Dialog open={isAddingMenuItem && currentCategoryId === category.id} onOpenChange={(open) => !open && setIsAddingMenuItem(false)}>
                           <DialogTrigger asChild>
-                            <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
+                            <div 
+                              className="border border-dashed rounded-lg p-4 flex items-center justify-center cursor-pointer hover:bg-slate-50" 
+                              onClick={() => handleOpenAddMenuItem(category.id)}
+                            >
                               <Button variant="ghost" className="w-full h-full flex items-center justify-center">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Ajouter au panier
+                                Add Menu Item
                               </Button>
                             </div>
                           </DialogTrigger>
                           <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>Add Menu Item</DialogTitle>
-                              <DialogDescription>Create a new menu item.</DialogDescription>
+                              <DialogDescription>Create a new menu item for {
+                                categories.find(c => c.id === currentCategoryId)?.name || 'this category'
+                              }.</DialogDescription>
                             </DialogHeader>
                             <MenuItemForm 
-                              onSubmit={(values) => {
-                                // Handle add submission
-                              }}
-                              isLoading={false}
+                              onSubmit={handleAddMenuItem}
+                              isLoading={savingMenuItem}
                               restaurantId={selectedRestaurant || ""}
                             />
                           </DialogContent>
