@@ -101,6 +101,35 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                 ))}
               </div>
             )}
+            {/* Add grouped toppings, similar to the PrintNode template */}
+            {item.selectedToppings && item.selectedToppings.length > 0 && (
+              <div className="item-details text-xs">
+                {getGroupedToppings(item).map((group, groupIdx) => (
+                  <div key={`${item.id}-topping-group-${groupIdx}`}>
+                    <div style={{ fontWeight: 500 }}>
+                      {sanitizeText(group.category)}:
+                    </div>
+                    {group.toppings.map((topping, toppingIdx) => {
+                      const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                      const toppingObj = category?.toppings.find(t => t.name === topping);
+                      const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
+                      const taxRate = toppingObj?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
+                      
+                      return (
+                        <div key={`${item.id}-topping-${groupIdx}-${toppingIdx}`} className="item">
+                          <span>
+                            + {sanitizeText(topping)}
+                            {taxRate !== (item.menuItem.tax_percentage ?? 10) && 
+                              <span style={{ fontSize: '0.8em' }}> (TVA {taxRate}%)</span>}
+                          </span>
+                          {price > 0 && <span>{price.toFixed(2)} {currencySymbol}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
