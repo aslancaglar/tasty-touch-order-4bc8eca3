@@ -1,10 +1,10 @@
+
 import React, { memo, useCallback } from "react";
 import { Check, MinusCircle, PlusCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
-import { Textarea } from "@/components/ui/textarea";
 
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
@@ -197,10 +197,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
 
-  const handleSpecialInstructionsChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onSpecialInstructionsChange(e.target.value);
-  }, [onSpecialInstructionsChange]);
-
   const handleQuantityDecrease = useCallback(() => {
     if (quantity > 1) onQuantityChange(quantity - 1);
   }, [quantity, onQuantityChange]);
@@ -249,17 +245,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               currencySymbol={currencySymbol} 
             />
           ))}
-          
-          {/* Special instructions - show for all products */}
-          <div className="space-y-1">
-            <Label className="font-medium">Special Instructions</Label>
-            <Textarea 
-              placeholder="Any special requests or instructions..." 
-              value={specialInstructions}
-              onChange={handleSpecialInstructionsChange}
-              className="resize-none"
-            />
-          </div>
 
           {/* Quantity selector - show for all products */}
           <div className="flex justify-between items-center pt-1">
