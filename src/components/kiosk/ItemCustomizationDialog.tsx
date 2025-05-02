@@ -93,7 +93,7 @@ const ToppingCategory = memo(({
   } else if (toppingCount === 2) {
     gridCols = "grid-cols-2"; // 2 columns for 2 toppings
   }
-  return <div className="space-y-2">
+  return <div className="space-y-5">
       <div className="font-bold text-lg flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
