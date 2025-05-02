@@ -3,16 +3,19 @@ import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ImageOff } from "lucide-react";
-import { MenuItem } from "@/types/database-types";
+import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-interface MenuItemGridProps {
-  items: MenuItem[];
+interface AllCategoriesMenuProps {
+  categories: MenuCategory[];
+  items: Record<string, MenuItem[]>;
   handleSelectItem: (item: MenuItem) => void;
   currencySymbol: string;
   t: (key: string) => string;
   restaurantId?: string;
   refreshTrigger?: number;
+  activeCategory: string | null;
 }
 
 // Individual menu item component, memoized to prevent re-renders
@@ -76,13 +79,15 @@ const MenuItemCard = memo(({
 
 MenuItemCard.displayName = 'MenuItemCard';
 
-const MenuItemGrid: React.FC<MenuItemGridProps> = ({
+const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
+  categories,
   items,
   handleSelectItem,
   currencySymbol,
   t,
   restaurantId,
-  refreshTrigger
+  refreshTrigger,
+  activeCategory
 }) => {
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<boolean>(true);
@@ -91,61 +96,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const visibleItemsRef = useRef<Set<string>>(new Set());
   const imagePreloadQueue = useRef<string[]>([]);
   const isPreloadingRef = useRef<boolean>(false);
-
-  // Sort items by display_order and filter to only show in-stock items
-  const filteredItems = useMemo(() => {
-    return items
-      .filter(item => item.in_stock)
-      .sort((a, b) => {
-        // If display_order is null/undefined, treat it as highest number (displayed last)
-        const orderA = a.display_order ?? 1000;
-        const orderB = b.display_order ?? 1000;
-        return orderA - orderB;
-      });
-  }, [items]);
   
-  // Pre-cache only visible items with intersection observer
-  const setupIntersectionObserver = useCallback(() => {
-    if (typeof IntersectionObserver === 'undefined') return;
-    
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        const itemId = entry.target.getAttribute('data-item-id');
-        if (!itemId) return;
-        
-        if (entry.isIntersecting) {
-          // Item is visible, add to visible items set
-          visibleItemsRef.current.add(itemId);
-          
-          // Get the image URL for this item
-          const item = filteredItems.find(i => i.id === itemId);
-          if (item?.image && !item.image.startsWith('data:') && !cachedImages[itemId]) {
-            // Add to preload queue if not already cached
-            if (!imagePreloadQueue.current.includes(item.image)) {
-              imagePreloadQueue.current.push(item.image);
-              processImageQueue();
-            }
-          }
-        } else {
-          // Item is no longer visible
-          visibleItemsRef.current.delete(itemId);
-        }
-      });
-    }, {
-      rootMargin: '100px', // Start loading when item is 100px from viewport
-      threshold: 0.1 // Trigger when at least 10% of the item is visible
-    });
-    
-    // Observe all menu item elements
-    setTimeout(() => {
-      document.querySelectorAll('[data-item-id]').forEach(element => {
-        observer.observe(element);
-      });
-    }, 100);
-    
-    return observer;
-  }, [filteredItems, cachedImages]);
-
   // Process image queue one at a time
   const processImageQueue = useCallback(async () => {
     if (isPreloadingRef.current || imagePreloadQueue.current.length === 0) return;
@@ -160,7 +111,8 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         // Find the item that uses this image
         if (isMounted.current) {
           setCachedImages(prev => {
-            const itemsWithImage = filteredItems.filter(item => item.image === url);
+            const allItems = Object.values(items).flat();
+            const itemsWithImage = allItems.filter(item => item.image === url);
             if (itemsWithImage.length === 0) return prev;
             
             const updates: Record<string, string> = {};
@@ -182,20 +134,61 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     if (imagePreloadQueue.current.length > 0) {
       setTimeout(processImageQueue, 50);
     }
-  }, [filteredItems]);
+  }, [items]);
 
   // Effect to initialize intersection observer
   useEffect(() => {
-    const observer = setupIntersectionObserver();
+    if (typeof IntersectionObserver === 'undefined') return;
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const itemId = entry.target.getAttribute('data-item-id');
+        if (!itemId) return;
+        
+        if (entry.isIntersecting) {
+          // Item is visible, add to visible items set
+          visibleItemsRef.current.add(itemId);
+          
+          // Find which category this item belongs to
+          let itemToCache: MenuItem | undefined;
+          Object.values(items).forEach(categoryItems => {
+            const found = categoryItems.find(i => i.id === itemId);
+            if (found) itemToCache = found;
+          });
+
+          if (itemToCache?.image && !itemToCache.image.startsWith('data:') && !cachedImages[itemId]) {
+            // Add to preload queue if not already cached
+            if (!imagePreloadQueue.current.includes(itemToCache.image)) {
+              imagePreloadQueue.current.push(itemToCache.image);
+              processImageQueue();
+            }
+          }
+        } else {
+          // Item is no longer visible
+          visibleItemsRef.current.delete(itemId);
+        }
+      });
+    }, {
+      rootMargin: '100px', // Start loading when item is 100px from viewport
+      threshold: 0.1 // Trigger when at least 10% of the item is visible
+    });
+    
+    // Observe all menu item elements
+    setTimeout(() => {
+      document.querySelectorAll('[data-item-id]').forEach(element => {
+        observer.observe(element);
+      });
+    }, 100);
     
     return () => {
-      if (observer) observer.disconnect();
+      observer.disconnect();
     };
-  }, [setupIntersectionObserver]);
+  }, [categories, items, cachedImages, processImageQueue]);
 
   // Pre-cache all images when component mounts or items change
   useEffect(() => {
-    const imageUrls = filteredItems
+    const allItems = Object.values(items).flat();
+    const imageUrls = allItems
       .filter(item => item.image)
       .map(item => item.image || '')
       .slice(0, 10); // Limit initial preload to first 10 images
@@ -205,19 +198,20 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       precacheImages(imageUrls)
         .catch(err => console.error("Error pre-caching images:", err));
     }
-  }, [filteredItems, refreshTrigger]);
+  }, [items, refreshTrigger]);
 
   useEffect(() => {
     isMounted.current = true;
     setLoadingImages(true);
     
     const cacheImages = async () => {
-      if (filteredItems.length === 0) {
+      const allItems = Object.values(items).flat();
+      if (allItems.length === 0) {
         setLoadingImages(false);
         return;
       }
       
-      console.log(`Caching images for ${filteredItems.length} menu items`);
+      console.log(`Caching images for ${allItems.length} menu items`);
       
       try {
         // Get storage information
@@ -226,7 +220,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         console.log(`Storage usage: ${(storageInfo.used / (1024 * 1024)).toFixed(2)}MB / ${(storageInfo.quota / (1024 * 1024)).toFixed(2)}MB (${usedPercent.toFixed(1)}%)`);
         
         // Process first batch of images synchronously for initial display
-        const initialBatch = filteredItems.slice(0, 5);
+        const initialBatch = allItems.slice(0, 5);
         const newCachedImages: Record<string, string> = {};
         const newFailedImages = new Set<string>();
         
@@ -253,7 +247,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         }
         
         // Queue remaining images to be loaded in background
-        const remainingItems = filteredItems.slice(5);
+        const remainingItems = allItems.slice(5);
         const remainingUrls = remainingItems
           .filter(item => item.image)
           .map(item => item.image || '');
@@ -268,7 +262,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       }
     };
 
-    if (filteredItems.length > 0) {
+    if (Object.values(items).flat().length > 0) {
       cacheImages();
     } else {
       setLoadingImages(false);
@@ -279,27 +273,67 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       isMounted.current = false;
       imagePreloadQueue.current = [];
     };
-  }, [filteredItems, refreshTrigger]);
+  }, [items, refreshTrigger, processImageQueue, failedImages]);
 
-  const handleImageError = useCallback((itemId: string) => {
-    setFailedImages(prev => new Set([...prev, itemId]));
-  }, []);
+  // Sort categories by display_order
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => {
+      const orderA = a.display_order ?? 1000;
+      const orderB = b.display_order ?? 1000;
+      return orderA - orderB;
+    });
+  }, [categories]);
+
+  // Helper to render items for a category
+  const renderCategoryItems = (categoryId: string) => {
+    const categoryItems = items[categoryId] || [];
+    
+    // Sort items by display_order
+    const sortedItems = [...categoryItems].filter(item => item.in_stock).sort((a, b) => {
+      const orderA = a.display_order ?? 1000;
+      const orderB = b.display_order ?? 1000;
+      return orderA - orderB;
+    });
+
+    if (sortedItems.length === 0) {
+      return (
+        <div className="text-center py-8 bg-muted/10 rounded-lg">
+          <p className="text-muted-foreground">No items available in this category</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
+        {sortedItems.map(item => (
+          <div key={item.id} data-item-id={item.id}>
+            <MenuItemCard
+              item={item}
+              handleSelectItem={handleSelectItem}
+              t={t}
+              currencySymbol={currencySymbol}
+              cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'}
+              hasImageFailed={failedImages.has(item.id)}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
-      {filteredItems.map(item => (
-        <div key={item.id} data-item-id={item.id}>
-          <MenuItemCard
-            item={item}
-            handleSelectItem={handleSelectItem}
-            t={t}
-            currencySymbol={currencySymbol}
-            cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'}
-            hasImageFailed={failedImages.has(item.id)}
-          />
-        </div>
-      ))}
-    </div>
+    <ScrollArea className="flex-1 h-full w-full">
+      <div className="pb-[120px] p-4 space-y-10">
+        {sortedCategories.map((category) => (
+          <div key={category.id} id={`category-${category.id}`} className="scroll-mt-24">
+            <h2 className={`text-2xl font-bold mb-6 pb-2 border-b ${activeCategory === category.id ? 'text-kiosk-primary' : ''}`}>
+              {category.name}
+            </h2>
+            {renderCategoryItems(category.id)}
+          </div>
+        ))}
+      </div>
+    </ScrollArea>
   );
 };
 

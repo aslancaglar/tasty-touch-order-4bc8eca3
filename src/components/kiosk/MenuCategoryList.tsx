@@ -22,13 +22,26 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
     return orderA - orderB;
   });
 
+  const handleCategoryClick = (categoryId: string) => {
+    setActiveCategory(categoryId);
+    
+    // Smooth scroll to the category section
+    const categoryElement = document.getElementById(`category-${categoryId}`);
+    if (categoryElement) {
+      categoryElement.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   return (
     <div className="h-full p-4 overflow-y-auto">
       <div className="space-y-2">
         {sortedCategories.map(category => (
           <button 
             key={category.id} 
-            onClick={() => setActiveCategory(category.id)} 
+            onClick={() => handleCategoryClick(category.id)} 
             className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${
               activeCategory === category.id 
                 ? 'bg-kiosk-primary text-white' 

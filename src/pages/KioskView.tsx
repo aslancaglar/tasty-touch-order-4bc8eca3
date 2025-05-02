@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -885,6 +885,15 @@ const KioskView = () => {
       document.head.removeChild(styleTag);
     };
   }, []);
+  // Group items by category for the new menu view
+  const itemsByCategory = useMemo(() => {
+    const result: Record<string, MenuItem[]> = {};
+    categories.forEach(category => {
+      result[category.id] = category.items || [];
+    });
+    return result;
+  }, [categories]);
+
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen kiosk-view">
         <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
@@ -936,17 +945,30 @@ const KioskView = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Fixed width sidebar - 16vw */}
         <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
-          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+          <MenuCategoryList 
+            categories={categories} 
+            activeCategory={activeCategory} 
+            setActiveCategory={setActiveCategory} 
+          />
         </div>
 
-        {/* Scrollable menu grid area */}
+        {/* Scrollable menu grid area with all categories */}
         <div className="flex-1 overflow-y-auto">
           <div className="pb-[120px] p-4">
             <h2 className="text-xl font-bold mb-4">
               {categories.find(c => c.id === activeCategory)?.name || t("menu")}
             </h2>
             
-            <MenuItemGrid items={activeItems} handleSelectItem={handleSelectItem} currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")} t={t} restaurantId={restaurant?.id} refreshTrigger={refreshTrigger} />
+            <MenuItemGrid 
+              categories={categories}
+              items={itemsByCategory}
+              handleSelectItem={handleSelectItem}
+              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")}
+              t={t}
+              restaurantId={restaurant?.id}
+              refreshTrigger={refreshTrigger}
+              activeCategory={activeCategory}
+            />
           </div>
         </div>
       </div>
@@ -964,4 +986,5 @@ const KioskView = () => {
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
     </div>;
 };
+
 export default KioskView;
