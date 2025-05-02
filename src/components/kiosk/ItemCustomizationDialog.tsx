@@ -1,3 +1,4 @@
+
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -118,10 +119,10 @@ const ToppingCategory = memo(({
         const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
         const buttonSize = "h-10 w-10"; // Same size for both states
         return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white">
-              <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
+              <span className={`flex-1 mr-2 ${isSelected ? 'text-green-700 font-medium' : ''}`}>
                 {topping.name}
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
                 {topping.price > 0 && <span className="text-sm">
                     +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
                   </span>}
