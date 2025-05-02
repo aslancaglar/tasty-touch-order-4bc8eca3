@@ -13,6 +13,7 @@ interface MenuItemGridProps {
   restaurantId?: string;
   refreshTrigger?: number;
   categories: MenuCategory[];
+  activeCategory?: string;
 }
 
 // Individual menu item component, memoized to prevent re-renders
@@ -83,7 +84,8 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   t,
   restaurantId,
   refreshTrigger,
-  categories
+  categories,
+  activeCategory
 }) => {
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<boolean>(true);
@@ -122,14 +124,28 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     return grouped;
   }, [items, categories]);
 
-  // Sort categories by display_order
+  // Sort categories by putting the active category first, then by display_order
   const sortedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => {
+    let categoriesCopy = [...categories];
+    
+    // Sort by display_order first
+    categoriesCopy.sort((a, b) => {
       const orderA = a.display_order ?? 1000;
       const orderB = b.display_order ?? 1000;
       return orderA - orderB;
     });
-  }, [categories]);
+    
+    // If there's an active category, move it to the top
+    if (activeCategory) {
+      categoriesCopy = categoriesCopy.sort((a, b) => {
+        if (a.id === activeCategory) return -1;
+        if (b.id === activeCategory) return 1;
+        return 0;
+      });
+    }
+    
+    return categoriesCopy;
+  }, [categories, activeCategory]);
   
   // Pre-cache only visible items with intersection observer
   const setupIntersectionObserver = useCallback(() => {

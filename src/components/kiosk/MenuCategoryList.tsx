@@ -22,9 +22,9 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
     return orderA - orderB;
   });
 
-  // Handle category click - scroll to the category section
+  // Handle category click - scroll to the category section and update active category
   const handleCategoryClick = (categoryId: string) => {
-    // Set active category for highlighting
+    // Set active category for highlighting and reordering
     setActiveCategory(categoryId);
     
     // Find the category element and scroll to it
@@ -66,7 +66,7 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
                 </div>
               )}
             </div>
-            <span className="font-bold uppercase">{category.name}</span>
+            <span className="font-bold uppercase break-words">{category.name}</span>
           </button>
         ))}
       </div>
