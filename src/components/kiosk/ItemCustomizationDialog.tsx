@@ -28,6 +28,16 @@ interface ItemCustomizationDialogProps {
   currencySymbol: string;
 }
 
+// Define alternating background colors for topping categories
+const CATEGORY_BACKGROUNDS = [
+  "bg-[#F2FCE2]", // Soft Green
+  "bg-[#E5DEFF]", // Soft Purple
+  "bg-[#FEF7CD]", // Soft Yellow
+  "bg-[#D3E4FD]", // Soft Blue
+  "bg-[#FFDEE2]", // Soft Pink
+  "bg-[#FDE1D3]", // Soft Peach
+];
+
 // Memoize the Option component to prevent unnecessary re-renders
 const Option = memo(({
   option,
@@ -69,13 +79,15 @@ const ToppingCategory = memo(({
   selectedCategory,
   onToggleTopping,
   t,
-  currencySymbol
+  currencySymbol,
+  bgColorClass,
 }: {
   category: any;
   selectedCategory: any;
   onToggleTopping: (categoryId: string, toppingId: string) => void;
   t: (key: string) => string;
   currencySymbol: string;
+  bgColorClass: string;
 }) => {
   // Sort toppings by display_order
   const sortedToppings = [...category.toppings].sort((a, b) => {
@@ -93,8 +105,8 @@ const ToppingCategory = memo(({
   } else if (toppingCount === 2) {
     gridCols = "grid-cols-2"; // 2 columns for 2 toppings
   }
-  return <div className="space-y-2">
-      <div className="font-bold text-lg flex items-center">
+  return <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass}`}>
+      <div className="font-bold text-xl flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
         <span className="ml-2 text-red-600 font-bold text-base">
@@ -105,7 +117,7 @@ const ToppingCategory = memo(({
         {sortedToppings.map(topping => {
         const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
         const buttonSize = "h-10 w-10"; // Same size for both states
-        return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg">
+        return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white">
               <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
                 {topping.name}
               </span>
@@ -215,7 +227,17 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
             </div>)}
 
           {/* Toppings section - only show if there are toppings, using sorted categories */}
-          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => <ToppingCategory key={category.id} category={category} selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} onToggleTopping={onToggleTopping} t={t} currencySymbol={currencySymbol} />)}
+          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map((category, index) => (
+            <ToppingCategory 
+              key={category.id} 
+              category={category} 
+              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
+              onToggleTopping={onToggleTopping} 
+              t={t} 
+              currencySymbol={currencySymbol}
+              bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
+            />
+          ))}
         </div>
         
         <DialogFooter className="mt-3 pt-2">
