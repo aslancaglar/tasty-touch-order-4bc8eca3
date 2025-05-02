@@ -219,7 +219,7 @@ const Cart: React.FC<CartProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-6">
-              <Button variant="destructive" onClick={onClearCart} className="text-4xl py-[40px]">
+              <Button variant="destructive" onClick={onClearCart} className="py-[40px] text-3xl">
                 {tCart("cancel")}
               </Button>
               <Button onClick={handleShowOrderSummary} disabled={placingOrder || orderPlaced || cart.length === 0} className="bg-green-800 hover:bg-green-900 text-white py-[40px] text-3xl">
