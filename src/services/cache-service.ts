@@ -64,4 +64,3 @@ export const clearCache = (restaurantId: string, specificKey?: string) => {
     debugCache('CLEAR', key);
   });
 };
-

@@ -941,12 +941,16 @@ const KioskView = () => {
 
         {/* Scrollable menu grid area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="pb-[120px] p-4">
-            <h2 className="text-xl font-bold mb-4">
-              {categories.find(c => c.id === activeCategory)?.name || t("menu")}
-            </h2>
-            
-            <MenuItemGrid items={activeItems} handleSelectItem={handleSelectItem} currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")} t={t} restaurantId={restaurant?.id} refreshTrigger={refreshTrigger} />
+          <div className="p-4">
+            <MenuItemGrid 
+              items={categories.flatMap(c => c.items)} 
+              handleSelectItem={handleSelectItem} 
+              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")} 
+              t={t} 
+              restaurantId={restaurant?.id} 
+              refreshTrigger={refreshTrigger}
+              categories={categories}
+            />
           </div>
         </div>
       </div>
@@ -964,4 +968,5 @@ const KioskView = () => {
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
     </div>;
 };
+
 export default KioskView;

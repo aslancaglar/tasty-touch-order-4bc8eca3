@@ -13,6 +13,7 @@ interface MenuItemGridProps {
   t: (key: string) => string;
   restaurantId?: string;
   refreshTrigger?: number;
+  categories: {id: string, name: string}[];
 }
 
 // Individual menu item component, memoized to prevent re-renders
@@ -82,7 +83,8 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   currencySymbol,
   t,
   restaurantId,
-  refreshTrigger
+  refreshTrigger,
+  categories
 }) => {
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<boolean>(true);
@@ -92,17 +94,45 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const imagePreloadQueue = useRef<string[]>([]);
   const isPreloadingRef = useRef<boolean>(false);
 
-  // Sort items by display_order and filter to only show in-stock items
-  const filteredItems = useMemo(() => {
-    return items
-      .filter(item => item.in_stock)
-      .sort((a, b) => {
-        // If display_order is null/undefined, treat it as highest number (displayed last)
+  // Group items by category
+  const itemsByCategory = useMemo(() => {
+    // Create an object to hold items grouped by their category
+    const grouped: Record<string, MenuItem[]> = {};
+    
+    // Initialize all categories with empty arrays
+    categories.forEach(category => {
+      grouped[category.id] = [];
+    });
+    
+    // Add all in-stock items to their respective category groups
+    items.filter(item => item.in_stock).forEach(item => {
+      if (grouped[item.category_id]) {
+        grouped[item.category_id].push(item);
+      }
+    });
+    
+    // Sort items by display_order within each category
+    Object.keys(grouped).forEach(categoryId => {
+      grouped[categoryId].sort((a, b) => {
         const orderA = a.display_order ?? 1000;
         const orderB = b.display_order ?? 1000;
         return orderA - orderB;
       });
-  }, [items]);
+    });
+    
+    return grouped;
+  }, [items, categories]);
+
+  // Sort categories by display_order
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => {
+      const categoryA = categories.find(c => c.id === a.id);
+      const categoryB = categories.find(c => c.id === b.id);
+      const orderA = categoryA?.display_order ?? 1000;
+      const orderB = categoryB?.display_order ?? 1000;
+      return orderA - orderB;
+    });
+  }, [categories]);
   
   // Pre-cache only visible items with intersection observer
   const setupIntersectionObserver = useCallback(() => {
@@ -118,7 +148,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           visibleItemsRef.current.add(itemId);
           
           // Get the image URL for this item
-          const item = filteredItems.find(i => i.id === itemId);
+          const item = items.find(i => i.id === itemId);
           if (item?.image && !item.image.startsWith('data:') && !cachedImages[itemId]) {
             // Add to preload queue if not already cached
             if (!imagePreloadQueue.current.includes(item.image)) {
@@ -144,7 +174,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     }, 100);
     
     return observer;
-  }, [filteredItems, cachedImages]);
+  }, [items, cachedImages]);
 
   // Process image queue one at a time
   const processImageQueue = useCallback(async () => {
@@ -160,7 +190,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         // Find the item that uses this image
         if (isMounted.current) {
           setCachedImages(prev => {
-            const itemsWithImage = filteredItems.filter(item => item.image === url);
+            const itemsWithImage = items.filter(item => item.image === url);
             if (itemsWithImage.length === 0) return prev;
             
             const updates: Record<string, string> = {};
@@ -182,7 +212,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     if (imagePreloadQueue.current.length > 0) {
       setTimeout(processImageQueue, 50);
     }
-  }, [filteredItems]);
+  }, [items]);
 
   // Effect to initialize intersection observer
   useEffect(() => {
@@ -195,7 +225,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
 
   // Pre-cache all images when component mounts or items change
   useEffect(() => {
-    const imageUrls = filteredItems
+    const imageUrls = items
       .filter(item => item.image)
       .map(item => item.image || '')
       .slice(0, 10); // Limit initial preload to first 10 images
@@ -205,19 +235,19 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       precacheImages(imageUrls)
         .catch(err => console.error("Error pre-caching images:", err));
     }
-  }, [filteredItems, refreshTrigger]);
+  }, [items, refreshTrigger]);
 
   useEffect(() => {
     isMounted.current = true;
     setLoadingImages(true);
     
     const cacheImages = async () => {
-      if (filteredItems.length === 0) {
+      if (items.length === 0) {
         setLoadingImages(false);
         return;
       }
       
-      console.log(`Caching images for ${filteredItems.length} menu items`);
+      console.log(`Caching images for ${items.length} menu items`);
       
       try {
         // Get storage information
@@ -226,7 +256,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         console.log(`Storage usage: ${(storageInfo.used / (1024 * 1024)).toFixed(2)}MB / ${(storageInfo.quota / (1024 * 1024)).toFixed(2)}MB (${usedPercent.toFixed(1)}%)`);
         
         // Process first batch of images synchronously for initial display
-        const initialBatch = filteredItems.slice(0, 5);
+        const initialBatch = items.slice(0, 5);
         const newCachedImages: Record<string, string> = {};
         const newFailedImages = new Set<string>();
         
@@ -253,7 +283,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         }
         
         // Queue remaining images to be loaded in background
-        const remainingItems = filteredItems.slice(5);
+        const remainingItems = items.slice(5);
         const remainingUrls = remainingItems
           .filter(item => item.image)
           .map(item => item.image || '');
@@ -268,7 +298,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       }
     };
 
-    if (filteredItems.length > 0) {
+    if (items.length > 0) {
       cacheImages();
     } else {
       setLoadingImages(false);
@@ -279,24 +309,31 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       isMounted.current = false;
       imagePreloadQueue.current = [];
     };
-  }, [filteredItems, refreshTrigger]);
+  }, [items, refreshTrigger]);
 
   const handleImageError = useCallback((itemId: string) => {
     setFailedImages(prev => new Set([...prev, itemId]));
   }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
-      {filteredItems.map(item => (
-        <div key={item.id} data-item-id={item.id}>
-          <MenuItemCard
-            item={item}
-            handleSelectItem={handleSelectItem}
-            t={t}
-            currencySymbol={currencySymbol}
-            cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'}
-            hasImageFailed={failedImages.has(item.id)}
-          />
+    <div className="space-y-8 pb-20">
+      {sortedCategories.map((category) => (
+        <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20">
+          <h2 className="text-2xl font-bold mb-4 border-b pb-2">{category.name}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
+            {itemsByCategory[category.id]?.map(item => (
+              <div key={item.id} data-item-id={item.id}>
+                <MenuItemCard
+                  item={item}
+                  handleSelectItem={handleSelectItem}
+                  t={t}
+                  currencySymbol={currencySymbol}
+                  cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'}
+                  hasImageFailed={failedImages.has(item.id)}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>
