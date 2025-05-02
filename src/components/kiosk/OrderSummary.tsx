@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -282,12 +283,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     });
   };
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 w-[95vw] max-w-[95vw] flex flex-col h-[85vh] max-h-[85vh] overflow-hidden">
+      <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 w-[95vw] max-w-[95vw] flex flex-col max-h-[90vh]">
         {/* Fixed Header */}
         <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-xl">
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h2 className="text-xl font-bold">{t("order.summary")}</h2>
@@ -298,7 +300,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
         
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 pb-[200px]">
+        <div className="overflow-y-auto p-6 pb-[180px]">
           <h3 className="font-bold text-xl mb-6">{t("order.items")}</h3>
           
           <div className="space-y-6 mb-6">
@@ -360,7 +362,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
 
-            <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-[40px]">
+            <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
               <Check className="mr-2 h-5 w-5" />
               {t("order.confirm")}
             </Button>
