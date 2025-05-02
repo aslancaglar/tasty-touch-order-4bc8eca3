@@ -96,43 +96,50 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
   const visibleItemsRef = useRef<Set<string>>(new Set());
   const imagePreloadQueue = useRef<string[]>([]);
   const isPreloadingRef = useRef<boolean>(false);
+  const batchProcessingTimer = useRef<number | null>(null);
   
-  // Process image queue one at a time
+  // Process image queue in batches for better performance
   const processImageQueue = useCallback(async () => {
     if (isPreloadingRef.current || imagePreloadQueue.current.length === 0) return;
     
     isPreloadingRef.current = true;
-    const url = imagePreloadQueue.current.shift();
     
-    if (url) {
+    // Process a batch of images (up to 3 at a time)
+    const batchSize = Math.min(3, imagePreloadQueue.current.length);
+    const batch = imagePreloadQueue.current.splice(0, batchSize);
+    const updates: Record<string, string> = {};
+    
+    await Promise.all(batch.map(async (url) => {
       try {
         const cachedUrl = await getCachedImageUrl(url);
         
-        // Find the item that uses this image
         if (isMounted.current) {
-          setCachedImages(prev => {
-            const allItems = Object.values(items).flat();
-            const itemsWithImage = allItems.filter(item => item.image === url);
-            if (itemsWithImage.length === 0) return prev;
-            
-            const updates: Record<string, string> = {};
-            itemsWithImage.forEach(item => {
-              updates[item.id] = cachedUrl;
-            });
-            
-            return { ...prev, ...updates };
+          // Find items that use this image
+          const allItems = Object.values(items).flat();
+          const itemsWithImage = allItems.filter(item => item.image === url);
+          
+          itemsWithImage.forEach(item => {
+            updates[item.id] = cachedUrl;
           });
         }
       } catch (err) {
         console.error(`Error caching image: ${url}`, err);
       }
+    }));
+    
+    if (isMounted.current && Object.keys(updates).length > 0) {
+      setCachedImages(prev => ({ ...prev, ...updates }));
     }
     
     isPreloadingRef.current = false;
     
-    // Process next image after a small delay
+    // Process next batch after a small delay
     if (imagePreloadQueue.current.length > 0) {
-      setTimeout(processImageQueue, 50);
+      if (batchProcessingTimer.current) {
+        window.clearTimeout(batchProcessingTimer.current);
+      }
+      
+      batchProcessingTimer.current = window.setTimeout(processImageQueue, 10);
     }
   }, [items]);
 
@@ -141,6 +148,8 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
     if (typeof IntersectionObserver === 'undefined') return;
     
     const observer = new IntersectionObserver((entries) => {
+      const newlyVisibleItems: string[] = [];
+      
       entries.forEach(entry => {
         const itemId = entry.target.getAttribute('data-item-id');
         if (!itemId) return;
@@ -156,31 +165,41 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
             if (found) itemToCache = found;
           });
 
-          if (itemToCache?.image && !itemToCache.image.startsWith('data:') && !cachedImages[itemId]) {
+          if (itemToCache?.image && 
+              !itemToCache.image.startsWith('data:') && 
+              !cachedImages[itemId] && 
+              !imagePreloadQueue.current.includes(itemToCache.image)) {
             // Add to preload queue if not already cached
-            if (!imagePreloadQueue.current.includes(itemToCache.image)) {
-              imagePreloadQueue.current.push(itemToCache.image);
-              processImageQueue();
-            }
+            imagePreloadQueue.current.push(itemToCache.image);
+            newlyVisibleItems.push(itemId);
           }
         } else {
           // Item is no longer visible
           visibleItemsRef.current.delete(itemId);
         }
       });
+      
+      // If new items are visible, start processing the image queue
+      if (newlyVisibleItems.length > 0) {
+        processImageQueue();
+      }
     }, {
-      rootMargin: '100px', // Start loading when item is 100px from viewport
+      rootMargin: '200px', // Increased from 100px to 200px for earlier loading
       threshold: 0.1 // Trigger when at least 10% of the item is visible
     });
     
     // Observe all menu item elements
-    setTimeout(() => {
+    const observeElements = () => {
       document.querySelectorAll('[data-item-id]').forEach(element => {
         observer.observe(element);
       });
-    }, 100);
+    };
+    
+    // Use a shorter timeout to attach observer faster
+    const timer = setTimeout(observeElements, 50);
     
     return () => {
+      clearTimeout(timer);
       observer.disconnect();
     };
   }, [categories, items, cachedImages, processImageQueue]);
@@ -191,15 +210,16 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
     const imageUrls = allItems
       .filter(item => item.image)
       .map(item => item.image || '')
-      .slice(0, 10); // Limit initial preload to first 10 images
+      .slice(0, 15); // Increased from 10 to 15 for faster initial loading
     
     if (imageUrls.length > 0) {
-      // Attempt to precache the first few images
+      // Attempt to precache the first batch of images
       precacheImages(imageUrls)
         .catch(err => console.error("Error pre-caching images:", err));
     }
   }, [items, refreshTrigger]);
 
+  // Optimize the image caching process
   useEffect(() => {
     isMounted.current = true;
     setLoadingImages(true);
@@ -211,21 +231,14 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
         return;
       }
       
-      console.log(`Caching images for ${allItems.length} menu items`);
-      
       try {
-        // Get storage information
-        const storageInfo = await getStorageEstimate();
-        const usedPercent = (storageInfo.used / storageInfo.quota) * 100;
-        console.log(`Storage usage: ${(storageInfo.used / (1024 * 1024)).toFixed(2)}MB / ${(storageInfo.quota / (1024 * 1024)).toFixed(2)}MB (${usedPercent.toFixed(1)}%)`);
-        
-        // Process first batch of images synchronously for initial display
-        const initialBatch = allItems.slice(0, 5);
+        // Process first batch of images in parallel for initial display
+        const initialBatch = allItems.slice(0, 8); // Increased from 5 to 8
         const newCachedImages: Record<string, string> = {};
         const newFailedImages = new Set<string>();
         
-        for (const item of initialBatch) {
-          if (!item.image) continue;
+        await Promise.all(initialBatch.map(async (item) => {
+          if (!item.image) return;
           
           try {
             const cachedUrl = await getCachedImageUrl(item.image);
@@ -238,7 +251,7 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
             newFailedImages.add(item.id);
             newCachedImages[item.id] = item.image || '';
           }
-        }
+        }));
         
         if (isMounted.current) {
           setCachedImages(prev => ({ ...prev, ...newCachedImages }));
@@ -247,12 +260,27 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
         }
         
         // Queue remaining images to be loaded in background
-        const remainingItems = allItems.slice(5);
+        const remainingItems = allItems.slice(8);
         const remainingUrls = remainingItems
           .filter(item => item.image)
           .map(item => item.image || '');
         
-        imagePreloadQueue.current = [...remainingUrls];
+        // Prioritize items from the active category
+        if (activeCategory) {
+          const activeItems = items[activeCategory] || [];
+          const activeItemUrls = activeItems
+            .filter(item => item.image)
+            .map(item => item.image || '');
+          
+          // Move active category items to the front of the queue
+          imagePreloadQueue.current = [
+            ...activeItemUrls, 
+            ...remainingUrls.filter(url => !activeItemUrls.includes(url))
+          ];
+        } else {
+          imagePreloadQueue.current = [...remainingUrls];
+        }
+        
         processImageQueue();
       } catch (error) {
         console.error("Error in image caching process:", error);
@@ -272,8 +300,11 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
     return () => {
       isMounted.current = false;
       imagePreloadQueue.current = [];
+      if (batchProcessingTimer.current) {
+        window.clearTimeout(batchProcessingTimer.current);
+      }
     };
-  }, [items, refreshTrigger, processImageQueue, failedImages]);
+  }, [items, refreshTrigger, processImageQueue, failedImages, activeCategory]);
 
   // Sort categories by display_order
   const sortedCategories = useMemo(() => {
@@ -284,16 +315,26 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
     });
   }, [categories]);
 
-  // Helper to render items for a category
-  const renderCategoryItems = (categoryId: string) => {
-    const categoryItems = items[categoryId] || [];
+  // Pre-compute sorted items for each category
+  const sortedItemsByCategory = useMemo(() => {
+    const result: Record<string, MenuItem[]> = {};
     
-    // Sort items by display_order
-    const sortedItems = [...categoryItems].filter(item => item.in_stock).sort((a, b) => {
-      const orderA = a.display_order ?? 1000;
-      const orderB = b.display_order ?? 1000;
-      return orderA - orderB;
+    Object.entries(items).forEach(([categoryId, categoryItems]) => {
+      result[categoryId] = [...categoryItems]
+        .filter(item => item.in_stock)
+        .sort((a, b) => {
+          const orderA = a.display_order ?? 1000;
+          const orderB = b.display_order ?? 1000;
+          return orderA - orderB;
+        });
     });
+    
+    return result;
+  }, [items]);
+
+  // Helper to render items for a category
+  const renderCategoryItems = useCallback((categoryId: string) => {
+    const sortedItems = sortedItemsByCategory[categoryId] || [];
 
     if (sortedItems.length === 0) {
       return (
@@ -319,13 +360,18 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
         ))}
       </div>
     );
-  };
+  }, [sortedItemsByCategory, handleSelectItem, t, currencySymbol, cachedImages, failedImages]);
 
   return (
     <ScrollArea className="flex-1 h-full w-full">
       <div className="pb-[120px] p-4 space-y-10">
         {sortedCategories.map((category) => (
-          <div key={category.id} id={`category-${category.id}`} className="scroll-mt-24">
+          <div 
+            key={category.id} 
+            id={`category-${category.id}`} 
+            className="scroll-mt-24"
+            data-category-id={category.id}
+          >
             <h2 className={`text-2xl font-bold mb-6 pb-2 border-b ${activeCategory === category.id ? 'text-kiosk-primary' : ''}`}>
               {category.name}
             </h2>
