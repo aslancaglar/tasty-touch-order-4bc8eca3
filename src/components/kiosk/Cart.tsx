@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -155,7 +156,7 @@ const Cart: React.FC<CartProps> = ({
         <div className="w-full">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center">
-              <h2 className="text-xl font-bold">{tCart("yourOrder")} ({cartItemCount})</h2>
+              <h2 className="text-responsive-subtitle font-bold">{tCart("yourOrder")} ({cartItemCount})</h2>
             </div>
             <Button variant="ghost" size="icon" onClick={onToggleOpen}>
               <ChevronDown className="h-5 w-5" />
@@ -170,7 +171,7 @@ const Cart: React.FC<CartProps> = ({
             containScroll: "trimSnaps"
           }} className="w-full">
               <CarouselContent className="-ml-2">
-                {reversedCart.length === 0 ? <div className="p-4 text-gray-400 text-center">{tCart("empty")}</div> : reversedCart.map(item => <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
+                {reversedCart.length === 0 ? <div className="p-4 text-gray-400 text-center text-responsive-body">{tCart("empty")}</div> : reversedCart.map(item => <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
                     <div className="border border-gray-300 rounded-lg p-3 relative">
                       <Button variant="ghost" size="icon" className="absolute right-1 top-1 text-red-500 h-7 w-7" onClick={() => onRemoveItem(item.id)}>
                         <X className="h-5 w-5" />
@@ -179,8 +180,8 @@ const Cart: React.FC<CartProps> = ({
                       <div className="flex items-start space-x-3">
                         <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
                         <div className="flex flex-col">
-                          <h3 className="font-bold">{item.menuItem.name}</h3>
-                          <p className="text-gray-700 font-medium">
+                          <h3 className="text-responsive-body font-bold">{item.menuItem.name}</h3>
+                          <p className="text-responsive-price text-gray-700">
                             {parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}
                           </p>
                           
@@ -188,7 +189,7 @@ const Cart: React.FC<CartProps> = ({
                             <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="h-8 w-8 rounded-full p-0 bg-violet-700 hover:bg-violet-700 text-white font-bold">
                               <Minus className="h-3 w-3" />
                             </Button>
-                            <span className="w-8 text-center font-medium">{item.quantity}</span>
+                            <span className="w-8 text-center text-responsive-body font-medium">{item.quantity}</span>
                             <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="h-8 w-8 rounded-full p-0 bg-violet-800 hover:bg-violet-700 text-white">
                               <Plus className="h-3 w-3" />
                             </Button>
@@ -204,25 +205,25 @@ const Cart: React.FC<CartProps> = ({
           <div className="px-4 pb-4">
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">{tCart("totalHT")}</span>
-                <span className="font-medium">{subtotal.toFixed(2)} {currencySymbol}</span>
+                <span className="text-responsive-body text-gray-600">{tCart("totalHT")}</span>
+                <span className="text-responsive-body font-medium">{subtotal.toFixed(2)} {currencySymbol}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">{tCart("vat")}</span>
-                <span className="font-medium">{tax.toFixed(2)} {currencySymbol}</span>
+                <span className="text-responsive-body text-gray-600">{tCart("vat")}</span>
+                <span className="text-responsive-body font-medium">{tax.toFixed(2)} {currencySymbol}</span>
               </div>
               <Separator className="my-2" />
-              <div className="flex justify-between text-lg font-bold">
+              <div className="flex justify-between text-responsive-subtitle font-bold">
                 <span>{tCart("totalTTC")}</span>
                 <span>{total.toFixed(2)} {currencySymbol}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-6">
-              <Button variant="destructive" onClick={onClearCart} className="py-[40px] text-3xl">
+              <Button variant="destructive" onClick={onClearCart} className="py-[30px] sm:py-[35px] md:py-[40px] text-xl sm:text-2xl md:text-3xl">
                 {tCart("cancel")}
               </Button>
-              <Button onClick={handleShowOrderSummary} disabled={placingOrder || orderPlaced || cart.length === 0} className="bg-green-800 hover:bg-green-900 text-white py-[40px] text-3xl">
+              <Button onClick={handleShowOrderSummary} disabled={placingOrder || orderPlaced || cart.length === 0} className="bg-green-800 hover:bg-green-900 text-white py-[30px] sm:py-[35px] md:py-[40px] text-xl sm:text-2xl md:text-3xl">
                 {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {orderPlaced && <Check className="h-4 w-4 mr-2" />}
                 {orderPlaced ? tCart("confirmed") : placingOrder ? tCart("processing") : tCart("seeOrder")}
