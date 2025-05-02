@@ -1,6 +1,7 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Bag } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -43,7 +44,7 @@ const CartButton: React.FC<CartButtonProps> = ({
   
   return <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center">
       <Button onClick={onClick} className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl py-[40px] px-[100px] font-bold">
-        <Bag className="h-12 w-12 mr-2" />
+        <ShoppingBag className="h-12 w-12 mr-2" />
         <span className="font-bold text-3xl">{itemCount}</span>
         <span className="mx-2">|</span>
         <span className="font-bold text-3xl">{total.toFixed(2)} {currencySymbol}</span>
