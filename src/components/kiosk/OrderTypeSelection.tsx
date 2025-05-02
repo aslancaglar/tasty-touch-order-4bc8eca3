@@ -32,9 +32,11 @@ const OrderTypeSelection = ({
   return (
     <Dialog 
       open={isOpen} 
-      onOpenChange={open => !open && onClose()}
-      // Don't block background pointer events 
-      modal={false}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      // Set modal={true} to ensure proper focus management and state handling
+      modal={true}
     >
       <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-8">
         <DialogHeader>
