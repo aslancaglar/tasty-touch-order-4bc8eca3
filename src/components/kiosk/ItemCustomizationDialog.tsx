@@ -97,7 +97,7 @@ const ToppingCategory = memo(({
       <div className="font-bold text-lg flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
-        <span className="ml-2 text-red-600 text-sm font-bold">
+        <span className="ml-2 text-red-600 font-bold text-base">
           {category.max_selections > 0 ? `(${t("selectUpTo")} ${category.max_selections})` : `(${t("multipleSelection")})`}
         </span>
       </div>
