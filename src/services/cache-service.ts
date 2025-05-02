@@ -43,8 +43,6 @@ export const getCacheItem = <T>(key: string, restaurantId: string): T | null => 
 };
 
 export const clearCache = (restaurantId: string, specificKey?: string) => {
-  console.log(`Attempting to clear cache for restaurant: ${restaurantId}`);
-  
   if (specificKey) {
     const cacheKey = `${CACHE_PREFIX}${restaurantId}_${specificKey}`;
     localStorage.removeItem(cacheKey);
@@ -65,6 +63,5 @@ export const clearCache = (restaurantId: string, specificKey?: string) => {
     localStorage.removeItem(key);
     debugCache('CLEAR', key);
   });
-  
-  console.log(`Cleared ${keysToRemove.length} cache items for restaurant: ${restaurantId}`);
 };
+
