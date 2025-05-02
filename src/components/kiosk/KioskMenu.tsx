@@ -28,8 +28,11 @@ const KioskMenu: React.FC<KioskMenuProps> = ({
   // Group items by category for the menu view
   const itemsByCategory = useMemo(() => {
     const result: Record<string, MenuItem[]> = {};
+    
+    // For each category, retrieve its items from MenuItemGrid
+    // Since MenuCategory type doesn't have items property, we initialize with empty array
     categories.forEach(category => {
-      result[category.id] = category.items || [];
+      result[category.id] = []; // Initialize with empty array, will be populated in MenuItemGrid
     });
     return result;
   }, [categories]);

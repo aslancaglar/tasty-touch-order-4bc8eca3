@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -23,69 +24,6 @@ const KioskView = () => {
   const navigate = useNavigate();
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
   const cartRef = useRef<HTMLDivElement | null>(null);
-  
-  // Extract state management to custom hooks
-  const {
-    showWelcome,
-    setShowWelcome,
-    showOrderTypeSelection,
-    setShowOrderTypeSelection,
-    orderType,
-    tableNumber,
-    activeCategory,
-    setActiveCategory,
-    placingOrder,
-    setPlacingOrder,
-    orderPlaced,
-    setOrderPlaced,
-    resetToWelcome,
-    handleStartOrder,
-    handleOrderTypeSelected
-  } = useKioskState();
-  
-  const {
-    cart,
-    isCartOpen,
-    toggleCart,
-    addItemToCart,
-    updateCartItemQuantity,
-    removeCartItem,
-    clearCart,
-    calculateCartTotal,
-    calculateSubtotal,
-    calculateTax,
-    getFormattedOptions,
-    getFormattedToppings
-  } = useKioskCart({ t });
-  
-  const {
-    selectedItem,
-    setSelectedItem,
-    loading: itemLoading,
-    handleSelectItem
-  } = useKioskItemSelection();
-  
-  const {
-    loading,
-    restaurant,
-    categories,
-    refreshTrigger,
-    loadRestaurantAndMenu,
-    handleRefreshMenu
-  } = useKioskLoading({
-    t,
-    restaurantSlug,
-    setActiveCategory,
-    setUiLanguage
-  });
-  
-  // Inactivity timer
-  const {
-    showDialog,
-    handleContinue,
-    handleCancel,
-    fullReset
-  } = useInactivityTimer(resetToWelcome);
   
   // Translations
   const translations = {
@@ -175,6 +113,69 @@ const KioskView = () => {
   const t = (key: keyof typeof translations.en) => {
     return translations[uiLanguage][key];
   };
+  
+  // Extract state management to custom hooks
+  const {
+    showWelcome,
+    setShowWelcome,
+    showOrderTypeSelection,
+    setShowOrderTypeSelection,
+    orderType,
+    tableNumber,
+    activeCategory,
+    setActiveCategory,
+    placingOrder,
+    setPlacingOrder,
+    orderPlaced,
+    setOrderPlaced,
+    resetToWelcome,
+    handleStartOrder,
+    handleOrderTypeSelected
+  } = useKioskState();
+  
+  const {
+    cart,
+    isCartOpen,
+    toggleCart,
+    addItemToCart,
+    updateCartItemQuantity,
+    removeCartItem,
+    clearCart,
+    calculateCartTotal,
+    calculateSubtotal,
+    calculateTax,
+    getFormattedOptions,
+    getFormattedToppings
+  } = useKioskCart({ t });
+  
+  const {
+    selectedItem,
+    setSelectedItem,
+    loading: itemLoading,
+    handleSelectItem
+  } = useKioskItemSelection();
+  
+  const {
+    loading,
+    restaurant,
+    categories,
+    refreshTrigger,
+    loadRestaurantAndMenu,
+    handleRefreshMenu
+  } = useKioskLoading({
+    t,
+    restaurantSlug,
+    setActiveCategory,
+    setUiLanguage
+  });
+  
+  // Inactivity timer
+  const {
+    showDialog,
+    handleContinue,
+    handleCancel,
+    fullReset
+  } = useInactivityTimer(resetToWelcome);
   
   // Handle order placement
   const handlePlaceOrder = async () => {
