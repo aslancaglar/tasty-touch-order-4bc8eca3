@@ -359,7 +359,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
 
-            <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase py-6 mt-4 text-lg font-medium">
+            <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-[40px]">
               <Check className="mr-2 h-5 w-5" />
               {t("order.confirm")}
             </Button>
