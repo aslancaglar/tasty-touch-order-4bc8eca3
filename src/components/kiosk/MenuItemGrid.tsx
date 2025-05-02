@@ -1,15 +1,14 @@
-
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ImageOff } from "lucide-react";
+import { ChevronRight, ImageOff, Loader2 } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getMenuItemsByCategory } from "@/services/kiosk-service";
 
 interface AllCategoriesMenuProps {
   categories: MenuCategory[];
-  items: Record<string, MenuItem[]>;
   handleSelectItem: (item: MenuItem) => void;
   currencySymbol: string;
   t: (key: string) => string;
@@ -81,7 +80,6 @@ MenuItemCard.displayName = 'MenuItemCard';
 
 const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
   categories,
-  items,
   handleSelectItem,
   currencySymbol,
   t,
@@ -92,6 +90,8 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<boolean>(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [categoryItems, setCategoryItems] = useState<Record<string, MenuItem[]>>({});
+  const [isLoadingItems, setIsLoadingItems] = useState<boolean>(true);
   const isMounted = useRef<boolean>(true);
   const visibleItemsRef = useRef<Set<string>>(new Set());
   const imagePreloadQueue = useRef<string[]>([]);
@@ -111,7 +111,7 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
         // Find the item that uses this image
         if (isMounted.current) {
           setCachedImages(prev => {
-            const allItems = Object.values(items).flat();
+            const allItems = Object.values(categoryItems).flat();
             const itemsWithImage = allItems.filter(item => item.image === url);
             if (itemsWithImage.length === 0) return prev;
             
@@ -134,7 +134,7 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
     if (imagePreloadQueue.current.length > 0) {
       setTimeout(processImageQueue, 50);
     }
-  }, [items]);
+  }, [categoryItems]);
 
   // Effect to initialize intersection observer
   useEffect(() => {
@@ -151,7 +151,7 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
           
           // Find which category this item belongs to
           let itemToCache: MenuItem | undefined;
-          Object.values(items).forEach(categoryItems => {
+          Object.values(categoryItems).forEach(categoryItems => {
             const found = categoryItems.find(i => i.id === itemId);
             if (found) itemToCache = found;
           });
@@ -183,11 +183,11 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
     return () => {
       observer.disconnect();
     };
-  }, [categories, items, cachedImages, processImageQueue]);
+  }, [categories, categoryItems, cachedImages, processImageQueue]);
 
   // Pre-cache all images when component mounts or items change
   useEffect(() => {
-    const allItems = Object.values(items).flat();
+    const allItems = Object.values(categoryItems).flat();
     const imageUrls = allItems
       .filter(item => item.image)
       .map(item => item.image || '')
@@ -198,14 +198,46 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
       precacheImages(imageUrls)
         .catch(err => console.error("Error pre-caching images:", err));
     }
-  }, [items, refreshTrigger]);
+  }, [categoryItems, refreshTrigger]);
+
+  // Fetch menu items for all categories
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      setIsLoadingItems(true);
+      const itemsData: Record<string, MenuItem[]> = {};
+      
+      try {
+        // Fetch items for each category
+        for (const category of categories) {
+          const items = await getMenuItemsByCategory(category.id);
+          itemsData[category.id] = items;
+        }
+        
+        if (isMounted.current) {
+          setCategoryItems(itemsData);
+        }
+      } catch (error) {
+        console.error("Error fetching menu items:", error);
+      } finally {
+        if (isMounted.current) {
+          setIsLoadingItems(false);
+        }
+      }
+    };
+    
+    fetchMenuItems();
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, [categories, refreshTrigger]);
 
   useEffect(() => {
     isMounted.current = true;
     setLoadingImages(true);
     
     const cacheImages = async () => {
-      const allItems = Object.values(items).flat();
+      const allItems = Object.values(categoryItems).flat();
       if (allItems.length === 0) {
         setLoadingImages(false);
         return;
@@ -262,7 +294,7 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
       }
     };
 
-    if (Object.values(items).flat().length > 0) {
+    if (Object.values(categoryItems).flat().length > 0) {
       cacheImages();
     } else {
       setLoadingImages(false);
@@ -273,7 +305,7 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
       isMounted.current = false;
       imagePreloadQueue.current = [];
     };
-  }, [items, refreshTrigger, processImageQueue, failedImages]);
+  }, [categoryItems, refreshTrigger, processImageQueue, failedImages]);
 
   // Sort categories by display_order
   const sortedCategories = useMemo(() => {
@@ -286,14 +318,22 @@ const MenuItemGrid: React.FC<AllCategoriesMenuProps> = ({
 
   // Helper to render items for a category
   const renderCategoryItems = (categoryId: string) => {
-    const categoryItems = items[categoryId] || [];
+    const categoryItemsList = categoryItems[categoryId] || [];
     
     // Sort items by display_order
-    const sortedItems = [...categoryItems].filter(item => item.in_stock).sort((a, b) => {
+    const sortedItems = [...categoryItemsList].filter(item => item.in_stock).sort((a, b) => {
       const orderA = a.display_order ?? 1000;
       const orderB = b.display_order ?? 1000;
       return orderA - orderB;
     });
+
+    if (isLoadingItems) {
+      return (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-700" />
+        </div>
+      );
+    }
 
     if (sortedItems.length === 0) {
       return (

@@ -25,17 +25,9 @@ const KioskMenu: React.FC<KioskMenuProps> = ({
   restaurantId,
   refreshTrigger
 }) => {
-  // Group items by category for the menu view
-  const itemsByCategory = useMemo(() => {
-    const result: Record<string, MenuItem[]> = {};
-    
-    // For each category, retrieve its items from MenuItemGrid
-    // Since MenuCategory type doesn't have items property, we initialize with empty array
-    categories.forEach(category => {
-      result[category.id] = []; // Initialize with empty array, will be populated in MenuItemGrid
-    });
-    return result;
-  }, [categories]);
+  // We need to modify this part to properly handle items
+  // The issue is that MenuCategory doesn't have items property directly
+  // So we'll rely on MenuItemGrid to fetch and manage the items
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -53,7 +45,6 @@ const KioskMenu: React.FC<KioskMenuProps> = ({
         <div className="pb-[120px] p-4">
           <MenuItemGrid 
             categories={categories} 
-            items={itemsByCategory} 
             handleSelectItem={handleSelectItem} 
             currencySymbol={currencySymbol} 
             t={t} 
