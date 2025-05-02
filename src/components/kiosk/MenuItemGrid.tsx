@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ImageOff } from "lucide-react";
-import { MenuItem } from "@/types/database-types";
+import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 
 interface MenuItemGridProps {
@@ -13,7 +12,7 @@ interface MenuItemGridProps {
   t: (key: string) => string;
   restaurantId?: string;
   refreshTrigger?: number;
-  categories: {id: string, name: string}[];
+  categories: MenuCategory[];
 }
 
 // Individual menu item component, memoized to prevent re-renders
@@ -126,10 +125,9 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   // Sort categories by display_order
   const sortedCategories = useMemo(() => {
     return [...categories].sort((a, b) => {
-      const categoryA = categories.find(c => c.id === a.id);
-      const categoryB = categories.find(c => c.id === b.id);
-      const orderA = categoryA?.display_order ?? 1000;
-      const orderB = categoryB?.display_order ?? 1000;
+      // Using the proper MenuCategory type that includes display_order
+      const orderA = a.display_order ?? 1000;
+      const orderB = b.display_order ?? 1000;
       return orderA - orderB;
     });
   }, [categories]);
