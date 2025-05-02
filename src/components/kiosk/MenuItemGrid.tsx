@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,8 +60,8 @@ const MenuItemCard = memo(({
       </div>
       <div className="p-4 select-none">
         <div className="flex justify-between">
-          <h3 className="font-bold text-lg truncate">{item.name}</h3>
-          <p className="font-bold whitespace-nowrap">{formattedPrice} {currencySymbol}</p>
+          <h3 className="font-bold text-lg break-words">{item.name}</h3>
+          <p className="font-bold whitespace-nowrap ml-2">{formattedPrice} {currencySymbol}</p>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
         <Button 
@@ -331,6 +332,11 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
                 />
               </div>
             ))}
+            {itemsByCategory[category.id]?.length === 0 && (
+              <div className="col-span-3 py-8 text-center text-gray-500">
+                No items in this category
+              </div>
+            )}
           </div>
         </div>
       ))}

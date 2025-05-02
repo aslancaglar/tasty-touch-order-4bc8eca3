@@ -30,6 +30,7 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
     // Find the category element and scroll to it
     const categoryElement = document.getElementById(`category-${categoryId}`);
     if (categoryElement) {
+      // Modified to bring the category to the top of the viewport
       categoryElement.scrollIntoView({ 
         behavior: "smooth", 
         block: "start" 
