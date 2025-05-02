@@ -9,22 +9,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { SupportedLanguage, useTranslation } from "@/utils/language-utils";
 
 interface InactivityDialogProps {
   isOpen: boolean;
   onContinue: () => void;
   onCancel: () => void;
-  uiLanguage?: SupportedLanguage;
+  t: (key: string) => string;
 }
 
 const InactivityDialog: React.FC<InactivityDialogProps> = ({
   isOpen,
   onContinue,
   onCancel,
-  uiLanguage = "fr"
+  t
 }) => {
-  const { t } = useTranslation(uiLanguage);
   // Add a timer reference to track when the component was mounted
   const timerRef = useRef<number | null>(null);
   
