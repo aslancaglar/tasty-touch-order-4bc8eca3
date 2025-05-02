@@ -222,7 +222,7 @@ const Cart: React.FC<CartProps> = ({
               <Button variant="destructive" onClick={onClearCart} className="text-4xl py-[40px]">
                 {tCart("cancel")}
               </Button>
-              <Button onClick={handleShowOrderSummary} disabled={placingOrder || orderPlaced || cart.length === 0} className="bg-green-800 hover:bg-green-900 text-white py-[40px] text-4xl">
+              <Button onClick={handleShowOrderSummary} disabled={placingOrder || orderPlaced || cart.length === 0} className="bg-green-800 hover:bg-green-900 text-white py-[40px] text-3xl">
                 {placingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {orderPlaced && <Check className="h-4 w-4 mr-2" />}
                 {orderPlaced ? tCart("confirmed") : placingOrder ? tCart("processing") : tCart("seeOrder")}
