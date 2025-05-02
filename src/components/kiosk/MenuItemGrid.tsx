@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -126,7 +125,6 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   // Sort categories by display_order
   const sortedCategories = useMemo(() => {
     return [...categories].sort((a, b) => {
-      // Using the proper MenuCategory type that includes display_order
       const orderA = a.display_order ?? 1000;
       const orderB = b.display_order ?? 1000;
       return orderA - orderB;
