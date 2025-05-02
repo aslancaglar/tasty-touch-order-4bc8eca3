@@ -1,4 +1,3 @@
-
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -106,7 +105,7 @@ const ToppingCategory = memo(({
         {sortedToppings.map(topping => {
         const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
         const buttonSize = "h-10 w-10"; // Same size for both states
-        return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border rounded-md p-2 hover:border-gray-300 cursor-pointer select-none">
+        return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg">
               <span className={`${isSelected ? 'text-green-700 font-medium' : ''}`}>
                 {topping.name}
               </span>
@@ -191,16 +190,12 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   }, [quantity, onQuantityChange]);
 
   // Sort topping categories by display_order if they exist
-  const sortedToppingCategories = item.toppingCategories 
-    ? [...item.toppingCategories].sort((a, b) => {
-        const orderA = a.display_order ?? 1000; // Default to a high number if undefined
-        const orderB = b.display_order ?? 1000; 
-        return orderA - orderB;
-      })
-    : [];
-
+  const sortedToppingCategories = item.toppingCategories ? [...item.toppingCategories].sort((a, b) => {
+    const orderA = a.display_order ?? 1000; // Default to a high number if undefined
+    const orderB = b.display_order ?? 1000;
+    return orderA - orderB;
+  }) : [];
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
-  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
@@ -220,16 +215,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
             </div>)}
 
           {/* Toppings section - only show if there are toppings, using sorted categories */}
-          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => 
-            <ToppingCategory 
-              key={category.id} 
-              category={category} 
-              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
-              onToggleTopping={onToggleTopping} 
-              t={t} 
-              currencySymbol={currencySymbol} 
-            />
-          )}
+          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map(category => <ToppingCategory key={category.id} category={category} selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} onToggleTopping={onToggleTopping} t={t} currencySymbol={currencySymbol} />)}
         </div>
         
         <DialogFooter className="mt-3 pt-2">
@@ -251,5 +237,4 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       </DialogContent>
     </Dialog>;
 };
-
 export default memo(ItemCustomizationDialog);
