@@ -200,7 +200,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
           <DialogTitle className="font-bold text-3xl mx-0 my-0 leading-relaxed">{item.name}</DialogTitle>
-          {item.description && <DialogDescription className="text-xl">{item.description}</DialogDescription>}
+          {item.description && <DialogDescription className="text-xl text-gray-800">{item.description}</DialogDescription>}
         </DialogHeader>
         
         <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none">
