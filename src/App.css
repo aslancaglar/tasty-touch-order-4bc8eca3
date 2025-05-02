@@ -42,7 +42,7 @@
   color: #888;
 }
 
-/* Responsive text adjustments */
+/* Responsive text adjustments with direct font-size settings */
 @media (max-width: 640px) {
   html {
     font-size: 14px;

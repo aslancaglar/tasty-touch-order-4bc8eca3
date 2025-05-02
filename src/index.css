@@ -1,4 +1,5 @@
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -76,57 +77,241 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  /* Responsive text sizing based on screen size */
+  /* Direct responsive text sizing instead of applying responsive classes */
   h1 {
-    @apply text-2xl md:text-3xl lg:text-4xl;
+    font-size: 1.5rem; /* text-2xl (base) */
   }
   
   h2 {
-    @apply text-xl md:text-2xl lg:text-3xl;
+    font-size: 1.25rem; /* text-xl (base) */
   }
   
   h3 {
-    @apply text-lg md:text-xl lg:text-2xl;
+    font-size: 1.125rem; /* text-lg (base) */
   }
   
   h4 {
-    @apply text-base md:text-lg lg:text-xl;
+    font-size: 1rem; /* text-base (base) */
   }
   
   p, span, div, li, a, button {
-    @apply text-sm md:text-base lg:text-base;
+    font-size: 0.875rem; /* text-sm (base) */
   }
   
-  .text-xs {
-    @apply text-[0.65rem] md:text-xs lg:text-xs;
+  /* Media queries for medium screens */
+  @media (min-width: 768px) {
+    h1 {
+      font-size: 1.875rem; /* md:text-3xl */
+    }
+    
+    h2 {
+      font-size: 1.5rem; /* md:text-2xl */
+    }
+    
+    h3 {
+      font-size: 1.25rem; /* md:text-xl */
+    }
+    
+    h4 {
+      font-size: 1.125rem; /* md:text-lg */
+    }
+    
+    p, span, div, li, a, button {
+      font-size: 1rem; /* md:text-base */
+    }
   }
   
-  .text-sm {
-    @apply text-[0.75rem] md:text-sm lg:text-sm;
-  }
-  
-  .text-md {
-    @apply text-[0.85rem] md:text-base lg:text-base;
-  }
-  
-  .text-lg {
-    @apply text-base md:text-lg lg:text-lg;
-  }
-  
-  .text-xl {
-    @apply text-lg md:text-xl lg:text-xl;
-  }
-  
-  .text-2xl {
-    @apply text-xl md:text-2xl lg:text-2xl;
-  }
-  
-  .text-3xl {
-    @apply text-2xl md:text-3xl lg:text-3xl;
+  /* Media queries for large screens */
+  @media (min-width: 1024px) {
+    h1 {
+      font-size: 2.25rem; /* lg:text-4xl */
+    }
+    
+    h2 {
+      font-size: 1.875rem; /* lg:text-3xl */
+    }
+    
+    h3 {
+      font-size: 1.5rem; /* lg:text-2xl */
+    }
+    
+    h4 {
+      font-size: 1.25rem; /* lg:text-xl */
+    }
   }
 }
 
 @layer components {
+  /* Custom responsive text classes without using @apply with responsive utilities */
+  .text-xs {
+    font-size: 0.65rem;
+  }
+  
+  .text-sm {
+    font-size: 0.75rem;
+  }
+  
+  .text-md {
+    font-size: 0.85rem;
+  }
+  
+  .text-lg {
+    font-size: 1rem;
+  }
+  
+  .text-xl {
+    font-size: 1.125rem;
+  }
+  
+  .text-2xl {
+    font-size: 1.25rem;
+  }
+  
+  .text-3xl {
+    font-size: 1.5rem;
+  }
+  
+  @media (min-width: 768px) {
+    .text-xs {
+      font-size: 0.75rem;
+    }
+    
+    .text-sm {
+      font-size: 0.875rem;
+    }
+    
+    .text-md {
+      font-size: 1rem;
+    }
+    
+    .text-lg {
+      font-size: 1.125rem;
+    }
+    
+    .text-xl {
+      font-size: 1.25rem;
+    }
+    
+    .text-2xl {
+      font-size: 1.5rem;
+    }
+    
+    .text-3xl {
+      font-size: 1.875rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .text-xs {
+      font-size: 0.75rem;
+    }
+    
+    .text-sm {
+      font-size: 0.875rem;
+    }
+    
+    .text-md {
+      font-size: 1rem;
+    }
+    
+    .text-lg {
+      font-size: 1.125rem;
+    }
+    
+    .text-xl {
+      font-size: 1.25rem;
+    }
+    
+    .text-2xl {
+      font-size: 1.5rem;
+    }
+    
+    .text-3xl {
+      font-size: 1.875rem;
+    }
+  }
+
+  /* Create responsive text utility classes directly */
+  .text-responsive-title {
+    font-weight: bold;
+    font-size: 1.25rem;
+  }
+  
+  .text-responsive-subtitle {
+    font-weight: 600;
+    font-size: 1.125rem;
+  }
+  
+  .text-responsive-body {
+    font-size: 0.875rem;
+  }
+  
+  .text-responsive-small {
+    font-size: 0.75rem;
+  }
+  
+  .text-responsive-button {
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+  
+  .text-responsive-price {
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  
+  @media (min-width: 768px) {
+    .text-responsive-title {
+      font-size: 1.5rem;
+    }
+    
+    .text-responsive-subtitle {
+      font-size: 1.25rem;
+    }
+    
+    .text-responsive-body {
+      font-size: 1rem;
+    }
+    
+    .text-responsive-small {
+      font-size: 0.875rem;
+    }
+    
+    .text-responsive-button {
+      font-size: 1rem;
+    }
+    
+    .text-responsive-price {
+      font-size: 1.125rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .text-responsive-title {
+      font-size: 1.875rem;
+    }
+    
+    .text-responsive-subtitle {
+      font-size: 1.5rem;
+    }
+    
+    .text-responsive-body {
+      font-size: 1rem;
+    }
+    
+    .text-responsive-small {
+      font-size: 0.875rem;
+    }
+    
+    .text-responsive-button {
+      font-size: 1.125rem;
+    }
+    
+    .text-responsive-price {
+      font-size: 1.25rem;
+    }
+  }
+
   .kiosk-card {
     @apply rounded-lg bg-white shadow-md hover:shadow-lg transition-shadow duration-300;
   }
@@ -154,29 +339,5 @@
   .menu-item {
     @apply p-4 rounded-lg bg-white shadow-sm border border-gray-100 transition-all hover:shadow-md;
   }
-  
-  /* Responsive text utility classes */
-  .text-responsive-title {
-    @apply text-xl md:text-2xl lg:text-3xl font-bold;
-  }
-  
-  .text-responsive-subtitle {
-    @apply text-lg md:text-xl lg:text-2xl font-semibold;
-  }
-  
-  .text-responsive-body {
-    @apply text-sm md:text-base lg:text-base;
-  }
-  
-  .text-responsive-small {
-    @apply text-xs md:text-sm lg:text-sm;
-  }
-  
-  .text-responsive-button {
-    @apply text-sm md:text-base lg:text-lg font-medium;
-  }
-  
-  .text-responsive-price {
-    @apply text-base md:text-lg lg:text-xl font-semibold;
-  }
 }
+
