@@ -285,7 +285,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
   
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 w-[95vw] max-w-[95vw] flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 w-[95vw] max-w-[95vw] flex flex-col max-h-[90vh] overflow-hidden">
         {/* Fixed Header */}
         <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
           <div className="flex items-center space-x-2">
