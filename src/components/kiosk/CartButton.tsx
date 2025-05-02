@@ -42,7 +42,7 @@ const CartButton: React.FC<CartButtonProps> = ({
         <ShoppingCart className="h-12 w-12 mr-2" />
         <span className="font-bold">{itemCount}</span>
         <span className="mx-2">|</span>
-        <span className="font-bold">{total.toFixed(2)} {currencySymbol}</span>
+        <span className="font-bold text-3xl">{total.toFixed(2)} {currencySymbol}</span>
         <span className="ml-3 font-semibold text-3xl">{t("cart.viewCart")}</span>
       </Button>
     </div>;
