@@ -1,44 +1,35 @@
-
 import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-
 export type OrderType = "dine-in" | "takeaway" | null;
-
 interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectOrderType: (type: OrderType, tableNumber?: string) => void;
   uiLanguage?: SupportedLanguage;
 }
-
 const OrderTypeSelection = ({
   isOpen,
   onClose,
   onSelectOrderType,
   uiLanguage = "fr"
 }: OrderTypeSelectionProps) => {
-  const { t } = useTranslation(uiLanguage);
-  
+  const {
+    t
+  } = useTranslation(uiLanguage);
   const handleSelectDineIn = () => {
     onSelectOrderType("dine-in");
   };
-  
   const handleSelectTakeaway = () => {
     onSelectOrderType("takeaway");
   };
-  
-  return (
-    <Dialog 
-      open={isOpen} 
-      onOpenChange={open => !open && onClose()}
-      // Don't block background pointer events 
-      modal={false}
-    >
+  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}
+  // Don't block background pointer events 
+  modal={false}>
       <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-8">
         <DialogHeader>
-          <DialogTitle className="text-center text-3xl font-bold mb-6">
+          <DialogTitle className="text-center font-bold mb-6 text-5xl">
             {t("orderType.title")}
           </DialogTitle>
         </DialogHeader>
@@ -53,8 +44,6 @@ const OrderTypeSelection = ({
           </Button>
         </div>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 };
-
 export default OrderTypeSelection;
