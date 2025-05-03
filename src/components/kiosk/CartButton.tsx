@@ -38,7 +38,7 @@ const CartButton: React.FC<CartButtonProps> = ({
   } = useTranslation(uiLanguage);
   const currencySymbol = getCurrencySymbol(currency);
   return <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center">
-      <Button onClick={onClick} className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl py-[40px] px-[100px] font-bebas tracking-wide">
+      <Button onClick={onClick} className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl font-bebas tracking-wide py-[50px] px-[102px]">
         <ShoppingBag className="h-12 w-12 mr-2" />
         <span className="font-bebas text-5xl">{itemCount}</span>
         <span className="mx-2">|</span>
