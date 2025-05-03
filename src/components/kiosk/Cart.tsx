@@ -149,9 +149,9 @@ const Cart: React.FC<CartProps> = ({
   const reversedCart = [...cart].reverse();
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
   return <>
-      <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
+      <div ref={cartRef} style={{
       maxHeight: "60vh"
-    }}>
+    }} className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 shadow-lg bg-amber-100">
         <div className="w-full">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center">
