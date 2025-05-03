@@ -171,7 +171,7 @@ const Cart: React.FC<CartProps> = ({
           }} className="w-full">
               <CarouselContent className="-ml-2">
                 {reversedCart.length === 0 ? <div className="p-4 text-gray-400 text-center text-responsive-body">{tCart("empty")}</div> : reversedCart.map(item => <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
-                    <div className="border border-gray-300 rounded-lg p-3 relative bg-[kiosk-base-100] bg-white">
+                    <div className="border border-violet-500 rounded-lg p-3 relative bg-[kiosk-base-100] bg-violet-200">
                       <Button variant="ghost" size="icon" className="absolute right-1 top-1 text-red-500 h-7 w-7" onClick={() => onRemoveItem(item.id)}>
                         <X className="h-5 w-5" />
                       </Button>
