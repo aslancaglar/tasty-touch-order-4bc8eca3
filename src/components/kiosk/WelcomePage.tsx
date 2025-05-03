@@ -1,14 +1,11 @@
-
 import { Restaurant } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-
 interface WelcomePageProps {
   restaurant: Restaurant;
   onStart: () => void;
   uiLanguage?: SupportedLanguage;
 }
-
 const WelcomePage = ({
   restaurant,
   onStart,
@@ -17,14 +14,9 @@ const WelcomePage = ({
   const {
     t
   } = useTranslation(uiLanguage);
-  
-  return (
-    <div 
-      className="fixed inset-0 flex flex-col items-center justify-between bg-cover bg-center py-16" 
-      style={{
-        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url(${restaurant.image_url || "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"})`
-      }}
-    >
+  return <div className="fixed inset-0 flex flex-col items-center justify-between bg-cover bg-center py-16" style={{
+    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url(${restaurant.image_url || "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"})`
+  }}>
       {/* Empty top space */}
       <div className="flex-grow"></div>
       
@@ -33,7 +25,7 @@ const WelcomePage = ({
         <h1 className="text-white font-bold mb-3 text-6xl md:text-7xl lg:text-9xl font-bebas tracking-wide">
           {restaurant.name}
         </h1>
-        <p className="text-white text-xl md:text-2xl lg:text-3xl font-inter">
+        <p className="text-white text-xl md:text-2xl font-inter lg:text-5xl">
           {t("welcome.title")}
         </p>
       </div>
@@ -43,15 +35,10 @@ const WelcomePage = ({
       
       {/* Bottom section with start button */}
       <div className="mb-12">
-        <Button 
-          onClick={onStart} 
-          className="shadow-lg animate-pulse rounded-full bg-violet-700 hover:bg-violet-600 text-slate-50 text-4xl md:text-6xl lg:text-8xl px-12 py-8 md:px-[40px] md:py-[70px] lg:px-[60px] lg:py-[90px] font-bebas tracking-wide"
-        >
+        <Button onClick={onStart} className="shadow-lg animate-pulse rounded-full bg-violet-700 hover:bg-violet-600 text-slate-50 text-4xl md:text-6xl lg:text-8xl px-12 py-8 md:px-[40px] md:py-[70px] lg:px-[60px] lg:py-[90px] font-bebas tracking-wide">
           {t("welcome.start")}
         </Button>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default WelcomePage;
