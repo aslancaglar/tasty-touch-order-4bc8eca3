@@ -152,7 +152,7 @@ const Cart: React.FC<CartProps> = ({
       <div ref={cartRef} style={{
       maxHeight: "60vh"
     }} className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 shadow-lg bg-amber-100 overflow-hidden">
-        <div className="w-full">
+        <div className="w-full overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b rounded-none bg-amber-300">
             <div className="flex items-center">
               <h2 className="text-responsive-subtitle font-bold">{tCart("yourOrder")} ({cartItemCount})</h2>
