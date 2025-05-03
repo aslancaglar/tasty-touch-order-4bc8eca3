@@ -155,7 +155,7 @@ const Cart: React.FC<CartProps> = ({
         <div className="w-full overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b rounded-none bg-red-500">
             <div className="flex items-center">
-              <h2 className="text-responsive-subtitle font-bold">{tCart("yourOrder")} ({cartItemCount})</h2>
+              <h2 className="text-responsive-subtitle font-bold text-white">{tCart("yourOrder")} ({cartItemCount})</h2>
             </div>
             <Button variant="ghost" size="icon" onClick={onToggleOpen} className="rounded-full h-10 w-10 bg-red-100 hover:bg-red-200">
               <X className="h-5 w-5 text-red-600" />
