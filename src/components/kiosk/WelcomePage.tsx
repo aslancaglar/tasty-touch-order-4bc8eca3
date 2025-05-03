@@ -19,7 +19,7 @@ const WelcomePage = ({
   }}>
       <div className="mb-8 text-center">
         <h1 className="text-white font-bold mb-2 text-9xl">{restaurant.name}</h1>
-        <p className="text-white text-3xl">{t("welcome.title")}</p>
+        <p className="text-white text-4xl">{t("welcome.title")}</p>
       </div>
       <Button onClick={onStart} className="w-100 h-24 font-bold shadow-lg animate-pulse rounded-full mx-0 bg-violet-700 hover:bg-violet-600 text-slate-50 text-8xl px-[60px] py-[90px]">
         {t("welcome.start")}
