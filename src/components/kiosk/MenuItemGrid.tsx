@@ -60,12 +60,12 @@ const MenuItemCard = memo(({
       </div>
       <div className="p-4 select-none">
         <div className="flex justify-between">
-          <h3 className="font-bold text-lg break-words">{item.name}</h3>
-          <p className="font-bold whitespace-nowrap ml-2">{formattedPrice} {currencySymbol}</p>
+          <h3 className="font-bebas text-lg tracking-wide break-words">{item.name}</h3>
+          <p className="font-bebas text-lg whitespace-nowrap ml-2">{formattedPrice} {currencySymbol}</p>
         </div>
-        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+        <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
         <Button 
-          className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0"
+          className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide"
         >
           {t("addToCart")}
           <ChevronRight className="h-4 w-4 ml-2" />
@@ -332,7 +332,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     <div className="space-y-8 pb-20">
       {sortedCategories.map((category) => (
         <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20">
-          <h2 className="text-2xl font-bold mb-4 border-b pb-2">{category.name}</h2>
+          <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide">{category.name}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
             {itemsByCategory[category.id]?.map(item => (
               <div key={item.id} data-item-id={item.id}>
@@ -347,7 +347,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
               </div>
             ))}
             {itemsByCategory[category.id]?.length === 0 && (
-              <div className="col-span-3 py-8 text-center text-gray-500">
+              <div className="col-span-3 py-8 text-center text-gray-500 font-inter">
                 No items in this category
               </div>
             )}

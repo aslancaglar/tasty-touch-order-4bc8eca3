@@ -48,13 +48,13 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
             className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
           />
           <div>
-            <h1 className="text-white text-3xl font-bold">{restaurant.name}</h1>
-            <div className="flex items-center text-white text-sm mt-1">
+            <h1 className="text-white text-3xl font-bebas tracking-wider">{restaurant.name}</h1>
+            <div className="flex items-center text-white text-sm mt-1 font-inter">
               <Clock className="h-4 w-4 mr-1" />
               <span>{restaurant.location || t("open")}</span>
             </div>
             {orderType && 
-              <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center">
+              <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center font-bebas tracking-wide">
                 {orderType === 'dine-in' ? 
                   <>
                     <span className="mr-1">{t("dineIn")}</span>

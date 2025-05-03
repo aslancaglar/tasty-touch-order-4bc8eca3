@@ -66,7 +66,7 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
                 </div>
               )}
             </div>
-            <span className="font-bold uppercase break-words">{category.name}</span>
+            <span className="font-bebas uppercase break-words text-lg tracking-wide">{category.name}</span>
           </button>
         ))}
       </div>

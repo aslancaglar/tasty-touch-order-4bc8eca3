@@ -1,4 +1,5 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -73,28 +74,38 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-inter;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
   /* Direct responsive text sizing instead of applying responsive classes */
   h1 {
+    @apply font-bebas;
     font-size: 1.5rem; /* text-2xl (base) */
   }
   
   h2 {
+    @apply font-bebas;
     font-size: 1.25rem; /* text-xl (base) */
   }
   
   h3 {
+    @apply font-bebas;
     font-size: 1.125rem; /* text-lg (base) */
   }
   
   h4 {
+    @apply font-bebas;
     font-size: 1rem; /* text-base (base) */
   }
   
-  p, span, div, li, a, button {
+  p, span, div, li, a {
+    @apply font-inter;
+    font-size: 0.875rem; /* text-sm (base) */
+  }
+  
+  button {
+    @apply font-bebas;
     font-size: 0.875rem; /* text-sm (base) */
   }
   
@@ -233,29 +244,35 @@
 
   /* Create responsive text utility classes directly */
   .text-responsive-title {
+    @apply font-bebas;
     font-weight: bold;
     font-size: 1.25rem;
   }
   
   .text-responsive-subtitle {
+    @apply font-bebas;
     font-weight: 600;
     font-size: 1.125rem;
   }
   
   .text-responsive-body {
+    @apply font-inter;
     font-size: 0.875rem;
   }
   
   .text-responsive-small {
+    @apply font-inter;
     font-size: 0.75rem;
   }
   
   .text-responsive-button {
+    @apply font-bebas;
     font-weight: 500;
     font-size: 0.875rem;
   }
   
   .text-responsive-price {
+    @apply font-bebas;
     font-weight: 600;
     font-size: 1rem;
   }
@@ -329,15 +346,14 @@
   }
 
   .btn-primary {
-    @apply bg-kiosk-primary text-white py-2 px-4 rounded-lg hover:bg-kiosk-primary/90 transition-colors;
+    @apply bg-kiosk-primary text-white py-2 px-4 rounded-lg hover:bg-kiosk-primary/90 transition-colors font-bebas;
   }
 
   .btn-secondary {
-    @apply bg-kiosk-secondary text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors;
+    @apply bg-kiosk-secondary text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors font-bebas;
   }
 
   .menu-item {
     @apply p-4 rounded-lg bg-white shadow-sm border border-gray-100 transition-all hover:shadow-md;
   }
 }
-
