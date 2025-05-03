@@ -25,12 +25,15 @@ const WelcomePage = ({
         backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url(${restaurant.image_url || "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"})`
       }}
     >
-      {/* Top section with restaurant name and welcome text */}
-      <div className="text-center px-4 mt-8">
-        <h1 className="text-white font-bold mb-2 text-6xl md:text-7xl lg:text-9xl font-bebas tracking-wide">
+      {/* Empty top space */}
+      <div className="flex-grow"></div>
+      
+      {/* Center section with restaurant name and welcome text */}
+      <div className="text-center px-4">
+        <h1 className="text-white font-bold mb-3 text-6xl md:text-7xl lg:text-9xl font-bebas tracking-wide">
           {restaurant.name}
         </h1>
-        <p className="text-white text-2xl md:text-3xl lg:text-4xl font-bebas tracking-wide">
+        <p className="text-white text-xl md:text-2xl lg:text-3xl font-inter">
           {t("welcome.title")}
         </p>
       </div>
