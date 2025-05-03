@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Check, ArrowRight, Loader2, Plus, Minus, ChevronDown, X } from "lucide-react";
+import { Check, ArrowRight, Loader2, Plus, Minus, X } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -158,8 +157,8 @@ const Cart: React.FC<CartProps> = ({
             <div className="flex items-center">
               <h2 className="text-responsive-subtitle font-bold">{tCart("yourOrder")} ({cartItemCount})</h2>
             </div>
-            <Button variant="ghost" size="icon" onClick={onToggleOpen}>
-              <ChevronDown className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={onToggleOpen} className="rounded-full h-10 w-10 bg-red-100 hover:bg-red-200">
+              <X className="h-5 w-5 text-red-600" />
             </Button>
           </div>
 
