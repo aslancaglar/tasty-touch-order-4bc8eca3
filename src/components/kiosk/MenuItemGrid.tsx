@@ -291,7 +291,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     setFailedImages(prev => new Set([...prev, itemId]));
   }, []);
   return <div className="space-y-8 pb-20">
-      {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-30 pt-0 py-0">
+      {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20 pt-0 py-0">
           <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide pl-4">
             {category.name}
           </h2>
