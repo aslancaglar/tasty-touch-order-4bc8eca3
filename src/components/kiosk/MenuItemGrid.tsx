@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -331,7 +332,11 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   return (
     <div className="space-y-8 pb-20">
       {sortedCategories.map((category) => (
-        <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20">
+        <div 
+          key={category.id} 
+          id={`category-${category.id}`} 
+          className="scroll-mt-32" // Add larger scroll margin to ensure header doesn't cover the category title
+        >
           <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide">{category.name}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
             {itemsByCategory[category.id]?.map(item => (

@@ -30,11 +30,25 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
     // Find the category element and scroll to it
     const categoryElement = document.getElementById(`category-${categoryId}`);
     if (categoryElement) {
-      // Position the category at the very top of the viewport
-      categoryElement.scrollIntoView({ 
-        behavior: "smooth", 
-        block: "start" 
-      });
+      // Add small delay to ensure DOM updates before scrolling
+      setTimeout(() => {
+        // Position the category title at the very top of the scroll container
+        const scrollContainer = categoryElement.closest('.overflow-y-auto');
+        if (scrollContainer) {
+          const headerHeight = document.querySelector('.h-\\[12vh\\]')?.clientHeight || 120;
+          const offsetPosition = categoryElement.offsetTop - headerHeight;
+          scrollContainer.scrollTo({
+            top: offsetPosition,
+            behavior: "smooth"
+          });
+        } else {
+          // Fallback to the old method if scroll container not found
+          categoryElement.scrollIntoView({ 
+            behavior: "smooth", 
+            block: "start" 
+          });
+        }
+      }, 50);
     }
   };
 
