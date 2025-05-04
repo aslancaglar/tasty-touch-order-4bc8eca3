@@ -292,7 +292,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   }, []);
   return <div className="space-y-8 pb-20">
       {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-32 pt-5 py-[4px]">
-          <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide">{category.name}</h2>
+          <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide py-0">{category.name}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
             {itemsByCategory[category.id]?.map(item => <div key={item.id} data-item-id={item.id}>
                 <MenuItemCard item={item} handleSelectItem={handleSelectItem} t={t} currencySymbol={currencySymbol} cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} hasImageFailed={failedImages.has(item.id)} />
