@@ -335,10 +335,12 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         <div 
           key={category.id} 
           id={`category-${category.id}`} 
-          className="scroll-mt-32" // Add larger scroll margin to ensure header doesn't cover the category title
+          className="scroll-mt-32 pt-6" // Added more top padding for spacing
         >
-          <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide">{category.name}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
+          <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide pl-4">
+            {category.name}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none px-4">
             {itemsByCategory[category.id]?.map(item => (
               <div key={item.id} data-item-id={item.id}>
                 <MenuItemCard
