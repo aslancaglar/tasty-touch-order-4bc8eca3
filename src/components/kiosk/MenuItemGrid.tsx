@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, ImageOff } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
-
 interface MenuItemGridProps {
   items: MenuItem[];
   handleSelectItem: (item: MenuItem) => void;
@@ -25,38 +24,27 @@ const MenuItemCard = memo(({
   cachedImageUrl,
   hasImageFailed
 }: {
-  item: MenuItem,
-  handleSelectItem: (item: MenuItem) => void,
-  t: (key: string) => string,
-  currencySymbol: string,
-  cachedImageUrl: string,
-  hasImageFailed: boolean
+  item: MenuItem;
+  handleSelectItem: (item: MenuItem) => void;
+  t: (key: string) => string;
+  currencySymbol: string;
+  cachedImageUrl: string;
+  hasImageFailed: boolean;
 }) => {
   const handleItemClick = useCallback(() => {
     handleSelectItem(item);
   }, [item, handleSelectItem]);
-
   const formattedPrice = useMemo(() => {
     return parseFloat(item.price.toString()).toFixed(2);
   }, [item.price]);
-
-  return (
-    <Card 
-      className="overflow-hidden hover:shadow-md transition-shadow select-none cursor-pointer" 
-      onClick={handleItemClick}
-    >
-      <div 
-        className="h-40 bg-cover bg-center relative select-none" 
-        style={{
-          backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
-          backgroundColor: hasImageFailed ? '#f0f0f0' : undefined
-        }}
-      >
-        {hasImageFailed && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+  return <Card className="overflow-hidden hover:shadow-md transition-shadow select-none cursor-pointer" onClick={handleItemClick}>
+      <div className="h-40 bg-cover bg-center relative select-none" style={{
+      backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
+      backgroundColor: hasImageFailed ? '#f0f0f0' : undefined
+    }}>
+        {hasImageFailed && <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
             <ImageOff className="h-10 w-10 text-gray-400" />
-          </div>
-        )}
+          </div>}
       </div>
       <div className="p-4 select-none">
         <div className="flex justify-between">
@@ -64,19 +52,14 @@ const MenuItemCard = memo(({
           <p className="font-bebas text-lg whitespace-nowrap ml-2">{formattedPrice} {currencySymbol}</p>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
-        <Button 
-          className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide"
-        >
+        <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
           {t("addToCart")}
           <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
-    </Card>
-  );
+    </Card>;
 });
-
 MenuItemCard.displayName = 'MenuItemCard';
-
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
@@ -99,19 +82,19 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const itemsByCategory = useMemo(() => {
     // Create an object to hold items grouped by their category
     const grouped: Record<string, MenuItem[]> = {};
-    
+
     // Initialize all categories with empty arrays
     categories.forEach(category => {
       grouped[category.id] = [];
     });
-    
+
     // Add all in-stock items to their respective category groups
     items.filter(item => item.in_stock).forEach(item => {
       if (grouped[item.category_id]) {
         grouped[item.category_id].push(item);
       }
     });
-    
+
     // Sort items by display_order within each category
     Object.keys(grouped).forEach(categoryId => {
       grouped[categoryId].sort((a, b) => {
@@ -120,21 +103,20 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         return orderA - orderB;
       });
     });
-    
     return grouped;
   }, [items, categories]);
 
   // Sort categories by putting the active category first, then by display_order
   const sortedCategories = useMemo(() => {
     let categoriesCopy = [...categories];
-    
+
     // Sort by display_order first
     categoriesCopy.sort((a, b) => {
       const orderA = a.display_order ?? 1000;
       const orderB = b.display_order ?? 1000;
       return orderA - orderB;
     });
-    
+
     // If there's an active category, move it to the top
     if (activeCategory) {
       categoriesCopy = categoriesCopy.sort((a, b) => {
@@ -143,23 +125,20 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         return 0;
       });
     }
-    
     return categoriesCopy;
   }, [categories, activeCategory]);
-  
+
   // Pre-cache only visible items with intersection observer
   const setupIntersectionObserver = useCallback(() => {
     if (typeof IntersectionObserver === 'undefined') return;
-    
-    const observer = new IntersectionObserver((entries) => {
+    const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         const itemId = entry.target.getAttribute('data-item-id');
         if (!itemId) return;
-        
         if (entry.isIntersecting) {
           // Item is visible, add to visible items set
           visibleItemsRef.current.add(itemId);
-          
+
           // Get the image URL for this item
           const item = items.find(i => i.id === itemId);
           if (item?.image && !item.image.startsWith('data:') && !cachedImages[itemId]) {
@@ -175,52 +154,50 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         }
       });
     }, {
-      rootMargin: '100px', // Start loading when item is 100px from viewport
+      rootMargin: '100px',
+      // Start loading when item is 100px from viewport
       threshold: 0.1 // Trigger when at least 10% of the item is visible
     });
-    
+
     // Observe all menu item elements
     setTimeout(() => {
       document.querySelectorAll('[data-item-id]').forEach(element => {
         observer.observe(element);
       });
     }, 100);
-    
     return observer;
   }, [items, cachedImages]);
 
   // Process image queue one at a time
   const processImageQueue = useCallback(async () => {
     if (isPreloadingRef.current || imagePreloadQueue.current.length === 0) return;
-    
     isPreloadingRef.current = true;
     const url = imagePreloadQueue.current.shift();
-    
     if (url) {
       try {
         const cachedUrl = await getCachedImageUrl(url);
-        
+
         // Find the item that uses this image
         if (isMounted.current) {
           setCachedImages(prev => {
             const itemsWithImage = items.filter(item => item.image === url);
             if (itemsWithImage.length === 0) return prev;
-            
             const updates: Record<string, string> = {};
             itemsWithImage.forEach(item => {
               updates[item.id] = cachedUrl;
             });
-            
-            return { ...prev, ...updates };
+            return {
+              ...prev,
+              ...updates
+            };
           });
         }
       } catch (err) {
         console.error(`Error caching image: ${url}`, err);
       }
     }
-    
     isPreloadingRef.current = false;
-    
+
     // Process next image after a small delay
     if (imagePreloadQueue.current.length > 0) {
       setTimeout(processImageQueue, 50);
@@ -230,7 +207,6 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   // Effect to initialize intersection observer
   useEffect(() => {
     const observer = setupIntersectionObserver();
-    
     return () => {
       if (observer) observer.disconnect();
     };
@@ -238,44 +214,34 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
 
   // Pre-cache all images when component mounts or items change
   useEffect(() => {
-    const imageUrls = items
-      .filter(item => item.image)
-      .map(item => item.image || '')
-      .slice(0, 10); // Limit initial preload to first 10 images
-    
+    const imageUrls = items.filter(item => item.image).map(item => item.image || '').slice(0, 10); // Limit initial preload to first 10 images
+
     if (imageUrls.length > 0) {
       // Attempt to precache the first few images
-      precacheImages(imageUrls)
-        .catch(err => console.error("Error pre-caching images:", err));
+      precacheImages(imageUrls).catch(err => console.error("Error pre-caching images:", err));
     }
   }, [items, refreshTrigger]);
-
   useEffect(() => {
     isMounted.current = true;
     setLoadingImages(true);
-    
     const cacheImages = async () => {
       if (items.length === 0) {
         setLoadingImages(false);
         return;
       }
-      
       console.log(`Caching images for ${items.length} menu items`);
-      
       try {
         // Get storage information
         const storageInfo = await getStorageEstimate();
-        const usedPercent = (storageInfo.used / storageInfo.quota) * 100;
+        const usedPercent = storageInfo.used / storageInfo.quota * 100;
         console.log(`Storage usage: ${(storageInfo.used / (1024 * 1024)).toFixed(2)}MB / ${(storageInfo.quota / (1024 * 1024)).toFixed(2)}MB (${usedPercent.toFixed(1)}%)`);
-        
+
         // Process first batch of images synchronously for initial display
         const initialBatch = items.slice(0, 5);
         const newCachedImages: Record<string, string> = {};
         const newFailedImages = new Set<string>();
-        
         for (const item of initialBatch) {
           if (!item.image) continue;
-          
           try {
             const cachedUrl = await getCachedImageUrl(item.image);
             if (!cachedUrl || cachedUrl === item.image) {
@@ -288,19 +254,18 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
             newCachedImages[item.id] = item.image || '';
           }
         }
-        
         if (isMounted.current) {
-          setCachedImages(prev => ({ ...prev, ...newCachedImages }));
+          setCachedImages(prev => ({
+            ...prev,
+            ...newCachedImages
+          }));
           setFailedImages(new Set([...failedImages, ...newFailedImages]));
           setLoadingImages(false);
         }
-        
+
         // Queue remaining images to be loaded in background
         const remainingItems = items.slice(5);
-        const remainingUrls = remainingItems
-          .filter(item => item.image)
-          .map(item => item.image || '');
-        
+        const remainingUrls = remainingItems.filter(item => item.image).map(item => item.image || '');
         imagePreloadQueue.current = [...remainingUrls];
         processImageQueue();
       } catch (error) {
@@ -310,7 +275,6 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         }
       }
     };
-
     if (items.length > 0) {
       cacheImages();
     } else {
@@ -323,43 +287,21 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       imagePreloadQueue.current = [];
     };
   }, [items, refreshTrigger]);
-
   const handleImageError = useCallback((itemId: string) => {
     setFailedImages(prev => new Set([...prev, itemId]));
   }, []);
-
-  return (
-    <div className="space-y-8 pb-20">
-      {sortedCategories.map((category) => (
-        <div 
-          key={category.id} 
-          id={`category-${category.id}`} 
-          className="scroll-mt-32 pt-5" // Added padding-top (pt-5) for better spacing when scrolled to
-        >
+  return <div className="space-y-8 pb-20">
+      {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-32 pt-5 py-[4px]">
           <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide">{category.name}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none">
-            {itemsByCategory[category.id]?.map(item => (
-              <div key={item.id} data-item-id={item.id}>
-                <MenuItemCard
-                  item={item}
-                  handleSelectItem={handleSelectItem}
-                  t={t}
-                  currencySymbol={currencySymbol}
-                  cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'}
-                  hasImageFailed={failedImages.has(item.id)}
-                />
-              </div>
-            ))}
-            {itemsByCategory[category.id]?.length === 0 && (
-              <div className="col-span-3 py-8 text-center text-gray-500 font-inter">
+            {itemsByCategory[category.id]?.map(item => <div key={item.id} data-item-id={item.id}>
+                <MenuItemCard item={item} handleSelectItem={handleSelectItem} t={t} currencySymbol={currencySymbol} cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} hasImageFailed={failedImages.has(item.id)} />
+              </div>)}
+            {itemsByCategory[category.id]?.length === 0 && <div className="col-span-3 py-8 text-center text-gray-500 font-inter">
                 No items in this category
-              </div>
-            )}
+              </div>}
           </div>
-        </div>
-      ))}
-    </div>
-  );
+        </div>)}
+    </div>;
 };
-
 export default memo(MenuItemGrid);
