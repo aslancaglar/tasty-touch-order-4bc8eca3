@@ -32,16 +32,11 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
     if (categoryElement) {
       // Add small delay to ensure DOM updates before scrolling
       setTimeout(() => {
-        // Position the category title at the very top of the scroll container with padding
+        // Position the category title at the very top of the scroll container
         const scrollContainer = categoryElement.closest('.overflow-y-auto');
         if (scrollContainer) {
-          // Calculate header height
           const headerHeight = document.querySelector('.h-\\[12vh\\]')?.clientHeight || 120;
-          
-          // Calculate the position with a slight offset to align with category buttons
-          // This makes sure the category title aligns with the left sidebar buttons
           const offsetPosition = categoryElement.offsetTop - headerHeight;
-          
           scrollContainer.scrollTo({
             top: offsetPosition,
             behavior: "smooth"
