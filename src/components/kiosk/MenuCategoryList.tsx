@@ -35,10 +35,12 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
         // Position the category title at the very top of the scroll container with padding
         const scrollContainer = categoryElement.closest('.overflow-y-auto');
         if (scrollContainer) {
-          // Calculate header height and add padding (20px) for better visual appearance
+          // Calculate header height
           const headerHeight = document.querySelector('.h-\\[12vh\\]')?.clientHeight || 120;
-          const paddingTop = 20; // Added padding at the top
-          const offsetPosition = categoryElement.offsetTop - headerHeight - paddingTop;
+          
+          // Calculate the position with a slight offset to align with category buttons
+          // This makes sure the category title aligns with the left sidebar buttons
+          const offsetPosition = categoryElement.offsetTop - headerHeight;
           
           scrollContainer.scrollTo({
             top: offsetPosition,
