@@ -35,7 +35,7 @@ const WelcomePage = ({
       
       {/* Bottom section with start button */}
       <div className="mb-50">
-        <Button onClick={onStart} className="shadow-lg animate-pulse bg-violet-700 hover:bg-violet-600 text-slate-50 md:text-6xl lg:text-7xl px-12 md:px-[40px] md:py-[70px] lg:px-[60px] lg:py-[90px] font-bebas tracking-wide py-[91px] rounded-full text-xl text-center my-[101px]">
+        <Button onClick={onStart} className="shadow-lg animate-pulse bg-violet-700 hover:bg-violet-600 text-slate-50 md:text-6xl lg:text-7xl px-12 md:px-[40px] md:py-[70px] lg:px-[60px] lg:py-[90px] font-bebas tracking-wide py-[91px] rounded-full text-xl text-center">
           {t("welcome.start")}
         </Button>
       </div>
