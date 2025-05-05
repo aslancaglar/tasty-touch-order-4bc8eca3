@@ -505,7 +505,7 @@ const ToppingsTab = ({
       )}
 
       <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
-        <DialogContent>
+        <DialogContent hideScrollbar={true}>
           <DialogHeader>
             <DialogTitle>Créer une catégorie</DialogTitle>
             <DialogDescription>Créez une nouvelle catégorie de compléments</DialogDescription>
@@ -519,7 +519,7 @@ const ToppingsTab = ({
       </Dialog>
 
       <Dialog open={showUpdateCategoryDialog} onOpenChange={setShowUpdateCategoryDialog}>
-        <DialogContent>
+        <DialogContent hideScrollbar={true}>
           <DialogHeader>
             <DialogTitle>Modifier la catégorie</DialogTitle>
             <DialogDescription>Modifiez les détails de cette catégorie</DialogDescription>
