@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash } from "lucide-react";
@@ -505,37 +503,41 @@ const ToppingsTab = ({
       )}
 
       <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Créer une catégorie</DialogTitle>
-            <DialogDescription>Créez une nouvelle catégorie de compléments</DialogDescription>
-          </DialogHeader>
-          <ToppingCategoryForm 
-            restaurantId={restaurant.id} 
-            onSubmit={handleCreateCategory} 
-            isLoading={isCreatingCategory} 
-          />
+        <DialogContent className="max-h-[90vh]">
+          <ScrollArea className="max-h-[80vh] pr-4">
+            <DialogHeader>
+              <DialogTitle>Créer une catégorie</DialogTitle>
+              <DialogDescription>Créez une nouvelle catégorie de compléments</DialogDescription>
+            </DialogHeader>
+            <ToppingCategoryForm 
+              restaurantId={restaurant.id} 
+              onSubmit={handleCreateCategory} 
+              isLoading={isCreatingCategory} 
+            />
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showUpdateCategoryDialog} onOpenChange={setShowUpdateCategoryDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Modifier la catégorie</DialogTitle>
-            <DialogDescription>Modifiez les détails de cette catégorie</DialogDescription>
-          </DialogHeader>
-          {selectedCategory && <ToppingCategoryForm 
-            restaurantId={restaurant.id} 
-            initialValues={{
-              name: selectedCategory.name,
-              description: selectedCategory.description || "",
-              min_selections: selectedCategory.min_selections || 0,
-              max_selections: selectedCategory.max_selections || 0,
-              show_if_selection_id: selectedCategory.show_if_selection_id || []
-            }} 
-            onSubmit={handleUpdateCategory} 
-            isLoading={isUpdatingCategory} 
-          />}
+        <DialogContent className="max-h-[90vh]">
+          <ScrollArea className="max-h-[80vh] pr-4">
+            <DialogHeader>
+              <DialogTitle>Modifier la catégorie</DialogTitle>
+              <DialogDescription>Modifiez les détails de cette catégorie</DialogDescription>
+            </DialogHeader>
+            {selectedCategory && <ToppingCategoryForm 
+              restaurantId={restaurant.id} 
+              initialValues={{
+                name: selectedCategory.name,
+                description: selectedCategory.description || "",
+                min_selections: selectedCategory.min_selections || 0,
+                max_selections: selectedCategory.max_selections || 0,
+                show_if_selection_id: selectedCategory.show_if_selection_id || []
+              }} 
+              onSubmit={handleUpdateCategory} 
+              isLoading={isUpdatingCategory} 
+            />}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
