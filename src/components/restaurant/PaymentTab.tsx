@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -111,7 +110,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
       toast({
         title: "Configuration required",
         description: "Please enter your Stripe API key and save settings first",
-        variant: "warning",
+        variant: "destructive",
       });
       return;
     }
@@ -246,7 +245,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                 </div>
               )}
               
-              <Alert variant="warning" className="mt-4">
+              <Alert variant="destructive" className="mt-4">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
                   <p className="mb-2">To use Stripe Terminal, you need to:</p>
