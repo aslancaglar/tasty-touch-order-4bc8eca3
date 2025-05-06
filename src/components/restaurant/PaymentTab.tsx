@@ -27,7 +27,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
   const [testingConnection, setTestingConnection] = useState(false);
   const [testConnectionStatus, setTestConnectionStatus] = useState<"idle" | "success" | "error">("idle");
   const { toast } = useToast();
-  const { session } = useAuth();
+  const { user, session } = useAuth();
 
   useEffect(() => {
     const fetchPaymentConfig = async () => {
@@ -111,7 +111,8 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
     
     try {
       // Use the correct URL for the Stripe Terminal Edge Function
-      const supabaseUrl = process.env.SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co";
+      // Using import.meta.env instead of process.env
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co";
       const response = await fetch(`${supabaseUrl}/functions/v1/stripe-terminal`, {
         method: 'POST',
         headers: {

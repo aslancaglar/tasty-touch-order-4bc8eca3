@@ -43,7 +43,7 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { session } = useAuth();
+  const { user, session } = useAuth();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -65,7 +65,7 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
         setStatus(PaymentStatus.CONNECTING);
         
         // Create a payment intent on the server
-        const supabaseUrl = process.env.SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co";
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co";
         const response = await fetch(`${supabaseUrl}/functions/v1/stripe-terminal`, {
           method: 'POST',
           headers: {
