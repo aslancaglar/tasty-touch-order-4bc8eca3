@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, Cash, CreditCard } from "lucide-react";
+import { ArrowLeft, Check, CreditCard } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -67,6 +67,7 @@ interface OrderSummaryProps {
     id?: string;
     name: string;
     location?: string;
+    currency?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
@@ -391,7 +392,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 onClick={handleConfirmOrder}
                 disabled={placingOrder}
               >
-                <Cash className="mr-2 h-5 w-5" />
+                <Check className="mr-2 h-5 w-5" />
                 {t("payWithCash")}
               </Button>
               
