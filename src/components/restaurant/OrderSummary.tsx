@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -67,6 +66,7 @@ interface OrderSummaryProps {
     id?: string;
     name: string;
     location?: string;
+    currency?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
@@ -425,7 +425,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           amount={total}
           restaurantId={restaurant.id}
           orderNumber={orderNumber}
-          currency={restaurant?.currency}
+          currency={restaurant?.currency || "EUR"}
         />
       )}
 
