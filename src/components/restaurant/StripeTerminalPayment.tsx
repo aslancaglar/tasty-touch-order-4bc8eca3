@@ -55,14 +55,14 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
         throw new Error('Configuration de paiement non trouvée pour ce restaurant');
       }
 
+      // IMPORTANT: This is a simulation of payment processing
+      // In a real implementation, you would need:
+      // 1. A physical Stripe Terminal device
+      // 2. Connection to the Terminal SDK
+      // 3. Processing through the Stripe API
+      
       // Simulate payment processing time
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // In a real implementation, here we would:
-      // 1. Initialize Stripe Terminal SDK
-      // 2. Connect to a terminal device
-      // 3. Create a payment intent
-      // 4. Process payment via the physical terminal
       
       // For demonstration, we'll simulate success
       setPaymentStatus('success');
@@ -103,7 +103,7 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center">
             <Terminal className="w-5 h-5 mr-2" />
-            Paiement par Terminal
+            Paiement par Terminal (Simulation)
           </DialogTitle>
         </DialogHeader>
         
@@ -116,6 +116,10 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
 
             {paymentStatus === 'idle' && (
               <div className="flex flex-col items-center space-y-4">
+                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md text-yellow-800 text-sm mb-2">
+                  <p className="font-medium">Mode démonstration</p>
+                  <p>Ceci est une simulation. Dans un environnement réel, vous auriez besoin d'un terminal physique Stripe connecté.</p>
+                </div>
                 <p>Prêt à traiter le paiement par carte via le terminal.</p>
                 <Button
                   onClick={processPayment}
