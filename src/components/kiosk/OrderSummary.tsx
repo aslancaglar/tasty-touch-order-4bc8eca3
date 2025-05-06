@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,11 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
+
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
+
 const translations = {
   fr: {
     orderSummary: "Résumé de la commande",
@@ -82,6 +85,7 @@ const translations = {
     payWithCash: "NAKİT ÖDE"
   }
 };
+
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -102,6 +106,7 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: "fr" | "en" | "tr";
 }
+
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -134,6 +139,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     subtotal,
     tax
   } = calculateCartTotals(cart);
+
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     
@@ -162,6 +168,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     fetchData();
   }, [restaurant?.id, isMobile]);
+
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     if (restaurant?.id) {
@@ -303,6 +310,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
+
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -330,6 +338,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       useCurrencyCode: true
     });
   };
+
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
   
   return (
@@ -354,7 +363,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <h3 className="font-bold text-xl mb-6">{t("order.items")}</h3>
             
             <div className="space-y-6 mb-6">
-              {cart.map(item => <div key={item.id} className="space-y-2 border-b pb-4">
+              {cart.map(item => (
+                <div key={item.id} className="space-y-2 border-b pb-4">
                   <div className="flex justify-between">
                     <div className="flex items-center">
                       <span className="font-medium mr-2">{item.quantity}x</span>
@@ -363,83 +373,95 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                   </div>
                   
-                  {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && <div className="pl-6 space-y-1 text-sm text-gray-600">
-                      {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => <div key={`${item.id}-option-${idx}`} className="flex justify-between">
+                  {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && (
+                    <div className="pl-6 space-y-1 text-sm text-gray-600">
+                      {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
+                        <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                           <span>+ {option}</span>
                           <span>0.00 {currencySymbol}</span>
-                        </div>)}
+                        </div>
+                      ))}
                       
-                      {getGroupedToppings(item).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                      {getGroupedToppings(item).map((group, groupIdx) => (
+                        <div key={`${item.id}-cat-summary-${groupIdx}`}>
                           <div style={{
-                    fontWeight: 500,
-                    paddingLeft: 0
-                  }}>{group.category}:</div>
+                            fontWeight: 500,
+                            paddingLeft: 0
+                          }}>{group.category}:</div>
                           {group.toppings.map((toppingObj, topIdx) => {
-                    const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                    const toppingRef = category?.toppings.find(t => t.name === toppingObj);
-                    const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                    const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
-                    return <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                                    <span style={{
-                        paddingLeft: 6
-                      }}>
-                                    + {toppingObj}
-                                    {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>}
-                                  </span>
-                                  <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
-                                </div>;
-                  })}
-                        </div>)}
-                    </div>}
-                </div>)}
+                            const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                            const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                            const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                            const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
+                            return (
+                              <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                                <span style={{
+                                  paddingLeft: 6
+                                }}>
+                                  + {toppingObj}
+                                  {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && (
+                                    <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>
+                                  )}
+                                </span>
+                                <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
         
-        {/* Fixed Footer */}
-        <div className="border-t fixed bottom-0 left-0 right-0 bg-white z-10 w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto">
-          <div className="p-4 space-y-2">
-            <div className="flex justify-between text-gray-700">
-              <span>{t("order.subtotal")}</span>
-              <span>{subtotal.toFixed(2)} {currencySymbol}</span>
-            </div>
-            <div className="flex justify-between text-gray-700">
-              <span>{uiLanguage === "fr" ? t("order.vatWithRate") : t("order.vat")}</span>
-              <span>{tax.toFixed(2)} {currencySymbol}</span>
-            </div>
-            <Separator className="my-2" />
-            <div className="flex justify-between font-bold text-lg">
-              <span>{t("order.totalTTC")}</span>
-              <span>{total.toFixed(2)} {currencySymbol}</span>
-            </div>
-
-            {stripeEnabled ? (
-              <div className="grid grid-cols-2 gap-3 mt-4">
-                <Button 
-                  onClick={handleCashPayment} 
-                  disabled={placingOrder} 
-                  className="bg-green-800 hover:bg-green-700 text-white uppercase font-medium py-8"
-                >
-                  <Terminal className="mr-2 h-5 w-5" />
-                  {t("payWithCash")}
-                </Button>
-                <Button 
-                  onClick={handleCardPayment} 
-                  disabled={placingOrder} 
-                  className="bg-blue-800 hover:bg-blue-700 text-white uppercase font-medium py-8"
-                >
-                  <CreditCard className="mr-2 h-5 w-5" />
-                  {t("payWithCard")}
-                </Button>
+          {/* Fixed Footer */}
+          <div className="border-t fixed bottom-0 left-0 right-0 bg-white z-10 w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto">
+            <div className="p-4 space-y-2">
+              <div className="flex justify-between text-gray-700">
+                <span>{t("order.subtotal")}</span>
+                <span>{subtotal.toFixed(2)} {currencySymbol}</span>
               </div>
-            ) : (
-              <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
-                <Check className="mr-2 h-5 w-5" />
-                {t("order.confirm")}
-              </Button>
-            )}
+              <div className="flex justify-between text-gray-700">
+                <span>{uiLanguage === "fr" ? t("order.vatWithRate") : t("order.vat")}</span>
+                <span>{tax.toFixed(2)} {currencySymbol}</span>
+              </div>
+              <Separator className="my-2" />
+              <div className="flex justify-between font-bold text-lg">
+                <span>{t("order.totalTTC")}</span>
+                <span>{total.toFixed(2)} {currencySymbol}</span>
+              </div>
+
+              {stripeEnabled ? (
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <Button 
+                    onClick={handleCashPayment} 
+                    disabled={placingOrder} 
+                    className="bg-green-800 hover:bg-green-700 text-white uppercase font-medium py-8"
+                  >
+                    <Terminal className="mr-2 h-5 w-5" />
+                    {t("payWithCash")}
+                  </Button>
+                  <Button 
+                    onClick={handleCardPayment} 
+                    disabled={placingOrder} 
+                    className="bg-blue-800 hover:bg-blue-700 text-white uppercase font-medium py-8"
+                  >
+                    <CreditCard className="mr-2 h-5 w-5" />
+                    {t("payWithCard")}
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
+                  <Check className="mr-2 h-5 w-5" />
+                  {t("order.confirm")}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </DialogContent>
+        </DialogContent>
+      </Dialog>
 
       {restaurant?.id && (
         <StripeTerminalPayment
@@ -453,7 +475,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         />
       )}
 
-      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
+      <OrderReceipt 
+        restaurant={restaurant} 
+        cart={cart} 
+        orderNumber={orderNumber} 
+        tableNumber={tableNumber} 
+        orderType={orderType} 
+        getFormattedOptions={getFormattedOptions} 
+        getFormattedToppings={getFormattedToppings} 
+        uiLanguage={uiLanguage} 
+      />
     </>
   );
 };
