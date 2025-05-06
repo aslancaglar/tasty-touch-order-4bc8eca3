@@ -665,6 +665,7 @@ export type Database = {
           image_url: string | null
           location: string | null
           name: string
+          payment_enabled: boolean | null
           slug: string
           ui_language: string
           updated_at: string
@@ -676,6 +677,7 @@ export type Database = {
           image_url?: string | null
           location?: string | null
           name: string
+          payment_enabled?: boolean | null
           slug: string
           ui_language?: string
           updated_at?: string
@@ -687,6 +689,7 @@ export type Database = {
           image_url?: string | null
           location?: string | null
           name?: string
+          payment_enabled?: boolean | null
           slug?: string
           ui_language?: string
           updated_at?: string
@@ -816,6 +819,7 @@ export type Database = {
           image_url: string | null
           location: string | null
           name: string
+          payment_enabled: boolean | null
           slug: string
           ui_language: string
           updated_at: string
