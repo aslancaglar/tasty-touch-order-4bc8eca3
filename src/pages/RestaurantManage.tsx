@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -12,8 +13,7 @@ import {
   Cherry, 
   Receipt, 
   Settings,
-  Package,
-  CreditCard
+  Package
 } from "lucide-react";
 import { getRestaurants } from "@/services/kiosk-service";
 import { Restaurant } from "@/types/database-types";
@@ -22,7 +22,6 @@ import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
 import SettingsTab from "@/components/restaurant/SettingsTab";
 import StockTab from "@/components/restaurant/StockTab";
-import PaymentTab from "@/components/restaurant/PaymentTab";
 import { useTranslation } from "@/utils/language-utils";
 
 const RestaurantManage = () => {
@@ -125,7 +124,7 @@ const RestaurantManage = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-6 mb-8">
+            <TabsList className="grid grid-cols-5 mb-8">
               <TabsTrigger value="menu" className="flex items-center">
                 <UtensilsCrossed className="mr-2 h-4 w-4" />
                 {t("restaurant.menu")}
@@ -137,10 +136,6 @@ const RestaurantManage = () => {
               <TabsTrigger value="orders" className="flex items-center">
                 <Receipt className="mr-2 h-4 w-4" />
                 {t("restaurant.orders")}
-              </TabsTrigger>
-              <TabsTrigger value="payment" className="flex items-center">
-                <CreditCard className="mr-2 h-4 w-4" />
-                Payment
               </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center">
                 <Settings className="mr-2 h-4 w-4" />
@@ -162,10 +157,6 @@ const RestaurantManage = () => {
             
             <TabsContent value="orders">
               <OrdersTab restaurant={restaurant} />
-            </TabsContent>
-            
-            <TabsContent value="payment">
-              <PaymentTab restaurant={restaurant} />
             </TabsContent>
             
             <TabsContent value="settings">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -53,12 +54,19 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
     setPaymentIntentId(null);
 
     const initializePayment = async () => {
+      if (!session?.access_token) {
+        setStatus(PaymentStatus.ERROR);
+        setErrorMessage("Authentication error: You must be logged in to process payments");
+        return;
+      }
+
       try {
         // Simulate API call to initialize payment
         setStatus(PaymentStatus.CONNECTING);
         
         // Create a payment intent on the server
-        const response = await fetch(`${process.env.SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co"}/functions/v1/stripe-terminal`, {
+        const supabaseUrl = process.env.SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co";
+        const response = await fetch(`${supabaseUrl}/functions/v1/stripe-terminal`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -74,12 +82,15 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
         });
         
         if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          console.error("Payment intent creation error:", response.status, errorData);
           throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
         
         const result = await response.json();
         
         if (result.error) {
+          console.error("Payment intent result error:", result.error);
           throw new Error(result.error || 'Failed to create payment intent');
         }
         

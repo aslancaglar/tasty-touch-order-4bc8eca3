@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -96,13 +97,22 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
   };
 
   const handleTestConnection = async () => {
+    if (!session?.access_token) {
+      toast({
+        title: "Authentication error",
+        description: "You must be logged in to test the connection",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setTestingConnection(true);
     setTestConnectionStatus("idle");
     
     try {
       // Use the correct URL for the Stripe Terminal Edge Function
-      // The URL should be the full path to the Supabase Edge Function
-      const response = await fetch(`${process.env.SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co"}/functions/v1/stripe-terminal`, {
+      const supabaseUrl = process.env.SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co";
+      const response = await fetch(`${supabaseUrl}/functions/v1/stripe-terminal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -115,12 +125,15 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
       });
       
       if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error("Connection test error response:", response.status, errorData);
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
       
       const result = await response.json();
       
       if (result.error) {
+        console.error("Connection test result error:", result.error);
         throw new Error(result.error || 'Failed to test connection');
       }
       
