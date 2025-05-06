@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Check, CreditCard } from "lucide-react";
+import { Loader2, Check, CreditCard, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Restaurant, RestaurantPaymentConfig } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,12 +105,21 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
       });
       return;
     }
+    
+    // Check if API key is entered for testing
+    if (!stripeEnabled || !stripeApiKey) {
+      toast({
+        title: "Configuration required",
+        description: "Please enter your Stripe API key and save settings first",
+        variant: "warning",
+      });
+      return;
+    }
 
     setTestingConnection(true);
     setTestConnectionStatus("idle");
     
     try {
-      // Use the correct URL for the Stripe Terminal Edge Function
       // Using import.meta.env instead of process.env
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co";
       const response = await fetch(`${supabaseUrl}/functions/v1/stripe-terminal`, {
@@ -128,7 +137,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         console.error("Connection test error response:", response.status, errorData);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        throw new Error(`API error: ${response.status} ${errorData?.error || response.statusText}`);
       }
       
       const result = await response.json();
@@ -238,11 +247,12 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
               )}
               
               <Alert variant="warning" className="mt-4">
+                <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
                   <p className="mb-2">To use Stripe Terminal, you need to:</p>
                   <ol className="list-decimal pl-4">
-                    <li>Deploy the Stripe Terminal Edge Function in your Supabase project</li>
-                    <li>Set your Stripe API key in the Supabase Secrets</li>
+                    <li>Save your Stripe API key in the settings</li>
+                    <li>Make sure your Supabase Edge Function is deployed</li>
                   </ol>
                 </AlertDescription>
               </Alert>
@@ -251,7 +261,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                 <Button
                   variant="outline"
                   onClick={handleTestConnection}
-                  disabled={testingConnection || !stripeEnabled || !stripeApiKey}
+                  disabled={testingConnection || !stripeEnabled}
                 >
                   {testingConnection ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -265,7 +275,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                 
                 <Button
                   onClick={handleSaveConfig}
-                  disabled={saving || !stripeEnabled || !stripeApiKey}
+                  disabled={saving || !stripeEnabled}
                 >
                   {saving ? (
                     <>

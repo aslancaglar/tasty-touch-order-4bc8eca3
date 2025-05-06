@@ -17,25 +17,52 @@ serve(async (req) => {
   try {
     const { action, restaurantId, amount, currency = 'eur', description = 'Restaurant order' } = await req.json();
     
-    // Get the restaurant's payment configuration
+    if (!restaurantId) {
+      throw new Error('Restaurant ID is required');
+    }
+    
+    // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
     
-    const { data: configData, error: configError } = await supabaseClient
+    // Get the restaurant's payment configuration
+    let { data: configData, error: configError } = await supabaseClient
       .from('restaurant_payment_config')
       .select('stripe_api_key, stripe_terminal_location_id')
       .eq('restaurant_id', restaurantId)
       .single();
     
-    if (configError || !configData) {
-      throw new Error('Payment configuration not found');
+    // If no config exists, create a default one
+    if (configError && configError.code === 'PGRST116') {
+      console.log('No payment configuration found, creating default entry');
+      
+      const { data: newConfig, error: insertError } = await supabaseClient
+        .from('restaurant_payment_config')
+        .insert({
+          restaurant_id: restaurantId,
+          stripe_enabled: false,
+          stripe_terminal_enabled: false
+        })
+        .select('*')
+        .single();
+      
+      if (insertError) {
+        console.error('Error creating payment config:', insertError);
+        throw new Error('Failed to create payment configuration');
+      }
+      
+      configData = newConfig;
+    } else if (configError) {
+      console.error('Error fetching payment config:', configError);
+      throw new Error('Failed to retrieve payment configuration');
     }
     
-    const { stripe_api_key, stripe_terminal_location_id } = configData;
+    // Check if Stripe is properly configured
+    const { stripe_api_key, stripe_terminal_location_id } = configData || {};
     if (!stripe_api_key) {
-      throw new Error('Stripe API key not configured');
+      throw new Error('Stripe API key not configured. Please set up your payment settings first.');
     }
     
     const stripe = new Stripe(stripe_api_key, { apiVersion: '2023-10-16' });
@@ -89,6 +116,7 @@ serve(async (req) => {
         throw new Error('Invalid action');
     }
   } catch (error) {
+    console.error('Error processing request:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

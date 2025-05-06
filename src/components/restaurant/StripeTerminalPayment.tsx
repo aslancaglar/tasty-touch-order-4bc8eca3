@@ -84,7 +84,13 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
         if (!response.ok) {
           const errorData = await response.json().catch(() => null);
           console.error("Payment intent creation error:", response.status, errorData);
-          throw new Error(`API error: ${response.status} ${response.statusText}`);
+          
+          // Provide a more specific error message if we can determine the cause
+          if (errorData?.error?.includes("API key")) {
+            throw new Error("Stripe API key not configured. Please set up payment settings first.");
+          } else {
+            throw new Error(`API error: ${response.status} ${errorData?.error || response.statusText}`);
+          }
         }
         
         const result = await response.json();
