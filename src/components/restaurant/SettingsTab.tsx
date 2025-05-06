@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Printer, Check, XCircle, Trash2, Copy } from "lucide-react";
+import { Loader2, Printer, Check, XCircle, Trash2, Copy, Terminal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Restaurant } from "@/types/database-types";
 import ImageUpload from "@/components/ImageUpload";
@@ -78,6 +79,9 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const [stripeEnabled, setStripeEnabled] = useState(false);
+  const [stripeApiKey, setStripeApiKey] = useState("");
+  const [isSavingStripe, setIsSavingStripe] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -118,6 +122,33 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     };
     
     fetchPrintSettings();
+  }, [restaurant.id]);
+
+  useEffect(() => {
+    const fetchStripeSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('restaurant_payment_config')
+          .select('stripe_enabled, stripe_api_key')
+          .eq('restaurant_id', restaurant.id)
+          .single();
+          
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error fetching Stripe settings:", error);
+          return;
+        }
+        
+        if (data) {
+          setStripeEnabled(data.stripe_enabled || false);
+          setStripeApiKey(data.stripe_api_key || "");
+          console.log("Stripe enabled:", data.stripe_enabled);
+        }
+      } catch (error) {
+        console.error("Error in fetchStripeSettings:", error);
+      }
+    };
+    
+    fetchStripeSettings();
   }, [restaurant.id]);
 
   const handleSaveRestaurantInfo = async () => {
@@ -284,6 +315,67 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     }
   };
 
+  const handleSaveStripeSettings = async () => {
+    setIsSavingStripe(true);
+    
+    try {
+      const { data: existingConfig, error: checkError } = await supabase
+        .from('restaurant_payment_config')
+        .select('id')
+        .eq('restaurant_id', restaurant.id)
+        .single();
+      
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+      
+      let result;
+      
+      if (existingConfig) {
+        result = await supabase
+          .from('restaurant_payment_config')
+          .update({ 
+            stripe_enabled: stripeEnabled,
+            stripe_api_key: stripeApiKey,
+            updated_at: new Date().toISOString()
+          })
+          .eq('restaurant_id', restaurant.id);
+          
+        console.log("Updated Stripe settings:", { stripeEnabled });
+      } else {
+        result = await supabase
+          .from('restaurant_payment_config')
+          .insert({ 
+            restaurant_id: restaurant.id,
+            stripe_enabled: stripeEnabled,
+            stripe_api_key: stripeApiKey,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+          
+        console.log("Created new payment config with Stripe settings:", { stripeEnabled });
+      }
+      
+      if (result.error) {
+        throw result.error;
+      }
+      
+      toast({
+        title: "Paramètres de paiement sauvegardés",
+        description: "Les paramètres Stripe ont été mis à jour"
+      });
+    } catch (error) {
+      console.error("Error saving Stripe settings:", error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la sauvegarde des paramètres Stripe",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingStripe(false);
+    }
+  };
+
   const handleTestPrint = () => {
     if (browserPrintEnabled) {
       const testReceipt = document.getElementById("receipt-content");
@@ -404,6 +496,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         <TabsList>
           <TabsTrigger value="basic">Informations</TabsTrigger>
           <TabsTrigger value="print">Impression</TabsTrigger>
+          <TabsTrigger value="payment">Paiement</TabsTrigger>
         </TabsList>
         
         <TabsContent value="basic" className="space-y-6">
@@ -718,6 +811,79 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               <p>Merci de votre visite!</p>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="payment" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Intégration des Paiements</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="stripe-enabled">Terminal de Paiement Stripe</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Activer le paiement par carte via terminal Stripe
+                  </p>
+                </div>
+                <Switch 
+                  id="stripe-enabled"
+                  checked={stripeEnabled}
+                  onCheckedChange={setStripeEnabled}
+                />
+              </div>
+              
+              {stripeEnabled && (
+                <div className="mt-4">
+                  <Label htmlFor="stripe-key">Clé API Stripe</Label>
+                  <Input 
+                    id="stripe-key"
+                    type="password"
+                    value={stripeApiKey}
+                    onChange={(e) => setStripeApiKey(e.target.value)}
+                    placeholder="sk_test_..."
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Clé secrète Stripe pour le terminal de paiement. Vous pouvez la trouver dans le tableau de bord Stripe.
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex justify-end mt-4">
+                <Button 
+                  onClick={handleSaveStripeSettings} 
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={isSavingStripe}
+                >
+                  {isSavingStripe ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sauvegarde...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Enregistrer les paramètres
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {stripeEnabled && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                  <div className="flex items-center space-x-2">
+                    <Terminal className="h-5 w-5 text-green-600" />
+                    <h4 className="font-medium">Paiement par terminal activé</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Les clients pourront payer par carte de crédit via terminal Stripe ou en espèces.
+                    Le bouton "Confirmer la commande" sera remplacé par les options "Payer par carte" et "Payer en espèces".
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
