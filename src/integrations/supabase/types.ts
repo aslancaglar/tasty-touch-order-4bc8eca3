@@ -490,41 +490,6 @@ export type Database = {
           },
         ]
       }
-      restaurant_payment_config: {
-        Row: {
-          created_at: string
-          id: string
-          restaurant_id: string
-          stripe_api_key: string | null
-          stripe_enabled: boolean
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          restaurant_id: string
-          stripe_api_key?: string | null
-          stripe_enabled?: boolean
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          restaurant_id?: string
-          stripe_api_key?: string | null
-          stripe_enabled?: boolean
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "restaurant_payment_config_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: true
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       restaurant_print_config: {
         Row: {
           api_key: string | null

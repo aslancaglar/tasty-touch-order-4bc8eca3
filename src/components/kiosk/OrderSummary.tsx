@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, X, Terminal, CreditCard } from "lucide-react";
+import { ArrowLeft, Check, X } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -13,7 +12,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-import StripeTerminalPayment from "@/components/restaurant/StripeTerminalPayment";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -27,11 +25,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
-
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 const translations = {
   fr: {
     orderSummary: "Résumé de la commande",
@@ -46,9 +42,7 @@ const translations = {
     printError: "Erreur d'impression",
     printErrorDesc: "Impossible d'imprimer le reçu. Veuillez réessayer.",
     error: "Erreur",
-    errorPrinting: "Une erreur s'est produite lors de l'impression du reçu.",
-    payWithCard: "PAYER PAR CARTE",
-    payWithCash: "PAYER EN ESPÈCES"
+    errorPrinting: "Une erreur s'est produite lors de l'impression du reçu."
   },
   en: {
     orderSummary: "Order Summary",
@@ -63,9 +57,7 @@ const translations = {
     printError: "Print Error",
     printErrorDesc: "Unable to print receipt. Please try again.",
     error: "Error",
-    errorPrinting: "An error occurred while printing the receipt.",
-    payWithCard: "PAY WITH CARD",
-    payWithCash: "PAY WITH CASH"
+    errorPrinting: "An error occurred while printing the receipt."
   },
   tr: {
     orderSummary: "Sipariş Özeti",
@@ -80,12 +72,9 @@ const translations = {
     printError: "Yazdırma Hatası",
     printErrorDesc: "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
     error: "Hata",
-    errorPrinting: "Fiş yazdırılırken bir hata oluştu.",
-    payWithCard: "KARTLA ÖDE",
-    payWithCash: "NAKİT ÖDE"
+    errorPrinting: "Fiş yazdırılırken bir hata oluştu."
   }
 };
-
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -106,7 +95,6 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: "fr" | "en" | "tr";
 }
-
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -125,8 +113,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   uiLanguage = "fr"
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
-  const [stripeEnabled, setStripeEnabled] = useState<boolean>(false);
-  const [showTerminalPayment, setShowTerminalPayment] = useState<boolean>(false);
   const isMobile = useIsMobile();
   const {
     toast
@@ -139,13 +125,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     subtotal,
     tax
   } = calculateCartTotals(cart);
-
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
-    
-    const fetchData = async () => {
+    const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        // Fetch order count
         const {
           count
         } = await supabase.from('orders').select('*', {
@@ -153,22 +136,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           head: true
         }).eq('restaurant_id', restaurant.id);
         setOrderNumber(((count || 0) + 1).toString());
-        
-        // Check if Stripe Terminal is enabled for this restaurant
-        const { data: paymentConfig } = await supabase
-          .from('restaurant_payment_config')
-          .select('stripe_enabled')
-          .eq('restaurant_id', restaurant.id)
-          .single();
-        
-        console.log("Kiosk - Stripe enabled:", paymentConfig?.stripe_enabled);
-        setStripeEnabled(paymentConfig?.stripe_enabled || false);
       }
     };
-    
-    fetchData();
+    fetchOrderCount();
   }, [restaurant?.id, isMobile]);
-
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     if (restaurant?.id) {
@@ -238,32 +209,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       }
     }
   };
-  
-  const handleCardPayment = () => {
-    if (restaurant?.id) {
-      // Open the terminal payment dialog
-      setShowTerminalPayment(true);
-    } else {
-      // Fallback if no restaurant ID
-      toast({
-        title: t("order.error"),
-        description: "Restaurant information missing",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const handleCashPayment = () => {
-    // For cash payments, just confirm the order directly
-    handleConfirmOrder();
-  };
-  
-  const handlePaymentComplete = () => {
-    // Close the terminal payment dialog and confirm the order
-    setShowTerminalPayment(false);
-    handleConfirmOrder();
-  };
-
   const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -310,7 +255,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
-
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -338,155 +282,95 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       useCurrencyCode: true
     });
   };
-
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
   
-  return (
-    <>
-      <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-        <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 w-[95vw] max-w-[95vw] flex flex-col max-h-[90vh] overflow-hidden">
-          {/* Fixed Header */}
-          <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <h2 className="text-xl font-bold">{t("order.summary")}</h2>
+  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 w-[95vw] max-w-[95vw] flex flex-col max-h-[90vh] overflow-hidden">
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-xl font-bold">{t("order.summary")}</h2>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 bg-red-100 hover:bg-red-200">
+            <X className="h-5 w-5 text-red-600" />
+          </Button>
+        </div>
+        
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto p-6 pb-[180px]">
+          <h3 className="font-bold text-xl mb-6">{t("order.items")}</h3>
+          
+          <div className="space-y-6 mb-6">
+            {cart.map(item => <div key={item.id} className="space-y-2 border-b pb-4">
+                <div className="flex justify-between">
+                  <div className="flex items-center">
+                    <span className="font-medium mr-2">{item.quantity}x</span>
+                    <span className="font-medium">{item.menuItem.name}</span>
+                  </div>
+                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
+                </div>
+                
+                {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && <div className="pl-6 space-y-1 text-sm text-gray-600">
+                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => <div key={`${item.id}-option-${idx}`} className="flex justify-between">
+                        <span>+ {option}</span>
+                        <span>0.00 {currencySymbol}</span>
+                      </div>)}
+                    
+                    {getGroupedToppings(item).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                        <div style={{
+                  fontWeight: 500,
+                  paddingLeft: 0
+                }}>{group.category}:</div>
+                        {group.toppings.map((toppingObj, topIdx) => {
+                  const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                  const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                  const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                  const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
+                  return <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                              <span style={{
+                      paddingLeft: 6
+                    }}>
+                                + {toppingObj}
+                                {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>}
+                              </span>
+                              <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
+                            </div>;
+                })}
+                      </div>)}
+                  </div>}
+              </div>)}
+          </div>
+        </div>
+        
+        {/* Fixed Footer */}
+        <div className="border-t fixed bottom-0 left-0 right-0 bg-white z-10 w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto">
+          <div className="p-4 space-y-2">
+            <div className="flex justify-between text-gray-700">
+              <span>{t("order.subtotal")}</span>
+              <span>{subtotal.toFixed(2)} {currencySymbol}</span>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 bg-red-100 hover:bg-red-200">
-              <X className="h-5 w-5 text-red-600" />
+            <div className="flex justify-between text-gray-700">
+              <span>{uiLanguage === "fr" ? t("order.vatWithRate") : t("order.vat")}</span>
+              <span>{tax.toFixed(2)} {currencySymbol}</span>
+            </div>
+            <Separator className="my-2" />
+            <div className="flex justify-between font-bold text-lg">
+              <span>{t("order.totalTTC")}</span>
+              <span>{total.toFixed(2)} {currencySymbol}</span>
+            </div>
+
+            <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
+              <Check className="mr-2 h-5 w-5" />
+              {t("order.confirm")}
             </Button>
           </div>
-          
-          {/* Scrollable Content */}
-          <div className="overflow-y-auto p-6 pb-[180px]">
-            <h3 className="font-bold text-xl mb-6">{t("order.items")}</h3>
-            
-            <div className="space-y-6 mb-6">
-              {cart.map(item => (
-                <div key={item.id} className="space-y-2 border-b pb-4">
-                  <div className="flex justify-between">
-                    <div className="flex items-center">
-                      <span className="font-medium mr-2">{item.quantity}x</span>
-                      <span className="font-medium">{item.menuItem.name}</span>
-                    </div>
-                    <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
-                  </div>
-                  
-                  {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && (
-                    <div className="pl-6 space-y-1 text-sm text-gray-600">
-                      {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
-                        <div key={`${item.id}-option-${idx}`} className="flex justify-between">
-                          <span>+ {option}</span>
-                          <span>0.00 {currencySymbol}</span>
-                        </div>
-                      ))}
-                      
-                      {getGroupedToppings(item).map((group, groupIdx) => (
-                        <div key={`${item.id}-cat-summary-${groupIdx}`}>
-                          <div style={{
-                            fontWeight: 500,
-                            paddingLeft: 0
-                          }}>{group.category}:</div>
-                          {group.toppings.map((toppingObj, topIdx) => {
-                            const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                            const toppingRef = category?.toppings.find(t => t.name === toppingObj);
-                            const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                            const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
-                            return (
-                              <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                                <span style={{
-                                  paddingLeft: 6
-                                }}>
-                                  + {toppingObj}
-                                  {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && (
-                                    <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>
-                                  )}
-                                </span>
-                                <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        
-          {/* Fixed Footer */}
-          <div className="border-t fixed bottom-0 left-0 right-0 bg-white z-10 w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto">
-            <div className="p-4 space-y-2">
-              <div className="flex justify-between text-gray-700">
-                <span>{t("order.subtotal")}</span>
-                <span>{subtotal.toFixed(2)} {currencySymbol}</span>
-              </div>
-              <div className="flex justify-between text-gray-700">
-                <span>{uiLanguage === "fr" ? t("order.vatWithRate") : t("order.vat")}</span>
-                <span>{tax.toFixed(2)} {currencySymbol}</span>
-              </div>
-              <Separator className="my-2" />
-              <div className="flex justify-between font-bold text-lg">
-                <span>{t("order.totalTTC")}</span>
-                <span>{total.toFixed(2)} {currencySymbol}</span>
-              </div>
+        </div>
+      </DialogContent>
 
-              {stripeEnabled ? (
-                <div className="grid grid-cols-2 gap-3 mt-4">
-                  <Button 
-                    onClick={handleCashPayment} 
-                    disabled={placingOrder} 
-                    className="bg-green-800 hover:bg-green-700 text-white uppercase font-medium py-8"
-                  >
-                    <Terminal className="mr-2 h-5 w-5" />
-                    {t("payWithCash")}
-                  </Button>
-                  <Button 
-                    onClick={handleCardPayment} 
-                    disabled={placingOrder} 
-                    className="bg-blue-800 hover:bg-blue-700 text-white uppercase font-medium py-8"
-                  >
-                    <CreditCard className="mr-2 h-5 w-5" />
-                    {t("payWithCard")}
-                  </Button>
-                </div>
-              ) : (
-                <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
-                  <Check className="mr-2 h-5 w-5" />
-                  {t("order.confirm")}
-                </Button>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {restaurant?.id && (
-        <StripeTerminalPayment
-          isOpen={showTerminalPayment}
-          onClose={() => setShowTerminalPayment(false)}
-          onPaymentComplete={handlePaymentComplete}
-          amount={total}
-          restaurantId={restaurant.id}
-          orderNumber={orderNumber}
-          currency={restaurant?.currency || "EUR"}
-        />
-      )}
-
-      <OrderReceipt 
-        restaurant={restaurant} 
-        cart={cart} 
-        orderNumber={orderNumber} 
-        tableNumber={tableNumber} 
-        orderType={orderType} 
-        getFormattedOptions={getFormattedOptions} 
-        getFormattedToppings={getFormattedToppings} 
-        uiLanguage={uiLanguage} 
-      />
-    </>
-  );
+      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
+    </Dialog>;
 };
-
 export default OrderSummary;

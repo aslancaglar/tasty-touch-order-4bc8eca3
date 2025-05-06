@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, Terminal, CreditCard } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -11,7 +11,6 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
-import StripeTerminalPayment from "./StripeTerminalPayment";
 
 const translations = {
   fr: {
@@ -23,8 +22,6 @@ const translations = {
     totalTTC: "Total TTC:",
     confirm: "CONFIRMER LA COMMANDE",
     back: "Retour",
-    payWithCard: "PAYER PAR CARTE",
-    payWithCash: "PAYER EN ESPÈCES"
   },
   en: {
     orderSummary: "ORDER SUMMARY",
@@ -35,8 +32,6 @@ const translations = {
     totalTTC: "TOTAL:",
     confirm: "CONFIRM ORDER",
     back: "Back",
-    payWithCard: "PAY WITH CARD",
-    payWithCash: "PAY WITH CASH"
   },
   tr: {
     orderSummary: "SİPARİŞ ÖZETİ",
@@ -47,8 +42,6 @@ const translations = {
     totalTTC: "TOPLAM:",
     confirm: "SİPARİŞİ ONAYLA",
     back: "Geri",
-    payWithCard: "KARTLA ÖDE",
-    payWithCash: "NAKİT ÖDE"
   }
 };
 
@@ -66,7 +59,6 @@ interface OrderSummaryProps {
     id?: string;
     name: string;
     location?: string;
-    currency?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
@@ -89,8 +81,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   uiLanguage = "fr",
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
-  const [stripeEnabled, setStripeEnabled] = useState<boolean>(false);
-  const [showTerminalPayment, setShowTerminalPayment] = useState<boolean>(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -101,29 +91,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
-    
-    const fetchData = async () => {
+    const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        // Fetch order count
         const { count } = await supabase
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('restaurant_id', restaurant.id);
         setOrderNumber(((count || 0) + 1).toString());
-        
-        // Check if Stripe Terminal is enabled for this restaurant
-        const { data: paymentConfig } = await supabase
-          .from('restaurant_payment_config')
-          .select('stripe_enabled')
-          .eq('restaurant_id', restaurant.id)
-          .single();
-          
-        console.log("Stripe enabled:", paymentConfig?.stripe_enabled);
-        setStripeEnabled(paymentConfig?.stripe_enabled || false);
       }
     };
-    
-    fetchData();
+    fetchOrderCount();
   }, [restaurant?.id, isMobile]);
 
   const handleConfirmOrder = async () => {
@@ -203,21 +180,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         });
       }
     }
-  };
-  
-  const handleCardPayment = () => {
-    setShowTerminalPayment(true);
-  };
-  
-  const handleCashPayment = () => {
-    // For cash payments, just confirm the order directly
-    handleConfirmOrder();
-  };
-  
-  const handlePaymentComplete = () => {
-    // Close the terminal payment dialog and confirm the order
-    setShowTerminalPayment(false);
-    handleConfirmOrder();
   };
   
   const sendReceiptToPrintNode = async (
@@ -308,128 +270,93 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   };
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-md md:max-w-lg p-0">
-          <DialogHeader className="p-4 border-b">
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <DialogTitle className="text-xl font-bold">{t("orderSummary")}</DialogTitle>
-            </div>
-          </DialogHeader>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md md:max-w-lg p-0">
+        <DialogHeader className="p-4 border-b">
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <DialogTitle className="text-xl font-bold">{t("orderSummary")}</DialogTitle>
+          </div>
+        </DialogHeader>
+        
+        <div className="p-6">
+          <h3 className="font-bold text-lg mb-4">{t("orderedItems")}</h3>
           
-          <div className="p-6">
-            <h3 className="font-bold text-lg mb-4">{t("orderedItems")}</h3>
-            
-            <div className="space-y-6 mb-6">
-              {cart.map((item) => (
-                <div key={item.id} className="space-y-2">
-                  <div className="flex justify-between">
-                    <div className="flex items-center">
-                      <span className="font-medium mr-2">{item.quantity}x</span>
-                      <span className="font-medium">{item.menuItem.name}</span>
-                    </div>
-                    <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
+          <div className="space-y-6 mb-6">
+            {cart.map((item) => (
+              <div key={item.id} className="space-y-2">
+                <div className="flex justify-between">
+                  <div className="flex items-center">
+                    <span className="font-medium mr-2">{item.quantity}x</span>
+                    <span className="font-medium">{item.menuItem.name}</span>
                   </div>
-                  
-                  {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
-                    <div className="pl-6 space-y-1 text-sm text-gray-600">
-                      {/* Options */}
-                      {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
-                        <div key={`${item.id}-option-${idx}`} className="flex justify-between">
-                          <span>+ {option}</span>
-                          <span>0.00 €</span>
-                        </div>
-                      ))}
-                      {/* Grouped toppings by category, show price if > 0 */}
-                      {getGroupedToppings(item).map((group, groupIdx) => (
-                        <div key={`${item.id}-cat-summary-${groupIdx}`}>
-                          <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
-                          {group.toppings.map((toppingObj, topIdx) => {
-                            const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                            const toppingRef = category?.toppings.find(t => t.name === toppingObj);
-                            const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                            return (
-                              <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                                <span style={{ paddingLeft: 6 }}>+ {toppingObj}</span>
-                                <span>{price > 0 ? price.toFixed(2) + " €" : ""}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
                 </div>
-              ))}
-            </div>
-            
-            <Separator className="my-4" />
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-gray-600">
-                <span>{t("totalHT")}</span>
-                <span>{subtotal.toFixed(2)} €</span>
+                
+                {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
+                  <div className="pl-6 space-y-1 text-sm text-gray-600">
+                    {/* Options */}
+                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
+                      <div key={`${item.id}-option-${idx}`} className="flex justify-between">
+                        <span>+ {option}</span>
+                        <span>0.00 €</span>
+                      </div>
+                    ))}
+                    {/* Grouped toppings by category, show price if > 0 */}
+                    {getGroupedToppings(item).map((group, groupIdx) => (
+                      <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                        <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
+                        {group.toppings.map((toppingObj, topIdx) => {
+                          const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                          const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                          const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                          return (
+                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                              <span style={{ paddingLeft: 6 }}>+ {toppingObj}</span>
+                              <span>{price > 0 ? price.toFixed(2) + " €" : ""}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between text-gray-600">
-                <span>{uiLanguage === "fr" ? t("vatWithRate") : t("vat")}</span>
-                <span>{tax.toFixed(2)} €</span>
-              </div>
-              <Separator className="my-2" />
-              <div className="flex justify-between font-bold text-lg">
-                <span>{t("totalTTC")}</span>
-                <span>{total.toFixed(2)} €</span>
-              </div>
-            </div>
+            ))}
           </div>
           
-          <div className="p-4 bg-gray-50">
-            {stripeEnabled ? (
-              <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  className="bg-green-800 hover:bg-green-700 text-white py-6"
-                  onClick={handleCashPayment}
-                  disabled={placingOrder}
-                >
-                  <Terminal className="mr-2 h-5 w-5" />
-                  {t("payWithCash")}
-                </Button>
-                <Button 
-                  className="bg-blue-800 hover:bg-blue-700 text-white py-6"
-                  onClick={handleCardPayment}
-                  disabled={placingOrder}
-                >
-                  <CreditCard className="mr-2 h-5 w-5" />
-                  {t("payWithCard")}
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                className="w-full bg-green-800 hover:bg-green-700 text-white py-6"
-                onClick={handleConfirmOrder}
-                disabled={placingOrder}
-              >
-                <Check className="mr-2 h-5 w-5" />
-                {t("confirm")}
-              </Button>
-            )}
+          <Separator className="my-4" />
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-gray-600">
+              <span>{t("totalHT")}</span>
+              <span>{subtotal.toFixed(2)} €</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>{uiLanguage === "fr" ? t("vatWithRate") : t("vat")}</span>
+              <span>{tax.toFixed(2)} €</span>
+            </div>
+            <Separator className="my-2" />
+            <div className="flex justify-between font-bold text-lg">
+              <span>{t("totalTTC")}</span>
+              <span>{total.toFixed(2)} €</span>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {restaurant?.id && (
-        <StripeTerminalPayment
-          isOpen={showTerminalPayment}
-          onClose={() => setShowTerminalPayment(false)}
-          onPaymentComplete={handlePaymentComplete}
-          amount={total}
-          restaurantId={restaurant.id}
-          orderNumber={orderNumber}
-          currency={restaurant?.currency || "EUR"}
-        />
-      )}
+        </div>
+        
+        <div className="p-4 bg-gray-50">
+          <Button 
+            className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
+            onClick={handleConfirmOrder}
+            disabled={placingOrder}
+          >
+            <Check className="mr-2 h-5 w-5" />
+            {t("confirm")}
+          </Button>
+        </div>
+      </DialogContent>
 
       <OrderReceipt
         restaurant={restaurant}
@@ -441,7 +368,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         getFormattedToppings={getFormattedToppings}
         uiLanguage={uiLanguage}
       />
-    </>
+    </Dialog>
   );
 };
 
