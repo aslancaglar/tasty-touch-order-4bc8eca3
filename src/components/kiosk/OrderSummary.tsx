@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, X } from "lucide-react";
+import { ArrowLeft, Check, X, Terminal } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -113,6 +113,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   uiLanguage = "fr"
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
+  const [stripeEnabled, setStripeEnabled] = useState<boolean>(false);
   const isMobile = useIsMobile();
   const {
     toast
@@ -362,10 +363,23 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
 
-            <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
-              <Check className="mr-2 h-5 w-5" />
-              {t("order.confirm")}
-            </Button>
+            {stripeEnabled ? (
+              <div className="grid grid-cols-1 gap-3 mt-4">
+                <Button 
+                  onClick={handleConfirmOrder} 
+                  disabled={placingOrder} 
+                  className="w-full bg-green-800 hover:bg-green-700 text-white uppercase font-medium text-4xl py-8"
+                >
+                  <Terminal className="mr-2 h-6 w-6" />
+                  {t("order.confirm")}
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
+                <Check className="mr-2 h-5 w-5" />
+                {t("order.confirm")}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
