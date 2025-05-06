@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -11,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CreditCard, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface StripeTerminalPaymentProps {
   isOpen: boolean;
@@ -42,6 +42,7 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { session } = useAuth();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -61,7 +62,7 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
+            'Authorization': `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({
             action: 'create_payment_intent',
@@ -97,7 +98,7 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
     };
 
     initializePayment();
-  }, [isOpen, amount, currency, restaurantId, toast]);
+  }, [isOpen, amount, currency, restaurantId, toast, session]);
 
   const handleProcessPayment = async () => {
     try {

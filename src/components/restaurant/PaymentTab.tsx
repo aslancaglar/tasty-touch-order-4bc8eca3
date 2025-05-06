@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -11,6 +10,7 @@ import { Restaurant, RestaurantPaymentConfig } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PaymentTabProps {
   restaurant: Restaurant;
@@ -26,6 +26,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
   const [testingConnection, setTestingConnection] = useState(false);
   const [testConnectionStatus, setTestConnectionStatus] = useState<"idle" | "success" | "error">("idle");
   const { toast } = useToast();
+  const { session } = useAuth();
 
   useEffect(() => {
     const fetchPaymentConfig = async () => {
@@ -105,7 +106,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           action: 'create_connection_token',
@@ -222,7 +223,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                 </div>
               )}
               
-              <Alert variant="info" className="mt-4">
+              <Alert variant="warning" className="mt-4">
                 <AlertDescription>
                   <p className="mb-2">To use Stripe Terminal, you need to:</p>
                   <ol className="list-decimal pl-4">
