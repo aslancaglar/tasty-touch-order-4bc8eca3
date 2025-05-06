@@ -34,20 +34,28 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
   useEffect(() => {
     const fetchPaymentConfig = async () => {
       try {
+        if (!session?.access_token) {
+          console.log("No session, skipping payment config fetch");
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase
           .from("restaurant_payment_config")
           .select("*")
           .eq("restaurant_id", restaurant.id)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code !== "PGRST116") {
-          throw error;
+        if (error) {
+          console.error("Error fetching payment config:", error);
+          if (error.code !== "PGRST116") { // PGRST116 is "no rows returned" which is not a problem
+            throw error;
+          }
         }
 
         if (data) {
+          console.log("Payment config loaded:", { ...data, stripe_api_key: "[REDACTED]" });
           setStripeEnabled(data.stripe_enabled || false);
-          // We don't set the API key here for security reasons
-          // The API key is stored encrypted in the database and only used server-side
           setStripeTerminalEnabled(data.stripe_terminal_enabled || false);
           setStripeLocationId(data.stripe_terminal_location_id || "");
           // Check if stripe_api_key exists but don't show its value
@@ -66,7 +74,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
     };
 
     fetchPaymentConfig();
-  }, [restaurant.id, toast]);
+  }, [restaurant.id, toast, session]);
 
   const handleSaveConfig = async () => {
     setSaving(true);
@@ -82,68 +90,36 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
       if (stripeApiKey && !stripeApiKey.startsWith('sk_')) {
         throw new Error("Invalid Stripe API key format. The key should start with 'sk_'");
       }
+
+      console.log("Saving payment config for restaurant:", restaurant.id);
       
-      // Delete any existing records first to avoid ON CONFLICT issues
-      if (stripeApiKey || hasConfiguredApiKey) {
-        const { error: deleteError } = await supabase
-          .from("restaurant_payment_config")
-          .delete()
-          .eq("restaurant_id", restaurant.id);
-        
-        if (deleteError) {
-          console.error("Error deleting existing config:", deleteError);
-          throw new Error("Failed to update configuration. Please try again.");
-        }
-        
-        // Now insert the new record
-        const { data, error } = await supabase
-          .from("restaurant_payment_config")
-          .insert({
-            restaurant_id: restaurant.id,
-            stripe_enabled: stripeEnabled,
-            stripe_api_key: stripeApiKey || undefined,
-            stripe_terminal_enabled: stripeTerminalEnabled,
-            stripe_terminal_location_id: stripeLocationId || null,
-          })
-          .select();
-        
-        if (error) {
-          console.error("Insert error:", error);
-          throw new Error(`Database error: ${error.message}. Please try again.`);
-        }
-        
-        // Update the state to show that API key is configured
-        if (stripeApiKey) {
-          setHasConfiguredApiKey(true);
-        }
-
-        toast({
-          title: "Settings saved",
-          description: "Payment configuration has been updated",
-        });
-
-        // Clear the API key input after successful save for security
-        setStripeApiKey("");
-      } else {
-        // If no API key provided or configured, use the RPC function
-        const { data, error } = await supabase.rpc("update_restaurant_payment_config", {
-          p_restaurant_id: restaurant.id,
-          p_stripe_enabled: stripeEnabled,
-          p_stripe_api_key: null,
-          p_stripe_terminal_enabled: stripeTerminalEnabled,
-          p_stripe_terminal_location_id: stripeLocationId || null,
-        });
-        
-        if (error) {
-          console.error("RPC error:", error);
-          throw new Error(`Database error: ${error.message}. Please try again.`);
-        }
-        
-        toast({
-          title: "Settings saved",
-          description: "Payment configuration has been updated",
-        });
+      // Directly use the function if we have a new API key or if we need to update other settings
+      const { data, error } = await supabase.rpc("update_restaurant_payment_config", {
+        p_restaurant_id: restaurant.id,
+        p_stripe_enabled: stripeEnabled,
+        p_stripe_api_key: stripeApiKey || null, // Only send the new API key if provided
+        p_stripe_terminal_enabled: stripeTerminalEnabled,
+        p_stripe_terminal_location_id: stripeLocationId || null,
+      });
+      
+      if (error) {
+        console.error("Error saving payment config:", error);
+        throw new Error(`Database error: ${error.message}. Please try again.`);
       }
+      
+      // Update the state to show that API key is configured if we just set one
+      if (stripeApiKey) {
+        setHasConfiguredApiKey(true);
+      }
+
+      toast({
+        title: "Settings saved",
+        description: "Payment configuration has been updated",
+      });
+
+      // Clear the API key input after successful save for security
+      setStripeApiKey("");
+      
     } catch (error) {
       console.error("Error saving payment config:", error);
       setSaveError(error.message);
@@ -168,7 +144,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
     }
     
     // Check if API key is configured
-    if (!stripeEnabled || (!hasConfiguredApiKey && !stripeApiKey)) {
+    if (!stripeEnabled || !hasConfiguredApiKey) {
       toast({
         title: "Configuration required",
         description: "Please enter your Stripe API key and save settings first",
@@ -342,7 +318,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                 <Button
                   variant="outline"
                   onClick={handleTestConnection}
-                  disabled={testingConnection || !stripeEnabled || (!hasConfiguredApiKey && !stripeApiKey) || !!stripeApiKey}
+                  disabled={testingConnection || !stripeEnabled || !hasConfiguredApiKey || !!stripeApiKey}
                 >
                   {testingConnection ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
