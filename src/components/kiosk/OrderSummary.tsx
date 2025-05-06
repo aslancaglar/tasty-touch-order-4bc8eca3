@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, X, Terminal } from "lucide-react";
+import { ArrowLeft, Check, X, Terminal, CreditCard } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -42,7 +42,9 @@ const translations = {
     printError: "Erreur d'impression",
     printErrorDesc: "Impossible d'imprimer le reçu. Veuillez réessayer.",
     error: "Erreur",
-    errorPrinting: "Une erreur s'est produite lors de l'impression du reçu."
+    errorPrinting: "Une erreur s'est produite lors de l'impression du reçu.",
+    payWithCard: "PAYER PAR CARTE",
+    payWithCash: "PAYER EN ESPÈCES"
   },
   en: {
     orderSummary: "Order Summary",
@@ -57,7 +59,9 @@ const translations = {
     printError: "Print Error",
     printErrorDesc: "Unable to print receipt. Please try again.",
     error: "Error",
-    errorPrinting: "An error occurred while printing the receipt."
+    errorPrinting: "An error occurred while printing the receipt.",
+    payWithCard: "PAY WITH CARD",
+    payWithCash: "PAY WITH CASH"
   },
   tr: {
     orderSummary: "Sipariş Özeti",
@@ -72,7 +76,9 @@ const translations = {
     printError: "Yazdırma Hatası",
     printErrorDesc: "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
     error: "Hata",
-    errorPrinting: "Fiş yazdırılırken bir hata oluştu."
+    errorPrinting: "Fiş yazdırılırken bir hata oluştu.",
+    payWithCard: "KARTLA ÖDE",
+    payWithCash: "NAKİT ÖDE"
   }
 };
 interface OrderSummaryProps {
@@ -114,6 +120,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const [stripeEnabled, setStripeEnabled] = useState<boolean>(false);
+  const [showTerminalPayment, setShowTerminalPayment] = useState<boolean>(false);
   const isMobile = useIsMobile();
   const {
     toast
@@ -128,8 +135,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   } = calculateCartTotals(cart);
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
-    const fetchOrderCount = async () => {
+    
+    const fetchData = async () => {
       if (restaurant?.id) {
+        // Fetch order count
         const {
           count
         } = await supabase.from('orders').select('*', {
@@ -137,9 +146,20 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           head: true
         }).eq('restaurant_id', restaurant.id);
         setOrderNumber(((count || 0) + 1).toString());
+        
+        // Check if Stripe Terminal is enabled for this restaurant
+        const { data: paymentConfig } = await supabase
+          .from('restaurant_payment_config')
+          .select('stripe_enabled')
+          .eq('restaurant_id', restaurant.id)
+          .single();
+        
+        console.log("Kiosk - Stripe enabled:", paymentConfig?.stripe_enabled);
+        setStripeEnabled(paymentConfig?.stripe_enabled || false);
       }
     };
-    fetchOrderCount();
+    
+    fetchData();
   }, [restaurant?.id, isMobile]);
   const handleConfirmOrder = async () => {
     onPlaceOrder();
@@ -210,6 +230,18 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       }
     }
   };
+  
+  const handleCardPayment = () => {
+    // In a real implementation, this would trigger the card payment process
+    // For now, just confirm the order
+    handleConfirmOrder();
+  };
+  
+  const handleCashPayment = () => {
+    // For cash payments, just confirm the order directly
+    handleConfirmOrder();
+  };
+
   const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -364,14 +396,22 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
 
             {stripeEnabled ? (
-              <div className="grid grid-cols-1 gap-3 mt-4">
+              <div className="grid grid-cols-2 gap-3 mt-4">
                 <Button 
-                  onClick={handleConfirmOrder} 
+                  onClick={handleCashPayment} 
                   disabled={placingOrder} 
-                  className="w-full bg-green-800 hover:bg-green-700 text-white uppercase font-medium text-4xl py-8"
+                  className="bg-green-800 hover:bg-green-700 text-white uppercase font-medium py-8"
                 >
-                  <Terminal className="mr-2 h-6 w-6" />
-                  {t("order.confirm")}
+                  <Terminal className="mr-2 h-5 w-5" />
+                  {t("payWithCash")}
+                </Button>
+                <Button 
+                  onClick={handleCardPayment} 
+                  disabled={placingOrder} 
+                  className="bg-blue-800 hover:bg-blue-700 text-white uppercase font-medium py-8"
+                >
+                  <CreditCard className="mr-2 h-5 w-5" />
+                  {t("payWithCard")}
                 </Button>
               </div>
             ) : (
