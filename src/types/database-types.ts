@@ -1,4 +1,3 @@
-
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -179,3 +178,15 @@ export interface CartItem {
   specialInstructions?: string;
   itemPrice: number;
 }
+
+// Add the RestaurantPaymentConfig type
+export type RestaurantPaymentConfig = {
+  id: string;
+  restaurant_id: string;
+  stripe_enabled: boolean;
+  stripe_api_key?: string | null;
+  stripe_terminal_enabled: boolean;
+  stripe_terminal_location_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
