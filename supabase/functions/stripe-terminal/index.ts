@@ -65,55 +65,84 @@ serve(async (req) => {
       throw new Error('Stripe API key not configured. Please set up your payment settings first.');
     }
     
+    // Validate API key format (this is just a basic check)
+    if (!stripe_api_key.startsWith('sk_')) {
+      throw new Error('Invalid Stripe API key format. The key should start with "sk_".');
+    }
+    
     const stripe = new Stripe(stripe_api_key, { apiVersion: '2023-10-16' });
     
-    switch (action) {
-      case 'create_payment_intent': {
-        // For production, this amount should be validated server-side
-        if (!amount || amount <= 0) {
-          throw new Error('Invalid amount');
+    try {
+      switch (action) {
+        case 'create_payment_intent': {
+          // For production, this amount should be validated server-side
+          if (!amount || amount <= 0) {
+            throw new Error('Invalid amount');
+          }
+          
+          // Create a payment intent for the terminal
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100), // Convert to cents
+            currency,
+            payment_method_types: ['card_present'],
+            capture_method: 'automatic',
+            description,
+          });
+          
+          return new Response(
+            JSON.stringify({ paymentIntent }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
         
-        // Create a payment intent for the terminal
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: Math.round(amount * 100), // Convert to cents
-          currency,
-          payment_method_types: ['card_present'],
-          capture_method: 'automatic',
-          description,
-        });
+        case 'create_connection_token': {
+          // Create a connection token for the terminal
+          const connectionToken = await stripe.terminal.connectionTokens.create();
+          
+          return new Response(
+            JSON.stringify({ secret: connectionToken.secret }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         
-        return new Response(
-          JSON.stringify({ paymentIntent }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        case 'get_readers': {
+          // Get available terminal readers
+          const readers = await stripe.terminal.readers.list({
+            location: stripe_terminal_location_id || undefined,
+            limit: 10,
+          });
+          
+          return new Response(
+            JSON.stringify({ readers: readers.data }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        default:
+          throw new Error('Invalid action');
+      }
+    } catch (stripeError) {
+      console.error('Stripe API error:', stripeError);
+      // Handle Stripe specific errors with more detailed messages
+      let errorMessage = 'Stripe API error occurred.';
+      
+      if (stripeError.type === 'StripeAuthenticationError') {
+        errorMessage = 'Authentication with Stripe failed. Your API key may be invalid.';
+      } else if (stripeError.type === 'StripePermissionError') {
+        errorMessage = 'Your Stripe account does not have permission to perform this action.';
+      } else if (stripeError.type === 'StripeRateLimitError') {
+        errorMessage = 'Too many requests to Stripe API. Please try again later.';
+      } else if (stripeError.message) {
+        errorMessage = stripeError.message;
       }
       
-      case 'create_connection_token': {
-        // Create a connection token for the terminal
-        const connectionToken = await stripe.terminal.connectionTokens.create();
-        
-        return new Response(
-          JSON.stringify({ secret: connectionToken.secret }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      case 'get_readers': {
-        // Get available terminal readers
-        const readers = await stripe.terminal.readers.list({
-          location: stripe_terminal_location_id || undefined,
-          limit: 10,
-        });
-        
-        return new Response(
-          JSON.stringify({ readers: readers.data }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      default:
-        throw new Error('Invalid action');
+      return new Response(
+        JSON.stringify({ error: errorMessage }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
   } catch (error) {
     console.error('Error processing request:', error);

@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Check, CreditCard, AlertTriangle } from "lucide-react";
+import { Loader2, Check, CreditCard, AlertTriangle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Restaurant, RestaurantPaymentConfig } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
   const [testConnectionStatus, setTestConnectionStatus] = useState<"idle" | "success" | "error">("idle");
   const { toast } = useToast();
   const { user, session } = useAuth();
+  const [hasConfiguredApiKey, setHasConfiguredApiKey] = useState(false);
 
   useEffect(() => {
     const fetchPaymentConfig = async () => {
@@ -47,6 +49,8 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
           // The API key is stored encrypted in the database and only used server-side
           setStripeTerminalEnabled(data.stripe_terminal_enabled || false);
           setStripeLocationId(data.stripe_terminal_location_id || "");
+          // Check if stripe_api_key exists but don't show its value
+          setHasConfiguredApiKey(!!data.stripe_api_key);
         }
       } catch (error) {
         console.error("Error fetching payment config:", error);
@@ -66,6 +70,11 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
   const handleSaveConfig = async () => {
     setSaving(true);
     try {
+      // Validate inputs if Stripe is enabled
+      if (stripeEnabled && (!stripeApiKey && !hasConfiguredApiKey)) {
+        throw new Error("Stripe API key is required");
+      }
+      
       const { data, error } = await supabase.rpc("update_restaurant_payment_config", {
         p_restaurant_id: restaurant.id,
         p_stripe_enabled: stripeEnabled,
@@ -75,6 +84,11 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
       });
 
       if (error) throw error;
+
+      // Update the state to show that API key is configured
+      if (stripeApiKey) {
+        setHasConfiguredApiKey(true);
+      }
 
       toast({
         title: "Settings saved",
@@ -87,7 +101,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
       console.error("Error saving payment config:", error);
       toast({
         title: "Error",
-        description: "Failed to save payment configuration",
+        description: error.message || "Failed to save payment configuration",
         variant: "destructive",
       });
     } finally {
@@ -105,11 +119,21 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
       return;
     }
     
-    // Check if API key is entered for testing
-    if (!stripeEnabled || !stripeApiKey) {
+    // Check if API key is configured
+    if (!stripeEnabled || (!hasConfiguredApiKey && !stripeApiKey)) {
       toast({
         title: "Configuration required",
         description: "Please enter your Stripe API key and save settings first",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // If we have a new API key entered but not saved yet
+    if (stripeApiKey) {
+      toast({
+        title: "Save required",
+        description: "Please save your settings before testing the connection",
         variant: "destructive",
       });
       return;
@@ -136,7 +160,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         console.error("Connection test error response:", response.status, errorData);
-        throw new Error(`API error: ${response.status} ${errorData?.error || response.statusText}`);
+        throw new Error(errorData?.error || `API error: ${response.status} ${response.statusText}`);
       }
       
       const result = await response.json();
@@ -199,12 +223,20 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
               
               <div className="space-y-2">
                 <Label htmlFor="stripe-api-key">Stripe API Key (Secret Key)</Label>
+                {hasConfiguredApiKey && (
+                  <Alert className="mb-2">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      API key is already configured. Leave blank unless you want to change it.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <Input
                   id="stripe-api-key"
                   type="password"
                   value={stripeApiKey}
                   onChange={(e) => setStripeApiKey(e.target.value)}
-                  placeholder="sk_test_..."
+                  placeholder={hasConfiguredApiKey ? "••••••••" : "sk_test_..."}
                 />
                 <p className="text-xs text-muted-foreground">
                   Your Stripe secret key is stored securely and used only for server-side operations.
@@ -260,7 +292,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                 <Button
                   variant="outline"
                   onClick={handleTestConnection}
-                  disabled={testingConnection || !stripeEnabled}
+                  disabled={testingConnection || !stripeEnabled || (!hasConfiguredApiKey && !stripeApiKey) || !!stripeApiKey}
                 >
                   {testingConnection ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -274,7 +306,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                 
                 <Button
                   onClick={handleSaveConfig}
-                  disabled={saving || !stripeEnabled}
+                  disabled={saving || (!stripeEnabled)}
                 >
                   {saving ? (
                     <>
