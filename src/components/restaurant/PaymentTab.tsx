@@ -99,10 +99,13 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
     setTestConnectionStatus("idle");
     
     try {
-      const response = await fetch('/stripe-terminal', {
+      // Use the correct URL for the Stripe Terminal Edge Function
+      // The URL should be the full path to the Supabase Edge Function
+      const response = await fetch(`${process.env.SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co"}/functions/v1/stripe-terminal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
         },
         body: JSON.stringify({
           action: 'create_connection_token',
@@ -110,9 +113,13 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
         }),
       });
       
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
       const result = await response.json();
       
-      if (!response.ok || result.error) {
+      if (result.error) {
         throw new Error(result.error || 'Failed to test connection');
       }
       
@@ -215,6 +222,16 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                 </div>
               )}
               
+              <Alert variant="info" className="mt-4">
+                <AlertDescription>
+                  <p className="mb-2">To use Stripe Terminal, you need to:</p>
+                  <ol className="list-decimal pl-4">
+                    <li>Deploy the Stripe Terminal Edge Function in your Supabase project</li>
+                    <li>Set your Stripe API key in the Supabase Secrets</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+              
               <div className="flex justify-between pt-4">
                 <Button
                   variant="outline"
@@ -249,7 +266,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
               {testConnectionStatus === "error" && (
                 <Alert variant="destructive" className="mt-4">
                   <AlertDescription>
-                    Failed to connect to Stripe API. Please check your API key and try again.
+                    Failed to connect to Stripe API. Please check your API key and ensure the Edge Function is deployed.
                   </AlertDescription>
                 </Alert>
               )}

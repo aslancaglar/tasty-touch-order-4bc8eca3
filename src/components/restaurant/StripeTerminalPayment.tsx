@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CreditCard, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StripeTerminalPaymentProps {
   isOpen: boolean;
@@ -42,8 +43,6 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // In a real implementation, you would integrate with the Stripe Terminal JS SDK
-  // For this demo, we'll simulate the payment process
   useEffect(() => {
     if (!isOpen) return;
 
@@ -58,10 +57,11 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
         setStatus(PaymentStatus.CONNECTING);
         
         // Create a payment intent on the server
-        const response = await fetch('/stripe-terminal', {
+        const response = await fetch(`${process.env.SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co"}/functions/v1/stripe-terminal`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
           },
           body: JSON.stringify({
             action: 'create_payment_intent',
@@ -72,9 +72,13 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
           }),
         });
         
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+        
         const result = await response.json();
         
-        if (!response.ok || result.error) {
+        if (result.error) {
           throw new Error(result.error || 'Failed to create payment intent');
         }
         
