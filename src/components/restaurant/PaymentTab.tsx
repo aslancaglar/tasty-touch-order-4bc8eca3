@@ -29,6 +29,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
   const { toast } = useToast();
   const { user, session } = useAuth();
   const [hasConfiguredApiKey, setHasConfiguredApiKey] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPaymentConfig = async () => {
@@ -69,36 +70,83 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
 
   const handleSaveConfig = async () => {
     setSaving(true);
+    setSaveError(null);
+    
     try {
       // Validate inputs if Stripe is enabled
       if (stripeEnabled && (!stripeApiKey && !hasConfiguredApiKey)) {
         throw new Error("Stripe API key is required");
       }
       
-      const { data, error } = await supabase.rpc("update_restaurant_payment_config", {
-        p_restaurant_id: restaurant.id,
-        p_stripe_enabled: stripeEnabled,
-        p_stripe_api_key: stripeApiKey || null,
-        p_stripe_terminal_enabled: stripeTerminalEnabled,
-        p_stripe_terminal_location_id: stripeLocationId || null,
-      });
-
-      if (error) throw error;
-
-      // Update the state to show that API key is configured
-      if (stripeApiKey) {
-        setHasConfiguredApiKey(true);
+      // Basic validation for Stripe API key format
+      if (stripeApiKey && !stripeApiKey.startsWith('sk_')) {
+        throw new Error("Invalid Stripe API key format. The key should start with 'sk_'");
       }
+      
+      // Delete any existing records first to avoid ON CONFLICT issues
+      if (stripeApiKey || hasConfiguredApiKey) {
+        const { error: deleteError } = await supabase
+          .from("restaurant_payment_config")
+          .delete()
+          .eq("restaurant_id", restaurant.id);
+        
+        if (deleteError) {
+          console.error("Error deleting existing config:", deleteError);
+          throw new Error("Failed to update configuration. Please try again.");
+        }
+        
+        // Now insert the new record
+        const { data, error } = await supabase
+          .from("restaurant_payment_config")
+          .insert({
+            restaurant_id: restaurant.id,
+            stripe_enabled: stripeEnabled,
+            stripe_api_key: stripeApiKey || undefined,
+            stripe_terminal_enabled: stripeTerminalEnabled,
+            stripe_terminal_location_id: stripeLocationId || null,
+          })
+          .select();
+        
+        if (error) {
+          console.error("Insert error:", error);
+          throw new Error(`Database error: ${error.message}. Please try again.`);
+        }
+        
+        // Update the state to show that API key is configured
+        if (stripeApiKey) {
+          setHasConfiguredApiKey(true);
+        }
 
-      toast({
-        title: "Settings saved",
-        description: "Payment configuration has been updated",
-      });
+        toast({
+          title: "Settings saved",
+          description: "Payment configuration has been updated",
+        });
 
-      // Clear the API key input after successful save for security
-      setStripeApiKey("");
+        // Clear the API key input after successful save for security
+        setStripeApiKey("");
+      } else {
+        // If no API key provided or configured, use the RPC function
+        const { data, error } = await supabase.rpc("update_restaurant_payment_config", {
+          p_restaurant_id: restaurant.id,
+          p_stripe_enabled: stripeEnabled,
+          p_stripe_api_key: null,
+          p_stripe_terminal_enabled: stripeTerminalEnabled,
+          p_stripe_terminal_location_id: stripeLocationId || null,
+        });
+        
+        if (error) {
+          console.error("RPC error:", error);
+          throw new Error(`Database error: ${error.message}. Please try again.`);
+        }
+        
+        toast({
+          title: "Settings saved",
+          description: "Payment configuration has been updated",
+        });
+      }
     } catch (error) {
       console.error("Error saving payment config:", error);
+      setSaveError(error.message);
       toast({
         title: "Error",
         description: error.message || "Failed to save payment configuration",
@@ -157,17 +205,11 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
         }),
       });
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error("Connection test error response:", response.status, errorData);
-        throw new Error(errorData?.error || `API error: ${response.status} ${response.statusText}`);
-      }
-      
       const result = await response.json();
-      
-      if (result.error) {
-        console.error("Connection test result error:", result.error);
-        throw new Error(result.error || 'Failed to test connection');
+
+      if (!response.ok || result.error) {
+        console.error("Connection test error:", response.status, result);
+        throw new Error(result.error || `API error: ${response.status} ${response.statusText}`);
       }
       
       setTestConnectionStatus("success");
@@ -240,6 +282,7 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                 />
                 <p className="text-xs text-muted-foreground">
                   Your Stripe secret key is stored securely and used only for server-side operations.
+                  It should start with "sk_".
                 </p>
               </div>
 
@@ -287,6 +330,13 @@ const PaymentTab = ({ restaurant }: PaymentTabProps) => {
                   </ol>
                 </AlertDescription>
               </Alert>
+              
+              {saveError && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{saveError}</AlertDescription>
+                </Alert>
+              )}
               
               <div className="flex justify-between pt-4">
                 <Button
