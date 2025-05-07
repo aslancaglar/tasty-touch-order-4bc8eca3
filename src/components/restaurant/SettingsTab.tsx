@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Printer, Check, XCircle, Trash2, Copy, CreditCard } from "lucide-react";
+import { Loader2, Printer, Check, XCircle, Trash2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Restaurant } from "@/types/database-types";
 import ImageUpload from "@/components/ImageUpload";
@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { printReceipt } from "@/utils/print-utils";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
-import PaymentTab from "@/components/restaurant/PaymentTab";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 import { updateRestaurant, deleteRestaurant } from "@/services/kiosk-service";
@@ -79,7 +78,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
-  const [isSavingPayment, setIsSavingPayment] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -397,78 +395,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     }
   };
 
-  const handleSavePayment = async () => {
-    setIsSavingPayment(true);
-    try {
-      const { data, error } = await supabase
-        .from("restaurants")
-        .update({ payment_enabled: true })
-        .eq("id", restaurant.id)
-        .select();
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Paiement activé",
-        description: "Le paiement a été activé pour ce restaurant.",
-      });
-
-      if (onRestaurantUpdated && data && data.length > 0) {
-        const updatedRestaurant = {
-          ...restaurant,
-          payment_enabled: true
-        };
-        onRestaurantUpdated(updatedRestaurant);
-        console.log("Updated restaurant with new payment status:", updatedRestaurant);
-      }
-    } catch (error) {
-      console.error("Error updating payment:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'activer le paiement.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSavingPayment(false);
-    }
-  };
-
-  const handleDisablePayment = async () => {
-    setIsSavingPayment(true);
-    try {
-      const { data, error } = await supabase
-        .from("restaurants")
-        .update({ payment_enabled: false })
-        .eq("id", restaurant.id)
-        .select();
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Paiement désactivé",
-        description: "Le paiement a été désactivé pour ce restaurant.",
-      });
-
-      if (onRestaurantUpdated && data && data.length > 0) {
-        const updatedRestaurant = {
-          ...restaurant,
-          payment_enabled: false
-        };
-        onRestaurantUpdated(updatedRestaurant);
-        console.log("Updated restaurant with new payment status:", updatedRestaurant);
-      }
-    } catch (error) {
-      console.error("Error updating payment:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de désactiver le paiement.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSavingPayment(false);
-    }
-  };
-
   const selectedCurrencyOption = currencyOptions.find(opt => opt.value === currency);
   const currencySymbol = selectedCurrencyOption?.symbol || currency;
 
@@ -478,7 +404,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         <TabsList>
           <TabsTrigger value="basic">Informations</TabsTrigger>
           <TabsTrigger value="print">Impression</TabsTrigger>
-          <TabsTrigger value="payment">Payment</TabsTrigger>
         </TabsList>
         
         <TabsContent value="basic" className="space-y-6">
@@ -793,10 +718,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               <p>Merci de votre visite!</p>
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="payment" className="space-y-6">
-          <PaymentTab restaurant={restaurant} />
         </TabsContent>
       </Tabs>
     </div>

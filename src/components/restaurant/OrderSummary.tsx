@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, CreditCard, DollarSign } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -11,7 +11,6 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
-import StripeTerminalPayment from "./StripeTerminalPayment";
 
 const translations = {
   fr: {
@@ -22,8 +21,6 @@ const translations = {
     vatWithRate: "TVA (10%):",
     totalTTC: "Total TTC:",
     confirm: "CONFIRMER LA COMMANDE",
-    payWithCash: "PAYER EN ESPÈCES",
-    payWithCard: "PAYER PAR CARTE",
     back: "Retour",
   },
   en: {
@@ -34,8 +31,6 @@ const translations = {
     vatWithRate: "Tax (10%):",
     totalTTC: "TOTAL:",
     confirm: "CONFIRM ORDER",
-    payWithCash: "PAY WITH CASH",
-    payWithCard: "PAY WITH CARD",
     back: "Back",
   },
   tr: {
@@ -46,8 +41,6 @@ const translations = {
     vatWithRate: "KDV (10%):",
     totalTTC: "TOPLAM:",
     confirm: "SİPARİŞİ ONAYLA",
-    payWithCash: "NAKİT ÖDE",
-    payWithCard: "KART İLE ÖDE",
     back: "Geri",
   }
 };
@@ -66,7 +59,6 @@ interface OrderSummaryProps {
     id?: string;
     name: string;
     location?: string;
-    currency?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
@@ -89,10 +81,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   uiLanguage = "fr",
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
-  const [stripeEnabled, setStripeEnabled] = useState(false);
-  const [stripeTerminalEnabled, setStripeTerminalEnabled] = useState(false);
-  const [isTerminalPaymentOpen, setIsTerminalPaymentOpen] = useState(false);
-  
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -103,31 +91,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
-    
-    const fetchData = async () => {
+    const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        // Fetch order count
         const { count } = await supabase
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('restaurant_id', restaurant.id);
         setOrderNumber(((count || 0) + 1).toString());
-        
-        // Fetch payment config
-        const { data: paymentConfig, error: paymentError } = await supabase
-          .from('restaurant_payment_config')
-          .select('stripe_enabled, stripe_terminal_enabled')
-          .eq('restaurant_id', restaurant.id)
-          .single();
-          
-        if (!paymentError && paymentConfig) {
-          setStripeEnabled(paymentConfig.stripe_enabled || false);
-          setStripeTerminalEnabled(paymentConfig.stripe_terminal_enabled || false);
-        }
       }
     };
-    
-    fetchData();
+    fetchOrderCount();
   }, [restaurant?.id, isMobile]);
 
   const handleConfirmOrder = async () => {
@@ -207,16 +180,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         });
       }
     }
-  };
-  
-  const handleCardPayment = () => {
-    setIsTerminalPaymentOpen(true);
-  };
-  
-  const handlePaymentComplete = () => {
-    setIsTerminalPaymentOpen(false);
-    // Proceed with order confirmation
-    handleConfirmOrder();
   };
   
   const sendReceiptToPrintNode = async (
@@ -384,36 +347,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
         
         <div className="p-4 bg-gray-50">
-          {stripeEnabled && stripeTerminalEnabled ? (
-            <div className="grid grid-cols-2 gap-4">
-              <Button 
-                className="bg-green-800 hover:bg-green-900 text-white py-6"
-                onClick={handleConfirmOrder}
-                disabled={placingOrder}
-              >
-                <DollarSign className="mr-2 h-5 w-5" />
-                {t("payWithCash")}
-              </Button>
-              
-              <Button 
-                className="bg-blue-800 hover:bg-blue-900 text-white py-6"
-                onClick={handleCardPayment}
-                disabled={placingOrder}
-              >
-                <CreditCard className="mr-2 h-5 w-5" />
-                {t("payWithCard")}
-              </Button>
-            </div>
-          ) : (
-            <Button 
-              className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
-              onClick={handleConfirmOrder}
-              disabled={placingOrder}
-            >
-              <Check className="mr-2 h-5 w-5" />
-              {t("confirm")}
-            </Button>
-          )}
+          <Button 
+            className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
+            onClick={handleConfirmOrder}
+            disabled={placingOrder}
+          >
+            <Check className="mr-2 h-5 w-5" />
+            {t("confirm")}
+          </Button>
         </div>
       </DialogContent>
 
@@ -427,17 +368,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         getFormattedToppings={getFormattedToppings}
         uiLanguage={uiLanguage}
       />
-      
-      {stripeEnabled && stripeTerminalEnabled && (
-        <StripeTerminalPayment
-          isOpen={isTerminalPaymentOpen}
-          onClose={() => setIsTerminalPaymentOpen(false)}
-          onPaymentComplete={handlePaymentComplete}
-          amount={total}
-          currency={restaurant?.currency?.toLowerCase() || "eur"}
-          restaurantId={restaurant?.id || ""}
-        />
-      )}
     </Dialog>
   );
 };

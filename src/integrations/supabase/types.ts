@@ -490,47 +490,6 @@ export type Database = {
           },
         ]
       }
-      restaurant_payment_config: {
-        Row: {
-          created_at: string | null
-          id: string
-          restaurant_id: string | null
-          stripe_api_key: string | null
-          stripe_enabled: boolean | null
-          stripe_terminal_enabled: boolean | null
-          stripe_terminal_location_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          restaurant_id?: string | null
-          stripe_api_key?: string | null
-          stripe_enabled?: boolean | null
-          stripe_terminal_enabled?: boolean | null
-          stripe_terminal_location_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          restaurant_id?: string | null
-          stripe_api_key?: string | null
-          stripe_enabled?: boolean | null
-          stripe_terminal_enabled?: boolean | null
-          stripe_terminal_location_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "restaurant_payment_config_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: true
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       restaurant_print_config: {
         Row: {
           api_key: string | null
@@ -665,7 +624,6 @@ export type Database = {
           image_url: string | null
           location: string | null
           name: string
-          payment_enabled: boolean | null
           slug: string
           ui_language: string
           updated_at: string
@@ -677,7 +635,6 @@ export type Database = {
           image_url?: string | null
           location?: string | null
           name: string
-          payment_enabled?: boolean | null
           slug: string
           ui_language?: string
           updated_at?: string
@@ -689,7 +646,6 @@ export type Database = {
           image_url?: string | null
           location?: string | null
           name?: string
-          payment_enabled?: boolean | null
           slug?: string
           ui_language?: string
           updated_at?: string
@@ -819,7 +775,6 @@ export type Database = {
           image_url: string | null
           location: string | null
           name: string
-          payment_enabled: boolean | null
           slug: string
           ui_language: string
           updated_at: string
@@ -836,25 +791,6 @@ export type Database = {
       is_restaurant_owner: {
         Args: { restaurant_uuid: string }
         Returns: boolean
-      }
-      update_restaurant_payment_config: {
-        Args: {
-          p_restaurant_id: string
-          p_stripe_enabled: boolean
-          p_stripe_api_key: string
-          p_stripe_terminal_enabled: boolean
-          p_stripe_terminal_location_id: string
-        }
-        Returns: {
-          created_at: string | null
-          id: string
-          restaurant_id: string | null
-          stripe_api_key: string | null
-          stripe_enabled: boolean | null
-          stripe_terminal_enabled: boolean | null
-          stripe_terminal_location_id: string | null
-          updated_at: string | null
-        }[]
       }
     }
     Enums: {
