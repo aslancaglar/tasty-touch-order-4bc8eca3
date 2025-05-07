@@ -1,4 +1,3 @@
-
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -39,6 +38,7 @@ export type MenuItem = {
   tax_percentage?: number | null;
   in_stock: boolean;
   display_order?: number | null; // Added display_order property
+  preparation_time?: number | null; // Added preparation_time property
 };
 
 export type MenuItemToppingCategory = {

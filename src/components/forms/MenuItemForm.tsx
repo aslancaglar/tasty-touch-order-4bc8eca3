@@ -51,6 +51,10 @@ const formSchema = z.object({
     (val) => !isNaN(Number(val)),
     { message: "Display order must be a number" }
   ),
+  preparation_time: z.string().refine(
+    (val) => val === "" || (!isNaN(Number(val)) && Number(val) >= 0),
+    { message: "Preparation time must be a non-negative number" }
+  ).optional(),
 });
 
 interface MenuItemFormProps {
@@ -85,6 +89,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       tax_percentage: initialValues?.tax_percentage || "10",
       topping_categories: initialValues?.topping_categories || [],
       display_order: initialValues?.display_order || "0",
+      preparation_time: initialValues?.preparation_time?.toString() || "0",
     },
   });
 
@@ -277,23 +282,44 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="display_order"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Display Order</FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder="Display order (e.g. 1, 2, 3)" 
-                  type="number" 
-                  {...field} 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="display_order"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Display Order</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="Display order (e.g. 1, 2, 3)" 
+                    type="number" 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="preparation_time"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Preparation Time (minutes)</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="0" 
+                    type="number" 
+                    min="0"
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}

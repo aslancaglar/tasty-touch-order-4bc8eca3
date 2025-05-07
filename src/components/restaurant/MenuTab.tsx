@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -322,7 +321,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         topping_categories: values.topping_categories || [],
         in_stock: true,
         display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
-        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : 10
+        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : 10,
+        preparation_time: values.preparation_time ? parseInt(values.preparation_time, 10) : 0
       });
       
       const updatedItems = [...menuItems, newMenuItem].sort((a, b) => 
@@ -362,7 +362,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         image: values.image || null,
         topping_categories: values.topping_categories || [],
         tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : null,
-        display_order: values.display_order ? parseInt(values.display_order, 10) : 0
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
+        preparation_time: values.preparation_time ? parseInt(values.preparation_time, 10) : 0
       });
       
       const updatedItems = menuItems.map(item => 
@@ -624,7 +625,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                 image: selectedItem.image || "",
                 topping_categories: selectedItem.topping_categories || [],
                 tax_percentage: selectedItem.tax_percentage ? selectedItem.tax_percentage.toString() : "10",
-                display_order: selectedItem.display_order?.toString() || "0"
+                display_order: selectedItem.display_order?.toString() || "0",
+                preparation_time: selectedItem.preparation_time?.toString() || "0"
               }}
               isLoading={isUpdatingItem}
               restaurantId={restaurant.id}

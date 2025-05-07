@@ -227,15 +227,23 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
   console.log("Creating menu item with data:", item);
 
-  const { topping_categories, tax_percentage, ...menuItemData } = item as any;
+  const { topping_categories, tax_percentage, preparation_time, ...menuItemData } = item as any;
 
   const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
     ? (Number(tax_percentage) || 10)
     : 10;
+    
+  const prepTime = (typeof preparation_time === 'string' || typeof preparation_time === 'number')
+    ? Number(preparation_time) || 0
+    : 0;
 
   const { data, error } = await supabase
     .from("menu_items")
-    .insert({ ...menuItemData, tax_percentage: taxValue })
+    .insert({ 
+      ...menuItemData, 
+      tax_percentage: taxValue,
+      preparation_time: prepTime 
+    })
     .select()
     .single();
 
@@ -269,15 +277,29 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
 export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
   console.log("Updating menu item:", id, "with data:", updates);
 
-  const { topping_categories, tax_percentage, ...menuItemData } = updates as any;
+  const { topping_categories, tax_percentage, preparation_time, ...menuItemData } = updates as any;
   
   const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
     ? (Number(tax_percentage) || 10)
     : 10;
+    
+  const prepTime = (typeof preparation_time === 'string' || typeof preparation_time === 'number')
+    ? Number(preparation_time)
+    : undefined;
+
+  const updateData = {
+    ...menuItemData,
+    tax_percentage: taxValue
+  };
+  
+  // Only include preparation_time if it was provided
+  if (prepTime !== undefined) {
+    updateData.preparation_time = prepTime;
+  }
 
   const { data, error } = await supabase
     .from("menu_items")
-    .update({ ...menuItemData, tax_percentage: taxValue })
+    .update(updateData)
     .eq("id", id)
     .select()
     .single();

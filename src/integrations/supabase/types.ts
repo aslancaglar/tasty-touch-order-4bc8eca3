@@ -143,6 +143,7 @@ export type Database = {
           image: string | null
           in_stock: boolean
           name: string
+          preparation_time: number | null
           price: number
           promotion_price: number | null
           tax_percentage: number | null
@@ -157,6 +158,7 @@ export type Database = {
           image?: string | null
           in_stock?: boolean
           name: string
+          preparation_time?: number | null
           price: number
           promotion_price?: number | null
           tax_percentage?: number | null
@@ -171,6 +173,7 @@ export type Database = {
           image?: string | null
           in_stock?: boolean
           name?: string
+          preparation_time?: number | null
           price?: number
           promotion_price?: number | null
           tax_percentage?: number | null
