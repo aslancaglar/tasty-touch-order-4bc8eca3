@@ -25,5 +25,12 @@
     "tableNumber": "Table",
     "selectTable": "Select a table",
     "clearCart": "Clear cart"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "restaurants": "Restaurants",
+    "admin": "Admin",
+    "owner": "Owner",
+    "signOut": "Sign out"
   }
 }

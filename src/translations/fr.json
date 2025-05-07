@@ -25,5 +25,12 @@
     "tableNumber": "Table",
     "selectTable": "Sélectionner une table",
     "clearCart": "Vider le panier"
+  },
+  "sidebar": {
+    "dashboard": "Tableau de bord",
+    "restaurants": "Restaurants",
+    "admin": "Administrateur",
+    "owner": "Propriétaire",
+    "signOut": "Déconnexion"
   }
 }

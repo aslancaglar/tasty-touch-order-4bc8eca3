@@ -25,5 +25,12 @@
     "tableNumber": "Masa",
     "selectTable": "Masa seçin",
     "clearCart": "Sepeti temizle"
+  },
+  "sidebar": {
+    "dashboard": "Kontrol Paneli",
+    "restaurants": "Restoranlar",
+    "admin": "Yönetici",
+    "owner": "Sahip",
+    "signOut": "Çıkış yap"
   }
 }

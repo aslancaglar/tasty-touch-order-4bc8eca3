@@ -6,6 +6,9 @@ import trTranslations from '../translations/tr.json';
 // Type of supported languages in the application
 export type SupportedLanguage = 'en' | 'fr' | 'tr';
 
+// Define the default language
+export const DEFAULT_LANGUAGE: SupportedLanguage = 'fr';
+
 // Type for translations structure
 type TranslationKey = keyof typeof enTranslations;
 
@@ -15,9 +18,9 @@ const translations = {
   tr: trTranslations,
 };
 
-export const useTranslation = (language: SupportedLanguage = 'fr') => {
+export const useTranslation = (language: SupportedLanguage = DEFAULT_LANGUAGE) => {
   const t = (key: string): string => {
-    const selectedLanguage = translations[language] || translations.fr;
+    const selectedLanguage = translations[language] || translations[DEFAULT_LANGUAGE];
     // Split the key by dots to access nested objects
     const keys = key.split('.');
     
@@ -36,4 +39,20 @@ export const useTranslation = (language: SupportedLanguage = 'fr') => {
   };
 
   return { t };
+};
+
+// Helper function to format currency based on the language
+export const formatCurrency = (amount: number, language: SupportedLanguage = DEFAULT_LANGUAGE): string => {
+  const currencyMap = {
+    en: 'USD',
+    fr: 'EUR',
+    tr: 'TRY'
+  };
+  
+  const currency = currencyMap[language] || currencyMap[DEFAULT_LANGUAGE];
+  
+  return new Intl.NumberFormat(language, {
+    style: 'currency',
+    currency: currency
+  }).format(amount);
 };
