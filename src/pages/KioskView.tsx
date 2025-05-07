@@ -598,10 +598,12 @@ const KioskView = () => {
     try {
       setPlacingOrder(true);
       const order = await createOrder({
-        restaurant_id: restaurant.id,
+        restaurant_id: restaurant?.id || '',
+        customer_name: customerName,
         status: 'pending',
-        total: calculateCartTotal(),
-        customer_name: null
+        total: cartTotal,
+        order_type: orderType as OrderType, // This line should now work with 'delivery'
+        table_number: orderType === 'dine-in' ? selectedTable : undefined
       });
       const orderItems = await createOrderItems(cart.map(item => ({
         order_id: order.id,

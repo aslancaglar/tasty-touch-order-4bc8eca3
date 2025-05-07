@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,7 +48,7 @@ export default function DeliveryApp() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { t } = useTranslation(restaurant?.ui_language || "en");
+  const { t } = useTranslation((restaurant?.ui_language || "en") as SupportedLanguage);
 
   // Get currency symbol
   const getCurrencySymbol = (currency: string) => {
@@ -382,7 +381,7 @@ export default function DeliveryApp() {
     if (!item.selectedOptions || item.selectedOptions.length === 0) return "";
     
     return item.selectedOptions.map(selectedOption => {
-      const option = item.menuItem.options?.find(o => o.optionId === selectedOption.optionId);
+      const option = item.menuItem.options?.find(o => o.id === selectedOption.optionId);
       if (!option) return "";
       
       const choiceNames = selectedOption.choiceIds.map(choiceId => {

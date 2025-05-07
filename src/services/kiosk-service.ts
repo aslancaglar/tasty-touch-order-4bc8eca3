@@ -9,6 +9,7 @@ import {
   OrderItem, 
   OrderItemOption,
   OrderStatus,
+  OrderType,
   ToppingCategory,
   Topping
 } from "@/types/database-types";
