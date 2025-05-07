@@ -154,6 +154,26 @@ serve(async (req) => {
           );
         }
         
+        case 'simulate_payment': {
+          // This is a special case for simulation mode when no physical terminal is available
+          console.log("Processing simulated payment of", amount, currency);
+          
+          // Create a regular payment intent (not card_present)
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100), // Convert to cents
+            currency,
+            payment_method_types: ['card'],
+            capture_method: 'automatic',
+            description: `${description} (Simulated)`,
+          });
+          
+          // For simulation purposes, we'll just return the payment intent
+          return new Response(
+            JSON.stringify({ paymentIntent, simulation: true }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
         default:
           throw new Error('Invalid action');
       }
