@@ -32,5 +32,19 @@
     "admin": "Administrateur",
     "owner": "Propriétaire",
     "signOut": "Déconnexion"
+  },
+  "restaurants": {
+    "title": "Restaurants",
+    "subtitle": "Gérer vos restaurants",
+    "add": "Ajouter un Restaurant",
+    "orders": "Commandes",
+    "revenue": "Chiffre d'affaires",
+    "viewKiosk": "Voir Kiosque",
+    "manage": "Gérer",
+    "needLogin": "Vous devez être connecté pour voir vos restaurants",
+    "signIn": "Se connecter",
+    "noRestaurants": "Vous n'avez pas encore de restaurants",
+    "startAdding": "Commencez par ajouter votre premier restaurant",
+    "delivery": "Livraison"
   }
 }

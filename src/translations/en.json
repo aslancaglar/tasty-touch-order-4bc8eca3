@@ -32,5 +32,19 @@
     "admin": "Admin",
     "owner": "Owner",
     "signOut": "Sign out"
+  },
+  "restaurants": {
+    "title": "Restaurants",
+    "subtitle": "Manage your restaurants",
+    "add": "Add Restaurant",
+    "orders": "Orders",
+    "revenue": "Revenue",
+    "viewKiosk": "View Kiosk",
+    "manage": "Manage",
+    "needLogin": "You need to be logged in to view your restaurants",
+    "signIn": "Sign In",
+    "noRestaurants": "You don't have any restaurants yet",
+    "startAdding": "Start by adding your first restaurant",
+    "delivery": "Delivery"
   }
 }

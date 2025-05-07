@@ -32,5 +32,19 @@
     "admin": "Yönetici",
     "owner": "Sahip",
     "signOut": "Çıkış yap"
+  },
+  "restaurants": {
+    "title": "Restoranlar",
+    "subtitle": "Restoranlarınızı yönetin",
+    "add": "Restoran Ekle",
+    "orders": "Siparişler",
+    "revenue": "Gelir",
+    "viewKiosk": "Kiosk Görüntüle",
+    "manage": "Yönet",
+    "needLogin": "Restoranlarınızı görmek için giriş yapmalısınız",
+    "signIn": "Giriş Yap",
+    "noRestaurants": "Henüz restoranınız yok",
+    "startAdding": "İlk restoranınızı ekleyerek başlayın",
+    "delivery": "Teslimat"
   }
 }

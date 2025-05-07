@@ -1,62 +1,28 @@
 
-import { CartItem } from "@/types/database-types";
+import { OrderType } from "@/types/database-types";
 
-export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
-  if (percentage === null || percentage === undefined) percentage = 10;
-  return totalPrice / (1 + percentage / 100);
-};
-
-export const calculateTaxAmount = (totalPrice: number, percentage: number = 10): number => {
-  const priceWithoutTax = calculatePriceWithoutTax(totalPrice, percentage);
-  return totalPrice - priceWithoutTax;
-};
-
-// Updated utility function to calculate cart totals with proper topping VAT
-export const calculateCartTotals = (cart: CartItem[]) => {
-  let total = 0;
-  let totalTax = 0;
-
-  cart.forEach(item => {
-    // Base menu item price with its VAT
-    const baseItemTotal = item.quantity * (item.menuItem.price || 0);
-    const vatPercentage = item.menuItem.tax_percentage ?? 10;
-    
-    let itemToppingsTotal = 0;
-    let itemToppingsTax = 0;
-    
-    // Calculate toppings price and tax separately
-    if (item.selectedToppings && item.menuItem.toppingCategories) {
-      item.selectedToppings.forEach(toppingCategory => {
-        const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingCategory.categoryId);
-        if (category) {
-          toppingCategory.toppingIds.forEach(toppingId => {
-            const topping = category.toppings.find(t => t.id === toppingId);
-            if (topping) {
-              const toppingPrice = topping.price ? parseFloat(topping.price.toString()) * item.quantity : 0;
-              itemToppingsTotal += toppingPrice;
-              
-              // Use topping specific tax rate if available
-              const toppingVatPercentage = topping.tax_percentage ?? vatPercentage; 
-              itemToppingsTax += calculateTaxAmount(toppingPrice, toppingVatPercentage);
-            }
-          });
-        }
-      });
-    }
-    
-    // Calculate base item tax
-    const baseItemTax = calculateTaxAmount(baseItemTotal, vatPercentage);
-    
-    // Add to totals
-    total += baseItemTotal + itemToppingsTotal;
-    totalTax += baseItemTax + itemToppingsTax;
-  });
-
-  const subtotal = total - totalTax;
+// Calculate cart totals
+export const calculateCartTotals = (cart: any[], orderType: OrderType) => {
+  const subtotal = cart.reduce((total, item) => total + item.itemPrice, 0);
+  const tax = cart.reduce((total, item) => {
+    const taxPercentage = item.menuItem.tax_percentage || 10;
+    return total + (item.itemPrice * taxPercentage) / 100;
+  }, 0);
+  const deliveryFee = orderType === "delivery" ? 2.99 : 0; // Example delivery fee
+  const total = subtotal + tax + deliveryFee;
 
   return {
-    total,
     subtotal,
-    tax: totalTax
+    tax,
+    deliveryFee,
+    total,
   };
+};
+
+// Format currency based on locale and currency code
+export const formatCurrency = (amount: number, currencyCode: string = 'USD', locale: string = 'en-US'): string => {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode
+  }).format(amount);
 };
