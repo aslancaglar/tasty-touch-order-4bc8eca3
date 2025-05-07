@@ -605,7 +605,7 @@ const KioskView = () => {
         customer_name: customerName,
         status: 'pending',
         total: cartTotal,
-        order_type: orderType as OrderType,
+        order_type: orderType,
         table_number: orderType === 'dine-in' ? tableNumber : undefined
       });
       

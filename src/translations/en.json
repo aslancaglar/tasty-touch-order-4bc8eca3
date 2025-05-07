@@ -2,88 +2,28 @@
 {
   "orderType": {
     "title": "How would you like to order?",
-    "dineIn": "Dine-In",
-    "takeaway": "Takeaway"
-  },
-  "order": {
-    "summary": "Order Summary",
-    "items": "Ordered Items",
-    "subtotal": "Subtotal",
-    "vatWithRate": "VAT",
-    "vat": "VAT",
-    "totalTTC": "TOTAL",
-    "confirm": "Confirm Order",
-    "printing": "Printing",
-    "printingPreparation": "Preparing to print...",
-    "printError": "Print Error",
-    "printErrorDesc": "Unable to print receipt. Please try again.",
-    "error": "Error",
-    "errorPrinting": "An error occurred while printing the receipt."
-  },
-  "receipt": {
-    "order": "Order",
-    "table": "Table",
-    "subtotal": "Subtotal",
-    "vat": "VAT",
-    "total": "TOTAL",
-    "thanks": "Thank you for your visit!",
-    "seeYouSoon": "See you soon!",
     "dineIn": "Dine In",
-    "takeaway": "Takeaway"
+    "table": "Table",
+    "takeaway": "Takeaway",
+    "delivery": "Delivery"
   },
   "welcome": {
-    "title": "Welcome to our ordering kiosk",
-    "start": "TOUCH TO START ORDERING"
+    "tagline": "Welcome to",
+    "startOrder": "Start my order"
   },
+  "menu": "Menu",
   "cart": {
-    "viewCart": "View Cart"
-  },
-  "dashboard": {
-    "title": "Dashboard",
-    "welcome": "Welcome to your TastyTouch Admin Dashboard",
-    "totalRevenue": "Total Revenue",
-    "revenueDesc": "All-time revenue across all restaurants",
-    "restaurants": "Restaurants",
-    "restaurantsDesc": "Active restaurants on the platform",
-    "totalOrders": "Total Orders",
-    "totalOrdersDesc": "Orders processed this month",
-    "dailyOrders": "Daily Orders",
-    "dailyOrdersDesc": "Orders processed today",
-    "popularItems": "Popular Items",
-    "popularItemsDesc": "Most ordered menu items",
-    "popularRestaurants": "Popular Restaurants",
-    "popularRestaurantsDesc": "Top performing restaurants",
-    "fromLastMonth": "from last month"
-  },
-  "sidebar": {
-    "dashboard": "Dashboard",
-    "restaurants": "Restaurants",
-    "signOut": "Sign Out",
-    "admin": "Admin",
-    "owner": "Restaurant Owner"
-  },
-  "restaurants": {
-    "title": "Restaurants",
-    "subtitle": "Manage all the restaurants on your platform",
-    "add": "Add Restaurant",
-    "orders": "Orders",
-    "revenue": "Revenue",
-    "viewKiosk": "View Kiosk",
-    "manage": "Manage",
-    "noRestaurants": "No restaurants found",
-    "startAdding": "Start by adding your first restaurant",
-    "needLogin": "You need to be logged in to view and manage restaurants",
-    "signIn": "Sign In",
-    "notFound": "Restaurant not found",
-    "backToRestaurants": "Back to Restaurants",
-    "noLocationDefined": "No location defined",
-    "management": "Restaurant Management"
-  },
-  "restaurant": {
-    "menu": "Menu",
-    "toppings": "Toppings",
-    "orders": "Orders",
-    "settings": "Settings",
-    "stock": "Stock"
+    "title": "Your order",
+    "empty": "Your cart is empty",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "placeOrder": "Place order",
+    "placingOrder": "Processing your order...",
+    "orderPlaced": "Order placed!",
+    "specialInstructions": "Special instructions",
+    "tableNumber": "Table",
+    "selectTable": "Select a table",
+    "clearCart": "Clear cart"
   }
 }

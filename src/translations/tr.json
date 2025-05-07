@@ -2,88 +2,28 @@
 {
   "orderType": {
     "title": "Nasıl sipariş vermek istersiniz?",
-    "dineIn": "Masaya Servis",
-    "takeaway": "Paket Servis"
-  },
-  "order": {
-    "summary": "Sipariş Özeti",
-    "items": "Sipariş Edilen Ürünler",
-    "subtotal": "Ara Toplam",
-    "vatWithRate": "KDV",
-    "vat": "KDV",
-    "totalTTC": "TOPLAM",
-    "confirm": "Siparişi Onayla",
-    "printing": "Yazdırılıyor",
-    "printingPreparation": "Yazdırma hazırlanıyor...",
-    "printError": "Yazdırma Hatası",
-    "printErrorDesc": "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
-    "error": "Hata",
-    "errorPrinting": "Fiş yazdırılırken bir hata oluştu."
-  },
-  "receipt": {
-    "order": "Sipariş",
+    "dineIn": "Yerinde Yeme",
     "table": "Masa",
-    "subtotal": "Ara Toplam",
-    "vat": "KDV",
-    "total": "TOPLAM",
-    "thanks": "Ziyaretiniz için teşekkürler!",
-    "seeYouSoon": "Tekrar görüşmek üzere!",
-    "dineIn": "Masaya Servis",
-    "takeaway": "Paket Servis"
+    "takeaway": "Paket Servis",
+    "delivery": "Teslimat"
   },
   "welcome": {
-    "title": "Sipariş kioskumuza hoş geldiniz",
-    "start": "SİPARİŞE BAŞLAMAK İÇİN DOKUNUN"
+    "tagline": "Hoş geldiniz",
+    "startOrder": "Siparişimi başlat"
   },
+  "menu": "Menü",
   "cart": {
-    "viewCart": "Sepeti Görüntüle"
-  },
-  "dashboard": {
-    "title": "Kontrol Paneli",
-    "welcome": "TastyTouch Yönetici Kontrol Panelinize Hoş Geldiniz",
-    "totalRevenue": "Toplam Gelir",
-    "revenueDesc": "Tüm restoranlardaki tüm zamanlara ait gelir",
-    "restaurants": "Restoranlar",
-    "restaurantsDesc": "Platformdaki aktif restoranlar",
-    "totalOrders": "Toplam Siparişler",
-    "totalOrdersDesc": "Bu ay işlenen siparişler",
-    "dailyOrders": "Günlük Siparişler",
-    "dailyOrdersDesc": "Bugün işlenen siparişler",
-    "popularItems": "Popüler Ürünler",
-    "popularItemsDesc": "En çok sipariş edilen menü öğeleri",
-    "popularRestaurants": "Popüler Restoranlar",
-    "popularRestaurantsDesc": "En iyi performans gösteren restoranlar",
-    "fromLastMonth": "geçen aya göre"
-  },
-  "sidebar": {
-    "dashboard": "Kontrol Paneli",
-    "restaurants": "Restoranlar",
-    "signOut": "Çıkış Yap",
-    "admin": "Yönetici",
-    "owner": "Restoran Sahibi"
-  },
-  "restaurants": {
-    "title": "Restoranlar",
-    "subtitle": "Platformunuzdaki tüm restoranları yönetin",
-    "add": "Restoran Ekle",
-    "orders": "Siparişler",
-    "revenue": "Gelir",
-    "viewKiosk": "Kiosk'u Görüntüle",
-    "manage": "Yönet",
-    "noRestaurants": "Restoran bulunamadı",
-    "startAdding": "İlk restoranınızı ekleyerek başlayın",
-    "needLogin": "Restoranları görüntülemek ve yönetmek için giriş yapmanız gerekiyor",
-    "signIn": "Giriş Yap",
-    "notFound": "Restoran bulunamadı",
-    "backToRestaurants": "Restoranlara Geri Dön",
-    "noLocationDefined": "Konum tanımlanmadı",
-    "management": "Restoran Yönetimi"
-  },
-  "restaurant": {
-    "menu": "Menü",
-    "toppings": "İlave Malzemeler",
-    "orders": "Siparişler",
-    "settings": "Ayarlar",
-    "stock": "Stok"
+    "title": "Siparişiniz",
+    "empty": "Sepetiniz boş",
+    "total": "Toplam",
+    "subtotal": "Ara toplam",
+    "tax": "Vergi",
+    "placeOrder": "Sipariş ver",
+    "placingOrder": "Siparişiniz işleniyor...",
+    "orderPlaced": "Sipariş verildi!",
+    "specialInstructions": "Özel talimatlar",
+    "tableNumber": "Masa",
+    "selectTable": "Masa seçin",
+    "clearCart": "Sepeti temizle"
   }
 }
