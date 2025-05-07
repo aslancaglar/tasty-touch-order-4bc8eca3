@@ -15,7 +15,7 @@ import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
 import Cart from "@/components/kiosk/Cart";
-import { useTranslation } from "@/utils/language-utils";
+import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { v4 as uuidv4 } from "uuid";
 import LoginRegistrationModal from "@/components/delivery/LoginRegistrationModal";
 import CheckoutModal from "@/components/delivery/CheckoutModal";

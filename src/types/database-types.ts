@@ -99,7 +99,7 @@ export type Topping = {
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
-// Add the missing OrderType type
+// Updated OrderType to include 'delivery'
 export type OrderType = 'dine-in' | 'takeaway' | 'delivery' | null;
 
 export interface Order {
