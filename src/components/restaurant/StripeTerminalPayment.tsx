@@ -61,11 +61,10 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
       }
 
       try {
-        // Simulate API call to initialize payment
+        // Start by creating a payment intent on the server
         setStatus(PaymentStatus.CONNECTING);
         
-        // Create a payment intent on the server
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://yifimiqeybttmbhuplaq.supabase.co";
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
         const response = await fetch(`${supabaseUrl}/functions/v1/stripe-terminal`, {
           method: 'POST',
           headers: {
@@ -121,11 +120,27 @@ const StripeTerminalPayment: React.FC<StripeTerminalPaymentProps> = ({
     try {
       setStatus(PaymentStatus.PROCESSING);
       
-      // In a real implementation, you would:
-      // 1. Use Stripe Terminal SDK to process the payment
-      // 2. Confirm the payment intent on your server
+      // First, get a connection token for the terminal
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+      const tokenResponse = await fetch(`${supabaseUrl}/functions/v1/stripe-terminal`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'create_connection_token',
+          restaurantId,
+        }),
+      });
       
-      // For this demo, we'll simulate the payment process
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json().catch(() => null);
+        throw new Error(errorData?.error || 'Failed to create connection token');
+      }
+      
+      // In production, this would communicate with the physical terminal 
+      // For demo purposes, we'll simulate a successful payment after a delay
       await new Promise((resolve) => setTimeout(resolve, 3000));
       
       // Simulate successful payment

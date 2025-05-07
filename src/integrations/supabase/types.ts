@@ -525,7 +525,7 @@ export type Database = {
           {
             foreignKeyName: "restaurant_payment_config_restaurant_id_fkey"
             columns: ["restaurant_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
