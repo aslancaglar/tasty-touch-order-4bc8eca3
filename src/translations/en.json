@@ -46,5 +46,6 @@
     "noRestaurants": "You don't have any restaurants yet",
     "startAdding": "Start by adding your first restaurant",
     "delivery": "Delivery"
-  }
+  },
+  "addToCart": "Add to cart"
 }

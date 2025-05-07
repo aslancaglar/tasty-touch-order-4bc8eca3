@@ -21,10 +21,27 @@ export const calculateCartTotals = (cart: any[], orderType: OrderType) => {
 
 // Format currency based on locale and currency code
 export const formatCurrency = (amount: number, currencyCode: string = 'USD', locale: string = 'en-US'): string => {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currencyCode
-  }).format(amount);
+  // If the first argument is already a string, just return it (backward compatibility)
+  if (typeof amount !== 'number') return amount as unknown as string;
+
+  // Handle currency symbol as first parameter (backward compatibility)
+  if (currencyCode.length <= 1) {
+    return `${currencyCode}${amount.toFixed(2)}`;
+  }
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currencyCode
+    }).format(amount);
+  } catch (error) {
+    // Fallback if the currency code is invalid
+    console.error(`Invalid currency code: ${currencyCode}. Falling back to USD.`);
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  }
 };
 
 // Calculate tax amount from a total price (assuming the total includes tax)

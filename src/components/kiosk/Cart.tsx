@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ShoppingCart, X, Minus, Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,13 @@ const Cart = ({
     setShowOrderReceipt(!showOrderReceipt);
   };
 
+  const handleSelectTable = (tableNumber: string) => {
+    // This function would be passed to the TableSelection component
+    // and would update the table number in the parent component
+    console.log(`Selected table: ${tableNumber}`);
+    setShowTableSelection(false);
+  };
+
   if (!isOpen) {
     return null;
   }
@@ -102,7 +110,7 @@ const Cart = ({
                       </div>
                     )}
                     <div className="text-gray-600">
-                      {formatCurrency(item.itemPrice, currencySymbol)}
+                      {formatCurrency(item.itemPrice, restaurant.currency || "USD")}
                     </div>
                   </div>
                   <div className="flex items-center">
@@ -141,8 +149,7 @@ const Cart = ({
         calculateSubtotal={calculateSubtotal}
         calculateTax={calculateTax}
         restaurant={restaurant}
-        t={t}
-        currencySymbol={currencySymbol}
+        currencyCode={restaurant.currency || "USD"}
       />
 
       {orderType === "dine-in" && (
@@ -152,7 +159,11 @@ const Cart = ({
               {t("cart.tableNumber")}: {tableNumber}
             </div>
           ) : (
-            <TableSelection />
+            <TableSelection 
+              isOpen={showTableSelection}
+              onClose={() => setShowTableSelection(false)}
+              onSelect={handleSelectTable}
+            />
           )}
         </div>
       )}
@@ -161,7 +172,7 @@ const Cart = ({
         <Button
           className="w-full"
           onClick={onPlaceOrder}
-          disabled={placingOrder || orderPlaced}
+          disabled={placingOrder || orderPlaced || cart.length === 0}
         >
           {placingOrder ? (
             <>
@@ -171,7 +182,7 @@ const Cart = ({
             t("cart.orderPlaced")
           ) : (
             <>
-              {t("cart.placeOrder")} ({formatCurrency(calculateSubtotal() + calculateTax(), currencySymbol)})
+              {t("cart.placeOrder")} ({formatCurrency(calculateSubtotal() + calculateTax(), restaurant.currency || "USD")})
             </>
           )}
         </Button>

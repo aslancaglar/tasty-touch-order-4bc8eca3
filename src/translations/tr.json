@@ -46,5 +46,6 @@
     "noRestaurants": "Henüz restoranınız yok",
     "startAdding": "İlk restoranınızı ekleyerek başlayın",
     "delivery": "Teslimat"
-  }
+  },
+  "addToCart": "Sepete ekle"
 }

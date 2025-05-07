@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,11 @@ const ItemCustomizationDialog = ({
   const formatPrice = (price: number) => {
     return `${currencySymbol}${price.toFixed(2)}`;
   };
+
+  // Guard clause to prevent rendering if item is null
+  if (!item) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -142,7 +148,7 @@ const ItemCustomizationDialog = ({
             <div className="mb-6">
               <h3 className="font-semibold mb-2">Toppings</h3>
               {item.toppingCategories
-                .filter(shouldShowToppingCategory)
+                .filter(category => category && shouldShowToppingCategory(category))
                 .map(category => (
                   <div key={category.id} className="mb-4">
                     <div className="flex justify-between mb-1">

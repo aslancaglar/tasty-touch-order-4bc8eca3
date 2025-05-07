@@ -46,5 +46,6 @@
     "noRestaurants": "Vous n'avez pas encore de restaurants",
     "startAdding": "Commencez par ajouter votre premier restaurant",
     "delivery": "Livraison"
-  }
+  },
+  "addToCart": "Ajouter au panier"
 }
