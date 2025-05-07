@@ -1,11 +1,10 @@
-
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit, MoreHorizontal, Plus, Trash2, Settings, Loader2, Truck } from "lucide-react";
+import { Edit, MoreHorizontal, Plus, Trash2, Settings, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -243,16 +242,10 @@ const RestaurantCard = ({
             )}
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <Button variant="outline" asChild>
             <Link to={`/r/${restaurant.slug}`}>
               {t("restaurants.viewKiosk")}
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to={`/delivery/${restaurant.slug}`}>
-              <Truck className="mr-2 h-4 w-4" />
-              {t("restaurants.delivery")}
             </Link>
           </Button>
           <Button variant="default" className="bg-kiosk-primary" asChild>

@@ -3,49 +3,87 @@
   "orderType": {
     "title": "Comment souhaitez-vous commander ?",
     "dineIn": "Sur Place",
+    "takeaway": "À Emporter"
+  },
+  "order": {
+    "summary": "Résumé de la commande",
+    "items": "Articles commandés",
+    "subtotal": "Total HT",
+    "vatWithRate": "TVA",
+    "vat": "TVA",
+    "totalTTC": "TOTAL TTC",
+    "confirm": "Confirmer la commande",
+    "printing": "Impression",
+    "printingPreparation": "Préparation de l'impression...",
+    "printError": "Erreur d'impression",
+    "printErrorDesc": "Impossible d'imprimer le reçu. Veuillez réessayer.",
+    "error": "Erreur",
+    "errorPrinting": "Une erreur s'est produite lors de l'impression du reçu."
+  },
+  "receipt": {
+    "order": "Commande",
     "table": "Table",
-    "takeaway": "À Emporter",
-    "delivery": "Livraison"
+    "subtotal": "Sous-total",
+    "vat": "TVA",
+    "total": "TOTAL",
+    "thanks": "Merci de votre visite!",
+    "seeYouSoon": "A bientôt!",
+    "dineIn": "Sur Place",
+    "takeaway": "À Emporter"
   },
   "welcome": {
-    "tagline": "Bienvenue chez",
-    "startOrder": "Commencer ma commande"
+    "title": "Bienvenue sur notre borne de commande",
+    "start": "TOUCHEZ POUR COMMANDER"
   },
-  "menu": "Menu",
   "cart": {
-    "title": "Votre commande",
-    "empty": "Votre panier est vide",
-    "total": "Total",
-    "subtotal": "Sous-total",
-    "tax": "TVA",
-    "placeOrder": "Commander",
-    "placingOrder": "Traitement de votre commande...",
-    "orderPlaced": "Commande passée !",
-    "specialInstructions": "Instructions spéciales",
-    "tableNumber": "Table",
-    "selectTable": "Sélectionner une table",
-    "clearCart": "Vider le panier"
+    "viewCart": "Voir le panier"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bienvenue sur votre tableau de bord TastyTouch",
+    "totalRevenue": "Revenu Total",
+    "revenueDesc": "Revenus de tous les temps pour tous les restaurants",
+    "restaurants": "Restaurants",
+    "restaurantsDesc": "Restaurants actifs sur la plateforme",
+    "totalOrders": "Commandes Totales",
+    "totalOrdersDesc": "Commandes traitées ce mois-ci",
+    "dailyOrders": "Commandes Journalières",
+    "dailyOrdersDesc": "Commandes traitées aujourd'hui",
+    "popularItems": "Articles Populaires",
+    "popularItemsDesc": "Articles les plus commandés",
+    "popularRestaurants": "Restaurants Populaires",
+    "popularRestaurantsDesc": "Restaurants les plus performants",
+    "fromLastMonth": "par rapport au mois dernier"
   },
   "sidebar": {
     "dashboard": "Tableau de bord",
     "restaurants": "Restaurants",
+    "signOut": "Déconnexion",
     "admin": "Administrateur",
-    "owner": "Propriétaire",
-    "signOut": "Déconnexion"
+    "owner": "Propriétaire de Restaurant"
   },
   "restaurants": {
     "title": "Restaurants",
-    "subtitle": "Gérer vos restaurants",
+    "subtitle": "Gérez tous les restaurants sur votre plateforme",
     "add": "Ajouter un Restaurant",
     "orders": "Commandes",
-    "revenue": "Chiffre d'affaires",
-    "viewKiosk": "Voir Kiosque",
+    "revenue": "Revenu",
+    "viewKiosk": "Voir la Borne",
     "manage": "Gérer",
-    "needLogin": "Vous devez être connecté pour voir vos restaurants",
-    "signIn": "Se connecter",
-    "noRestaurants": "Vous n'avez pas encore de restaurants",
+    "noRestaurants": "Aucun restaurant trouvé",
     "startAdding": "Commencez par ajouter votre premier restaurant",
-    "delivery": "Livraison"
+    "needLogin": "Vous devez être connecté pour voir et gérer les restaurants",
+    "signIn": "Se Connecter",
+    "notFound": "Restaurant non trouvé",
+    "backToRestaurants": "Retour aux Restaurants",
+    "noLocationDefined": "Aucun emplacement défini",
+    "management": "Gestion du Restaurant"
   },
-  "addToCart": "Ajouter au panier"
+  "restaurant": {
+    "menu": "Menu",
+    "toppings": "Suppléments",
+    "orders": "Commandes",
+    "settings": "Paramètres",
+    "stock": "Stock"
+  }
 }

@@ -1,61 +1,62 @@
 
-import { OrderType } from "@/types/database-types";
+import { CartItem } from "@/types/database-types";
 
-// Calculate cart totals
-export const calculateCartTotals = (cart: any[], orderType: OrderType) => {
-  const subtotal = cart.reduce((total, item) => total + item.itemPrice, 0);
-  const tax = cart.reduce((total, item) => {
-    const taxPercentage = item.menuItem.tax_percentage || 10;
-    return total + (item.itemPrice * taxPercentage) / 100;
-  }, 0);
-  const deliveryFee = orderType === "delivery" ? 2.99 : 0; // Example delivery fee
-  const total = subtotal + tax + deliveryFee;
+export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
+  if (percentage === null || percentage === undefined) percentage = 10;
+  return totalPrice / (1 + percentage / 100);
+};
+
+export const calculateTaxAmount = (totalPrice: number, percentage: number = 10): number => {
+  const priceWithoutTax = calculatePriceWithoutTax(totalPrice, percentage);
+  return totalPrice - priceWithoutTax;
+};
+
+// Updated utility function to calculate cart totals with proper topping VAT
+export const calculateCartTotals = (cart: CartItem[]) => {
+  let total = 0;
+  let totalTax = 0;
+
+  cart.forEach(item => {
+    // Base menu item price with its VAT
+    const baseItemTotal = item.quantity * (item.menuItem.price || 0);
+    const vatPercentage = item.menuItem.tax_percentage ?? 10;
+    
+    let itemToppingsTotal = 0;
+    let itemToppingsTax = 0;
+    
+    // Calculate toppings price and tax separately
+    if (item.selectedToppings && item.menuItem.toppingCategories) {
+      item.selectedToppings.forEach(toppingCategory => {
+        const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingCategory.categoryId);
+        if (category) {
+          toppingCategory.toppingIds.forEach(toppingId => {
+            const topping = category.toppings.find(t => t.id === toppingId);
+            if (topping) {
+              const toppingPrice = topping.price ? parseFloat(topping.price.toString()) * item.quantity : 0;
+              itemToppingsTotal += toppingPrice;
+              
+              // Use topping specific tax rate if available
+              const toppingVatPercentage = topping.tax_percentage ?? vatPercentage; 
+              itemToppingsTax += calculateTaxAmount(toppingPrice, toppingVatPercentage);
+            }
+          });
+        }
+      });
+    }
+    
+    // Calculate base item tax
+    const baseItemTax = calculateTaxAmount(baseItemTotal, vatPercentage);
+    
+    // Add to totals
+    total += baseItemTotal + itemToppingsTotal;
+    totalTax += baseItemTax + itemToppingsTax;
+  });
+
+  const subtotal = total - totalTax;
 
   return {
-    subtotal,
-    tax,
-    deliveryFee,
     total,
+    subtotal,
+    tax: totalTax
   };
-};
-
-// Format currency based on locale and currency code
-export const formatCurrency = (amount: number, currencyCode: string = 'USD', locale: string = 'en-US'): string => {
-  // If the first argument is already a string, just return it (backward compatibility)
-  if (typeof amount !== 'number') return amount as unknown as string;
-
-  // Handle currency symbol as first parameter (backward compatibility)
-  if (currencyCode.length <= 1) {
-    return `${currencyCode}${amount.toFixed(2)}`;
-  }
-
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: currencyCode
-    }).format(amount);
-  } catch (error) {
-    // Fallback if the currency code is invalid
-    console.error(`Invalid currency code: ${currencyCode}. Falling back to USD.`);
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  }
-};
-
-// Calculate tax amount from a total price (assuming the total includes tax)
-// This assumes a standard 10% tax rate if not specified
-export const calculateTaxAmount = (totalPrice: number, taxRate: number = 10): number => {
-  // Formula: tax = total - (total / (1 + taxRate/100))
-  const taxAmount = totalPrice - (totalPrice / (1 + taxRate / 100));
-  return taxAmount;
-};
-
-// Calculate price without tax from a total price (assuming the total includes tax)
-// This assumes a standard 10% tax rate if not specified
-export const calculatePriceWithoutTax = (totalPrice: number, taxRate: number = 10): number => {
-  // Formula: priceWithoutTax = total / (1 + taxRate/100)
-  const priceWithoutTax = totalPrice / (1 + taxRate / 100);
-  return priceWithoutTax;
 };

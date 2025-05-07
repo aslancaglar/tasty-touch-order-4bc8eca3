@@ -143,7 +143,6 @@ export type Database = {
           image: string | null
           in_stock: boolean
           name: string
-          preparation_time: number | null
           price: number
           promotion_price: number | null
           tax_percentage: number | null
@@ -158,7 +157,6 @@ export type Database = {
           image?: string | null
           in_stock?: boolean
           name: string
-          preparation_time?: number | null
           price: number
           promotion_price?: number | null
           tax_percentage?: number | null
@@ -173,7 +171,6 @@ export type Database = {
           image?: string | null
           in_stock?: boolean
           name?: string
-          preparation_time?: number | null
           price?: number
           promotion_price?: number | null
           tax_percentage?: number | null
@@ -363,60 +360,32 @@ export type Database = {
       orders: {
         Row: {
           created_at: string
-          customer_id: string | null
           customer_name: string | null
-          customer_phone: string | null
-          delivery_address: string | null
-          delivery_notes: string | null
           id: string
-          order_type: string | null
           restaurant_id: string
-          scheduled_time: string | null
           status: string
-          table_number: string | null
           total: number
           updated_at: string
         }
         Insert: {
           created_at?: string
-          customer_id?: string | null
           customer_name?: string | null
-          customer_phone?: string | null
-          delivery_address?: string | null
-          delivery_notes?: string | null
           id?: string
-          order_type?: string | null
           restaurant_id: string
-          scheduled_time?: string | null
           status: string
-          table_number?: string | null
           total: number
           updated_at?: string
         }
         Update: {
           created_at?: string
-          customer_id?: string | null
           customer_name?: string | null
-          customer_phone?: string | null
-          delivery_address?: string | null
-          delivery_notes?: string | null
           id?: string
-          order_type?: string | null
           restaurant_id?: string
-          scheduled_time?: string | null
           status?: string
-          table_number?: string | null
           total?: number
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "orders_delivery_address_fkey"
-            columns: ["delivery_address"]
-            isOneToOne: false
-            referencedRelation: "user_addresses"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "orders_restaurant_id_fkey"
             columns: ["restaurant_id"]
@@ -779,72 +748,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      user_addresses: {
-        Row: {
-          city: string
-          country: string
-          created_at: string
-          id: string
-          is_default: boolean | null
-          postal_code: string
-          street: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          city: string
-          country?: string
-          created_at?: string
-          id?: string
-          is_default?: boolean | null
-          postal_code: string
-          street: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          city?: string
-          country?: string
-          created_at?: string
-          id?: string
-          is_default?: boolean | null
-          postal_code?: string
-          street?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_profiles: {
-        Row: {
-          created_at: string
-          email: string | null
-          first_name: string | null
-          id: string
-          last_name: string | null
-          phone: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email?: string | null
-          first_name?: string | null
-          id: string
-          last_name?: string | null
-          phone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string | null
-          first_name?: string | null
-          id?: string
-          last_name?: string | null
-          phone?: string | null
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {

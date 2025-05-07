@@ -1,37 +1,29 @@
-
-import { UtensilsCrossed, ShoppingBag, Truck } from "lucide-react";
+import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-import { OrderType } from "@/types/database-types";
-
+export type OrderType = "dine-in" | "takeaway" | null;
 interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectOrderType: (type: OrderType, tableNumber?: string) => void;
   uiLanguage?: SupportedLanguage;
 }
-
 const OrderTypeSelection = ({
   isOpen,
   onClose,
   onSelectOrderType,
   uiLanguage = "fr"
 }: OrderTypeSelectionProps) => {
-  const { t } = useTranslation(uiLanguage);
-  
+  const {
+    t
+  } = useTranslation(uiLanguage);
   const handleSelectDineIn = () => {
     onSelectOrderType("dine-in");
   };
-  
   const handleSelectTakeaway = () => {
     onSelectOrderType("takeaway");
   };
-  
-  const handleSelectDelivery = () => {
-    onSelectOrderType("delivery");
-  };
-  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}
   // Don't block background pointer events 
   modal={false}>
@@ -41,7 +33,7 @@ const OrderTypeSelection = ({
             {t("orderType.title")}
           </DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-3 gap-6 py-4">
+        <div className="grid grid-cols-2 gap-6 py-4">
           <Button onClick={handleSelectDineIn} variant="outline" className="flex flex-col items-center justify-center h-64 p-6 hover:bg-primary/10">
             <UtensilsCrossed className="h-24 w-24 mb-4" />
             <span className="font-semibold text-4xl">{t("orderType.dineIn")}</span>
@@ -50,13 +42,8 @@ const OrderTypeSelection = ({
             <ShoppingBag className="h-24 w-24 mb-4" />
             <span className="font-semibold text-4xl">{t("orderType.takeaway")}</span>
           </Button>
-          <Button onClick={handleSelectDelivery} variant="outline" className="flex flex-col items-center justify-center h-64 p-6 hover:bg-primary/10">
-            <Truck className="h-24 w-24 mb-4" />
-            <span className="font-semibold text-4xl">{t("orderType.delivery")}</span>
-          </Button>
         </div>
       </DialogContent>
     </Dialog>;
 };
-
 export default OrderTypeSelection;
