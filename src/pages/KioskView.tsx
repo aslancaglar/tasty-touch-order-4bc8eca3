@@ -55,6 +55,7 @@ const KioskView = () => {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [customerName, setCustomerName] = useState<string | null>(null);
   const cartRef = useRef<HTMLDivElement | null>(null);
   const {
     toast
@@ -597,14 +598,17 @@ const KioskView = () => {
     if (!restaurant || cart.length === 0) return;
     try {
       setPlacingOrder(true);
+      const cartTotal = calculateCartTotal();
+      
       const order = await createOrder({
         restaurant_id: restaurant?.id || '',
         customer_name: customerName,
         status: 'pending',
         total: cartTotal,
-        order_type: orderType as OrderType, // This line should now work with 'delivery'
-        table_number: orderType === 'dine-in' ? selectedTable : undefined
+        order_type: orderType as OrderType,
+        table_number: orderType === 'dine-in' ? tableNumber : undefined
       });
+      
       const orderItems = await createOrderItems(cart.map(item => ({
         order_id: order.id,
         menu_item_id: item.menuItem.id,
