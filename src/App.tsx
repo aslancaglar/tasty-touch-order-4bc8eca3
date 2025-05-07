@@ -29,6 +29,7 @@ import Auth from "./pages/Auth";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
 import OwnerLogin from "./pages/OwnerLogin";
+import DeliveryApp from "./pages/DeliveryApp";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -73,6 +74,9 @@ const App = () => (
             
             {/* Public Kiosk Routes */}
             <Route path="/r/:restaurantSlug" element={<KioskView />} />
+            
+            {/* Public Delivery App Routes */}
+            <Route path="/delivery/:restaurantSlug" element={<DeliveryApp />} />
             
             {/* Catch-all Route */}
             <Route path="*" element={<NotFound />} />

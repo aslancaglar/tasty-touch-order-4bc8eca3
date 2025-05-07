@@ -1,3 +1,4 @@
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -99,18 +100,22 @@ export type Topping = {
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
 // Add the missing OrderType type
-export type OrderType = 'dine-in' | 'takeaway' | null;
+export type OrderType = 'dine-in' | 'takeaway' | 'delivery' | null;
 
 export interface Order {
   id: string;
   restaurant_id: string;
   customer_id?: string;
   customer_name?: string;
+  customer_phone?: string;
   status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at: string;
   total: number;
   order_type?: OrderType;
   table_number?: string;
+  delivery_address?: string;
+  scheduled_time?: string;
+  delivery_notes?: string;
 }
 
 export type OrderItem = {
@@ -178,4 +183,27 @@ export interface CartItem {
   }[];
   specialInstructions?: string;
   itemPrice: number;
+}
+
+// New types for user profiles and addresses
+export interface UserProfile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  email: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserAddress {
+  id: string;
+  user_id: string;
+  street: string;
+  city: string;
+  postal_code: string;
+  country: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
 }
