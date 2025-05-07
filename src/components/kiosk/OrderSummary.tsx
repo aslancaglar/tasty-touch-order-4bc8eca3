@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, X } from "lucide-react";
+import { ArrowLeft, Check, X, DollarSign, CreditCard } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -12,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import StripeTerminalPayment from "../restaurant/StripeTerminalPayment";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -25,9 +27,11 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
+
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
+
 const translations = {
   fr: {
     orderSummary: "Résumé de la commande",
@@ -42,7 +46,9 @@ const translations = {
     printError: "Erreur d'impression",
     printErrorDesc: "Impossible d'imprimer le reçu. Veuillez réessayer.",
     error: "Erreur",
-    errorPrinting: "Une erreur s'est produite lors de l'impression du reçu."
+    errorPrinting: "Une erreur s'est produite lors de l'impression du reçu.",
+    payWithCash: "PAYER EN ESPÈCES",
+    payWithCard: "PAYER PAR CARTE"
   },
   en: {
     orderSummary: "Order Summary",
@@ -57,7 +63,9 @@ const translations = {
     printError: "Print Error",
     printErrorDesc: "Unable to print receipt. Please try again.",
     error: "Error",
-    errorPrinting: "An error occurred while printing the receipt."
+    errorPrinting: "An error occurred while printing the receipt.",
+    payWithCash: "PAY WITH CASH",
+    payWithCard: "PAY WITH CARD"
   },
   tr: {
     orderSummary: "Sipariş Özeti",
@@ -72,9 +80,12 @@ const translations = {
     printError: "Yazdırma Hatası",
     printErrorDesc: "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
     error: "Hata",
-    errorPrinting: "Fiş yazdırılırken bir hata oluştu."
+    errorPrinting: "Fiş yazdırılırken bir hata oluştu.",
+    payWithCash: "NAKİT ÖDE",
+    payWithCard: "KART İLE ÖDE"
   }
 };
+
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -95,6 +106,7 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: "fr" | "en" | "tr";
 }
+
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -113,42 +125,53 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   uiLanguage = "fr"
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
+  const [stripeEnabled, setStripeEnabled] = useState(false);
+  const [stripeTerminalEnabled, setStripeTerminalEnabled] = useState(false);
+  const [isTerminalPaymentOpen, setIsTerminalPaymentOpen] = useState(false);
+  
   const isMobile = useIsMobile();
-  const {
-    toast
-  } = useToast();
-  const {
-    t
-  } = useTranslation(uiLanguage);
-  const {
-    total,
-    subtotal,
-    tax
-  } = calculateCartTotals(cart);
+  const { toast } = useToast();
+  const { t } = useTranslation(uiLanguage);
+  const { total, subtotal, tax } = calculateCartTotals(cart);
+
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
-    const fetchOrderCount = async () => {
+    
+    const fetchData = async () => {
       if (restaurant?.id) {
-        const {
-          count
-        } = await supabase.from('orders').select('*', {
+        // Fetch order count
+        const { count } = await supabase.from('orders').select('*', {
           count: 'exact',
           head: true
         }).eq('restaurant_id', restaurant.id);
         setOrderNumber(((count || 0) + 1).toString());
+        
+        // Fetch payment config
+        const { data: paymentConfig, error: paymentError } = await supabase
+          .from('restaurant_payment_config')
+          .select('stripe_enabled, stripe_terminal_enabled')
+          .eq('restaurant_id', restaurant.id)
+          .single();
+          
+        if (!paymentError && paymentConfig) {
+          setStripeEnabled(paymentConfig.stripe_enabled || false);
+          setStripeTerminalEnabled(paymentConfig.stripe_terminal_enabled || false);
+          console.log("Payment config in kiosk:", paymentConfig);
+        } else {
+          console.log("Payment config error or not found:", paymentError);
+        }
       }
     };
-    fetchOrderCount();
+    
+    fetchData();
   }, [restaurant?.id, isMobile]);
+
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
-        const {
-          data: printConfig,
-          error
-        } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
+        const { data: printConfig, error } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
         if (error) {
           console.error("Error fetching print configuration:", error);
           return;
@@ -209,6 +232,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       }
     }
   };
+  
+  const handleCardPayment = () => {
+    setIsTerminalPaymentOpen(true);
+  };
+  
+  const handlePaymentComplete = () => {
+    setIsTerminalPaymentOpen(false);
+    // Proceed with order confirmation
+    handleConfirmOrder();
+  };
+
   const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -255,6 +289,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
+  
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -282,6 +317,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       useCurrencyCode: true
     });
   };
+  
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
   
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
@@ -362,15 +398,41 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
 
-            <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
-              <Check className="mr-2 h-5 w-5" />
-              {t("order.confirm")}
-            </Button>
+            {stripeEnabled && stripeTerminalEnabled ? (
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <Button onClick={handleConfirmOrder} disabled={placingOrder} className="bg-green-800 hover:bg-green-700 text-white uppercase font-medium text-xl py-6">
+                  <DollarSign className="mr-2 h-5 w-5" />
+                  {t("payWithCash")}
+                </Button>
+                
+                <Button onClick={handleCardPayment} disabled={placingOrder} className="bg-blue-800 hover:bg-blue-700 text-white uppercase font-medium text-xl py-6">
+                  <CreditCard className="mr-2 h-5 w-5" />
+                  {t("payWithCard")}
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
+                <Check className="mr-2 h-5 w-5" />
+                {t("order.confirm")}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
 
       <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
+      
+      {stripeEnabled && stripeTerminalEnabled && (
+        <StripeTerminalPayment
+          isOpen={isTerminalPaymentOpen}
+          onClose={() => setIsTerminalPaymentOpen(false)}
+          onPaymentComplete={handlePaymentComplete}
+          amount={total}
+          currency={restaurant?.currency?.toLowerCase() || "eur"}
+          restaurantId={restaurant?.id || ""}
+        />
+      )}
     </Dialog>;
 };
+
 export default OrderSummary;
