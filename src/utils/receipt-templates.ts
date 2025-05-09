@@ -272,7 +272,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   receipt += ESCPOS.ALIGN_CENTER;
   receipt += formatText(t("thanks"), ESCPOS.FONT_NORMAL) + addLineFeed();
   receipt += formatText(t("seeYouSoon"), ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += ESCPOS.FEED_AND_CUT;
+  receipt += ESCPOS.CUT_PAPER;
 
   return receipt;
 };
