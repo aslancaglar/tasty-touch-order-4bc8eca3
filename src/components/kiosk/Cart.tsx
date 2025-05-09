@@ -1,40 +1,40 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Check, ArrowRight, Loader2, Plus, Minus, X, CreditCard, Banknote } from "lucide-react";
-import { CartItem } from "@/types/database-types";
+import { CartItem, Restaurant } from "@/types/database-types";
 import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { calculateCartTotals } from "@/utils/price-utils";
+import { SupportedLanguage } from "@/utils/language-utils";
 
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
-  onToggleOpen: () => void;
-  onUpdateQuantity: (itemId: string, quantity: number) => void;
-  onRemoveItem: (itemId: string) => void;
-  onClearCart: () => void;
+  onToggleOpen?: () => void;
+  onClose?: () => void; // Added to match KioskView usage
+  onUpdateQuantity?: (itemId: string, quantity: number) => void;
+  updateQuantity?: (itemId: string, newQuantity: number) => void; // Added to match KioskView usage
+  onRemoveItem?: (itemId: string) => void;
+  removeItem?: (itemId: string) => void; // Added to match KioskView usage
+  onClearCart?: () => void;
   onPlaceOrder: () => void;
+  onCheckout?: () => void; // Added to match KioskView usage
   placingOrder: boolean;
   orderPlaced: boolean;
-  calculateSubtotal: () => number;
-  calculateTax: () => number;
-  getFormattedOptions: (item: CartItem) => string;
-  getFormattedToppings: (item: CartItem) => string;
-  restaurant?: {
-    name: string;
-    location?: string;
-    currency?: string;
-    card_payment_enabled?: boolean;
-    cash_payment_enabled?: boolean;
-  } | null;
+  calculateSubtotal?: () => number;
+  calculateTax?: () => number;
+  subtotal?: number; // Added to match KioskView usage
+  tax?: number; // Added to match KioskView usage
+  getFormattedOptions?: (item: CartItem) => string;
+  getFormattedToppings?: (item: CartItem) => string;
+  restaurant?: Restaurant | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
   showOrderSummaryOnly?: boolean;
-  uiLanguage?: "fr" | "en" | "tr";
-  t: (key: string) => string;
+  uiLanguage?: SupportedLanguage;
+  t?: (key: string) => string;
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -100,14 +100,20 @@ const Cart: React.FC<CartProps> = ({
   cart,
   isOpen,
   onToggleOpen,
+  onClose,
   onUpdateQuantity,
+  updateQuantity,
   onRemoveItem,
+  removeItem,
   onClearCart,
   onPlaceOrder,
+  onCheckout,
   placingOrder,
   orderPlaced,
   calculateSubtotal,
   calculateTax,
+  subtotal: propSubtotal,
+  tax: propTax,
   getFormattedOptions,
   getFormattedToppings,
   restaurant = null,
@@ -126,25 +132,33 @@ const Cart: React.FC<CartProps> = ({
   // Helper function to get cart-specific translations
   const tCart = (key: keyof typeof cartTranslations["en"]) => {
     // Use the provided t function if possible, otherwise fallback to our internal translations
+    if (t) {
+      return t(key);
+    }
+    
     try {
       return cartTranslations[uiLanguage][key];
     } catch (err) {
-      // If the key is missing in our translations, try to use the passed t function
-      return t(key);
+      return key;
     }
   };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && !showOrderSummary && cartRef.current && !cartRef.current.contains(event.target as Node)) {
-        onToggleOpen();
+        if (onToggleOpen) {
+          onToggleOpen();
+        } else if (onClose) {
+          onClose();
+        }
       }
     };
+    
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, onToggleOpen, showOrderSummary]);
+  }, [isOpen, onToggleOpen, onClose, showOrderSummary]);
 
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
@@ -160,15 +174,43 @@ const Cart: React.FC<CartProps> = ({
     }
     onPlaceOrder();
     setShowOrderSummary(false);
+    
+    // If onCheckout is provided, call it
+    if (onCheckout) {
+      onCheckout();
+    }
   };
+
+  // Function to handle updating item quantity
+  const handleUpdateQuantity = (itemId: string, quantity: number) => {
+    if (updateQuantity) {
+      updateQuantity(itemId, quantity);
+    } else if (onUpdateQuantity) {
+      onUpdateQuantity(itemId, quantity);
+    }
+  };
+
+  // Function to handle removing item
+  const handleRemoveItem = (itemId: string) => {
+    if (removeItem) {
+      removeItem(itemId);
+    } else if (onRemoveItem) {
+      onRemoveItem(itemId);
+    }
+  };
+
+  // Use prop subtotal/tax or calculate them if calculateSubtotal/calculateTax functions are provided
+  const calculatedTotals = calculateCartTotals(cart);
+  const displaySubtotal = propSubtotal !== undefined ? propSubtotal : (calculateSubtotal ? calculateSubtotal() : calculatedTotals.subtotal);
+  const displayTax = propTax !== undefined ? propTax : (calculateTax ? calculateTax() : calculatedTotals.tax);
+  const total = displaySubtotal + displayTax;
 
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
 
-  const { total, subtotal, tax } = calculateCartTotals(cart);
-  const reversedCart = [...cart].reverse();
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+  const reversedCart = [...cart].reverse();
 
   return <>
       <div ref={cartRef} style={{ maxHeight: "60vh" }} className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 shadow-lg overflow-hidden bg-[kiosk-base-100] bg-white">
@@ -177,7 +219,12 @@ const Cart: React.FC<CartProps> = ({
             <div className="flex items-center">
               <h2 className="text-responsive-subtitle font-bold text-white">{tCart("yourOrder")} ({cartItemCount})</h2>
             </div>
-            <Button variant="ghost" size="icon" onClick={onToggleOpen} className="rounded-full h-10 w-10 bg-red-100 hover:bg-red-200">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose || onToggleOpen} 
+              className="rounded-full h-10 w-10 bg-red-100 hover:bg-red-200"
+            >
               <X className="h-5 w-5 text-red-600" />
             </Button>
           </div>
@@ -194,7 +241,7 @@ const Cart: React.FC<CartProps> = ({
                           variant="ghost" 
                           size="icon" 
                           className="absolute right-1 top-1 text-red-500 h-7 w-7" 
-                          onClick={() => onRemoveItem(item.id)}
+                          onClick={() => handleRemoveItem(item.id)}
                         >
                           <X className="h-5 w-5" />
                         </Button>
@@ -215,7 +262,7 @@ const Cart: React.FC<CartProps> = ({
                               <Button 
                                 variant="outline" 
                                 size="icon" 
-                                onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} 
+                                onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)} 
                                 className="h-8 w-8 rounded-full p-0 bg-violet-700 hover:bg-violet-700 text-white font-bold"
                               >
                                 <Minus className="h-3 w-3" />
@@ -224,7 +271,7 @@ const Cart: React.FC<CartProps> = ({
                               <Button 
                                 variant="outline" 
                                 size="icon" 
-                                onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} 
+                                onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)} 
                                 className="h-8 w-8 rounded-full p-0 bg-violet-800 hover:bg-violet-700 text-white"
                               >
                                 <Plus className="h-3 w-3" />
@@ -244,11 +291,11 @@ const Cart: React.FC<CartProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-responsive-body text-gray-600">{tCart("totalHT")}</span>
-                <span className="text-responsive-body font-medium">{subtotal.toFixed(2)} {currencySymbol}</span>
+                <span className="text-responsive-body font-medium">{displaySubtotal.toFixed(2)} {currencySymbol}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-responsive-body text-gray-600">{tCart("vat")}</span>
-                <span className="text-responsive-body font-medium">{tax.toFixed(2)} {currencySymbol}</span>
+                <span className="text-responsive-body font-medium">{displayTax.toFixed(2)} {currencySymbol}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between text-responsive-subtitle font-bold">
@@ -286,10 +333,10 @@ const Cart: React.FC<CartProps> = ({
         cart={cart} 
         onPlaceOrder={handlePlaceOrder} 
         placingOrder={placingOrder} 
-        calculateSubtotal={calculateSubtotal} 
-        calculateTax={calculateTax} 
-        getFormattedOptions={getFormattedOptions} 
-        getFormattedToppings={getFormattedToppings} 
+        calculateSubtotal={calculateSubtotal || (() => displaySubtotal)} 
+        calculateTax={calculateTax || (() => displayTax)} 
+        getFormattedOptions={getFormattedOptions || (() => "")} 
+        getFormattedToppings={getFormattedToppings || (() => "")} 
         restaurant={restaurant} 
         orderType={orderType} 
         tableNumber={tableNumber} 

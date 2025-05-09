@@ -9,20 +9,38 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { SupportedLanguage, useTranslation } from "@/utils/language-utils";
 
 interface InactivityDialogProps {
   isOpen: boolean;
-  onContinue: () => void;
+  onContinue?: () => void;
+  onConfirm?: () => void; // Added to match KioskView usage
   onCancel: () => void;
-  t: (key: string) => string;
+  t?: (key: string) => string;
+  uiLanguage?: SupportedLanguage;
 }
 
 const InactivityDialog: React.FC<InactivityDialogProps> = ({
   isOpen,
   onContinue,
+  onConfirm, // Added to support both prop names
   onCancel,
-  t
+  t: propT,
+  uiLanguage = "fr"
 }) => {
+  // Use either the prop t function or the one from useTranslation
+  const { t: translationT } = useTranslation(uiLanguage);
+  const t = propT || translationT;
+  
+  // Use either onContinue or onConfirm callback
+  const handleContinue = () => {
+    if (onContinue) {
+      onContinue();
+    } else if (onConfirm) {
+      onConfirm();
+    }
+  };
+
   // Add a timer reference to track when the component was mounted
   const timerRef = useRef<number | null>(null);
   
@@ -88,7 +106,7 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
           </Button>
           <Button
             type="button"
-            onClick={onContinue}
+            onClick={handleContinue}
             className="sm:text-lg py-6 px-8 sm:py-7 sm:px-10 w-full sm:w-auto mt-4 sm:mt-0"
           >
             {t("yes")}

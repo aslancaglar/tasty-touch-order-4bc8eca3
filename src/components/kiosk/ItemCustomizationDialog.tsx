@@ -1,13 +1,14 @@
-
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { MenuItemWithOptions } from "@/types/database-types";
+import { MenuItemWithOptions, Restaurant } from "@/types/database-types";
+import { SupportedLanguage } from "@/utils/language-utils";
+
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
-  isOpen: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   onAddToCart: () => void;
   selectedOptions: {
@@ -21,12 +22,16 @@ interface ItemCustomizationDialogProps {
   onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
   onToggleTopping: (categoryId: string, toppingId: string) => void;
   quantity: number;
-  onQuantityChange: (quantity: number) => void;
+  onQuantityChange?: (quantity: number) => void;
+  setQuantity?: React.Dispatch<React.SetStateAction<number>>; // Added to match KioskView usage
   specialInstructions: string;
-  onSpecialInstructionsChange: (instructions: string) => void;
+  onSpecialInstructionsChange?: (instructions: string) => void;
+  setSpecialInstructions?: React.Dispatch<React.SetStateAction<string>>; // Added to match KioskView usage
   shouldShowToppingCategory: (category: any) => boolean;
-  t: (key: string) => string;
-  currencySymbol: string;
+  t?: (key: string) => string;
+  currencySymbol?: string;
+  calculatePrice?: (item: MenuItemWithOptions, options: { optionId: string; choiceIds: string[]; }[], toppings: { categoryId: string; toppingIds: string[]; }[]) => number; // Added to match KioskView usage
+  restaurant?: Restaurant; // Added to match KioskView usage
 }
 
 // Define alternating background colors for topping categories
@@ -146,7 +151,7 @@ ToppingCategory.displayName = 'ToppingCategory';
 // Main component with heavy use of memoization
 const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   item,
-  isOpen,
+  isOpen = true,
   onClose,
   onAddToCart,
   selectedOptions,
@@ -155,17 +160,39 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   onToggleTopping,
   quantity,
   onQuantityChange,
+  setQuantity, // Added to match KioskView usage
   specialInstructions,
   onSpecialInstructionsChange,
+  setSpecialInstructions, // Added to match KioskView usage
   shouldShowToppingCategory,
-  t,
-  currencySymbol
+  t: propT,
+  currencySymbol: propCurrencySymbol,
+  calculatePrice, // Added to match KioskView usage
+  restaurant // Added to match KioskView usage
 }) => {
   if (!item) return null;
+
+  // Default translations if t isn't provided
+  const t = propT || ((key: string) => {
+    if (key === "addToCart") return "Add to Cart";
+    if (key === "selectUpTo") return "Select up to";
+    if (key === "multipleSelection") return "Multiple Selection";
+    return key;
+  });
+
+  // Get currency symbol from restaurant or use the prop
+  const currencySymbol = propCurrencySymbol || (restaurant?.currency ? getCurrencySymbol(restaurant.currency) : "€");
 
   // Memoized price calculation to prevent recalculation on every render
   const calculateItemPrice = useCallback(() => {
     if (!item) return 0;
+    
+    // Use the provided calculatePrice function if available
+    if (calculatePrice) {
+      return calculatePrice(item, selectedOptions, selectedToppings);
+    }
+    
+    // Otherwise calculate the price ourselves
     let price = parseFloat(item.price.toString());
     if (item.options) {
       item.options.forEach(option => {
@@ -194,13 +221,51 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       });
     }
     return price * quantity;
-  }, [item, selectedOptions, selectedToppings, quantity]);
+  }, [item, selectedOptions, selectedToppings, quantity, calculatePrice]);
+
   const handleQuantityDecrease = useCallback(() => {
-    if (quantity > 1) onQuantityChange(quantity - 1);
-  }, [quantity, onQuantityChange]);
+    if (quantity > 1) {
+      if (onQuantityChange) {
+        onQuantityChange(quantity - 1);
+      } else if (setQuantity) {
+        setQuantity(q => Math.max(1, q - 1));
+      }
+    }
+  }, [quantity, onQuantityChange, setQuantity]);
+
   const handleQuantityIncrease = useCallback(() => {
-    onQuantityChange(quantity + 1);
-  }, [quantity, onQuantityChange]);
+    if (onQuantityChange) {
+      onQuantityChange(quantity + 1);
+    } else if (setQuantity) {
+      setQuantity(q => q + 1);
+    }
+  }, [quantity, onQuantityChange, setQuantity]);
+
+  const handleSpecialInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (onSpecialInstructionsChange) {
+      onSpecialInstructionsChange(e.target.value);
+    } else if (setSpecialInstructions) {
+      setSpecialInstructions(e.target.value);
+    }
+  };
+
+  // Helper function to get currency symbol
+  function getCurrencySymbol(currency: string) {
+    const CURRENCY_SYMBOLS: Record<string, string> = {
+      EUR: "€",
+      USD: "$",
+      GBP: "£",
+      TRY: "₺",
+      JPY: "¥",
+      CAD: "$",
+      AUD: "$",
+      CHF: "Fr.",
+      CNY: "¥",
+      RUB: "₽"
+    };
+    const code = currency?.toUpperCase() || "EUR";
+    return CURRENCY_SYMBOLS[code] || code;
+  }
 
   // Sort topping categories by display_order if they exist
   const sortedToppingCategories = item.toppingCategories ? [...item.toppingCategories].sort((a, b) => {
@@ -208,7 +273,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     const orderB = b.display_order ?? 1000;
     return orderA - orderB;
   }) : [];
+  
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
+  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
@@ -260,4 +327,110 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       </DialogContent>
     </Dialog>;
 };
+
+// Make sure to include the Option and ToppingCategory components
+// Option component (memoized)
+const Option = memo(({
+  option,
+  selectedOption,
+  onToggleChoice,
+  currencySymbol
+}: {
+  option: any;
+  selectedOption: any;
+  onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
+  currencySymbol: string;
+}) => {
+  return <div className="space-y-1">
+      {option.choices.map(choice => {
+      const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
+      return <div key={choice.id} className={`
+              flex items-center justify-between p-2 border rounded-md cursor-pointer select-none
+              ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
+            `} onClick={() => onToggleChoice(option.id, choice.id, !!option.multiple)}>
+            <div className="flex items-center">
+              <div className={`
+                w-5 h-5 mr-3 rounded-full flex items-center justify-center
+                ${isSelected ? 'bg-kiosk-primary text-white' : 'border border-gray-300'}
+              `}>
+                {isSelected && <Check className="h-3 w-3" />}
+              </div>
+              <span>{choice.name}</span>
+            </div>
+            {choice.price && choice.price > 0 && <span>+{parseFloat(choice.price.toString()).toFixed(2)} {currencySymbol}</span>}
+          </div>;
+    })}
+    </div>;
+});
+Option.displayName = 'Option';
+
+// ToppingCategory component (memoized)
+const ToppingCategory = memo(({
+  category,
+  selectedCategory,
+  onToggleTopping,
+  t,
+  currencySymbol,
+  bgColorClass,
+}: {
+  category: any;
+  selectedCategory: any;
+  onToggleTopping: (categoryId: string, toppingId: string) => void;
+  t: (key: string) => string;
+  currencySymbol: string;
+  bgColorClass: string;
+}) => {
+  // Sort toppings by display_order
+  const sortedToppings = [...category.toppings].sort((a, b) => {
+    const orderA = a.display_order ?? 1000;
+    const orderB = b.display_order ?? 1000;
+    return orderA - orderB;
+  });
+
+  // Determine the number of columns based on topping count
+  const toppingCount = sortedToppings.length;
+  let gridCols = "grid-cols-3"; // Default 3 columns for 3+ toppings
+
+  if (toppingCount === 1) {
+    gridCols = "grid-cols-1"; // 1 column for 1 topping
+  } else if (toppingCount === 2) {
+    gridCols = "grid-cols-2"; // 2 columns for 2 toppings
+  }
+  return <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass}`}>
+      <div className="font-bold text-xl flex items-center">
+        {category.name}
+        {category.required && <span className="text-red-500 ml-1">*</span>}
+        <span className="ml-2 text-red-600 font-bold text-base">
+          {category.max_selections > 0 ? `(${t("selectUpTo")} ${category.max_selections})` : `(${t("multipleSelection")})`}
+        </span>
+      </div>
+      <div className={`grid ${gridCols} gap-1`}>
+        {sortedToppings.map(topping => {
+        const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
+        const buttonSize = "h-10 w-10"; // Same size for both states
+        return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white">
+              <span className={`flex-1 mr-2 ${isSelected ? 'text-green-700 font-medium' : ''}`}>
+                {topping.name}
+              </span>
+              <div className="flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
+                {topping.price > 0 && <span className="text-sm">
+                    +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
+                  </span>}
+                {!isSelected ? <Plus onClick={e => {
+              e.stopPropagation();
+              onToggleTopping(category.id, topping.id);
+            }} className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} /> : <Button variant="outline" size="icon" onClick={e => {
+              e.stopPropagation();
+              onToggleTopping(category.id, topping.id);
+            }} className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}>
+                    <Check className="h-4 w-4" />
+                  </Button>}
+              </div>
+            </div>;
+      })}
+      </div>
+    </div>;
+});
+ToppingCategory.displayName = 'ToppingCategory';
+
 export default memo(ItemCustomizationDialog);

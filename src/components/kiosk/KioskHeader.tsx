@@ -3,6 +3,7 @@ import React from "react";
 import { Clock, RefreshCw } from "lucide-react";
 import { Restaurant, OrderType } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
+import { SupportedLanguage } from "@/utils/language-utils";
 
 interface KioskHeaderProps {
   restaurant: Restaurant;
@@ -10,6 +11,9 @@ interface KioskHeaderProps {
   tableNumber: string | null;
   t: (key: string) => string;
   onRefresh?: () => void;
+  onBack?: () => void; // Added to match KioskView usage
+  uiLanguage?: SupportedLanguage; // Added to match KioskView usage
+  setUiLanguage?: React.Dispatch<React.SetStateAction<SupportedLanguage>>; // Added to match KioskView usage
 }
 
 const KioskHeader: React.FC<KioskHeaderProps> = ({
@@ -17,13 +21,31 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
   orderType,
   tableNumber,
   t,
-  onRefresh
+  onRefresh,
+  onBack, // Added to match KioskView usage
+  uiLanguage,
+  setUiLanguage
 }) => {
   return (
     <div className="h-full w-full bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
     }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+      
+      {/* Back button if onBack is provided */}
+      {onBack && (
+        <div className="absolute top-4 left-4 z-10">
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="bg-white/20 text-white hover:bg-white/30" 
+            onClick={onBack}
+            aria-label={t("back")}
+          >
+            <Clock className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
       
       {/* Refresh button in top right corner */}
       {onRefresh && (
