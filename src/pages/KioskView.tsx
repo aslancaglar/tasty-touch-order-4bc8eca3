@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
+import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings, createPayment } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType, Topping } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
@@ -55,6 +55,7 @@ const KioskView = () => {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const cartRef = useRef<HTMLDivElement | null>(null);
   const {
     toast
@@ -604,12 +605,31 @@ const KioskView = () => {
     if (!restaurant || cart.length === 0) return;
     try {
       setPlacingOrder(true);
+      
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
         total: calculateCartTotal(),
         customer_name: null
       });
+      
+      // If this is a card payment and card payments are enabled, create a payment record
+      const isCardPayment = cart.length > 0 && restaurant?.card_payment_enabled;
+      
+      if (isCardPayment) {
+        try {
+          await createPayment({
+            amount: calculateCartTotal(),
+            order_id: order.id,
+            payment_method: 'card'
+          });
+          
+          console.log('Payment record created for order:', order.id);
+        } catch (paymentError) {
+          console.error('Error creating payment record:', paymentError);
+          // Continue with order process even if payment record creation fails
+        }
+      }
       
       // Fix the format for createOrderItems
       const orderItemsData = {

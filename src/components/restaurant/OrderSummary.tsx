@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,8 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
+import { createPayment, updatePaymentStatus, listenToPaymentUpdates } from "@/services/payment-service";
+import { Payment } from "@/types/database-types";
 
 const translations = {
   fr: {
@@ -24,7 +25,12 @@ const translations = {
     confirm: "CONFIRMER LA COMMANDE",
     back: "Retour",
     payWithCard: "PAYER PAR CARTE",
-    payWithCash: "PAYER EN ESPÈCES"
+    payWithCash: "PAYER EN ESPÈCES",
+    processingPayment: "Traitement du paiement...",
+    paymentApproved: "Paiement approuvé",
+    paymentDeclined: "Paiement refusé",
+    paymentError: "Erreur de paiement",
+    tryAgain: "Veuillez réessayer",
   },
   en: {
     orderSummary: "ORDER SUMMARY",
@@ -36,7 +42,12 @@ const translations = {
     confirm: "CONFIRM ORDER",
     back: "Back",
     payWithCard: "PAY WITH CARD",
-    payWithCash: "PAY WITH CASH"
+    payWithCash: "PAY WITH CASH",
+    processingPayment: "Processing payment...",
+    paymentApproved: "Payment approved",
+    paymentDeclined: "Payment declined",
+    paymentError: "Payment error",
+    tryAgain: "Please try again",
   },
   tr: {
     orderSummary: "SİPARİŞ ÖZETİ",
@@ -48,7 +59,12 @@ const translations = {
     confirm: "SİPARİŞİ ONAYLA",
     back: "Geri",
     payWithCard: "KART İLE ÖDE",
-    payWithCash: "NAKİT İLE ÖDE"
+    payWithCash: "NAKİT İLE ÖDE",
+    processingPayment: "Ödeme işleniyor...",
+    paymentApproved: "Ödeme onaylandı",
+    paymentDeclined: "Ödeme reddedildi",
+    paymentError: "Ödeme hatası",
+    tryAgain: "Lütfen tekrar deneyin",
   }
 };
 
@@ -91,6 +107,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | null>(null);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'approved' | 'declined' | null>(null);
+  const [processingPayment, setProcessingPayment] = useState<boolean>(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -115,11 +134,97 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
 
+  // Set up a listener for payment status updates
+  useEffect(() => {
+    if (!paymentId) return;
+    
+    const unsubscribe = listenToPaymentUpdates(paymentId, (status) => {
+      console.log('Payment status updated:', status);
+      
+      if (status === 'approved') {
+        setPaymentStatus('approved');
+        setProcessingPayment(false);
+        toast({
+          title: translations[uiLanguage]?.paymentApproved || "Payment approved",
+          variant: "default"
+        });
+        // Once payment is approved, proceed with the order
+        onPlaceOrder();
+      } else if (status === 'declined') {
+        setPaymentStatus('declined');
+        setProcessingPayment(false);
+        toast({
+          title: translations[uiLanguage]?.paymentDeclined || "Payment declined",
+          description: translations[uiLanguage]?.tryAgain || "Please try again",
+          variant: "destructive"
+        });
+      }
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [paymentId, uiLanguage, toast, onPlaceOrder]);
+
   const handleConfirmOrder = async (selectedPaymentMethod?: "card" | "cash") => {
     if (selectedPaymentMethod) {
       setPaymentMethod(selectedPaymentMethod);
     }
     
+    // If it's a card payment, create a payment record and wait for status update
+    if (selectedPaymentMethod === 'card') {
+      try {
+        setProcessingPayment(true);
+        toast({
+          title: translations[uiLanguage]?.processingPayment || "Processing payment...",
+        });
+        
+        // First create the order
+        const { data: orderData } = await supabase
+          .from('orders')
+          .insert({
+            restaurant_id: restaurant?.id,
+            total: total,
+            status: 'pending',
+            customer_name: null
+          })
+          .select()
+          .single();
+        
+        if (!orderData) throw new Error("Failed to create order");
+        
+        // Then create the payment linked to the order
+        const payment = await createPayment({
+          amount: total,
+          order_id: orderData.id,
+          payment_method: 'card'
+        });
+        
+        // Store the payment ID to listen for updates
+        setPaymentId(payment.id);
+        
+        // In a real-world scenario, you would integrate with a payment processor here
+        // and update the payment status based on the response
+        
+        // For demonstration purposes, we'll simulate a payment approval after a short delay
+        setTimeout(async () => {
+          await updatePaymentStatus(payment.id, 'approved', 'Payment processed successfully');
+        }, 3000);
+        
+        return;
+      } catch (error) {
+        console.error("Error during payment processing:", error);
+        setProcessingPayment(false);
+        toast({
+          title: translations[uiLanguage]?.paymentError || "Payment error",
+          description: translations[uiLanguage]?.tryAgain || "Please try again",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
+    // For cash payments or non-payment methods, proceed with the order directly
     onPlaceOrder();
     
     if (restaurant?.id) {
@@ -368,8 +473,18 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
         
         <div className="p-4 bg-gray-50">
-          {showPaymentOptions ? (
+          {processingPayment ? (
+            <div className="w-full flex flex-col items-center justify-center py-4">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-2" />
+              <p className="text-center">{translations[uiLanguage]?.processingPayment || "Processing payment..."}</p>
+            </div>
+          ) : paymentStatus === 'declined' ? (
             <div className="space-y-3">
+              <div className="bg-red-100 text-red-800 p-3 rounded-md mb-3">
+                <p className="text-center font-medium">{translations[uiLanguage]?.paymentDeclined || "Payment declined"}</p>
+                <p className="text-center text-sm">{translations[uiLanguage]?.tryAgain || "Please try again"}</p>
+              </div>
+              
               {restaurant?.card_payment_enabled && (
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6"
@@ -380,12 +495,25 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   {t("payWithCard")}
                 </Button>
               )}
+            </div>
+          ) : showPaymentOptions ? (
+            <div className="space-y-3">
+              {restaurant?.card_payment_enabled && (
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6"
+                  onClick={() => handleConfirmOrder("card")}
+                  disabled={placingOrder || processingPayment}
+                >
+                  <CreditCard className="mr-2 h-5 w-5" />
+                  {t("payWithCard")}
+                </Button>
+              )}
               
               {restaurant?.cash_payment_enabled && (
                 <Button 
                   className="w-full bg-green-700 hover:bg-green-800 text-white py-6"
                   onClick={() => handleConfirmOrder("cash")}
-                  disabled={placingOrder}
+                  disabled={placingOrder || processingPayment}
                 >
                   <Banknote className="mr-2 h-5 w-5" />
                   {t("payWithCash")}
@@ -396,7 +524,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <Button 
               className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
               onClick={() => handleConfirmOrder()}
-              disabled={placingOrder}
+              disabled={placingOrder || processingPayment}
             >
               <Check className="mr-2 h-5 w-5" />
               {t("confirm")}
