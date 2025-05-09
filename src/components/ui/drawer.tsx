@@ -2,6 +2,7 @@
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
 
 const Drawer = ({
   shouldScaleBackground = true,
@@ -24,14 +25,16 @@ interface DrawerContentProps extends React.ComponentPropsWithoutRef<typeof Drawe
   showOverlay?: boolean;
   preventClose?: boolean;
   passClicksToPage?: boolean;
+  showCloseButton?: boolean;
 }
 
 const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Content>, DrawerContentProps>(({
   className,
   children,
-  showOverlay = false,
+  showOverlay = true,
   preventClose = false,
   passClicksToPage = false,
+  showCloseButton = true,
   ...props
 }, ref) => {
   // Create a custom handler that only prevents the drawer from closing
@@ -75,6 +78,12 @@ const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.C
         {...props}
       >
         <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted my-2" />
+        {showCloseButton && (
+          <DrawerPrimitive.Close className="absolute right-4 top-4 rounded-full p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none bg-gray-100 hover:bg-gray-200">
+            <X className="h-5 w-5 text-gray-600" />
+            <span className="sr-only">Close</span>
+          </DrawerPrimitive.Close>
+        )}
         {children}
       </DrawerPrimitive.Content>
     </DrawerPortal>
