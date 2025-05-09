@@ -1,31 +1,34 @@
 
 import React from "react";
-import { Clock, RefreshCw } from "lucide-react";
+import { Clock, RefreshCw, ArrowLeft } from "lucide-react";
 import { Restaurant, OrderType } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
-import { SupportedLanguage } from "@/utils/language-utils";
+import { SupportedLanguage, useTranslation } from "@/utils/language-utils";
 
 interface KioskHeaderProps {
   restaurant: Restaurant;
-  orderType: OrderType;
-  tableNumber: string | null;
-  t: (key: string) => string;
+  orderType?: OrderType;
+  tableNumber?: string | null;
+  t?: (key: string) => string;
   onRefresh?: () => void;
-  onBack?: () => void; // Added to match KioskView usage
-  uiLanguage?: SupportedLanguage; // Added to match KioskView usage
-  setUiLanguage?: React.Dispatch<React.SetStateAction<SupportedLanguage>>; // Added to match KioskView usage
+  onBack?: () => void;
+  uiLanguage?: SupportedLanguage;
+  setUiLanguage?: React.Dispatch<React.SetStateAction<SupportedLanguage>>;
 }
 
 const KioskHeader: React.FC<KioskHeaderProps> = ({
   restaurant,
   orderType,
   tableNumber,
-  t,
   onRefresh,
-  onBack, // Added to match KioskView usage
-  uiLanguage,
+  onBack,
+  uiLanguage = "fr",
   setUiLanguage
 }) => {
+  // Use the provided t function or get one from useTranslation
+  const { t: translationFn } = useTranslation(uiLanguage);
+  const t = (key: string) => translationFn(key);
+  
   return (
     <div className="h-full w-full bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
@@ -42,7 +45,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
             onClick={onBack}
             aria-label={t("back")}
           >
-            <Clock className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
         </div>
       )}

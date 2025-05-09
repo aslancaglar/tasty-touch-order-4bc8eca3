@@ -10,7 +10,7 @@ interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectOrderType?: (type: OrderType, tableNumber?: string) => void;
-  onOrderTypeSelected?: (type: OrderType, table?: string) => void; // Added to match the prop in KioskView
+  onOrderTypeSelected?: (type: OrderType, table?: string) => void;
   uiLanguage?: SupportedLanguage;
 }
 
