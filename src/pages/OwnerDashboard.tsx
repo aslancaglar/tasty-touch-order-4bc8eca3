@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Loader2, Store, LogOut } from "lucide-react";
 import { Restaurant } from "@/types/database-types";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +15,7 @@ const OwnerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
   const { t } = useTranslation(language);
 
@@ -76,6 +76,7 @@ const OwnerDashboard = () => {
         title: "Logged out successfully",
         description: "You have been logged out of your account",
       });
+      navigate('/owner/login');
     } catch (error) {
       toast({
         title: "Error",

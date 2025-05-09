@@ -1,5 +1,4 @@
-
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
@@ -42,6 +41,7 @@ interface SidebarProps {
 
 export function Sidebar({ forceDefaultLanguage = false }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(true);
   const { signOut, user } = useAuth();
   const { toast } = useToast();
@@ -143,6 +143,10 @@ export function Sidebar({ forceDefaultLanguage = false }: SidebarProps) {
         title: "Logged out successfully",
         description: "You have been logged out of your account",
       });
+      
+      // Navigate to appropriate login page based on route
+      const isOwnerRoute = location.pathname.startsWith('/owner');
+      navigate(isOwnerRoute ? '/owner/login' : '/auth');
     } catch (error) {
       toast({
         title: "Error",
