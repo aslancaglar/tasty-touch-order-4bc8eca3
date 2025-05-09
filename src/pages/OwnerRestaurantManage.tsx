@@ -13,7 +13,6 @@ import OrdersTab from "@/components/restaurant/OrdersTab";
 import StockTab from "@/components/restaurant/StockTab";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-
 const OwnerRestaurantManage = () => {
   const {
     id
@@ -122,10 +121,7 @@ const OwnerRestaurantManage = () => {
         </div>
         <div className="ml-0 sm:ml-auto mt-2 sm:mt-0">
           <Button variant="outline" asChild size={isMobile ? "sm" : "default"}>
-            <Link to={`/owner/restaurant/${id}/settings`} className="flex items-center">
-              <Settings className="mr-2 h-4 w-4" />
-              {t("restaurants.settings")}
-            </Link>
+            
           </Button>
         </div>
       </div>
