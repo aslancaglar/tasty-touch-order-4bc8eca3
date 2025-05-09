@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,11 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
+
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
+
 const translations = {
   fr: {
     orderSummary: "Résumé de la commande",
@@ -75,6 +78,7 @@ const translations = {
     errorPrinting: "Fiş yazdırılırken bir hata oluştu."
   }
 };
+
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -93,8 +97,9 @@ interface OrderSummaryProps {
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
-  uiLanguage?: "fr" | "en" | "tr";
+  uiLanguage?: SupportedLanguage;
 }
+
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -114,24 +119,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
-  const {
-    toast
-  } = useToast();
-  const {
-    t
-  } = useTranslation(uiLanguage);
-  const {
-    total,
-    subtotal,
-    tax
-  } = calculateCartTotals(cart);
+  const { toast } = useToast();
+  const { t } = useTranslation(uiLanguage);
+  
+  const { total, subtotal, tax } = calculateCartTotals(cart);
+  
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        const {
-          count
-        } = await supabase.from('orders').select('*', {
+        const { count } = await supabase.from('orders').select('*', {
           count: 'exact',
           head: true
         }).eq('restaurant_id', restaurant.id);
@@ -140,15 +137,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
+  
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
-        const {
-          data: printConfig,
-          error
-        } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
+        const { data: printConfig, error } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
         if (error) {
           console.error("Error fetching print configuration:", error);
           return;
@@ -209,6 +204,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       }
     }
   };
+  
   const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -255,6 +251,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
+  
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -282,6 +279,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       useCurrencyCode: true
     });
   };
+  
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
   
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
@@ -370,7 +368,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
       </DialogContent>
 
-      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
+      <OrderReceipt 
+        restaurant={restaurant} 
+        cart={cart} 
+        orderNumber={orderNumber} 
+        tableNumber={tableNumber} 
+        orderType={orderType} 
+        getFormattedOptions={getFormattedOptions} 
+        getFormattedToppings={getFormattedToppings} 
+        uiLanguage={uiLanguage} 
+      />
     </Dialog>;
 };
+
 export default OrderSummary;

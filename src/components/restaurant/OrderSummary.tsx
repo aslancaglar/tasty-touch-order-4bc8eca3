@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
+import { SupportedLanguage } from "@/utils/language-utils";
 
 const translations = {
   fr: {
@@ -59,10 +61,11 @@ interface OrderSummaryProps {
     id?: string;
     name: string;
     location?: string;
+    currency?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
-  uiLanguage?: "fr" | "en" | "tr";
+  uiLanguage?: SupportedLanguage;
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -269,6 +272,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     });
   };
 
+  const currencySymbol = restaurant?.currency ? 
+    (CURRENCY_SYMBOLS[(restaurant.currency).toUpperCase()] || restaurant.currency) : 
+    "€";
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md md:max-w-lg p-0">
@@ -292,7 +299,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <span className="font-medium mr-2">{item.quantity}x</span>
                     <span className="font-medium">{item.menuItem.name}</span>
                   </div>
-                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
+                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
                 
                 {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
@@ -301,7 +308,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                       <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
-                        <span>0.00 €</span>
+                        <span>0.00 {currencySymbol}</span>
                       </div>
                     ))}
                     {/* Grouped toppings by category, show price if > 0 */}
@@ -315,7 +322,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                           return (
                             <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
                               <span style={{ paddingLeft: 6 }}>+ {toppingObj}</span>
-                              <span>{price > 0 ? price.toFixed(2) + " €" : ""}</span>
+                              <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
                             </div>
                           )
                         })}
@@ -332,16 +339,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
               <span>{t("totalHT")}</span>
-              <span>{subtotal.toFixed(2)} €</span>
+              <span>{subtotal.toFixed(2)} {currencySymbol}</span>
             </div>
             <div className="flex justify-between text-gray-600">
               <span>{uiLanguage === "fr" ? t("vatWithRate") : t("vat")}</span>
-              <span>{tax.toFixed(2)} €</span>
+              <span>{tax.toFixed(2)} {currencySymbol}</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
               <span>{t("totalTTC")}</span>
-              <span>{total.toFixed(2)} €</span>
+              <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
           </div>
         </div>
@@ -370,6 +377,19 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       />
     </Dialog>
   );
+};
+
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€",
+  USD: "$",
+  GBP: "£",
+  TRY: "₺",
+  JPY: "¥",
+  CAD: "$",
+  AUD: "$",
+  CHF: "Fr.",
+  CNY: "¥",
+  RUB: "₽"
 };
 
 export default OrderSummary;

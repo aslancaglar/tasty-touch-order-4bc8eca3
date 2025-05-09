@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -7,6 +8,8 @@ import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { calculateCartTotals } from "@/utils/price-utils";
+import { SupportedLanguage } from "@/utils/language-utils";
+
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
@@ -29,9 +32,10 @@ interface CartProps {
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
   showOrderSummaryOnly?: boolean;
-  uiLanguage?: "fr" | "en" | "tr";
+  uiLanguage?: SupportedLanguage;
   t: (key: string) => string;
 }
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -44,9 +48,11 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
+
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
+
 const cartTranslations = {
   fr: {
     yourOrder: "VOTRE COMMANDE",
@@ -82,6 +88,7 @@ const cartTranslations = {
     empty: "Ürün yok"
   }
 };
+
 const Cart: React.FC<CartProps> = ({
   cart,
   isOpen,
@@ -117,6 +124,7 @@ const Cart: React.FC<CartProps> = ({
       return t(key);
     }
   };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && !showOrderSummary && cartRef.current && !cartRef.current.contains(event.target as Node)) {
@@ -128,26 +136,28 @@ const Cart: React.FC<CartProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onToggleOpen, showOrderSummary]);
+
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
   };
+
   const handleCloseOrderSummary = () => {
     setShowOrderSummary(false);
   };
+
   const handlePlaceOrder = () => {
     onPlaceOrder();
     setShowOrderSummary(false);
   };
+
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
-  const {
-    total,
-    subtotal,
-    tax
-  } = calculateCartTotals(cart);
+
+  const { total, subtotal, tax } = calculateCartTotals(cart);
   const reversedCart = [...cart].reverse();
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+
   return <>
       <div ref={cartRef} style={{
       maxHeight: "60vh"
@@ -233,7 +243,22 @@ const Cart: React.FC<CartProps> = ({
         </div>
       </div>
 
-      <OrderSummary isOpen={showOrderSummary} onClose={handleCloseOrderSummary} cart={cart} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} />
+      <OrderSummary 
+        isOpen={showOrderSummary} 
+        onClose={handleCloseOrderSummary} 
+        cart={cart} 
+        onPlaceOrder={handlePlaceOrder} 
+        placingOrder={placingOrder} 
+        calculateSubtotal={calculateSubtotal} 
+        calculateTax={calculateTax} 
+        getFormattedOptions={getFormattedOptions} 
+        getFormattedToppings={getFormattedToppings} 
+        restaurant={restaurant} 
+        orderType={orderType} 
+        tableNumber={tableNumber} 
+        uiLanguage={uiLanguage} 
+      />
     </>;
 };
+
 export default Cart;
