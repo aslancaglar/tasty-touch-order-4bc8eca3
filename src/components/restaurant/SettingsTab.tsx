@@ -43,25 +43,50 @@ const languageOptions = [
   { value: "tr", label: "Türkçe" },
 ];
 
-const currencyOptions = currencyCodes.data
-  .filter(c => c.code && c.currency)
-  .map(c => {
-    const currencyCode = c.code || "";
-    return {
-      value: currencyCode,
-      label: `${currencyCode} (${c.currency})`,
-      symbol: currencyCode // Using code as fallback when actual symbol is not available
-    };
-  })
-  .sort((a, b) => {
-    const prefer = ["EUR", "USD", "TRY", "GBP"];
-    const aPref = prefer.indexOf(a.value);
-    const bPref = prefer.indexOf(b.value);
-    if (aPref !== -1 && bPref !== -1) return aPref - bPref;
-    if (aPref !== -1) return -1;
-    if (bPref !== -1) return 1;
-    return a.label.localeCompare(b.label);
-  });
+// Fix: properly access currency codes and add error handling
+const currencyOptions = (() => {
+  try {
+    // Get all currency codes and ensure data exists
+    const codes = currencyCodes.codes();
+    if (!codes || !Array.isArray(codes)) {
+      console.error("Currency codes not available or in unexpected format");
+      return [{ value: "EUR", label: "EUR (Euro)", symbol: "EUR" }];
+    }
+    
+    return codes
+      .map(code => {
+        try {
+          const currencyInfo = currencyCodes.code(code);
+          if (!currencyInfo) return null;
+          
+          const currencyCode = code || "";
+          const currencyName = currencyInfo.currency || "";
+          
+          return {
+            value: currencyCode,
+            label: `${currencyCode} (${currencyName})`,
+            symbol: currencyCode
+          };
+        } catch (err) {
+          console.error(`Error processing currency code ${code}:`, err);
+          return null;
+        }
+      })
+      .filter(item => item !== null)
+      .sort((a, b) => {
+        const prefer = ["EUR", "USD", "TRY", "GBP"];
+        const aPref = prefer.indexOf(a.value);
+        const bPref = prefer.indexOf(b.value);
+        if (aPref !== -1 && bPref !== -1) return aPref - bPref;
+        if (aPref !== -1) return -1;
+        if (bPref !== -1) return 1;
+        return a.label.localeCompare(b.label);
+      });
+  } catch (err) {
+    console.error("Failed to load currency codes:", err);
+    return [{ value: "EUR", label: "EUR (Euro)", symbol: "EUR" }];
+  }
+})();
 
 const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [activeTab, setActiveTab] = useState("basic");
