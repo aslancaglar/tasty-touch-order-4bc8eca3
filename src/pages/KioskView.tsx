@@ -4,9 +4,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
-import { createPayment } from "@/services/payment-service";
 import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType, Topping } from "@/types/database-types";
-import { supabase, listenToPaymentUpdates } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
 import Cart from "@/components/kiosk/Cart";
@@ -18,7 +17,6 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
-
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -26,7 +24,6 @@ type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
-
 const KioskView = () => {
   const {
     restaurantSlug
@@ -58,7 +55,6 @@ const KioskView = () => {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const cartRef = useRef<HTMLDivElement | null>(null);
   const {
     toast
@@ -608,31 +604,12 @@ const KioskView = () => {
     if (!restaurant || cart.length === 0) return;
     try {
       setPlacingOrder(true);
-      
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
         total: calculateCartTotal(),
         customer_name: null
       });
-      
-      // If this is a card payment and card payments are enabled, create a payment record
-      const isCardPayment = cart.length > 0 && restaurant?.card_payment_enabled;
-      
-      if (isCardPayment) {
-        try {
-          await createPayment({
-            amount: calculateCartTotal(),
-            order_id: order.id,
-            payment_method: 'card'
-          });
-          
-          console.log('Payment record created for order:', order.id);
-        } catch (paymentError) {
-          console.error('Error creating payment record:', paymentError);
-          // Continue with order process even if payment record creation fails
-        }
-      }
       
       // Fix the format for createOrderItems
       const orderItemsData = {
@@ -825,7 +802,7 @@ const KioskView = () => {
       });
     }
   };
-  const handleRefresh = async () => {
+  const handleRefreshMenu = async () => {
     try {
       setLoading(true);
       setRefreshTrigger(prev => prev + 1);
@@ -838,14 +815,14 @@ const KioskView = () => {
         items: menuData.menuItems[category.id] || []
       }));
       
-      // Sort the processedCategories by display_order
+      // Sort the processedCategories before setting state or caching
       const sortedMenuData = [...processedCategories].sort((a, b) => {
         const orderA = a.display_order ?? 1000;
         const orderB = b.display_order ?? 1000;
         return orderA - orderB;
       });
 
-      // Sort items within each category by display_order
+      // Also sort items within each category
       sortedMenuData.forEach(category => {
         category.items = [...category.items].sort((a, b) => {
           const orderA = a.display_order ?? 1000;
@@ -853,138 +830,176 @@ const KioskView = () => {
           return orderA - orderB;
         });
       });
-
-      // Clear the existing cache for the categories
-      if (restaurant.id) {
-        setCacheItem('categories', sortedMenuData, restaurant.id);
-      }
-      
       setCategories(sortedMenuData);
       if (sortedMenuData.length > 0) {
         setActiveCategory(sortedMenuData[0].id);
       }
-      
-      setLoading(false);
+      setCacheItem('categories', sortedMenuData, restaurant.id);
       toast({
-        title: t('menuRefreshed'),
-        description: t('menuRefreshSuccess'),
-        variant: "default"
+        title: t("menuRefreshed"),
+        description: t("menuRefreshSuccess")
       });
+      setLoading(false);
     } catch (error) {
       console.error("Error refreshing menu:", error);
       toast({
         title: "Error",
-        description: "Failed to refresh menu. Please try again.",
+        description: "Failed to refresh menu",
         variant: "destructive"
       });
       setLoading(false);
     }
   };
-  
-  return (
-    <div className="flex flex-col h-full bg-slate-50">
-      {showWelcome ? (
-        <WelcomePage onStart={handleStartOrder} restaurant={restaurant} uiLanguage={uiLanguage} />
-      ) : showOrderTypeSelection ? (
-        <OrderTypeSelection 
-          isOpen={showOrderTypeSelection}
-          onClose={() => setShowWelcome(true)}
-          onOrderTypeSelected={handleOrderTypeSelected} 
-          uiLanguage={uiLanguage}
-        />
-      ) : (
-        <>
-          <KioskHeader
-            restaurant={restaurant}
-            onBack={() => setShowWelcome(true)}
-            uiLanguage={uiLanguage}
-            setUiLanguage={setUiLanguage}
-            onRefresh={handleRefresh}
-          />
-          
-          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-            <div className="w-full md:w-64 border-r bg-white shadow-sm z-10">
-              <MenuCategoryList
-                categories={categories}
-                activeCategory={activeCategory}
-                setActiveCategory={setActiveCategory}
-                loading={loading}
-              />
-            </div>
-            
-            <div className="flex-1 overflow-y-auto bg-white">
-              {loading ? (
-                <div className="h-full flex items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                </div>
-              ) : (
-                <MenuItemGrid
-                  items={categories.find(c => c.id === activeCategory)?.items || []}
-                  onSelectItem={handleSelectItem}
-                  restaurant={restaurant}
-                />
-              )}
-            </div>
-          </div>
-          
-          {cart.length > 0 && !isCartOpen && (
-            <CartButton
-              count={cart.length}
-              total={calculateCartTotal()}
-              onClick={toggleCart}
-              restaurant={restaurant}
+  useEffect(() => {
+    const fetchRestaurantAndMenu = async () => {
+      if (!restaurantSlug) {
+        navigate('/');
+        return;
+      }
+      try {
+        setLoading(true);
+        const restaurantData = await getRestaurantBySlug(restaurantSlug);
+        if (!restaurantData) {
+          toast({
+            title: t("restaurantNotFound"),
+            description: t("sorryNotFound"),
+            variant: "destructive"
+          });
+          navigate('/');
+          return;
+        }
+        setRestaurant(restaurantData);
+        const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
+        setUiLanguage(lang);
+        await fetchCategories();
+        setLoading(false);
+      } catch (error) {
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
+        toast({
+          title: t("restaurantNotFound"),
+          description: t("sorryNotFound"),
+          variant: "destructive"
+        });
+        setLoading(false);
+      }
+    };
+    fetchRestaurantAndMenu();
+  }, [restaurantSlug, navigate, toast]);
+  useEffect(() => {
+    // Add a style tag to prevent selection throughout the kiosk view
+    const styleTag = document.createElement('style');
+    styleTag.innerHTML = `
+      .kiosk-view {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+      
+      .kiosk-view * {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+      
+      /* Only allow selection in the special instructions textarea */
+      .kiosk-view textarea {
+        user-select: text;
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+      }
+    `;
+    document.head.appendChild(styleTag);
+
+    // Clean up on unmount
+    return () => {
+      document.head.removeChild(styleTag);
+    };
+  }, []);
+  if (loading && !restaurant) {
+    return <div className="flex items-center justify-center h-screen kiosk-view">
+        <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
+      </div>;
+  }
+  if (!restaurant) {
+    return <div className="flex items-center justify-center h-screen kiosk-view">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
+          <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
+          <Button onClick={() => navigate('/')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t("backToHome")}
+          </Button>
+        </div>
+      </div>;
+  }
+  if (showWelcome) {
+    return <div className="kiosk-view">
+        <WelcomePage restaurant={restaurant} onStart={() => {
+        fullReset();
+        handleStartOrder();
+      }} uiLanguage={uiLanguage} />
+      </div>;
+  }
+  if (showOrderTypeSelection) {
+    return <div className="kiosk-view">
+        <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+      }} />
+        <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
+        setShowOrderTypeSelection(false);
+        setShowWelcome(true);
+      }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
+        
+        <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+      </div>;
+  }
+  const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartIsEmpty = cart.length === 0;
+  return <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+      {/* Fixed height header - 12vh */}
+      <div className="h-[12vh] min-h-[120px] flex-shrink-0">
+        <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
+      </div>
+
+      {/* Content area with fixed sidebar and scrollable menu grid */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Fixed width sidebar - 16vw */}
+        <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
+          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+        </div>
+
+        {/* Scrollable menu grid area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            <MenuItemGrid 
+              items={categories.flatMap(c => c.items)} 
+              handleSelectItem={handleSelectItem} 
+              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")} 
+              t={t} 
+              restaurantId={restaurant?.id} 
+              refreshTrigger={refreshTrigger}
+              categories={categories}
             />
-          )}
-          
-          <Cart
-            isOpen={isCartOpen}
-            onClose={() => setIsCartOpen(false)}
-            cart={cart}
-            removeItem={handleRemoveCartItem}
-            updateQuantity={handleUpdateCartItemQuantity}
-            subtotal={calculateSubtotal()}
-            tax={calculateTax()}
-            restaurant={restaurant}
-            onCheckout={() => setIsCartOpen(false)}
-            onPlaceOrder={handlePlaceOrder}
-            placingOrder={placingOrder}
-            orderPlaced={orderPlaced}
-            getFormattedOptions={getFormattedOptions}
-            getFormattedToppings={getFormattedToppings}
-            orderType={orderType}
-            tableNumber={tableNumber}
-            uiLanguage={uiLanguage}
-          />
-        </>
-      )}
-      
-      {selectedItem && (
-        <ItemCustomizationDialog
-          item={selectedItem}
-          quantity={quantity}
-          setQuantity={setQuantity}
-          selectedOptions={selectedOptions}
-          selectedToppings={selectedToppings}
-          specialInstructions={specialInstructions}
-          setSpecialInstructions={setSpecialInstructions}
-          onToggleChoice={handleToggleChoice}
-          onToggleTopping={handleToggleTopping}
-          onClose={() => setSelectedItem(null)}
-          onAddToCart={handleAddToCart}
-          calculatePrice={calculateItemPrice}
-          shouldShowToppingCategory={shouldShowToppingCategory}
-          restaurant={restaurant}
-        />
-      )}
-      
-      <InactivityDialog
-        isOpen={showDialog}
-        onConfirm={handleContinue}
-        onCancel={handleCancel}
-        uiLanguage={uiLanguage}
-      />
-    </div>
-  );
+          </div>
+        </div>
+      </div>
+
+      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} uiLanguage={uiLanguage} currency={restaurant.currency} />}
+
+      <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
+      maxHeight: "60vh"
+    }}>
+        <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} t={t} />
+      </div>
+
+      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
+
+      <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+    </div>;
 };
 
 export default KioskView;

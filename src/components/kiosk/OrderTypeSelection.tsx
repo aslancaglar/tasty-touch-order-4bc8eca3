@@ -9,36 +9,24 @@ export type OrderType = "dine-in" | "takeaway" | null;
 interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectOrderType?: (type: OrderType, tableNumber?: string) => void;
-  onOrderTypeSelected?: (type: OrderType, table?: string) => void;
+  onSelectOrderType: (type: OrderType, tableNumber?: string) => void;
   uiLanguage?: SupportedLanguage;
 }
 
-const OrderTypeSelection: React.FC<OrderTypeSelectionProps> = ({
+const OrderTypeSelection = ({
   isOpen,
   onClose,
-  onOrderTypeSelected,
   onSelectOrderType,
   uiLanguage = "fr"
 }: OrderTypeSelectionProps) => {
   const { t } = useTranslation(uiLanguage);
   
   const handleSelectDineIn = () => {
-    // Use either callback function that's provided
-    if (onOrderTypeSelected) {
-      onOrderTypeSelected("dine-in");
-    } else if (onSelectOrderType) {
-      onSelectOrderType("dine-in");
-    }
+    onSelectOrderType("dine-in");
   };
   
   const handleSelectTakeaway = () => {
-    // Use either callback function that's provided
-    if (onOrderTypeSelected) {
-      onOrderTypeSelected("takeaway");
-    } else if (onSelectOrderType) {
-      onSelectOrderType("takeaway");
-    }
+    onSelectOrderType("takeaway");
   };
   
   return (

@@ -1,3 +1,4 @@
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -180,15 +181,3 @@ export interface CartItem {
   specialInstructions?: string;
   itemPrice: number;
 }
-
-// Add the Payment type
-export type Payment = {
-  id: string;
-  amount: number;
-  status: 'pending' | 'approved' | 'declined' | 'cancelled';
-  pos_response?: string;
-  created_at: string;
-  updated_at: string;
-  order_id: string;
-  payment_method: 'card';
-};

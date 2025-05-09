@@ -1,20 +1,18 @@
 
 import React from "react";
-import { UtensilsCrossed, Loader2 } from "lucide-react";
+import { UtensilsCrossed } from "lucide-react";
 import { MenuCategory } from "@/types/database-types";
 
 interface MenuCategoryListProps {
   categories: MenuCategory[];
   activeCategory: string | null;
   setActiveCategory: (categoryId: string) => void;
-  loading?: boolean; // Added to match KioskView usage
 }
 
 const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   categories,
   activeCategory,
-  setActiveCategory,
-  loading = false // Default to false if not provided
+  setActiveCategory
 }) => {
   // Sort categories by display_order
   const sortedCategories = [...categories].sort((a, b) => {
@@ -54,14 +52,6 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
       }, 50);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="h-full p-4 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-      </div>
-    );
-  }
 
   return (
     <div className="h-full p-4 overflow-y-auto">

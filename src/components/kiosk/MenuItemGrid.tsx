@@ -2,19 +2,16 @@ import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ImageOff } from "lucide-react";
-import { MenuItem, MenuCategory, Restaurant } from "@/types/database-types";
+import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
-
 interface MenuItemGridProps {
   items: MenuItem[];
-  handleSelectItem?: (item: MenuItem) => void;
-  onSelectItem?: (item: MenuItem) => Promise<void> | void;
-  currencySymbol?: string;
-  t?: (key: string) => string;
+  handleSelectItem: (item: MenuItem) => void;
+  currencySymbol: string;
+  t: (key: string) => string;
   restaurantId?: string;
-  restaurant?: Restaurant;
   refreshTrigger?: number;
-  categories?: MenuCategory[];
+  categories: MenuCategory[];
   activeCategory?: string;
 }
 
@@ -22,33 +19,24 @@ interface MenuItemGridProps {
 const MenuItemCard = memo(({
   item,
   handleSelectItem,
-  onSelectItem,
   t,
   currencySymbol,
   cachedImageUrl,
   hasImageFailed
 }: {
   item: MenuItem;
-  handleSelectItem?: (item: MenuItem) => void;
-  onSelectItem?: (item: MenuItem) => Promise<void> | void;
-  t?: (key: string) => string;
-  currencySymbol?: string;
+  handleSelectItem: (item: MenuItem) => void;
+  t: (key: string) => string;
+  currencySymbol: string;
   cachedImageUrl: string;
   hasImageFailed: boolean;
 }) => {
   const handleItemClick = useCallback(() => {
-    // Use either handler that's provided
-    if (onSelectItem) {
-      onSelectItem(item);
-    } else if (handleSelectItem) {
-      handleSelectItem(item);
-    }
-  }, [item, handleSelectItem, onSelectItem]);
-
+    handleSelectItem(item);
+  }, [item, handleSelectItem]);
   const formattedPrice = useMemo(() => {
     return parseFloat(item.price.toString()).toFixed(2);
   }, [item.price]);
-  
   return <Card className="overflow-hidden hover:shadow-md transition-shadow select-none cursor-pointer" onClick={handleItemClick}>
       <div className="h-40 bg-cover bg-center relative select-none" style={{
       backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
@@ -61,28 +49,25 @@ const MenuItemCard = memo(({
       <div className="p-4 select-none">
         <div className="flex justify-between">
           <h3 className="font-bebas text-lg tracking-wide break-words">{item.name}</h3>
-          <p className="font-bebas text-lg whitespace-nowrap ml-2">{formattedPrice} {currencySymbol || "€"}</p>
+          <p className="font-bebas text-lg whitespace-nowrap ml-2">{formattedPrice} {currencySymbol}</p>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
         <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
-          {t ? t("addToCart") : "Add to cart"}
+          {t("addToCart")}
           <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
     </Card>;
 });
 MenuItemCard.displayName = 'MenuItemCard';
-
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
-  onSelectItem,
-  currencySymbol = "€",
-  t = (key: string) => key === "addToCart" ? "Add to cart" : key,
+  currencySymbol,
+  t,
   restaurantId,
-  restaurant,
   refreshTrigger,
-  categories = [],
+  categories,
   activeCategory
 }) => {
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
@@ -305,16 +290,6 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const handleImageError = useCallback((itemId: string) => {
     setFailedImages(prev => new Set([...prev, itemId]));
   }, []);
-
-  // Make sure that when this component calls handleItemClick, it calls either onSelectItem or handleSelectItem
-  const handleItemClick = useCallback((item: MenuItem) => {
-    if (onSelectItem) {
-      onSelectItem(item);
-    } else if (handleSelectItem) {
-      handleSelectItem(item);
-    }
-  }, [onSelectItem, handleSelectItem]);
-
   return <div className="space-y-8 pb-20">
       {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20 pt-0 py-0">
           <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide pl-4">
@@ -331,5 +306,4 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         </div>)}
     </div>;
 };
-
 export default memo(MenuItemGrid);

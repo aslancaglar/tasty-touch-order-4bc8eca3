@@ -1,14 +1,13 @@
+
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { MenuItemWithOptions, Restaurant } from "@/types/database-types";
-import { SupportedLanguage } from "@/utils/language-utils";
-
+import { MenuItemWithOptions } from "@/types/database-types";
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
-  isOpen?: boolean;
+  isOpen: boolean;
   onClose: () => void;
   onAddToCart: () => void;
   selectedOptions: {
@@ -22,16 +21,12 @@ interface ItemCustomizationDialogProps {
   onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
   onToggleTopping: (categoryId: string, toppingId: string) => void;
   quantity: number;
-  onQuantityChange?: (quantity: number) => void;
-  setQuantity?: React.Dispatch<React.SetStateAction<number>>; // Added to match KioskView usage
+  onQuantityChange: (quantity: number) => void;
   specialInstructions: string;
-  onSpecialInstructionsChange?: (instructions: string) => void;
-  setSpecialInstructions?: React.Dispatch<React.SetStateAction<string>>; // Added to match KioskView usage
+  onSpecialInstructionsChange: (instructions: string) => void;
   shouldShowToppingCategory: (category: any) => boolean;
-  t?: (key: string) => string;
-  currencySymbol?: string;
-  calculatePrice?: (item: MenuItemWithOptions, options: { optionId: string; choiceIds: string[]; }[], toppings: { categoryId: string; toppingIds: string[]; }[]) => number; // Added to match KioskView usage
-  restaurant?: Restaurant; // Added to match KioskView usage
+  t: (key: string) => string;
+  currencySymbol: string;
 }
 
 // Define alternating background colors for topping categories
@@ -151,7 +146,7 @@ ToppingCategory.displayName = 'ToppingCategory';
 // Main component with heavy use of memoization
 const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   item,
-  isOpen = true,
+  isOpen,
   onClose,
   onAddToCart,
   selectedOptions,
@@ -160,39 +155,17 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   onToggleTopping,
   quantity,
   onQuantityChange,
-  setQuantity, // Added to match KioskView usage
   specialInstructions,
   onSpecialInstructionsChange,
-  setSpecialInstructions, // Added to match KioskView usage
   shouldShowToppingCategory,
-  t: propT,
-  currencySymbol: propCurrencySymbol,
-  calculatePrice, // Added to match KioskView usage
-  restaurant // Added to match KioskView usage
+  t,
+  currencySymbol
 }) => {
   if (!item) return null;
-
-  // Default translations if t isn't provided
-  const t = propT || ((key: string) => {
-    if (key === "addToCart") return "Add to Cart";
-    if (key === "selectUpTo") return "Select up to";
-    if (key === "multipleSelection") return "Multiple Selection";
-    return key;
-  });
-
-  // Get currency symbol from restaurant or use the prop
-  const currencySymbol = propCurrencySymbol || (restaurant?.currency ? getCurrencySymbol(restaurant.currency) : "€");
 
   // Memoized price calculation to prevent recalculation on every render
   const calculateItemPrice = useCallback(() => {
     if (!item) return 0;
-    
-    // Use the provided calculatePrice function if available
-    if (calculatePrice) {
-      return calculatePrice(item, selectedOptions, selectedToppings);
-    }
-    
-    // Otherwise calculate the price ourselves
     let price = parseFloat(item.price.toString());
     if (item.options) {
       item.options.forEach(option => {
@@ -221,51 +194,13 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       });
     }
     return price * quantity;
-  }, [item, selectedOptions, selectedToppings, quantity, calculatePrice]);
-
+  }, [item, selectedOptions, selectedToppings, quantity]);
   const handleQuantityDecrease = useCallback(() => {
-    if (quantity > 1) {
-      if (onQuantityChange) {
-        onQuantityChange(quantity - 1);
-      } else if (setQuantity) {
-        setQuantity(q => Math.max(1, q - 1));
-      }
-    }
-  }, [quantity, onQuantityChange, setQuantity]);
-
+    if (quantity > 1) onQuantityChange(quantity - 1);
+  }, [quantity, onQuantityChange]);
   const handleQuantityIncrease = useCallback(() => {
-    if (onQuantityChange) {
-      onQuantityChange(quantity + 1);
-    } else if (setQuantity) {
-      setQuantity(q => q + 1);
-    }
-  }, [quantity, onQuantityChange, setQuantity]);
-
-  const handleSpecialInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (onSpecialInstructionsChange) {
-      onSpecialInstructionsChange(e.target.value);
-    } else if (setSpecialInstructions) {
-      setSpecialInstructions(e.target.value);
-    }
-  };
-
-  // Helper function to get currency symbol
-  function getCurrencySymbol(currency: string) {
-    const CURRENCY_SYMBOLS: Record<string, string> = {
-      EUR: "€",
-      USD: "$",
-      GBP: "£",
-      TRY: "₺",
-      JPY: "¥",
-      CAD: "$",
-      AUD: "$",
-      CHF: "Fr.",
-      CNY: "¥",
-      RUB: "₽"
-    };
-    const code = currency?.toUpperCase() || "EUR";
-    return CURRENCY_SYMBOLS[code] || code;
-  }
+    onQuantityChange(quantity + 1);
+  }, [quantity, onQuantityChange]);
 
   // Sort topping categories by display_order if they exist
   const sortedToppingCategories = item.toppingCategories ? [...item.toppingCategories].sort((a, b) => {
@@ -273,9 +208,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     const orderB = b.display_order ?? 1000;
     return orderA - orderB;
   }) : [];
-  
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
-  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
@@ -327,5 +260,4 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       </DialogContent>
     </Dialog>;
 };
-
 export default memo(ItemCustomizationDialog);
