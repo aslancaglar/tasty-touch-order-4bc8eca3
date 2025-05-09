@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,14 +44,15 @@ const languageOptions = [
   { value: "tr", label: "Türkçe" },
 ];
 
-const currencyOptions = currencyCodes.data
-  .filter(c => c.code && c.currency)
-  .map(c => {
-    const currencyCode = c.code || "";
+const currencyOptions = currencyCodes.codes()
+  .filter(code => code)
+  .map(code => {
+    const currencyData = currencyCodes.code(code);
+    const currencyName = currencyData ? currencyData.currency : "";
     return {
-      value: currencyCode,
-      label: `${currencyCode} (${c.currency})`,
-      symbol: currencyCode // Using code as fallback when actual symbol is not available
+      value: code,
+      label: `${code} (${currencyName})`,
+      symbol: code
     };
   })
   .sort((a, b) => {
