@@ -82,9 +82,13 @@ const StockTab = ({
       try {
         setLoading(true);
         const items = await getMenuItemsByCategory(selectedCategory);
+        // Sort menu items by display_order
+        const sortedItems = [...items].sort((a, b) => 
+          (a.display_order || 0) - (b.display_order || 0)
+        );
         setMenuItems(prev => ({
           ...prev,
-          [selectedCategory]: items
+          [selectedCategory]: sortedItems
         }));
         setLoading(false);
       } catch (error) {
@@ -110,9 +114,13 @@ const StockTab = ({
       try {
         setLoading(true);
         const items = await getToppingsByCategory(selectedToppingCategory);
+        // Sort toppings by display_order
+        const sortedToppings = [...items].sort((a, b) => 
+          (a.display_order || 0) - (b.display_order || 0)
+        );
         setToppings(prev => ({
           ...prev,
-          [selectedToppingCategory]: items
+          [selectedToppingCategory]: sortedToppings
         }));
         setLoading(false);
       } catch (error) {
@@ -142,7 +150,7 @@ const StockTab = ({
         ...prev,
         [item.category_id]: prev[item.category_id].map(menuItem => 
           menuItem.id === item.id ? updatedItem : menuItem
-        )
+        ).sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
       }));
       
       toast({
@@ -170,7 +178,7 @@ const StockTab = ({
         ...prev,
         [topping.category_id]: prev[topping.category_id].map(t => 
           t.id === topping.id ? updatedTopping : t
-        )
+        ).sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
       }));
       
       toast({
@@ -240,6 +248,7 @@ const StockTab = ({
                           )}
                           <div>
                             <p className="font-medium">{item.name}</p>
+                            <span className="text-xs text-muted-foreground">Order: {item.display_order || 0}</span>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -301,9 +310,12 @@ const StockTab = ({
                       <div key={topping.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <p className="font-medium">{topping.name}</p>
-                          <p className="text-sm text-gray-600">
-                            €{topping.price.toFixed(2)}
-                          </p>
+                          <div className="flex flex-col xs:flex-row xs:items-center xs:gap-3">
+                            <p className="text-sm text-gray-600">
+                              €{topping.price.toFixed(2)}
+                            </p>
+                            <span className="text-xs text-muted-foreground">Order: {topping.display_order || 0}</span>
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
                           {topping.in_stock ? (
