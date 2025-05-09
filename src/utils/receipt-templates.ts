@@ -230,13 +230,14 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
       receipt += formatText(`  + ${sanitizeForPrinter(option)}`, ESCPOS.FONT_NORMAL) + addLineFeed();
     });
 
+    // Modified code: Removing the category headers and just listing toppings directly
     const groupedToppings = getGroupedToppings(item);
     groupedToppings.forEach(group => {
-      receipt += formatText(`  ${sanitizeForPrinter(group.category)}:`, ESCPOS.FONT_NORMAL) + addLineFeed();
+      // No longer print the category name
       group.toppings.forEach(topping => {
         const price = getToppingPrice(item, group.category, topping);
         const toppingTaxPercentage = getToppingTaxPercentage(item, group.category, topping);
-        let line = `    + ${sanitizeForPrinter(topping)}`;
+        let line = `  + ${sanitizeForPrinter(topping)}`;
         if (price > 0) {
           const formattedToppingPrice = `${price.toFixed(2)} ${currencyDisplay}`;
           // Include tax percentage if different from default
