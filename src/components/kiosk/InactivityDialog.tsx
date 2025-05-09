@@ -61,7 +61,7 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
       }}
     >
       <DialogContent 
-        className="sm:max-w-[425px] z-[100] w-[calc(100%-2rem)]" 
+        className="sm:max-w-[425px] z-[100] w-[calc(100%-2rem)] rounded-lg" 
         onPointerDownOutside={(e) => {
           // Prevent closing when clicking outside
           e.preventDefault();
