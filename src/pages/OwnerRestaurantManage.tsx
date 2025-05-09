@@ -13,7 +13,6 @@ import OrdersTab from "@/components/restaurant/OrdersTab";
 import StockTab from "@/components/restaurant/StockTab";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-
 const OwnerRestaurantManage = () => {
   const {
     id
@@ -31,7 +30,6 @@ const OwnerRestaurantManage = () => {
   const {
     t
   } = useTranslation(language);
-
   useEffect(() => {
     const fetchRestaurant = async () => {
       if (!id) return;
@@ -85,7 +83,6 @@ const OwnerRestaurantManage = () => {
     };
     fetchRestaurant();
   }, [id, toast]);
-
   const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
     setRestaurant(updatedRestaurant);
 
@@ -95,13 +92,11 @@ const OwnerRestaurantManage = () => {
       setLanguage(updatedRestaurant.ui_language as SupportedLanguage);
     }
   };
-
   if (loading && !restaurant) {
     return <div className="flex justify-center items-center h-[80vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>;
   }
-
   if (!restaurant) {
     return <div className="container mx-auto py-8 px-4">
         <div className="text-center py-10">
@@ -112,7 +107,6 @@ const OwnerRestaurantManage = () => {
         </div>
       </div>;
   }
-
   return <div className="container mx-auto py-4 sm:py-8 px-3 sm:px-4">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-8">
         <Button variant="ghost" asChild className="self-start">
@@ -127,9 +121,7 @@ const OwnerRestaurantManage = () => {
         </div>
         <div className="ml-0 sm:ml-auto mt-2 sm:mt-0">
           <Button variant="outline" asChild size={isMobile ? "sm" : "default"}>
-            <Link to={`/r/${restaurant?.slug}`} target="_blank">
-              {t("restaurants.viewKiosk")}
-            </Link>
+            
           </Button>
         </div>
       </div>
