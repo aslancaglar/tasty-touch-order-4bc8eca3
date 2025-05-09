@@ -565,7 +565,8 @@ export const createOrder = async (data: {
       throw error;
     }
 
-    return order;
+    // Make sure the returned data conforms to Order type
+    return order as Order;
   } catch (error) {
     console.error('Error in createOrder:', error);
     throw error;
@@ -587,7 +588,8 @@ export const updateOrderStatus = async (id: string, status: OrderStatus): Promis
       throw error;
     }
 
-    return updatedOrder;
+    // Make sure the returned data conforms to Order type
+    return updatedOrder as Order;
   } catch (error) {
     console.error('Error in updateOrderStatus:', error);
     throw error;
