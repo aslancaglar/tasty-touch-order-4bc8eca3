@@ -884,12 +884,13 @@ const KioskView = () => {
   return (
     <div className="flex flex-col h-full bg-slate-50">
       {showWelcome ? (
-        <WelcomePage onStart={handleStartOrder} restaurant={restaurant} />
+        <WelcomePage onStart={handleStartOrder} restaurant={restaurant} uiLanguage={uiLanguage} />
       ) : showOrderTypeSelection ? (
         <OrderTypeSelection 
           isOpen={showOrderTypeSelection}
           onClose={() => setShowWelcome(true)}
           onOrderTypeSelected={handleOrderTypeSelected} 
+          uiLanguage={uiLanguage}
         />
       ) : (
         <>
