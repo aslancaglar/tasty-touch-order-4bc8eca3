@@ -618,6 +618,8 @@ export type Database = {
       }
       restaurants: {
         Row: {
+          card_payment_enabled: boolean | null
+          cash_payment_enabled: boolean | null
           created_at: string
           currency: string
           id: string
@@ -629,6 +631,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          card_payment_enabled?: boolean | null
+          cash_payment_enabled?: boolean | null
           created_at?: string
           currency?: string
           id?: string
@@ -640,6 +644,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          card_payment_enabled?: boolean | null
+          cash_payment_enabled?: boolean | null
           created_at?: string
           currency?: string
           id?: string
@@ -769,6 +775,8 @@ export type Database = {
       get_owned_restaurants: {
         Args: Record<PropertyKey, never>
         Returns: {
+          card_payment_enabled: boolean | null
+          cash_payment_enabled: boolean | null
           created_at: string
           currency: string
           id: string
