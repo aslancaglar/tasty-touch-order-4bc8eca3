@@ -1,4 +1,3 @@
-
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
@@ -47,6 +46,7 @@ interface OrderReceiptProps {
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
   uiLanguage?: SupportedLanguage;
+  paymentMethod?: "card" | "cash" | null; // Added this property
 }
 
 const OrderReceipt: React.FC<OrderReceiptProps> = ({
@@ -58,6 +58,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   getFormattedOptions,
   getFormattedToppings,
   uiLanguage = "fr",
+  paymentMethod, // Added paymentMethod parameter
 }) => {
   const { total, subtotal, tax } = calculateCartTotals(cart);
   const currentDate = format(new Date(), "dd/MM/yyyy HH:mm");
@@ -79,6 +80,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         </div>
         {orderType === "dine-in" && <div>{t("receipt.dineIn")}</div>}
         {orderType === "takeaway" && <div>{t("receipt.takeaway")}</div>}
+        {paymentMethod && <div>{paymentMethod === "card" ? t("receipt.paymentCard") : t("receipt.paymentCash")}</div>}
       </div>
 
       <div className="divider"></div>

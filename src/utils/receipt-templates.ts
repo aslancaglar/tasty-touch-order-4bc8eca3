@@ -1,4 +1,3 @@
-
 import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
 import { CartItem } from '@/types/database-types';
 import currencyCodes from "currency-codes";
@@ -27,6 +26,8 @@ const translations = {
     total: "TOTAL",
     thanks: "Merci de votre visite!",
     seeYouSoon: "A bientot!",
+    paymentCard: "Paiement par carte",
+    paymentCash: "Paiement en espèces"
   },
   en: {
     order: "ORDER",
@@ -38,6 +39,8 @@ const translations = {
     total: "TOTAL",
     thanks: "Thank you for your visit!",
     seeYouSoon: "See you soon!",
+    paymentCard: "Card payment",
+    paymentCash: "Cash payment"
   },
   tr: {
     order: "SİPARİŞ",
@@ -49,6 +52,8 @@ const translations = {
     total: "TOPLAM",
     thanks: "Ziyaretiniz için teşekkürler!",
     seeYouSoon: "Tekrar görüşmek üzere!",
+    paymentCard: "Kart ile ödeme",
+    paymentCash: "Nakit ödeme"
   }
 };
 
@@ -70,6 +75,7 @@ interface ReceiptData {
   getFormattedToppings?: (item: CartItem) => string;
   uiLanguage?: "fr" | "en" | "tr";
   useCurrencyCode?: boolean;
+  paymentMethod?: "card" | "cash" | null; // Added paymentMethod property
 }
 
 type GroupedToppings = Array<{
@@ -169,6 +175,7 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
     getFormattedOptions = () => '',
     uiLanguage = "fr",
     useCurrencyCode = false,
+    paymentMethod = null, // Handle payment method
   } = data;
 
   const t = (k: keyof typeof translations["en"]) => {
@@ -213,6 +220,12 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
   } else if (orderType === 'dine-in') {
     receipt += formatText(t("dineIn"), ESCPOS.FONT_BOLD) + addLineFeed();
   }
+  
+  // Add payment method info if present
+  if (paymentMethod) {
+    receipt += formatText(paymentMethod === 'card' ? t("paymentCard") : t("paymentCash"), ESCPOS.FONT_NORMAL) + addLineFeed();
+  }
+  
   receipt += ESCPOS.ALIGN_LEFT;
 
   receipt += createDivider(48) + addLineFeed();
@@ -240,12 +253,8 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
         let line = `  + ${sanitizeForPrinter(topping)}`;
         if (price > 0) {
           const formattedToppingPrice = `${price.toFixed(2)} ${currencyDisplay}`;
-          // Include tax percentage if different from default
-          if (toppingTaxPercentage !== defaultVat) {
-            line += ` (${formattedToppingPrice}, TVA ${toppingTaxPercentage}%)`;
-          } else {
-            line += ` (${formattedToppingPrice})`;
-          }
+          const spaces = Math.max(0, 48 - line.length - formattedToppingPrice.length);
+          line += ' '.repeat(spaces) + formattedToppingPrice;
         }
         receipt += formatText(line, ESCPOS.FONT_NORMAL) + addLineFeed();
       });
@@ -254,65 +263,18 @@ export const generateStandardReceipt = (data: ReceiptData): string => {
 
   receipt += createDivider(48) + addLineFeed();
 
-  receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText(`${t("subtotal")}: ${subtotal.toFixed(2)} ${currencyDisplay}`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(`${t("vat")}: ${tax.toFixed(2)} ${currencyDisplay}`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += createDivider(48) + addLineFeed();
+  receipt += formatLine(t("subtotal"), subtotal.toFixed(2) + ' ' + currencyDisplay, 48) + addLineFeed();
+  receipt += formatLine(t("vat"), tax.toFixed(2) + ' ' + currencyDisplay, 48) + addLineFeed();
 
-  receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText(`${t("total")}: ${total.toFixed(2)} ${currencyDisplay}`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed(2);
+  receipt += createDivider(48) + addLineFeed();
+  receipt += formatLine(t("total"), total.toFixed(2) + ' ' + currencyDisplay, 48, ESCPOS.FONT_BOLD) + addLineFeed(2);
 
   receipt += ESCPOS.ALIGN_CENTER;
   receipt += formatText(t("thanks"), ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(t("seeYouSoon"), ESCPOS.FONT_NORMAL) + addLineFeed(3);
-  receipt += ESCPOS.ALIGN_LEFT;
-
-  receipt += addLineFeed(5);
-
-  receipt += ESCPOS.CUT_PAPER;
+  receipt += formatText(t("seeYouSoon"), ESCPOS.FONT_NORMAL) + addLineFeed();
+  receipt += ESCPOS.FEED_AND_CUT;
 
   return receipt;
-};
-
-const getFormattedOptions = (item: CartItem): string => {
-  if (!item.selectedOptions) return '';
-  
-  return item.selectedOptions
-    .map(option => {
-      const menuOption = item.menuItem.options?.find(opt => opt.id === option.optionId);
-      if (!menuOption) return null;
-      
-      const selectedChoices = menuOption.choices
-        .filter(choice => option.choiceIds.includes(choice.id))
-        .map(choice => choice.name);
-      
-      if (selectedChoices.length > 0) {
-        return `${menuOption.name}: ${selectedChoices.join(', ')}`;
-      }
-      
-      return null;
-    })
-    .filter(Boolean)
-    .join(', ');
-};
-
-const getFormattedToppings = (item: CartItem): string => {
-  if (!item.selectedToppings) return '';
-  
-  const allToppings: string[] = [];
-  
-  item.selectedToppings.forEach(toppingGroup => {
-    const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingGroup.categoryId);
-    if (!category) return;
-    
-    const selectedToppingNames = category.toppings
-      .filter(topping => toppingGroup.toppingIds.includes(topping.id))
-      .map(topping => topping.name);
-    
-    allToppings.push(...selectedToppingNames);
-  });
-  
-  return allToppings.join(', ');
 };
 
 export { getGroupedToppings };

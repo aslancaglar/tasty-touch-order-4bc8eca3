@@ -1,4 +1,3 @@
-
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -11,6 +10,8 @@ export type Restaurant = {
   updated_at: string;
   ui_language?: string;
   currency?: string; // NEW: ISO 4217 code, e.g. "EUR", "USD", ...
+  card_payment_enabled?: boolean; // Added this property for card payments
+  cash_payment_enabled?: boolean; // Added this property for cash payments
 };
 
 export type MenuCategory = {
