@@ -10,11 +10,9 @@ import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
 import { setCacheItem, getCacheItem, clearCache } from "@/services/cache-service";
-
 interface ToppingCategoryWithToppings extends ToppingCategory {
   toppings?: Topping[];
 }
-
 interface ToppingsTabProps {
   restaurant: {
     id: string;
@@ -22,7 +20,6 @@ interface ToppingsTabProps {
     currency?: string;
   };
 }
-
 const getCurrencySymbol = (currency: string): string => {
   switch (currency) {
     case 'EUR':
@@ -35,7 +32,6 @@ const getCurrencySymbol = (currency: string): string => {
       return currency;
   }
 };
-
 const ToppingsTab = ({
   restaurant
 }: ToppingsTabProps) => {
@@ -57,23 +53,20 @@ const ToppingsTab = ({
   const [isUpdatingTopping, setIsUpdatingTopping] = useState(false);
   const [isDeletingTopping, setIsDeletingTopping] = useState(false);
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
-
   useEffect(() => {
     fetchCategories();
   }, [restaurant.id]);
-
   useEffect(() => {
     if (selectedCategory?.id) {
       fetchToppings(categories);
     }
   }, [categories, selectedCategory?.id]);
-
   const fetchCategories = async () => {
     try {
       // Always clear the cache before fetching to ensure we get fresh data
       clearCache(restaurant.id, 'topping_categories');
       console.log("Fetching topping categories for restaurant:", restaurant.id);
-      
+
       // Try to get from cache first
       const cachedCategories = getCacheItem<ToppingCategory[]>('topping_categories', restaurant.id);
       if (cachedCategories) {
@@ -83,14 +76,13 @@ const ToppingsTab = ({
       }
 
       // If not in cache, fetch from database
-      const { data, error } = await supabase
-        .from('topping_categories')
-        .select('*')
-        .eq('restaurant_id', restaurant.id)
-        .order('created_at', { ascending: true });
-
+      const {
+        data,
+        error
+      } = await supabase.from('topping_categories').select('*').eq('restaurant_id', restaurant.id).order('created_at', {
+        ascending: true
+      });
       if (error) throw error;
-      
       console.log("Fetched topping categories:", data);
       setCacheItem('topping_categories', data, restaurant.id);
       setCategories(data || []);
@@ -103,7 +95,6 @@ const ToppingsTab = ({
       });
     }
   };
-
   const fetchToppings = async (categories: ToppingCategory[]) => {
     if (!selectedCategory?.id) return;
     try {
@@ -118,7 +109,6 @@ const ToppingsTab = ({
         } : prev);
         return;
       }
-
       const {
         data,
         error
@@ -153,26 +143,22 @@ const ToppingsTab = ({
       });
     }
   };
-
   const handleDeleteCategory = async () => {
     if (!selectedCategoryToDelete?.id) return;
-
     try {
       setIsDeletingCategory(true);
       const {
         error
       } = await supabase.from('topping_categories').delete().eq('id', selectedCategoryToDelete.id);
       if (error) throw error;
-
       toast({
         title: "Succès",
         description: "Catégorie supprimée avec succès"
       });
-      
+
       // Clear the cache and fetch updated categories
       clearCache(restaurant.id, 'topping_categories');
       await fetchCategories();
-      
       setShowDeleteCategoryDialog(false);
     } catch (error) {
       console.error('Error deleting topping category:', error);
@@ -185,28 +171,23 @@ const ToppingsTab = ({
       setIsDeletingCategory(false);
     }
   };
-
   const handleCreateTopping = async (formData: ToppingFormValues) => {
     try {
       setIsCreatingTopping(true);
-      const { data: newTopping, error } = await supabase
-        .from('toppings')
-        .insert([{
-          name: formData.name,
-          price: parseFloat(formData.price),
-          tax_percentage: parseFloat(formData.tax_percentage || "10"),
-          display_order: parseInt(formData.display_order || "0"),
-          category_id: selectedCategory?.id
-        }])
-        .select()
-        .single();
-
+      const {
+        data: newTopping,
+        error
+      } = await supabase.from('toppings').insert([{
+        name: formData.name,
+        price: parseFloat(formData.price),
+        tax_percentage: parseFloat(formData.tax_percentage || "10"),
+        display_order: parseInt(formData.display_order || "0"),
+        category_id: selectedCategory?.id
+      }]).select().single();
       if (error) throw error;
-      
       if (selectedCategory) {
         clearCache(restaurant.id, `toppings_${selectedCategory.id}`);
       }
-      
       toast({
         title: "Success",
         description: "Topping created successfully"
@@ -224,26 +205,21 @@ const ToppingsTab = ({
       setIsCreatingTopping(false);
     }
   };
-
   const handleUpdateTopping = async (toppingId: string, formData: ToppingFormValues) => {
     try {
       setIsUpdatingTopping(true);
-      const { error } = await supabase
-        .from('toppings')
-        .update({
-          name: formData.name,
-          price: parseFloat(formData.price),
-          tax_percentage: parseFloat(formData.tax_percentage || "10"),
-          display_order: parseInt(formData.display_order || "0")
-        })
-        .eq('id', toppingId);
-        
+      const {
+        error
+      } = await supabase.from('toppings').update({
+        name: formData.name,
+        price: parseFloat(formData.price),
+        tax_percentage: parseFloat(formData.tax_percentage || "10"),
+        display_order: parseInt(formData.display_order || "0")
+      }).eq('id', toppingId);
       if (error) throw error;
-
       if (selectedCategory) {
         clearCache(restaurant.id, `toppings_${selectedCategory.id}`);
       }
-
       toast({
         title: "Succès",
         description: "Complément mis à jour avec succès"
@@ -261,23 +237,17 @@ const ToppingsTab = ({
       setIsUpdatingTopping(false);
     }
   };
-
   const handleDeleteTopping = async () => {
     if (!selectedTopping?.id) return;
-
     try {
       setIsDeletingTopping(true);
-      const { error } = await supabase
-        .from('toppings')
-        .delete()
-        .eq('id', selectedTopping.id);
-        
+      const {
+        error
+      } = await supabase.from('toppings').delete().eq('id', selectedTopping.id);
       if (error) throw error;
-
       if (selectedCategory) {
         clearCache(restaurant.id, `toppings_${selectedCategory.id}`);
       }
-
       toast({
         title: "Succès",
         description: "Complément supprimé avec succès"
@@ -295,7 +265,6 @@ const ToppingsTab = ({
       setIsDeletingTopping(false);
     }
   };
-
   const handleCreateCategory = async (values: any) => {
     setIsCreatingCategory(true);
     try {
@@ -318,18 +287,15 @@ const ToppingsTab = ({
         max_selections,
         show_if_selection_id: conditionToppingIds && conditionToppingIds.length > 0 ? conditionToppingIds : null
       }]).select().single();
-      
       if (error) throw error;
-      
       toast({
         title: "Succès",
         description: "Catégorie créée avec succès"
       });
-      
+
       // Clear the cache and fetch updated categories
       clearCache(restaurant.id, 'topping_categories');
       await fetchCategories();
-      
       setShowCreateCategoryDialog(false);
     } catch (error) {
       console.error('Error creating topping category:', error);
@@ -342,10 +308,8 @@ const ToppingsTab = ({
       setIsCreatingCategory(false);
     }
   };
-
   const handleUpdateCategory = async (values: any) => {
     if (!selectedCategory) return;
-    
     setIsUpdatingCategory(true);
     try {
       const {
@@ -366,18 +330,15 @@ const ToppingsTab = ({
         max_selections,
         show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null
       }).eq('id', selectedCategory.id);
-      
       if (error) throw error;
-      
       toast({
         title: "Succès",
         description: "Catégorie mise à jour avec succès"
       });
-      
+
       // Clear the cache and fetch updated categories
       clearCache(restaurant.id, 'topping_categories');
       await fetchCategories();
-      
       setShowUpdateCategoryDialog(false);
     } catch (error) {
       console.error('Error updating topping category:', error);
@@ -390,9 +351,7 @@ const ToppingsTab = ({
       setIsUpdatingCategory(false);
     }
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Toppings Categories</h2>
         <p className="text-muted-foreground">Manage toppings categories available in your restaurant.</p>
@@ -404,12 +363,7 @@ const ToppingsTab = ({
       </Button>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map(category => (
-          <div
-            key={category.id}
-            className={`border rounded-lg p-4 cursor-pointer transition-all ${selectedCategory?.id === category.id ? 'ring-2 ring-[#9b87f5] bg-[#9b87f5]/5' : 'hover:border-[#9b87f5]'}`}
-            onClick={() => setSelectedCategory(category)}
-          >
+        {categories.map(category => <div key={category.id} className={`border rounded-lg p-4 cursor-pointer transition-all ${selectedCategory?.id === category.id ? 'ring-2 ring-[#9b87f5] bg-[#9b87f5]/5' : 'hover:border-[#9b87f5]'}`} onClick={() => setSelectedCategory(category)}>
             <div className="flex items-center space-x-3">
               
               <div className="flex-1">
@@ -419,38 +373,28 @@ const ToppingsTab = ({
                 </p>
               </div>
               <div className="flex space-x-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={e => {
-                    e.stopPropagation();
-                    setSelectedCategory(category);
-                    setShowUpdateCategoryDialog(true);
-                  }}
-                >
+                <Button variant="ghost" size="icon" onClick={e => {
+              e.stopPropagation();
+              setSelectedCategory(category);
+              setShowUpdateCategoryDialog(true);
+            }}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={e => {
-                    e.stopPropagation();
-                    setSelectedCategoryToDelete(category);
-                    setShowDeleteCategoryDialog(true);
-                  }}
-                >
+                <Button variant="ghost" size="icon" onClick={e => {
+              e.stopPropagation();
+              setSelectedCategoryToDelete(category);
+              setShowDeleteCategoryDialog(true);
+            }}>
                   <Trash className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             </div>
-          </div>
-        ))}
+          </div>)}
       </div>
 
       <Separator />
 
-      {selectedCategory && (
-        <div>
+      {selectedCategory && <div>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">Menu Items - {selectedCategory.name}</h2>
@@ -465,8 +409,7 @@ const ToppingsTab = ({
           </div>
 
           {/* Displaying toppings */}
-          {selectedCategory?.toppings?.map(topping => (
-            <div key={topping.id} className="flex items-center justify-between py-2">
+          {selectedCategory?.toppings?.map(topping => <div key={topping.id} className="flex items-center justify-between py-2">
               <div>
                 <p className="font-medium">{topping.name}</p>
                 <div className="text-sm font-medium text-muted-foreground">
@@ -476,44 +419,30 @@ const ToppingsTab = ({
                 </div>
               </div>
               <div className="space-x-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setSelectedTopping(topping);
-                    setShowUpdateToppingDialog(true);
-                  }}
-                >
+                <Button variant="ghost" size="icon" onClick={() => {
+            setSelectedTopping(topping);
+            setShowUpdateToppingDialog(true);
+          }}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setSelectedTopping(topping);
-                    setShowDeleteToppingDialog(true);
-                  }}
-                >
+                <Button variant="ghost" size="icon" onClick={() => {
+            setSelectedTopping(topping);
+            setShowDeleteToppingDialog(true);
+          }}>
                   <Trash className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            </div>)}
+        </div>}
 
       <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
-        <DialogContent className="max-h-[90vh]">
+        <DialogContent className="max-h-[90vh] py-5 px-[px]">
           <ScrollArea className="max-h-[80vh] pr-4">
             <DialogHeader>
               <DialogTitle>Créer une catégorie</DialogTitle>
               <DialogDescription>Créez une nouvelle catégorie de compléments</DialogDescription>
             </DialogHeader>
-            <ToppingCategoryForm 
-              restaurantId={restaurant.id} 
-              onSubmit={handleCreateCategory} 
-              isLoading={isCreatingCategory} 
-            />
+            <ToppingCategoryForm restaurantId={restaurant.id} onSubmit={handleCreateCategory} isLoading={isCreatingCategory} />
           </ScrollArea>
         </DialogContent>
       </Dialog>
@@ -525,18 +454,13 @@ const ToppingsTab = ({
               <DialogTitle>Modifier la catégorie</DialogTitle>
               <DialogDescription>Modifiez les détails de cette catégorie</DialogDescription>
             </DialogHeader>
-            {selectedCategory && <ToppingCategoryForm 
-              restaurantId={restaurant.id} 
-              initialValues={{
-                name: selectedCategory.name,
-                description: selectedCategory.description || "",
-                min_selections: selectedCategory.min_selections || 0,
-                max_selections: selectedCategory.max_selections || 0,
-                show_if_selection_id: selectedCategory.show_if_selection_id || []
-              }} 
-              onSubmit={handleUpdateCategory} 
-              isLoading={isUpdatingCategory} 
-            />}
+            {selectedCategory && <ToppingCategoryForm restaurantId={restaurant.id} initialValues={{
+            name: selectedCategory.name,
+            description: selectedCategory.description || "",
+            min_selections: selectedCategory.min_selections || 0,
+            max_selections: selectedCategory.max_selections || 0,
+            show_if_selection_id: selectedCategory.show_if_selection_id || []
+          }} onSubmit={handleUpdateCategory} isLoading={isUpdatingCategory} />}
           </ScrollArea>
         </DialogContent>
       </Dialog>
@@ -573,17 +497,12 @@ const ToppingsTab = ({
           <DialogHeader>
             <DialogTitle>Modifier le complément</DialogTitle>
           </DialogHeader>
-          {selectedTopping && <ToppingForm 
-            onSubmit={values => handleUpdateTopping(selectedTopping.id, values)} 
-            initialValues={{
-              name: selectedTopping.name,
-              price: selectedTopping.price?.toString() || "0",
-              tax_percentage: selectedTopping.tax_percentage?.toString() || "10",
-              display_order: selectedTopping.display_order?.toString() || "0"
-            }} 
-            isLoading={isUpdatingTopping} 
-            currency={restaurant.currency} 
-          />}
+          {selectedTopping && <ToppingForm onSubmit={values => handleUpdateTopping(selectedTopping.id, values)} initialValues={{
+          name: selectedTopping.name,
+          price: selectedTopping.price?.toString() || "0",
+          tax_percentage: selectedTopping.tax_percentage?.toString() || "10",
+          display_order: selectedTopping.display_order?.toString() || "0"
+        }} isLoading={isUpdatingTopping} currency={restaurant.currency} />}
         </DialogContent>
       </Dialog>
 
@@ -603,8 +522,6 @@ const ToppingsTab = ({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 };
-
 export default ToppingsTab;
