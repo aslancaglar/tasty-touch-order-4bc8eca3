@@ -14,7 +14,7 @@ interface OrderTypeSelectionProps {
   uiLanguage?: SupportedLanguage;
 }
 
-const OrderTypeSelection = ({
+const OrderTypeSelection: React.FC<OrderTypeSelectionProps> = ({
   isOpen,
   onClose,
   onOrderTypeSelected,

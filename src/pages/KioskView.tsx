@@ -825,7 +825,7 @@ const KioskView = () => {
       });
     }
   };
-  const handleRefreshMenu = async () => {
+  const handleRefresh = async () => {
     try {
       setLoading(true);
       setRefreshTrigger(prev => prev + 1);
@@ -886,7 +886,11 @@ const KioskView = () => {
       {showWelcome ? (
         <WelcomePage onStart={handleStartOrder} restaurant={restaurant} />
       ) : showOrderTypeSelection ? (
-        <OrderTypeSelection onOrderTypeSelected={handleOrderTypeSelected} />
+        <OrderTypeSelection 
+          isOpen={showOrderTypeSelection}
+          onClose={() => setShowWelcome(true)}
+          onOrderTypeSelected={handleOrderTypeSelected} 
+        />
       ) : (
         <>
           <KioskHeader
@@ -894,7 +898,7 @@ const KioskView = () => {
             onBack={() => setShowWelcome(true)}
             uiLanguage={uiLanguage}
             setUiLanguage={setUiLanguage}
-            onRefreshMenu={handleRefreshMenu}
+            onRefresh={handleRefresh}
           />
           
           <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
