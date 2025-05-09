@@ -13,29 +13,34 @@ import OrdersTab from "@/components/restaurant/OrdersTab";
 import StockTab from "@/components/restaurant/StockTab";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-
 const OwnerRestaurantManage = () => {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const [activeTab, setActiveTab] = useState("menu");
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
   const isMobile = useIsMobile();
-  
-  const { toast } = useToast();
-  const { t } = useTranslation(language);
-  
+  const {
+    toast
+  } = useToast();
+  const {
+    t
+  } = useTranslation(language);
   useEffect(() => {
     const fetchRestaurant = async () => {
       if (!id) return;
-      
       try {
         setLoading(true);
-        
+
         // First check if the current user owns this restaurant
-        const { data: ownedRestaurants, error: ownedError } = await supabase
-          .rpc('get_owned_restaurants');
-          
+        const {
+          data: ownedRestaurants,
+          error: ownedError
+        } = await supabase.rpc('get_owned_restaurants');
         if (ownedError) {
           console.error("Error checking restaurant ownership:", ownedError);
           toast({
@@ -46,9 +51,7 @@ const OwnerRestaurantManage = () => {
           setLoading(false);
           return;
         }
-        
         const foundRestaurant = ownedRestaurants?.find(r => r.id === id);
-        
         if (!foundRestaurant) {
           toast({
             title: "Access Denied",
@@ -58,16 +61,15 @@ const OwnerRestaurantManage = () => {
           setLoading(false);
           return;
         }
-        
+
         // User has access to this restaurant
         setRestaurant(foundRestaurant);
-        
+
         // Set language based on restaurant settings
         if (foundRestaurant.ui_language) {
           console.log("Setting language from restaurant:", foundRestaurant.ui_language);
           setLanguage(foundRestaurant.ui_language as SupportedLanguage);
         }
-        
       } catch (error) {
         console.error("Error fetching restaurant:", error);
         toast({
@@ -79,43 +81,33 @@ const OwnerRestaurantManage = () => {
         setLoading(false);
       }
     };
-
     fetchRestaurant();
   }, [id, toast]);
-
   const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
     setRestaurant(updatedRestaurant);
-    
+
     // Update language when restaurant settings are changed
     if (updatedRestaurant.ui_language) {
       console.log("Restaurant updated, setting language:", updatedRestaurant.ui_language);
       setLanguage(updatedRestaurant.ui_language as SupportedLanguage);
     }
   };
-
   if (loading && !restaurant) {
-    return (
-      <div className="flex justify-center items-center h-[80vh]">
+    return <div className="flex justify-center items-center h-[80vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
   if (!restaurant) {
-    return (
-      <div className="container mx-auto py-8 px-4">
+    return <div className="container mx-auto py-8 px-4">
         <div className="text-center py-10">
           <h1 className="text-2xl font-bold mb-4">{t("restaurants.notFound")}</h1>
           <Button asChild>
             <Link to="/owner">{t("restaurants.backToRestaurants")}</Link>
           </Button>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="container mx-auto py-4 sm:py-8 px-3 sm:px-4">
+  return <div className="container mx-auto py-4 sm:py-8 px-3 sm:px-4">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-8">
         <Button variant="ghost" asChild className="self-start">
           <Link to="/owner">
@@ -129,9 +121,7 @@ const OwnerRestaurantManage = () => {
         </div>
         <div className="ml-0 sm:ml-auto mt-2 sm:mt-0">
           <Button variant="outline" asChild size={isMobile ? "sm" : "default"}>
-            <Link to={`/r/${restaurant?.slug}`} target="_blank">
-              {t("restaurants.viewKiosk")}
-            </Link>
+            
           </Button>
         </div>
       </div>
@@ -174,15 +164,11 @@ const OwnerRestaurantManage = () => {
             </TabsContent>
             
             <TabsContent value="stock">
-              {restaurant && (
-                <StockTab restaurant={restaurant} />
-              )}
+              {restaurant && <StockTab restaurant={restaurant} />}
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default OwnerRestaurantManage;
