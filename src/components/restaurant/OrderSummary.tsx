@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, CreditCard, Banknote } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -22,6 +23,8 @@ const translations = {
     totalTTC: "Total TTC:",
     confirm: "CONFIRMER LA COMMANDE",
     back: "Retour",
+    payWithCard: "PAYER PAR CARTE",
+    payWithCash: "PAYER EN ESPÈCES"
   },
   en: {
     orderSummary: "ORDER SUMMARY",
@@ -32,6 +35,8 @@ const translations = {
     totalTTC: "TOTAL:",
     confirm: "CONFIRM ORDER",
     back: "Back",
+    payWithCard: "PAY WITH CARD",
+    payWithCash: "PAY WITH CASH"
   },
   tr: {
     orderSummary: "SİPARİŞ ÖZETİ",
@@ -42,6 +47,8 @@ const translations = {
     totalTTC: "TOPLAM:",
     confirm: "SİPARİŞİ ONAYLA",
     back: "Geri",
+    payWithCard: "KART İLE ÖDE",
+    payWithCash: "NAKİT İLE ÖDE"
   }
 };
 
@@ -59,6 +66,8 @@ interface OrderSummaryProps {
     id?: string;
     name: string;
     location?: string;
+    card_payment_enabled?: boolean;
+    cash_payment_enabled?: boolean;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
@@ -81,6 +90,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   uiLanguage = "fr",
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | null>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -88,6 +98,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   const t = (key: keyof typeof translations["en"]) =>
     translations[uiLanguage]?.[key] ?? translations.fr[key];
+
+  const showPaymentOptions = restaurant?.card_payment_enabled || restaurant?.cash_payment_enabled;
 
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
@@ -103,8 +115,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
 
-  const handleConfirmOrder = async () => {
+  const handleConfirmOrder = async (selectedPaymentMethod?: "card" | "cash") => {
+    if (selectedPaymentMethod) {
+      setPaymentMethod(selectedPaymentMethod);
+    }
+    
     onPlaceOrder();
+    
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
@@ -162,6 +179,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 orderNumber,
                 tableNumber,
                 orderType,
+                paymentMethod: selectedPaymentMethod || paymentMethod,
                 subtotal,
                 tax,
                 total,
@@ -191,6 +209,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       orderNumber: string;
       tableNumber?: string | null;
       orderType: "dine-in" | "takeaway" | null;
+      paymentMethod?: "card" | "cash" | null;
       subtotal: number;
       tax: number;
       total: number;
@@ -246,6 +265,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     orderNumber: string;
     tableNumber?: string | null;
     orderType: "dine-in" | "takeaway" | null;
+    paymentMethod?: "card" | "cash" | null;
     subtotal: number;
     tax: number;
     total: number;
@@ -259,6 +279,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       orderNumber: orderData.orderNumber,
       tableNumber: orderData.tableNumber,
       orderType: orderData.orderType,
+      paymentMethod: orderData.paymentMethod,
       subtotal: orderData.subtotal,
       tax: orderData.tax,
       total: orderData.total,
@@ -347,14 +368,40 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
         
         <div className="p-4 bg-gray-50">
-          <Button 
-            className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
-            onClick={handleConfirmOrder}
-            disabled={placingOrder}
-          >
-            <Check className="mr-2 h-5 w-5" />
-            {t("confirm")}
-          </Button>
+          {showPaymentOptions ? (
+            <div className="space-y-3">
+              {restaurant?.card_payment_enabled && (
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6"
+                  onClick={() => handleConfirmOrder("card")}
+                  disabled={placingOrder}
+                >
+                  <CreditCard className="mr-2 h-5 w-5" />
+                  {t("payWithCard")}
+                </Button>
+              )}
+              
+              {restaurant?.cash_payment_enabled && (
+                <Button 
+                  className="w-full bg-green-700 hover:bg-green-800 text-white py-6"
+                  onClick={() => handleConfirmOrder("cash")}
+                  disabled={placingOrder}
+                >
+                  <Banknote className="mr-2 h-5 w-5" />
+                  {t("payWithCash")}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Button 
+              className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
+              onClick={() => handleConfirmOrder()}
+              disabled={placingOrder}
+            >
+              <Check className="mr-2 h-5 w-5" />
+              {t("confirm")}
+            </Button>
+          )}
         </div>
       </DialogContent>
 
@@ -367,6 +414,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
         uiLanguage={uiLanguage}
+        paymentMethod={paymentMethod}
       />
     </Dialog>
   );
