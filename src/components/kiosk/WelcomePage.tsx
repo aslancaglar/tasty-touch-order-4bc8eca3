@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
 interface WelcomePageProps {
-  restaurant: Restaurant;
+  restaurant: Restaurant | null;
   onStart: () => void;
   uiLanguage?: SupportedLanguage;
 }
