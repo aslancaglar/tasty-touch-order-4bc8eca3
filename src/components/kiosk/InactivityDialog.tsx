@@ -61,7 +61,7 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
       }}
     >
       <DialogContent 
-        className="sm:max-w-[425px] z-[100] w-[calc(100%-2rem)] rounded-lg" 
+        className="sm:max-w-[500px] z-[100] w-[calc(100%-2rem)] rounded-lg" 
         onPointerDownOutside={(e) => {
           // Prevent closing when clicking outside
           e.preventDefault();
@@ -72,22 +72,24 @@ const InactivityDialog: React.FC<InactivityDialogProps> = ({
         }}
       >
         <DialogHeader>
-          <DialogTitle>{t("inactivityTitle")}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-xl sm:text-2xl">{t("inactivityTitle")}</DialogTitle>
+          <DialogDescription className="text-base sm:text-lg mt-2">
             {t("inactivityMessage")}
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="sm:justify-between">
+        <DialogFooter className="sm:justify-between mt-6">
           <Button
             type="button"
             variant="secondary"
             onClick={onCancel}
+            className="sm:text-lg py-6 px-8 sm:py-7 sm:px-10 w-full sm:w-auto"
           >
             {t("no")}
           </Button>
           <Button
             type="button"
             onClick={onContinue}
+            className="sm:text-lg py-6 px-8 sm:py-7 sm:px-10 w-full sm:w-auto mt-4 sm:mt-0"
           >
             {t("yes")}
           </Button>
