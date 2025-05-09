@@ -215,6 +215,35 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Function to get visible page numbers based on current page
+  const getVisiblePageNumbers = () => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    
+    if (currentPage <= 3) {
+      return [1, 2, 3, 4, 5];
+    }
+    
+    if (currentPage >= totalPages - 2) {
+      return [
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages
+      ];
+    }
+    
+    return [
+      currentPage - 2,
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      currentPage + 2
+    ];
+  };
+
   const totalPages = Math.ceil(totalOrders / ordersPerPage);
 
   return (
@@ -337,7 +366,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
         )}
         
         {totalPages > 1 && (
-          <div className="mt-4">
+          <div className="px-4 py-4 border-t">
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
@@ -347,16 +376,23 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                   />
                 </PaginationItem>
                 
-                {[...Array(totalPages)].map((_, index) => (
-                  <PaginationItem key={index + 1}>
+                {getVisiblePageNumbers().map((pageNumber) => (
+                  <PaginationItem key={pageNumber} className="hidden xs:block">
                     <PaginationLink
-                      onClick={() => setCurrentPage(index + 1)}
-                      isActive={currentPage === index + 1}
+                      onClick={() => setCurrentPage(pageNumber)}
+                      isActive={currentPage === pageNumber}
                     >
-                      {index + 1}
+                      {pageNumber}
                     </PaginationLink>
                   </PaginationItem>
                 ))}
+                
+                {/* Only show current page indicator on very small screens */}
+                <PaginationItem className="xs:hidden text-sm">
+                  <span className="px-2">
+                    {currentPage} / {totalPages}
+                  </span>
+                </PaginationItem>
                 
                 <PaginationItem>
                   <PaginationNext
