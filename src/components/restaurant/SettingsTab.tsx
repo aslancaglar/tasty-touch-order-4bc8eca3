@@ -43,42 +43,25 @@ const languageOptions = [
   { value: "tr", label: "Türkçe" },
 ];
 
-// Define common currency options with fallback to ensure it doesn't crash
-const commonCurrencies = ["EUR", "USD", "TRY", "GBP"];
-const allCodes = typeof currencyCodes.codes === 'function' ? currencyCodes.codes() : [];
-
-const currencyOptions = allCodes
-  .map(code => {
-    if (!code) return null;
-    const currencyData = typeof currencyCodes.code === 'function' ? currencyCodes.code(code) : null;
-    const currencyName = currencyData ? currencyData.currency : "";
+const currencyOptions = currencyCodes.data
+  .filter(c => c.code && c.currency)
+  .map(c => {
+    const currencyCode = c.code || "";
     return {
-      value: code,
-      label: `${code} (${currencyName})`,
-      symbol: code
+      value: currencyCode,
+      label: `${currencyCode} (${c.currency})`,
+      symbol: currencyCode // Using code as fallback when actual symbol is not available
     };
   })
-  .filter(item => item !== null)
   .sort((a, b) => {
-    if (!a || !b) return 0;
-    const aPref = commonCurrencies.indexOf(a.value);
-    const bPref = commonCurrencies.indexOf(b.value);
+    const prefer = ["EUR", "USD", "TRY", "GBP"];
+    const aPref = prefer.indexOf(a.value);
+    const bPref = prefer.indexOf(b.value);
     if (aPref !== -1 && bPref !== -1) return aPref - bPref;
     if (aPref !== -1) return -1;
     if (bPref !== -1) return 1;
     return a.label.localeCompare(b.label);
   });
-
-// Fallback in case the library doesn't work as expected
-const fallbackCurrencyOptions = [
-  { value: "EUR", label: "EUR (Euro)", symbol: "EUR" },
-  { value: "USD", label: "USD (US Dollar)", symbol: "USD" },
-  { value: "TRY", label: "TRY (Turkish Lira)", symbol: "TRY" },
-  { value: "GBP", label: "GBP (British Pound)", symbol: "GBP" },
-];
-
-// Use the generated options or fallback if empty
-const finalCurrencyOptions = currencyOptions.length > 0 ? currencyOptions : fallbackCurrencyOptions;
 
 const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [activeTab, setActiveTab] = useState("basic");
@@ -412,10 +395,8 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     }
   };
 
-  // Find the selected currency option safely with fallback
-  const selectedCurrencyOption = finalCurrencyOptions.find(opt => opt.value === currency) || 
-    { value: currency, symbol: currency };
-  const currencySymbol = selectedCurrencyOption.symbol || currency;
+  const selectedCurrencyOption = currencyOptions.find(opt => opt.value === currency);
+  const currencySymbol = selectedCurrencyOption?.symbol || currency;
 
   return (
     <div className="space-y-6">
@@ -526,7 +507,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                   onChange={e => setCurrency(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md bg-white"
                 >
-                  {finalCurrencyOptions.map(option => (
+                  {currencyOptions.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
