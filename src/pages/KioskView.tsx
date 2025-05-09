@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
 import { createPayment } from "@/services/payment-service";
 import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType, Topping } from "@/types/database-types";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, listenToPaymentUpdates } from "@/integrations/supabase/client";
 import WelcomePage from "@/components/kiosk/WelcomePage";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
 import Cart from "@/components/kiosk/Cart";
@@ -18,6 +18,7 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
+
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -25,6 +26,7 @@ type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -830,4 +832,154 @@ const KioskView = () => {
       if (!restaurant) return;
       const menuData = await getMenuForRestaurant(restaurant.id);
 
-      // Process the menu data to create CategoryWithItems
+      // Process the menu data to create CategoryWithItems objects
+      const processedCategories = menuData.categories.map(category => ({
+        ...category,
+        items: menuData.menuItems[category.id] || []
+      }));
+      
+      // Sort the processedCategories by display_order
+      const sortedMenuData = [...processedCategories].sort((a, b) => {
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      });
+
+      // Sort items within each category by display_order
+      sortedMenuData.forEach(category => {
+        category.items = [...category.items].sort((a, b) => {
+          const orderA = a.display_order ?? 1000;
+          const orderB = b.display_order ?? 1000;
+          return orderA - orderB;
+        });
+      });
+
+      // Clear the existing cache for the categories
+      if (restaurant.id) {
+        setCacheItem('categories', sortedMenuData, restaurant.id);
+      }
+      
+      setCategories(sortedMenuData);
+      if (sortedMenuData.length > 0) {
+        setActiveCategory(sortedMenuData[0].id);
+      }
+      
+      setLoading(false);
+      toast({
+        title: t('menuRefreshed'),
+        description: t('menuRefreshSuccess'),
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Error refreshing menu:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh menu. Please try again.",
+        variant: "destructive"
+      });
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="flex flex-col h-full bg-slate-50">
+      {showWelcome ? (
+        <WelcomePage onStart={handleStartOrder} restaurant={restaurant} />
+      ) : showOrderTypeSelection ? (
+        <OrderTypeSelection onOrderTypeSelected={handleOrderTypeSelected} />
+      ) : (
+        <>
+          <KioskHeader
+            restaurant={restaurant}
+            onBack={() => setShowWelcome(true)}
+            uiLanguage={uiLanguage}
+            setUiLanguage={setUiLanguage}
+            onRefreshMenu={handleRefreshMenu}
+          />
+          
+          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+            <div className="w-full md:w-64 border-r bg-white shadow-sm z-10">
+              <MenuCategoryList
+                categories={categories}
+                activeCategory={activeCategory}
+                setActiveCategory={setActiveCategory}
+                loading={loading}
+              />
+            </div>
+            
+            <div className="flex-1 overflow-y-auto bg-white">
+              {loading ? (
+                <div className="h-full flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                </div>
+              ) : (
+                <MenuItemGrid
+                  items={categories.find(c => c.id === activeCategory)?.items || []}
+                  onSelectItem={handleSelectItem}
+                  restaurant={restaurant}
+                />
+              )}
+            </div>
+          </div>
+          
+          {cart.length > 0 && !isCartOpen && (
+            <CartButton
+              count={cart.length}
+              total={calculateCartTotal()}
+              onClick={toggleCart}
+              restaurant={restaurant}
+            />
+          )}
+          
+          <Cart
+            isOpen={isCartOpen}
+            onClose={() => setIsCartOpen(false)}
+            cart={cart}
+            removeItem={handleRemoveCartItem}
+            updateQuantity={handleUpdateCartItemQuantity}
+            subtotal={calculateSubtotal()}
+            tax={calculateTax()}
+            restaurant={restaurant}
+            onCheckout={() => setIsCartOpen(false)}
+            onPlaceOrder={handlePlaceOrder}
+            placingOrder={placingOrder}
+            orderPlaced={orderPlaced}
+            getFormattedOptions={getFormattedOptions}
+            getFormattedToppings={getFormattedToppings}
+            orderType={orderType}
+            tableNumber={tableNumber}
+            uiLanguage={uiLanguage}
+          />
+        </>
+      )}
+      
+      {selectedItem && (
+        <ItemCustomizationDialog
+          item={selectedItem}
+          quantity={quantity}
+          setQuantity={setQuantity}
+          selectedOptions={selectedOptions}
+          selectedToppings={selectedToppings}
+          specialInstructions={specialInstructions}
+          setSpecialInstructions={setSpecialInstructions}
+          onToggleChoice={handleToggleChoice}
+          onToggleTopping={handleToggleTopping}
+          onClose={() => setSelectedItem(null)}
+          onAddToCart={handleAddToCart}
+          calculatePrice={calculateItemPrice}
+          shouldShowToppingCategory={shouldShowToppingCategory}
+          restaurant={restaurant}
+        />
+      )}
+      
+      <InactivityDialog
+        isOpen={showDialog}
+        onConfirm={handleContinue}
+        onCancel={handleCancel}
+        uiLanguage={uiLanguage}
+      />
+    </div>
+  );
+};
+
+export default KioskView;
