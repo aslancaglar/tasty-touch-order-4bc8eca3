@@ -101,7 +101,7 @@ export type Topping = {
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
-// Add the missing OrderType type
+// Define OrderType explicitly as its own type
 export type OrderType = 'dine-in' | 'takeaway' | null;
 
 export interface Order {
@@ -109,11 +109,11 @@ export interface Order {
   restaurant_id: string;
   customer_id?: string;
   customer_name?: string;
-  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+  status: OrderStatus;
   created_at: string;
   total: number;
-  order_type?: OrderType;
-  table_number?: string;
+  order_type?: OrderType; // Use the explicit OrderType
+  table_number?: string | null;
   payment_status?: PaymentStatus;
   payment_id?: string;
 }

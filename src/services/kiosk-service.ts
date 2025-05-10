@@ -1,5 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { Restaurant, MenuCategory, MenuItem, ToppingCategory, Topping, Order, OrderStatus, PaymentStatus } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, ToppingCategory, Topping, Order, OrderStatus, PaymentStatus, OrderType } from "@/types/database-types";
 import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 // Function to get all restaurants
@@ -546,7 +547,7 @@ export const createOrder = async (data: {
   customer_name?: string;
   total: number;
   status: OrderStatus;
-  order_type?: string;
+  order_type?: OrderType;
   table_number?: string;
 }): Promise<Order> => {
   try {

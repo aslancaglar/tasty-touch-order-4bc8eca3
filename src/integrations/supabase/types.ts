@@ -362,10 +362,12 @@ export type Database = {
           created_at: string
           customer_name: string | null
           id: string
+          order_type: string | null
           payment_id: string | null
           payment_status: string | null
           restaurant_id: string
           status: string
+          table_number: string | null
           total: number
           updated_at: string
         }
@@ -373,10 +375,12 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           id?: string
+          order_type?: string | null
           payment_id?: string | null
           payment_status?: string | null
           restaurant_id: string
           status: string
+          table_number?: string | null
           total: number
           updated_at?: string
         }
@@ -384,10 +388,12 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           id?: string
+          order_type?: string | null
           payment_id?: string | null
           payment_status?: string | null
           restaurant_id?: string
           status?: string
+          table_number?: string | null
           total?: number
           updated_at?: string
         }
