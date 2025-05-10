@@ -120,7 +120,6 @@
     "availableFrom": "Disponible à partir de",
     "availableUntil": "Disponible jusqu'à",
     "timeAvailability": "Disponibilité horaire",
-    "selectTime": "Sélectionner l'heure",
-    "currentlyUnavailable": "Actuellement Indisponible"
+    "selectTime": "Sélectionner l'heure"
   }
 }
