@@ -866,4 +866,47 @@ const KioskView = () => {
         <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
         setShowOrderTypeSelection(false);
         setShowWelcome(true);
-      }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage
+      }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
+      </div>;
+  }
+
+  return (
+    <div className="kiosk-view">
+      <KioskHeader />
+      <div className="flex flex-col">
+        <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+        <MenuItemGrid categories={categories} activeCategory={activeCategory} onSelectItem={handleSelectItem} />
+        <ItemCustomizationDialog
+          isOpen={selectedItem !== null}
+          onClose={() => setSelectedItem(null)}
+          selectedItem={selectedItem}
+          selectedOptions={selectedOptions}
+          selectedToppings={selectedToppings}
+          handleToggleChoice={handleToggleChoice}
+          handleToggleTopping={handleToggleTopping}
+          handleAddToCart={handleAddToCart}
+          handleUpdateCartItemQuantity={handleUpdateCartItemQuantity}
+          handleRemoveCartItem={handleRemoveCartItem}
+          quantity={quantity}
+          specialInstructions={specialInstructions}
+          setQuantity={setQuantity}
+          setSpecialInstructions={setSpecialInstructions}
+          setToppings={setToppings}
+          shouldShowToppingCategory={shouldShowToppingCategory}
+        />
+        <Cart
+          cart={cart}
+          calculateCartTotal={calculateCartTotal}
+          calculateSubtotal={calculateSubtotal}
+          calculateTax={calculateTax}
+          handlePlaceOrder={handlePlaceOrder}
+          toggleCart={toggleCart}
+          isCartOpen={isCartOpen}
+        />
+        <CartButton cart={cart} />
+      </div>
+    </div>
+  );
+};
+
+export default KioskView;
