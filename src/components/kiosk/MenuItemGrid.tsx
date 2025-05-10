@@ -162,15 +162,21 @@ const MenuItemCard = memo(({
           </div>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
-        <Button 
-          className={`w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide ${
-            !isAvailable ? 'bg-gray-400' : 'bg-kiosk-primary'
-          }`}
-          disabled={!isAvailable}
-        >
-          {isAvailable ? t("addToCart") : t("currentlyUnavailable")}
-          {isAvailable && <ChevronRight className="h-4 w-4 ml-2" />}
-        </Button>
+        
+        {isAvailable ? (
+          <Button 
+            className="w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide bg-kiosk-primary"
+          >
+            {t("addToCart")}
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
+        ) : (
+          <div 
+            className="w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide bg-[#ea384c] text-white text-center rounded-md flex items-center justify-center"
+          >
+            {t("currentlyUnavailable")}
+          </div>
+        )}
       </div>
     </Card>
   );
