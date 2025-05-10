@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, CreditCard, Banknote, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, CreditCard, Banknote } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -24,12 +24,7 @@ const translations = {
     confirm: "CONFIRMER LA COMMANDE",
     back: "Retour",
     payWithCard: "PAYER PAR CARTE",
-    payWithCash: "PAYER EN ESPÈCES",
-    processingPayment: "TRAITEMENT DU PAIEMENT...",
-    waitingForTerminal: "En attente du terminal de paiement...",
-    paymentError: "Erreur de paiement",
-    paymentErrorDesc: "Un problème est survenu lors du paiement. Veuillez réessayer ou choisir un autre mode de paiement.",
-    paymentRecordError: "Impossible de créer l'enregistrement de paiement. Veuillez réessayer ou choisir un autre mode de paiement."
+    payWithCash: "PAYER EN ESPÈCES"
   },
   en: {
     orderSummary: "ORDER SUMMARY",
@@ -41,12 +36,7 @@ const translations = {
     confirm: "CONFIRM ORDER",
     back: "Back",
     payWithCard: "PAY WITH CARD",
-    payWithCash: "PAY WITH CASH",
-    processingPayment: "PROCESSING PAYMENT...",
-    waitingForTerminal: "Waiting for payment terminal...",
-    paymentError: "Payment Error",
-    paymentErrorDesc: "There was a problem initiating the payment. Please try again or choose another payment method.",
-    paymentRecordError: "Could not create payment record. Please try again or choose a different payment method."
+    payWithCash: "PAY WITH CASH"
   },
   tr: {
     orderSummary: "SİPARİŞ ÖZETİ",
@@ -58,12 +48,7 @@ const translations = {
     confirm: "SİPARİŞİ ONAYLA",
     back: "Geri",
     payWithCard: "KART İLE ÖDE",
-    payWithCash: "NAKİT İLE ÖDE",
-    processingPayment: "İŞLENİYOR...",
-    waitingForTerminal: "Ödeme terminali bekleniyor...",
-    paymentError: "Ödeme Hatası",
-    paymentErrorDesc: "Ödeme başlatılırken bir sorun oluştu. Lütfen tekrar deneyin veya başka bir ödeme yöntemi seçin.",
-    paymentRecordError: "Ödeme kaydı oluşturulamadı. Lütfen tekrar deneyin veya başka bir ödeme yöntemi seçin."
+    payWithCash: "NAKİT İLE ÖDE"
   }
 };
 
@@ -106,10 +91,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | null>(null);
-  const [processingCardPayment, setProcessingCardPayment] = useState<boolean>(false);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [isCreatingPayment, setIsCreatingPayment] = useState<boolean>(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -124,198 +105,15 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        try {
-          const { count, error } = await supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true })
-            .eq('restaurant_id', restaurant.id);
-          
-          if (error) {
-            console.error("Error fetching order count:", error);
-            return;
-          }
-          
-          setOrderNumber(((count || 0) + 1).toString());
-        } catch (err) {
-          console.error("Exception when fetching order count:", err);
-        }
+        const { count } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('restaurant_id', restaurant.id);
+        setOrderNumber(((count || 0) + 1).toString());
       }
     };
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
-
-  // Check payment status periodically if card payment is in progress
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    
-    if (processingCardPayment && paymentId) {
-      console.log("Starting payment status polling for:", paymentId);
-      
-      interval = setInterval(async () => {
-        try {
-          console.log("Checking payment status for paymentId:", paymentId);
-          
-          const { data: payment, error } = await supabase
-            .from('payments')
-            .select('status, pos_response')
-            .eq('id', paymentId)
-            .single();
-          
-          if (error) {
-            console.error("Error checking payment status:", error);
-            setPaymentError("Could not check payment status");
-            return;
-          }
-          
-          console.log("Payment status check result:", payment);
-          
-          if (payment && payment.status === 'approved') {
-            console.log("Payment approved:", payment);
-            clearInterval(interval);
-            setProcessingCardPayment(false);
-            setPaymentError(null);
-            
-            // Complete the order
-            handleConfirmOrder("card");
-            
-            toast({
-              title: "Payment Approved",
-              description: "Your card payment has been processed successfully.",
-              variant: "default"
-            });
-          } else if (payment && payment.status === 'declined') {
-            console.log("Payment declined:", payment);
-            clearInterval(interval);
-            setProcessingCardPayment(false);
-            setPaymentError("Payment declined");
-            
-            toast({
-              title: "Payment Declined",
-              description: payment.pos_response || "Your card payment was declined.",
-              variant: "destructive"
-            });
-          }
-          // Continue polling if status is still 'pending'
-        } catch (error) {
-          console.error("Error in payment status check:", error);
-          setPaymentError("Error checking payment status");
-        }
-      }, 2000); // Check every 2 seconds
-    }
-    
-    return () => {
-      if (interval) {
-        console.log("Clearing payment status polling interval");
-        clearInterval(interval);
-      }
-    };
-  }, [processingCardPayment, paymentId]);
-
-  const handleCardPayment = async () => {
-    // Reset previous errors
-    setPaymentError(null);
-    
-    // Prevent multiple clicks or clicks while already processing
-    if (processingCardPayment || isCreatingPayment) {
-      console.log("Payment already processing, ignoring click");
-      return;
-    }
-    
-    try {
-      console.log("Starting card payment process with total:", total);
-      setIsCreatingPayment(true);
-      setProcessingCardPayment(true);
-      
-      // Create a payment record in the database
-      const { data: payment, error } = await supabase
-        .from('payments')
-        .insert({
-          amount: total,
-          status: 'pending'
-        })
-        .select()
-        .single();
-      
-      setIsCreatingPayment(false);
-      
-      if (error) {
-        console.error("Error creating payment record:", error);
-        setProcessingCardPayment(false);
-        
-        // Show detailed error message
-        const errorMessage = translations[uiLanguage]?.paymentRecordError || "Could not create payment record. Please try again or choose a different payment method.";
-        setPaymentError(errorMessage);
-        
-        toast({
-          title: t("paymentError"),
-          description: errorMessage,
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (!payment) {
-        console.error("No payment data returned after insert");
-        setProcessingCardPayment(false);
-        
-        const errorMessage = translations[uiLanguage]?.paymentRecordError || "Could not create payment record. Please try again or choose a different payment method.";
-        setPaymentError(errorMessage);
-        
-        toast({
-          title: t("paymentError"),
-          description: errorMessage,
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      console.log("Payment record created:", payment);
-      setPaymentId(payment.id);
-      
-      // In a real environment, this would trigger a POS terminal
-      // For demo/development, we'll simulate payment approval after a delay
-      setTimeout(async () => {
-        try {
-          console.log("Simulating payment approval for ID:", payment.id);
-          const { error: updateError } = await supabase
-            .from('payments')
-            .update({ status: 'approved' })
-            .eq('id', payment.id);
-            
-          if (updateError) {
-            console.error("Error updating payment status:", updateError);
-            // The useEffect polling will handle this case
-          } else {
-            console.log("Successfully updated payment status to approved");
-          }
-        } catch (simError) {
-          console.error("Error simulating payment approval:", simError);
-        }
-      }, 5000); // Simulate a 5-second payment process
-      
-      toast({
-        title: t("waitingForTerminal"),
-        description: "Please complete the payment on the terminal.",
-        duration: 5000
-      });
-      
-      // Payment status will be checked by the useEffect above
-      
-    } catch (error) {
-      console.error("Error processing card payment:", error);
-      setProcessingCardPayment(false);
-      setIsCreatingPayment(false);
-      
-      const errorMessage = translations[uiLanguage]?.paymentErrorDesc || "There was a problem with your payment. Please try again or choose another payment method.";
-      setPaymentError(errorMessage);
-      
-      toast({
-        title: t("paymentError"),
-        description: errorMessage,
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleConfirmOrder = async (selectedPaymentMethod?: "card" | "cash") => {
     if (selectedPaymentMethod) {
@@ -575,20 +373,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               {restaurant?.card_payment_enabled && (
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6"
-                  onClick={() => (!processingCardPayment && !isCreatingPayment) ? handleCardPayment() : null}
-                  disabled={placingOrder || processingCardPayment || isCreatingPayment}
+                  onClick={() => handleConfirmOrder("card")}
+                  disabled={placingOrder}
                 >
-                  {processingCardPayment || isCreatingPayment ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      {t("processingPayment")}
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="mr-2 h-5 w-5" />
-                      {t("payWithCard")}
-                    </>
-                  )}
+                  <CreditCard className="mr-2 h-5 w-5" />
+                  {t("payWithCard")}
                 </Button>
               )}
               
@@ -596,17 +385,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <Button 
                   className="w-full bg-green-700 hover:bg-green-800 text-white py-6"
                   onClick={() => handleConfirmOrder("cash")}
-                  disabled={placingOrder || processingCardPayment || isCreatingPayment}
+                  disabled={placingOrder}
                 >
                   <Banknote className="mr-2 h-5 w-5" />
                   {t("payWithCash")}
                 </Button>
-              )}
-              
-              {paymentError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
-                  {paymentError}
-                </div>
               )}
             </div>
           ) : (
