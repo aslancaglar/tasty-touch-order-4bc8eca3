@@ -24,7 +24,7 @@ const WelcomePage = ({
           <img 
             src={restaurant.logo_url} 
             alt={restaurant.name} 
-            className="h-84 w-84 object-contain rounded-full bg-white p-3"
+            className="h-56 w-56 object-contain rounded-full bg-white p-2"
           />
         </div>
       )}
