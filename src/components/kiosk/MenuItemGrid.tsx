@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -140,7 +141,7 @@ const MenuItemCard = memo(({
           <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-md text-xs flex items-center">
             <Clock className="h-3 w-3 mr-1" />
             <span>
-              {t("betweenTime")}: {formatTimeDisplay(item.available_from)} - {formatTimeDisplay(item.available_until)}
+              {formatTimeDisplay(item.available_from)} - {formatTimeDisplay(item.available_until)}
             </span>
           </div>
         )}

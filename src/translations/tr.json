@@ -18,9 +18,7 @@
     "printError": "Yazdırma Hatası",
     "printErrorDesc": "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
     "error": "Hata",
-    "errorPrinting": "Fiş yazdırılırken bir hata oluştu.",
-    "success": "Sipariş Verildi",
-    "successDesc": "Siparişiniz başarıyla verildi!"
+    "errorPrinting": "Fiş yazdırılırken bir hata oluştu."
   },
   "receipt": {
     "order": "Sipariş",
@@ -38,13 +36,10 @@
     "start": "SİPARİŞE BAŞLAMAK İÇİN DOKUNUN"
   },
   "cart": {
-    "viewCart": "Sepeti Görüntüle",
-    "addedToCart": "Sepete eklendi",
-    "added": "siparişinize eklendi"
+    "viewCart": "Sepeti Görüntüle"
   },
   "currentlyUnavailable": "MEVCUT DEĞİL",
   "betweenTime": "ARASINDA",
-  "addToCart": "SEPETE EKLE",
   "dashboard": {
     "title": "Kontrol Paneli",
     "welcome": "TastyTouch Yönetici Kontrol Panelinize Hoş Geldiniz",
@@ -82,7 +77,6 @@
     "needLogin": "Restoranları görüntülemek ve yönetmek için giriş yapmanız gerekiyor",
     "signIn": "Giriş Yap",
     "notFound": "Restoran bulunamadı",
-    "sorryNotFound": "Üzgünüz, bu restoranı bulamadık.",
     "backToRestaurants": "Restoranlara Geri Dön",
     "noLocationDefined": "Konum tanımlanmadı",
     "management": "Restoran Yönetimi"
@@ -128,13 +122,6 @@
     "availableFrom": "Şu saatten itibaren kullanılabilir",
     "availableUntil": "Şu saate kadar kullanılabilir",
     "timeAvailability": "Zaman Kullanılabilirliği",
-    "selectTime": "Zaman seç",
-    "selectionsRequired": "Gerekli seçimler",
-    "pleaseSelectRequired": "Sepete eklemeden önce lütfen tüm gerekli seçimleri yapın",
-    "maxSelectionsReached": "Maksimum seçimlere ulaşıldı",
-    "maxSelectionsMessage": "Bu kategoride sadece {max} öğe seçebilirsiniz."
-  },
-  "error": "Hata",
-  "menuRefreshed": "Menü yenilendi",
-  "menuRefreshSuccess": "Menü başarıyla yenilendi"
+    "selectTime": "Zaman seç"
+  }
 }

@@ -17,17 +17,13 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
-import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
-
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
-
 const KioskView = () => {
   const {
     restaurantSlug
@@ -55,14 +51,14 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [uiLanguage, setUiLanguage] = useState<SupportedLanguage>("fr");
+  const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const cartRef = useRef<HTMLDivElement | null>(null);
-  const { toast } = useToast();
-  const { t } = useTranslation(uiLanguage);
-
+  const {
+    toast
+  } = useToast();
   const CURRENCY_SYMBOLS: Record<string, string> = {
     EUR: "€",
     USD: "$",
@@ -75,12 +71,99 @@ const KioskView = () => {
     CNY: "¥",
     RUB: "₽"
   };
-  
   const getCurrencySymbol = (currency: string) => {
     const code = currency?.toUpperCase() || "EUR";
     return CURRENCY_SYMBOLS[code] || code;
   };
-
+  const translations = {
+    fr: {
+      restaurantNotFound: "Restaurant introuvable",
+      sorryNotFound: "Désolé, nous n'avons pas pu trouver ce restaurant.",
+      backToHome: "Retour à l'accueil",
+      open: "Ouvert maintenant",
+      dineIn: "Sur Place",
+      table: "Table",
+      takeaway: "À Emporter",
+      menu: "Menu",
+      addToCart: "Ajouter au panier",
+      selectionsRequired: "Sélections requises",
+      pleaseSelectRequired: "Veuillez faire toutes les sélections requises avant d'ajouter au panier",
+      addedToCart: "Ajouté au panier",
+      added: "ajouté à votre commande",
+      quantity: "Quantité",
+      multipleSelection: "Sélection multiple",
+      selectUpTo: "Sélectionnez jusqu'à",
+      maxSelectionsReached: "Nombre maximum de sélections atteint",
+      maxSelectionsMessage: "Vous ne pouvez sélectionner que {max} éléments dans cette catégorie.",
+      inactivityTitle: "Êtes-vous toujours là ?",
+      inactivityMessage: "Voulez-vous continuer votre commande ?",
+      yes: "Oui",
+      no: "Non",
+      refreshMenu: "Rafraîchir le menu",
+      menuRefreshed: "Menu rafraîchi",
+      menuRefreshSuccess: "Le menu a été rafraîchi avec succès",
+      currentlyUnavailable: "Actuellement Indisponible"
+    },
+    en: {
+      restaurantNotFound: "Restaurant not found",
+      sorryNotFound: "Sorry, we couldn't find this restaurant.",
+      backToHome: "Back to home",
+      open: "Now open",
+      dineIn: "Dine In",
+      table: "Table",
+      takeaway: "Takeaway",
+      menu: "Menu",
+      addToCart: "Add to cart",
+      selectionsRequired: "Selections required",
+      pleaseSelectRequired: "Please make all required selections before adding to cart",
+      addedToCart: "Added to cart",
+      added: "added to your order",
+      quantity: "Quantity",
+      multipleSelection: "Multiple selection",
+      selectUpTo: "Select up to",
+      maxSelectionsReached: "Maximum selections reached",
+      maxSelectionsMessage: "You can only select {max} items in this category.",
+      inactivityTitle: "Are you still there?",
+      inactivityMessage: "Do you want to continue your order?",
+      yes: "Yes",
+      no: "No",
+      refreshMenu: "Refresh menu",
+      menuRefreshed: "Menu refreshed",
+      menuRefreshSuccess: "Menu has been refreshed successfully",
+      currentlyUnavailable: "Currently Unavailable"
+    },
+    tr: {
+      restaurantNotFound: "Restoran bulunamadı",
+      sorryNotFound: "Üzgünüz, bu restoranı bulamadık.",
+      backToHome: "Ana sayfaya dön",
+      open: "Şimdi açık",
+      dineIn: "Yerinde Yeme",
+      table: "Masa",
+      takeaway: "Paket Servis",
+      menu: "Menü",
+      addToCart: "Sepete ekle",
+      selectionsRequired: "Gerekli seçimler",
+      pleaseSelectRequired: "Sepete eklemeden önce lütfen tüm gerekli seçimleri yapın",
+      addedToCart: "Sepete eklendi",
+      added: "siparişinize eklendi",
+      quantity: "Miktar",
+      multipleSelection: "Çoklu seçim",
+      selectUpTo: "En fazla seçin",
+      maxSelectionsReached: "Maksimum seçimlere ulaşıldı",
+      maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz.",
+      inactivityTitle: "Hala orada mısınız?",
+      inactivityMessage: "Siparişinize devam etmek istiyor musunuz?",
+      yes: "Evet",
+      no: "Hayır",
+      refreshMenu: "Menüyü yenile",
+      menuRefreshed: "Menü yenilendi",
+      menuRefreshSuccess: "Menü başarıyla yenilendi",
+      currentlyUnavailable: "Şu Anda Mevcut Değil"
+    }
+  };
+  const t = (key: keyof typeof translations.en) => {
+    return translations[uiLanguage][key];
+  };
   const resetToWelcome = () => {
     console.log("Resetting to welcome page - cleaning up all state");
     setShowWelcome(true);
@@ -98,14 +181,12 @@ const KioskView = () => {
       setActiveCategory(categories[0].id);
     }
   };
-  
   const {
     showDialog,
     handleContinue,
     handleCancel,
     fullReset
   } = useInactivityTimer(resetToWelcome);
-
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -117,8 +198,8 @@ const KioskView = () => {
         const restaurantData = await getRestaurantBySlug(restaurantSlug);
         if (!restaurantData) {
           toast({
-            title: t("restaurants.notFound"),
-            description: t("restaurants.sorryNotFound"),
+            title: t("restaurantNotFound"),
+            description: t("sorryNotFound"),
             variant: "destructive"
           });
           navigate('/');
@@ -126,7 +207,7 @@ const KioskView = () => {
         }
         setRestaurant(restaurantData);
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
-        setUiLanguage(lang as SupportedLanguage);
+        setUiLanguage(lang);
         const menuData = await getMenuForRestaurant(restaurantData.id);
 
         // Sort categories by display_order before setting state
@@ -150,30 +231,27 @@ const KioskView = () => {
         }
         setLoading(false);
       } catch (error) {
-        console.error("Error loading restaurant and menu:", error);
+        console.error("Erreur lors du chargement du restaurant et du menu:", error);
         toast({
-          title: t("restaurants.notFound"),
-          description: t("restaurants.sorryNotFound"),
+          title: t("restaurantNotFound"),
+          description: t("sorryNotFound"),
           variant: "destructive"
         });
         setLoading(false);
       }
     };
     fetchRestaurantAndMenu();
-  }, [restaurantSlug, navigate, toast, t]);
-
+  }, [restaurantSlug, navigate, toast]);
   useEffect(() => {
     if (showWelcome) {
       fullReset();
     }
   }, [showWelcome, fullReset]);
-
   const handleStartOrder = () => {
     fullReset();
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
   };
-
   const handleOrderTypeSelected = (type: OrderType, table?: string) => {
     setOrderType(type);
     if (table) {
@@ -181,7 +259,6 @@ const KioskView = () => {
     }
     setShowOrderTypeSelection(false);
   };
-
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
       const {
@@ -191,7 +268,7 @@ const KioskView = () => {
         ascending: true
       });
       if (toppingCategoriesError) {
-        console.error("Error loading topping categories:", toppingCategoriesError);
+        console.error("Erreur lors du chargement des catégories de toppings:", toppingCategoriesError);
         return [];
       }
       if (!menuItemToppingCategories.length) {
@@ -209,7 +286,7 @@ const KioskView = () => {
         error: categoriesError
       } = await supabase.from('topping_categories').select('*').in('id', toppingCategoryIds);
       if (categoriesError) {
-        console.error("Error loading topping category details:", categoriesError);
+        console.error("Erreur lors du chargement des détails des catégories de toppings:", categoriesError);
         return [];
       }
       const toppingCategoriesWithToppings = await Promise.all(toppingCategories.map(async category => {
@@ -221,7 +298,7 @@ const KioskView = () => {
         }); // Order toppings by display_order
 
         if (toppingsError) {
-          console.error(`Error loading toppings for category ${category.id}:`, toppingsError);
+          console.error(`Erreur lors du chargement des ingrédients pour la catégorie ${category.id}:`, toppingsError);
           return {
             id: category.id,
             name: category.name,
@@ -229,6 +306,7 @@ const KioskView = () => {
             max_selections: category.max_selections || 0,
             required: category.min_selections ? category.min_selections > 0 : false,
             display_order: displayOrderMap[category.id],
+            // Use display_order from relation
             toppings: [],
             show_if_selection_id: category.show_if_selection_id,
             show_if_selection_type: category.show_if_selection_type
@@ -241,6 +319,7 @@ const KioskView = () => {
           max_selections: category.max_selections || 0,
           required: category.min_selections ? category.min_selections > 0 : false,
           display_order: displayOrderMap[category.id],
+          // Use display_order from relation
           toppings: toppings.map(topping => ({
             id: topping.id,
             name: topping.name,
@@ -261,19 +340,18 @@ const KioskView = () => {
       });
       return sortedCategories;
     } catch (error) {
-      console.error("Error retrieving topping categories:", error);
+      console.error("Erreur lors de la récupération des catégories de toppings:", error);
       return [];
     }
   };
-
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
       const itemWithOptions = await getMenuItemWithOptions(item.id);
       if (!itemWithOptions) {
         toast({
-          title: t("error"),
-          description: t("error"),
+          title: "Erreur",
+          description: "Impossible de charger les détails de l'article. Veuillez réessayer.",
           variant: "destructive"
         });
         return;
@@ -316,16 +394,15 @@ const KioskView = () => {
       }
       setLoading(false);
     } catch (error) {
-      console.error("Error loading item details:", error);
+      console.error("Erreur lors du chargement des détails de l'article:", error);
       toast({
-        title: t("error"),
-        description: t("order.error"),
+        title: "Erreur",
+        description: "Un problème est survenu lors du chargement des détails de l'article. Veuillez réessayer.",
         variant: "destructive"
       });
       setLoading(false);
     }
   };
-
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
       const optionIndex = prev.findIndex(o => o.optionId === optionId);
@@ -354,7 +431,6 @@ const KioskView = () => {
       return newOptions;
     });
   };
-
   const handleToggleTopping = (categoryId: string, toppingId: string) => {
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
@@ -376,8 +452,8 @@ const KioskView = () => {
               newToppingIds = [toppingId];
             } else if (category.toppingIds.length >= toppingCategory.max_selections) {
               toast({
-                title: t("menuItem.maxSelectionsReached"),
-                description: t("menuItem.maxSelectionsMessage").replace("{max}", String(toppingCategory.max_selections))
+                title: t("maxSelectionsReached"),
+                description: t("maxSelectionsMessage").replace("{max}", String(toppingCategory.max_selections))
               });
               return prev;
             } else {
@@ -398,7 +474,6 @@ const KioskView = () => {
       return newToppings;
     });
   };
-
   const calculateItemPrice = (item: MenuItemWithOptions, options: {
     optionId: string;
     choiceIds: string[];
@@ -432,7 +507,6 @@ const KioskView = () => {
     }
     return price;
   };
-
   const getFormattedOptions = (item: CartItem): string => {
     if (!item.menuItem.options) return "";
     return item.selectedOptions.flatMap(selectedOption => {
@@ -444,7 +518,6 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
-
   const getFormattedToppings = (item: CartItem): string => {
     if (!item.menuItem.toppingCategories) return "";
     return item.selectedToppings.flatMap(selectedCategory => {
@@ -456,7 +529,6 @@ const KioskView = () => {
       });
     }).filter(Boolean).join(", ");
   };
-
   const handleAddToCart = () => {
     if (!selectedItem) return;
     const isOptionsValid = selectedItem.options?.every(option => {
@@ -471,8 +543,8 @@ const KioskView = () => {
     }) ?? true;
     if (!isOptionsValid || !isToppingsValid) {
       toast({
-        title: t("menuItem.selectionsRequired"),
-        description: t("menuItem.pleaseSelectRequired"),
+        title: t("selectionsRequired"),
+        description: t("pleaseSelectRequired"),
         variant: "destructive"
       });
       return;
@@ -490,11 +562,10 @@ const KioskView = () => {
     setCart(prev => [newItem, ...prev]);
     setSelectedItem(null);
     toast({
-      title: t("cart.addedToCart"),
-      description: `${quantity}x ${selectedItem.name} ${t("cart.added")}`
+      title: t("addedToCart"),
+      description: `${quantity}x ${selectedItem.name} ${t("added")}`
     });
   };
-
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       handleRemoveCartItem(itemId);
@@ -505,7 +576,6 @@ const KioskView = () => {
       quantity: newQuantity
     } : item));
   };
-
   const handleRemoveCartItem = (itemId: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.id !== itemId);
@@ -515,21 +585,17 @@ const KioskView = () => {
       return newCart;
     });
   };
-
   const calculateCartTotal = (): number => {
     return cart.reduce((total, item) => {
       return total + item.itemPrice * item.quantity;
     }, 0);
   };
-
   const calculateSubtotal = () => {
     return calculateCartTotal();
   };
-
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
   };
-
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
     try {
@@ -578,8 +644,8 @@ const KioskView = () => {
       }
       setOrderPlaced(true);
       toast({
-        title: t("order.success"),
-        description: t("order.successDesc")
+        title: "Commande passée",
+        description: "Votre commande a été passée avec succès !"
       });
       setTimeout(() => {
         setOrderPlaced(false);
@@ -592,27 +658,24 @@ const KioskView = () => {
         }
       }, 3000);
     } catch (error) {
-      console.error("Error placing order:", error);
+      console.error("Erreur lors de la commande:", error);
       toast({
-        title: t("error"),
-        description: t("order.error"),
+        title: "Erreur",
+        description: "Un problème est survenu lors de la commande. Veuillez réessayer.",
         variant: "destructive"
       });
       setPlacingOrder(false);
     }
   };
-
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
-
   const shouldShowToppingCategory = (category: MenuItemWithOptions['toppingCategories'][0]) => {
     if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
       return true;
     }
     return category.show_if_selection_id.some(toppingId => selectedToppings.some(catSelection => catSelection.toppingIds.includes(toppingId)));
   };
-
   const fetchCategories = async () => {
     try {
       if (!restaurant) return;
@@ -669,13 +732,12 @@ const KioskView = () => {
     } catch (error) {
       console.error("Error fetching categories:", error);
       toast({
-        title: t("restaurants.notFound"),
-        description: t("restaurants.sorryNotFound"),
+        title: t("restaurantNotFound"),
+        description: t("sorryNotFound"),
         variant: "destructive"
       });
     }
   };
-
   const fetchToppings = async () => {
     if (!selectedCategory?.id || !restaurant?.id) return;
     try {
@@ -710,13 +772,12 @@ const KioskView = () => {
     } catch (error) {
       console.error('Error fetching toppings:', error);
       toast({
-        title: t("error"),
-        description: t("error"),
+        title: "Error",
+        description: "Unable to load toppings",
         variant: "destructive"
       });
     }
   };
-
   const handleRefreshMenu = async () => {
     try {
       setLoading(true);
@@ -752,14 +813,13 @@ const KioskView = () => {
     } catch (error) {
       console.error("Error refreshing menu:", error);
       toast({
-        title: t("error"),
-        description: t("error"),
+        title: "Error",
+        description: "Failed to refresh menu",
         variant: "destructive"
       });
       setLoading(false);
     }
   };
-
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -771,8 +831,8 @@ const KioskView = () => {
         const restaurantData = await getRestaurantBySlug(restaurantSlug);
         if (!restaurantData) {
           toast({
-            title: t("restaurants.notFound"),
-            description: t("restaurants.sorryNotFound"),
+            title: t("restaurantNotFound"),
+            description: t("sorryNotFound"),
             variant: "destructive"
           });
           navigate('/');
@@ -786,8 +846,8 @@ const KioskView = () => {
       } catch (error) {
         console.error("Erreur lors du chargement du restaurant et du menu:", error);
         toast({
-          title: t("restaurants.notFound"),
-          description: t("restaurants.sorryNotFound"),
+          title: t("restaurantNotFound"),
+          description: t("sorryNotFound"),
           variant: "destructive"
         });
         setLoading(false);
@@ -795,7 +855,6 @@ const KioskView = () => {
     };
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
-
   useEffect(() => {
     // Add a style tag to prevent selection throughout the kiosk view
     const styleTag = document.createElement('style');
@@ -829,26 +888,23 @@ const KioskView = () => {
       document.head.removeChild(styleTag);
     };
   }, []);
-
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen kiosk-view">
         <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
       </div>;
   }
-
   if (!restaurant) {
     return <div className="flex items-center justify-center h-screen kiosk-view">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">{t("restaurants.notFound")}</h1>
-          <p className="text-gray-500 mb-4">{t("restaurants.sorryNotFound")}</p>
+          <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
+          <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
           <Button onClick={() => navigate('/')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {t("restaurants.backToRestaurants")}
+            {t("backToHome")}
           </Button>
         </div>
       </div>;
   }
-
   if (showWelcome) {
     return <div className="kiosk-view">
         <WelcomePage restaurant={restaurant} onStart={() => {
@@ -857,7 +913,6 @@ const KioskView = () => {
       }} uiLanguage={uiLanguage} />
       </div>;
   }
-
   if (showOrderTypeSelection) {
     return <div className="kiosk-view">
         <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
@@ -867,52 +922,54 @@ const KioskView = () => {
         setShowOrderTypeSelection(false);
         setShowWelcome(true);
       }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
+        
+        <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       </div>;
   }
-
-  return (
-    <div className="kiosk-view">
-      <KioskHeader 
-        restaurant={restaurant} 
-        orderType={orderType} 
-        tableNumber={tableNumber} 
-        t={t} 
-        onRefresh={handleRefreshMenu}
-      />
-      <div className="flex flex-col">
-        <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
-        <MenuItemGrid categories={categories} activeCategory={activeCategory} onSelectItem={handleSelectItem} />
-        <ItemCustomizationDialog
-          isOpen={selectedItem !== null}
-          onClose={() => setSelectedItem(null)}
-          selectedItem={selectedItem}
-          selectedOptions={selectedOptions}
-          selectedToppings={selectedToppings}
-          handleToggleChoice={handleToggleChoice}
-          handleToggleTopping={handleToggleTopping}
-          handleAddToCart={handleAddToCart}
-          handleUpdateCartItemQuantity={handleUpdateCartItemQuantity}
-          handleRemoveCartItem={handleRemoveCartItem}
-          quantity={quantity}
-          specialInstructions={specialInstructions}
-          setQuantity={setQuantity}
-          setSpecialInstructions={setSpecialInstructions}
-          setToppings={setToppings}
-          shouldShowToppingCategory={shouldShowToppingCategory}
-        />
-        <Cart
-          cart={cart}
-          calculateCartTotal={calculateCartTotal}
-          calculateSubtotal={calculateSubtotal}
-          calculateTax={calculateTax}
-          handlePlaceOrder={handlePlaceOrder}
-          toggleCart={toggleCart}
-          isCartOpen={isCartOpen}
-        />
-        <CartButton cart={cart} />
+  const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartIsEmpty = cart.length === 0;
+  return <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+      {/* Fixed height header - 12vh */}
+      <div className="h-[12vh] min-h-[120px] flex-shrink-0">
+        <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
       </div>
-    </div>
-  );
+
+      {/* Content area with fixed sidebar and scrollable menu grid */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Fixed width sidebar - 16vw */}
+        <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
+          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+        </div>
+
+        {/* Scrollable menu grid area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            <MenuItemGrid 
+              items={categories.flatMap(c => c.items)} 
+              handleSelectItem={handleSelectItem} 
+              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")} 
+              t={t} 
+              restaurantId={restaurant?.id} 
+              refreshTrigger={refreshTrigger}
+              categories={categories}
+            />
+          </div>
+        </div>
+      </div>
+
+      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} uiLanguage={uiLanguage} currency={restaurant.currency} />}
+
+      <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
+      maxHeight: "60vh"
+    }}>
+        <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} t={t} />
+      </div>
+
+      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
+
+      <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+    </div>;
 };
 
 export default KioskView;
