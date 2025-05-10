@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -202,6 +203,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           // Handle different types of changes
           if (payload.eventType === 'UPDATE') {
             const updatedItem = payload.new as MenuItem;
+            console.log('Updated item details:', updatedItem);
             
             setMenuItems(prevItems => 
               prevItems.map(item => 
@@ -209,7 +211,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
               )
             );
             
-            console.log(`Updated menu item ${updatedItem.id} with new availability`);
+            console.log(`Updated menu item ${updatedItem.id} with new data`);
           } else if (payload.eventType === 'INSERT') {
             const newItem = payload.new as MenuItem;
             if (newItem.category_id && categories.some(cat => cat.id === newItem.category_id)) {
@@ -225,7 +227,9 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Realtime subscription status: ${status}`);
+      });
 
     // Clean up subscription when component unmounts
     return () => {
