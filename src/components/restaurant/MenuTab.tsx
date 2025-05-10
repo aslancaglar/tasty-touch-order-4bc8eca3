@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -306,48 +305,6 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
     }
   };
 
-  const handleAddMenuItem = async (values: any) => {
-    if (!selectedCategory) return;
-
-    try {
-      setIsCreatingItem(true);
-      
-      const newMenuItem = await createMenuItem({
-        name: values.name,
-        description: values.description || null,
-        price: Number(values.price),
-        promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
-        image: values.image || null,
-        category_id: selectedCategory.id,
-        topping_categories: values.topping_categories || [],
-        in_stock: true,
-        display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
-        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : 10
-      });
-      
-      const updatedItems = [...menuItems, newMenuItem].sort((a, b) => 
-        (a.display_order || 0) - (b.display_order || 0)
-      );
-      setMenuItems(updatedItems);
-      
-      toast({
-        title: "Success",
-        description: `${values.name} has been added to the menu.`,
-      });
-      
-      setShowCreateItemDialog(false);
-    } catch (error) {
-      console.error("Error adding menu item:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add the menu item",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreatingItem(false);
-    }
-  };
-
   const handleEditMenuItem = async (values: any) => {
     if (!selectedItem) return;
 
@@ -362,7 +319,9 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         image: values.image || null,
         topping_categories: values.topping_categories || [],
         tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : null,
-        display_order: values.display_order ? parseInt(values.display_order, 10) : 0
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
+        available_from: values.available_from || null,
+        available_until: values.available_until || null
       });
       
       const updatedItems = menuItems.map(item => 
@@ -386,6 +345,50 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       });
     } finally {
       setIsUpdatingItem(false);
+    }
+  };
+
+  const handleAddMenuItem = async (values: any) => {
+    if (!selectedCategory) return;
+
+    try {
+      setIsCreatingItem(true);
+      
+      const newMenuItem = await createMenuItem({
+        name: values.name,
+        description: values.description || null,
+        price: Number(values.price),
+        promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
+        image: values.image || null,
+        category_id: selectedCategory.id,
+        topping_categories: values.topping_categories || [],
+        in_stock: true,
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
+        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : 10,
+        available_from: values.available_from || null,
+        available_until: values.available_until || null
+      });
+      
+      const updatedItems = [...menuItems, newMenuItem].sort((a, b) => 
+        (a.display_order || 0) - (b.display_order || 0)
+      );
+      setMenuItems(updatedItems);
+      
+      toast({
+        title: "Success",
+        description: `${values.name} has been added to the menu.`,
+      });
+      
+      setShowCreateItemDialog(false);
+    } catch (error) {
+      console.error("Error adding menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add the menu item",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingItem(false);
     }
   };
 
@@ -624,7 +627,9 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                 image: selectedItem.image || "",
                 topping_categories: selectedItem.topping_categories || [],
                 tax_percentage: selectedItem.tax_percentage ? selectedItem.tax_percentage.toString() : "10",
-                display_order: selectedItem.display_order?.toString() || "0"
+                display_order: selectedItem.display_order?.toString() || "0",
+                available_from: selectedItem.available_from || "",
+                available_until: selectedItem.available_until || ""
               }}
               isLoading={isUpdatingItem}
               restaurantId={restaurant.id}

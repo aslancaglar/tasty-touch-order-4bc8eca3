@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import ImageUpload from "@/components/ImageUpload";
-import { Loader2, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, Clock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -51,6 +51,8 @@ const formSchema = z.object({
     (val) => !isNaN(Number(val)),
     { message: "Display order must be a number" }
   ),
+  available_from: z.string().optional(),
+  available_until: z.string().optional(),
 });
 
 interface MenuItemFormProps {
@@ -85,6 +87,8 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       tax_percentage: initialValues?.tax_percentage || "10",
       topping_categories: initialValues?.topping_categories || [],
       display_order: initialValues?.display_order || "0",
+      available_from: initialValues?.available_from || "",
+      available_until: initialValues?.available_until || "",
     },
   });
 
@@ -313,6 +317,46 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
             </FormItem>
           )}
         />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="available_from"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" /> Available From
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    type="time" 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="available_until"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" /> Available Until
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    type="time" 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
