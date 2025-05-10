@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, UtensilsCrossed, Cherry, Receipt, Package, Settings } from "lucide-react";
+import { Loader2, ArrowLeft, UtensilsCrossed, Cherry, Receipt, Package, Settings, ChartBar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Restaurant } from "@/types/database-types";
 import MenuTab from "@/components/restaurant/MenuTab";
@@ -13,6 +13,7 @@ import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
 import StockTab from "@/components/restaurant/StockTab";
 import SettingsTab from "@/components/restaurant/SettingsTab";
+import StatisticsTab from "@/components/restaurant/StatisticsTab";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -142,7 +143,7 @@ const OwnerRestaurantManage = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-5 gap-1">
+            <TabsList className="grid grid-cols-6 gap-1">
               <TabsTrigger value="menu" className="flex items-center justify-center">
                 <UtensilsCrossed className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
                 {!isMobile && t("restaurant.menu")}
@@ -162,6 +163,10 @@ const OwnerRestaurantManage = () => {
               <TabsTrigger value="settings" className="flex items-center justify-center">
                 <Settings className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
                 {!isMobile && t("restaurant.settings")}
+              </TabsTrigger>
+              <TabsTrigger value="statistics" className="flex items-center justify-center">
+                <ChartBar className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+                {!isMobile && (t("restaurant.statistics") || "Statistics")}
               </TabsTrigger>
             </TabsList>
             
@@ -183,6 +188,10 @@ const OwnerRestaurantManage = () => {
 
             <TabsContent value="settings">
               {restaurant && <SettingsTab restaurant={restaurant} onRestaurantUpdated={handleRestaurantUpdated} />}
+            </TabsContent>
+
+            <TabsContent value="statistics">
+              {restaurant && <StatisticsTab restaurant={restaurant} />}
             </TabsContent>
           </Tabs>
         </CardContent>
