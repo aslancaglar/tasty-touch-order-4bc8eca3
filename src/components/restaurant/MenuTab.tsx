@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Loader2, Utensils, Clock } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Utensils } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -23,9 +24,6 @@ import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { useTranslation } from "@/utils/language-utils";
 
 interface MenuTabProps {
   restaurant: Restaurant;
@@ -104,23 +102,6 @@ const CategoryCard = ({
   );
 };
 
-const formatTimeDisplay = (timeString: string | null | undefined): string => {
-  if (!timeString) return "";
-  
-  try {
-    // Create a date object with the time string
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0);
-    
-    // Format the time in 12-hour format with AM/PM
-    return format(date, 'h:mm a');
-  } catch (error) {
-    console.error("Error formatting time:", error);
-    return timeString;
-  }
-};
-
 const MenuTab = ({ restaurant }: MenuTabProps) => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
@@ -163,9 +144,6 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
     const code = currency?.toUpperCase() || "EUR";
     return CURRENCY_SYMBOLS[code] || code;
   };
-
-  // Update the useTranslation call to handle string language properly
-  const { t } = useTranslation(restaurant.ui_language || "en");
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -344,9 +322,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         topping_categories: values.topping_categories || [],
         in_stock: true,
         display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
-        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : 10,
-        available_from: values.available_from || null,
-        available_until: values.available_until || null
+        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : 10
       });
       
       const updatedItems = [...menuItems, newMenuItem].sort((a, b) => 
@@ -386,9 +362,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         image: values.image || null,
         topping_categories: values.topping_categories || [],
         tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : null,
-        display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
-        available_from: values.available_from || null,
-        available_until: values.available_until || null
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0
       });
       
       const updatedItems = menuItems.map(item => 
@@ -514,7 +488,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                   <div>
                     <h3 className="font-medium">{item.name}</h3>
                     <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{item.description}</p>
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <div className="flex items-center gap-3 mt-1">
                       <p className="text-sm font-medium">
                         {getCurrencySymbol(restaurant.currency)}{parseFloat(item.price.toString()).toFixed(2)}
                         {item.promotion_price && (
@@ -524,14 +498,6 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                         )}
                       </p>
                       <span className="text-xs text-muted-foreground">Order: {item.display_order || 0}</span>
-                      
-                      {/* Display availability time badge if set */}
-                      {item.available_from && item.available_until && (
-                        <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                          <Clock className="h-3 w-3" />
-                          {formatTimeDisplay(item.available_from)} - {formatTimeDisplay(item.available_until)}
-                        </Badge>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -638,7 +604,6 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
             isLoading={isCreatingItem}
             restaurantId={restaurant.id}
             initialValues={{ display_order: "0" }}
-            language={restaurant.ui_language}
           />
         </DialogContent>
       </Dialog>
@@ -659,13 +624,10 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
                 image: selectedItem.image || "",
                 topping_categories: selectedItem.topping_categories || [],
                 tax_percentage: selectedItem.tax_percentage ? selectedItem.tax_percentage.toString() : "10",
-                display_order: selectedItem.display_order?.toString() || "0",
-                available_from: selectedItem.available_from || "",
-                available_until: selectedItem.available_until || ""
+                display_order: selectedItem.display_order?.toString() || "0"
               }}
               isLoading={isUpdatingItem}
               restaurantId={restaurant.id}
-              language={restaurant.ui_language}
             />
           )}
         </DialogContent>

@@ -111,16 +111,5 @@
     "now": "now",
     "last7Days": "Last 7 days",
     "noData": "No data available for the selected time period."
-  },
-  "menuItem": {
-    "availability": "Availability",
-    "availabilityDesc": "Set when this menu item is available for ordering",
-    "availableAllDay": "Available all day",
-    "availableBetween": "Available between specific hours",
-    "availableFrom": "Available from",
-    "availableUntil": "Available until",
-    "timeAvailability": "Time Availability",
-    "selectTime": "Select time",
-    "unavailable": "UNAVAILABLE"
   }
 }

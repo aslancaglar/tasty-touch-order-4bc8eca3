@@ -18,24 +18,21 @@ const translations = {
 // Get translation for a specific key
 export function getTranslation(
   key: string, 
-  language: SupportedLanguage | string = DEFAULT_LANGUAGE
+  language: SupportedLanguage = DEFAULT_LANGUAGE
 ): string {
-  // Ensure language is a supported language
-  const safeLanguage = isSupportedLanguage(language) ? language : DEFAULT_LANGUAGE;
-  
   // Split the key by dots to access nested properties
   const keyPath = key.split('.');
   
   // Access the translation object for the selected language
-  let translation: any = translations[safeLanguage];
+  let translation: any = translations[language];
   
   // Traverse the object using the key path
   for (const k of keyPath) {
     if (!translation || typeof translation !== 'object') {
-      console.warn(`Translation missing for key: ${key} in language: ${safeLanguage}`);
+      console.warn(`Translation missing for key: ${key} in language: ${language}`);
       
       // If not found in the selected language, try default language
-      if (safeLanguage !== DEFAULT_LANGUAGE) {
+      if (language !== DEFAULT_LANGUAGE) {
         return getTranslation(key, DEFAULT_LANGUAGE);
       }
       
@@ -45,10 +42,10 @@ export function getTranslation(
   }
   
   if (translation === undefined || translation === null) {
-    console.warn(`Translation missing for key: ${key} in language: ${safeLanguage}`);
+    console.warn(`Translation missing for key: ${key} in language: ${language}`);
     
     // If not found in the selected language, try default language
-    if (safeLanguage !== DEFAULT_LANGUAGE) {
+    if (language !== DEFAULT_LANGUAGE) {
       return getTranslation(key, DEFAULT_LANGUAGE);
     }
     
@@ -58,16 +55,9 @@ export function getTranslation(
   return translation;
 }
 
-// Function to check if a language string is a supported language
-export function isSupportedLanguage(lang: string): lang is SupportedLanguage {
-  return ['fr', 'en', 'tr'].includes(lang);
-}
-
 // Hook to use translations
-export function useTranslation(language: SupportedLanguage | string = DEFAULT_LANGUAGE) {
-  const safeLanguage = isSupportedLanguage(language) ? language : DEFAULT_LANGUAGE;
-  
+export function useTranslation(language: SupportedLanguage = DEFAULT_LANGUAGE) {
   return {
-    t: (key: string) => getTranslation(key, safeLanguage)
+    t: (key: string) => getTranslation(key, language)
   };
 }

@@ -135,7 +135,7 @@ const KioskView = () => {
       sorryNotFound: "Üzgünüz, bu restoranı bulamadık.",
       backToHome: "Ana sayfaya dön",
       open: "Şimdi açık",
-      dineIn: "Masaya Servis",
+      dineIn: "Yerinde Yeme",
       table: "Masa",
       takeaway: "Paket Servis",
       menu: "Menü",
