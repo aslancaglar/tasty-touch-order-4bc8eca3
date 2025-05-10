@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -105,6 +104,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | null>(null);
   const [processingCardPayment, setProcessingCardPayment] = useState<boolean>(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -144,9 +144,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     let interval: ReturnType<typeof setInterval>;
     
     if (processingCardPayment && paymentId) {
+      console.log("Starting payment status polling for:", paymentId);
+      
       interval = setInterval(async () => {
         try {
           console.log("Checking payment status for paymentId:", paymentId);
+          
           const { data: payment, error } = await supabase
             .from('payments')
             .select('status, pos_response')
@@ -155,14 +158,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           
           if (error) {
             console.error("Error checking payment status:", error);
+            setPaymentError("Could not check payment status");
             return;
           }
           
           console.log("Payment status check result:", payment);
           
           if (payment && payment.status === 'approved') {
+            console.log("Payment approved:", payment);
             clearInterval(interval);
             setProcessingCardPayment(false);
+            setPaymentError(null);
             
             // Complete the order
             handleConfirmOrder("card");
@@ -173,8 +179,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               variant: "default"
             });
           } else if (payment && payment.status === 'declined') {
+            console.log("Payment declined:", payment);
             clearInterval(interval);
             setProcessingCardPayment(false);
+            setPaymentError("Payment declined");
             
             toast({
               title: "Payment Declined",
@@ -185,16 +193,23 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           // Continue polling if status is still 'pending'
         } catch (error) {
           console.error("Error in payment status check:", error);
+          setPaymentError("Error checking payment status");
         }
       }, 2000); // Check every 2 seconds
     }
     
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) {
+        console.log("Clearing payment status polling interval");
+        clearInterval(interval);
+      }
     };
   }, [processingCardPayment, paymentId]);
 
   const handleCardPayment = async () => {
+    // Reset previous errors
+    setPaymentError(null);
+    
     // Prevent multiple clicks
     if (processingCardPayment) {
       console.log("Payment already processing, ignoring click");
@@ -202,7 +217,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     }
     
     try {
-      console.log("Starting card payment process...");
+      console.log("Starting card payment process with total:", total);
       setProcessingCardPayment(true);
       
       // Create a payment record in the database
@@ -217,23 +232,25 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       
       if (error) {
         console.error("Error creating payment record:", error);
+        setProcessingCardPayment(false);
+        setPaymentError("Could not create payment record");
         toast({
           title: t("paymentError"),
           description: t("paymentErrorDesc"),
           variant: "destructive"
         });
-        setProcessingCardPayment(false);
         return;
       }
       
       if (!payment) {
         console.error("No payment data returned after insert");
+        setProcessingCardPayment(false);
+        setPaymentError("Payment record creation failed");
         toast({
           title: t("paymentError"),
           description: t("paymentErrorDesc"),
           variant: "destructive"
         });
-        setProcessingCardPayment(false);
         return;
       }
       
@@ -244,7 +261,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       // For demo/development, we'll simulate payment approval after a delay
       setTimeout(async () => {
         try {
-          console.log("Simulating payment approval...");
+          console.log("Simulating payment approval for ID:", payment.id);
           const { error: updateError } = await supabase
             .from('payments')
             .update({ status: 'approved' })
@@ -253,6 +270,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           if (updateError) {
             console.error("Error updating payment status:", updateError);
             // The useEffect polling will handle this case
+          } else {
+            console.log("Successfully updated payment status to approved");
           }
         } catch (simError) {
           console.error("Error simulating payment approval:", simError);
@@ -270,6 +289,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     } catch (error) {
       console.error("Error processing card payment:", error);
       setProcessingCardPayment(false);
+      setPaymentError("Payment processing error");
       toast({
         title: t("paymentError"),
         description: t("paymentErrorDesc"),
@@ -562,6 +582,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <Banknote className="mr-2 h-5 w-5" />
                   {t("payWithCash")}
                 </Button>
+              )}
+              
+              {paymentError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+                  {paymentError}. Please try again or choose a different payment method.
+                </div>
               )}
             </div>
           ) : (
