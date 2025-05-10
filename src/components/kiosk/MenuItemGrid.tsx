@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,7 +108,7 @@ const MenuItemCard = memo(({
   return (
     <Card 
       className={`overflow-hidden transition-shadow select-none cursor-pointer ${
-        isAvailable ? 'hover:shadow-md' : 'opacity-60 grayscale'
+        isAvailable ? 'hover:shadow-md' : 'opacity-60'
       }`} 
       onClick={isAvailable ? handleItemClick : undefined}
     >
@@ -173,7 +174,7 @@ const MenuItemCard = memo(({
           }`}
           disabled={!isAvailable}
         >
-          {isAvailable ? t("addToCart") : "Currently Unavailable"}
+          {isAvailable ? t("addToCart") : t("menuItem.unavailable")}
           {isAvailable && <ChevronRight className="h-4 w-4 ml-2" />}
         </Button>
       </div>
