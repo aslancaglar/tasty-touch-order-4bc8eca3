@@ -130,7 +130,7 @@ const KioskView = () => {
       refreshMenu: "Refresh menu",
       menuRefreshed: "Menu refreshed",
       menuRefreshSuccess: "Menu has been refreshed successfully",
-      currentlyUnavailable: "Currently Unavailable"
+      currentlyUnavailable: "Unavailable"
     },
     tr: {
       restaurantNotFound: "Restoran bulunamadı",
