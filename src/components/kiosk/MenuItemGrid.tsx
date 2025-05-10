@@ -50,6 +50,16 @@ const formatTime = (timeString: string | null): string => {
   return timeString.substring(0, 5); // Extract HH:MM from HH:MM:SS
 };
 
+// Calculate promotion percentage
+const calculatePromotionPercentage = (originalPrice: number, promotionPrice: number): number => {
+  if (!originalPrice || !promotionPrice || originalPrice <= 0 || promotionPrice >= originalPrice) {
+    return 0;
+  }
+  
+  const reduction = ((originalPrice - promotionPrice) / originalPrice) * 100;
+  return Math.round(reduction);
+};
+
 // Individual menu item component, memoized to prevent re-renders
 const MenuItemCard = memo(({
   item,
@@ -74,11 +84,31 @@ const MenuItemCard = memo(({
       handleSelectItem(item);
     }
   }, [item, handleSelectItem]);
+  
   const formattedPrice = useMemo(() => {
     return parseFloat(item.price.toString()).toFixed(2);
   }, [item.price]);
+  
+  const formattedPromotionPrice = useMemo(() => {
+    return item.promotion_price 
+      ? parseFloat(item.promotion_price.toString()).toFixed(2)
+      : null;
+  }, [item.promotion_price]);
+  
+  const promotionPercentage = useMemo(() => {
+    if (!item.promotion_price) return 0;
+    return calculatePromotionPercentage(
+      parseFloat(item.price.toString()),
+      parseFloat(item.promotion_price.toString())
+    );
+  }, [item.price, item.promotion_price]);
+  
   const isAvailable = isItemAvailable(item);
   const unavailableText = getTranslation('menuItem.unavailable', uiLanguage);
+  const hasPromotion = item.promotion_price && 
+                       parseFloat(item.promotion_price.toString()) > 0 &&
+                       parseFloat(item.promotion_price.toString()) < parseFloat(item.price.toString());
+  
   return <Card className={`overflow-hidden hover:shadow-md transition-shadow select-none ${isAvailable ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={handleItemClick}>
       <div className="h-40 bg-cover bg-center relative select-none" style={{
       backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
@@ -91,11 +121,26 @@ const MenuItemCard = memo(({
             <Clock className="h-3 w-3 mr-1" />
             {formatTime(item.available_from)} - {formatTime(item.available_until)}
           </div>}
+          
+        {hasPromotion && promotionPercentage > 0 && (
+          <div className="absolute top-2 left-2 bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bebas text-sm">
+            -{promotionPercentage}%
+          </div>
+        )}
       </div>
       <div className="p-4 select-none">
         <div className="flex justify-between">
           <h3 className="font-bebas text-lg tracking-wide break-words">{item.name}</h3>
-          <p className="font-bebas text-lg whitespace-nowrap ml-2">{formattedPrice} {currencySymbol}</p>
+          <div className="flex flex-col items-end ml-2">
+            {hasPromotion ? (
+              <>
+                <p className="font-bebas text-lg whitespace-nowrap text-kiosk-primary">{formattedPromotionPrice} {currencySymbol}</p>
+                <p className="font-inter text-xs text-gray-500 line-through whitespace-nowrap">{formattedPrice} {currencySymbol}</p>
+              </>
+            ) : (
+              <p className="font-bebas text-lg whitespace-nowrap">{formattedPrice} {currencySymbol}</p>
+            )}
+          </div>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
         {isAvailable ? <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
@@ -108,6 +153,7 @@ const MenuItemCard = memo(({
     </Card>;
 });
 MenuItemCard.displayName = 'MenuItemCard';
+
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
