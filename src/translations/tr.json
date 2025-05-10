@@ -38,7 +38,8 @@
   "cart": {
     "viewCart": "Sepeti Görüntüle"
   },
-  "currentlyUnavailable": "Şu Anda Mevcut Değil",
+  "currentlyUnavailable": "MEVCUT DEĞİL",
+  "betweenTime": "ARASINDA",
   "dashboard": {
     "title": "Kontrol Paneli",
     "welcome": "TastyTouch Yönetici Kontrol Panelinize Hoş Geldiniz",
