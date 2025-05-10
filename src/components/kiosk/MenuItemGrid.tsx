@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -108,7 +107,7 @@ const MenuItemCard = memo(({
   return (
     <Card 
       className={`overflow-hidden transition-shadow select-none cursor-pointer ${
-        isAvailable ? 'hover:shadow-md' : 'opacity-80'
+        isAvailable ? 'hover:shadow-md' : 'hover:shadow-none'
       }`} 
       onClick={isAvailable ? handleItemClick : undefined}
     >
@@ -168,15 +167,21 @@ const MenuItemCard = memo(({
           </div>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
-        <Button 
-          className={`w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide ${
-            isAvailable ? 'bg-kiosk-primary' : 'bg-[#ea384c] text-white font-bold'
-          }`}
-          disabled={!isAvailable}
-        >
-          {isAvailable ? t("addToCart") : t("currentlyUnavailable")}
-          {isAvailable && <ChevronRight className="h-4 w-4 ml-2" />}
-        </Button>
+        
+        {isAvailable ? (
+          <Button 
+            className="w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide bg-kiosk-primary"
+          >
+            {t("addToCart")}
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
+        ) : (
+          <div className="w-full mt-4 bg-[#ffb6c1] rounded text-center font-bebas tracking-wide uppercase">
+            <div className="px-2 sm:px-4 md:px-6 lg:px-8 py-[25px] text-xl">
+              {t("currentlyUnavailable")}
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );
