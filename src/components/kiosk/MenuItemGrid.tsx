@@ -7,6 +7,7 @@ import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface MenuItemGridProps {
   items: MenuItem[];
@@ -205,12 +206,16 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
             const updatedItem = payload.new as MenuItem;
             console.log('Updated item details:', updatedItem);
             
-            setMenuItems(prevItems => 
-              prevItems.map(item => 
+            setMenuItems(prevItems => {
+              const updatedItems = prevItems.map(item => 
                 item.id === updatedItem.id ? updatedItem : item
-              )
-            );
+              );
+              console.log('Menu items after update:', updatedItems);
+              return updatedItems;
+            });
             
+            // Force a state update by refreshing the cache key
+            toast.success(`Menu item "${updatedItem.name}" updated`);
             console.log(`Updated menu item ${updatedItem.id} with new data`);
           } else if (payload.eventType === 'INSERT') {
             const newItem = payload.new as MenuItem;
