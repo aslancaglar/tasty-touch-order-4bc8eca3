@@ -49,6 +49,19 @@ const isItemAvailableNow = (item: MenuItem): boolean => {
   }
 };
 
+// Format time string in HH:MM format to HHH format
+const formatTimeDisplay = (timeString: string | null | undefined): string => {
+  if (!timeString) return "";
+  
+  try {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    // Simple format as HH'H' (e.g. 14H)
+    return `${hours}H${minutes > 0 ? minutes : ''}`;
+  } catch (error) {
+    return timeString;
+  }
+};
+
 // Individual menu item component, memoized to prevent re-renders
 const MenuItemCard = memo(({
   item,
@@ -87,23 +100,17 @@ const MenuItemCard = memo(({
     return isItemAvailableNow(item);
   }, [item]);
   
-  // Format time for display (24-hour format)
-  const formatTimeDisplay = useCallback((timeString: string | null | undefined): string => {
-    if (!timeString) return "";
+  // Get formatted time availability message
+  const getTimeAvailabilityMessage = useCallback((item: MenuItem): string => {
+    if (!item.available_from || !item.available_until) return t("currentlyUnavailable");
     
-    try {
-      const [hours, minutes] = timeString.split(':').map(Number);
-      const date = new Date();
-      date.setHours(hours, minutes, 0);
-      return new Intl.DateTimeFormat('default', { 
-        hour: 'numeric', 
-        minute: 'numeric',
-        hour12: false
-      }).format(date);
-    } catch (error) {
-      return timeString;
-    }
-  }, []);
+    const startTime = formatTimeDisplay(item.available_from);
+    const endTime = formatTimeDisplay(item.available_until);
+    
+    return t("betweenTime")
+      .replace("{start}", startTime)
+      .replace("{end}", endTime);
+  }, [t]);
   
   return (
     <Card 
@@ -174,7 +181,12 @@ const MenuItemCard = memo(({
           }`}
           disabled={!isAvailable}
         >
-          {isAvailable ? t("addToCart") : t("currentlyUnavailable")}
+          {isAvailable 
+            ? t("addToCart") 
+            : (item.available_from && item.available_until) 
+              ? <span className="text-[15px] px-1 sm:px-2 md:px-3 lg:px-4">{getTimeAvailabilityMessage(item)}</span>
+              : t("currentlyUnavailable")
+          }
           {isAvailable && <ChevronRight className="h-4 w-4 ml-2" />}
         </Button>
       </div>
