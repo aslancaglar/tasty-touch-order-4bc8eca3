@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ImageOff, Clock } from "lucide-react";
+import { ChevronRight, ImageOff, Clock, Infinity } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
@@ -175,6 +174,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const imagePreloadQueue = useRef<string[]>([]);
   const isPreloadingRef = useRef<boolean>(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>(items);
+  const realtimeChannelRef = useRef<any>(null);
 
   useEffect(() => {
     setMenuItems(items);
@@ -186,7 +186,8 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     
     console.log("Setting up realtime subscription for menu items");
     
-    const channel = supabase
+    // Store channel reference for cleanup
+    realtimeChannelRef.current = supabase
       .channel('menu-items-updates')
       .on(
         'postgres_changes',
@@ -229,7 +230,9 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     // Clean up subscription when component unmounts
     return () => {
       console.log("Cleaning up realtime subscription");
-      supabase.removeChannel(channel);
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+      }
     };
   }, [restaurantId, categories]);
 
@@ -455,7 +458,15 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none px-4">
             {itemsByCategory[category.id]?.map(item => <div key={item.id} data-item-id={item.id}>
-                <MenuItemCard item={item} handleSelectItem={handleSelectItem} t={t} currencySymbol={currencySymbol} cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} hasImageFailed={failedImages.has(item.id)} uiLanguage={uiLanguage} />
+                <MenuItemCard 
+                  item={item} 
+                  handleSelectItem={handleSelectItem} 
+                  t={t} 
+                  currencySymbol={currencySymbol} 
+                  cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} 
+                  hasImageFailed={failedImages.has(item.id)} 
+                  uiLanguage={uiLanguage}
+                />
               </div>)}
             {itemsByCategory[category.id]?.length === 0 && <div className="col-span-3 py-8 text-center text-gray-500 font-inter">
                 No items in this category
