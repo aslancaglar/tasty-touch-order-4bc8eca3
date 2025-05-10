@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { ChevronRight, ImageOff, Clock } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MenuItemGridProps {
   items: MenuItem[];
@@ -172,6 +174,64 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const visibleItemsRef = useRef<Set<string>>(new Set());
   const imagePreloadQueue = useRef<string[]>([]);
   const isPreloadingRef = useRef<boolean>(false);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(items);
+
+  useEffect(() => {
+    setMenuItems(items);
+  }, [items]);
+
+  // Subscribe to realtime updates for menu items
+  useEffect(() => {
+    if (!restaurantId) return;
+    
+    console.log("Setting up realtime subscription for menu items");
+    
+    const channel = supabase
+      .channel('menu-items-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'menu_items'
+        },
+        (payload) => {
+          console.log('Realtime update received:', payload);
+          
+          // Handle different types of changes
+          if (payload.eventType === 'UPDATE') {
+            const updatedItem = payload.new as MenuItem;
+            
+            setMenuItems(prevItems => 
+              prevItems.map(item => 
+                item.id === updatedItem.id ? updatedItem : item
+              )
+            );
+            
+            console.log(`Updated menu item ${updatedItem.id} with new availability`);
+          } else if (payload.eventType === 'INSERT') {
+            const newItem = payload.new as MenuItem;
+            if (newItem.category_id && categories.some(cat => cat.id === newItem.category_id)) {
+              setMenuItems(prevItems => [...prevItems, newItem]);
+              console.log(`Added new menu item ${newItem.id}`);
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const deletedItem = payload.old as MenuItem;
+            setMenuItems(prevItems => 
+              prevItems.filter(item => item.id !== deletedItem.id)
+            );
+            console.log(`Removed menu item ${deletedItem.id}`);
+          }
+        }
+      )
+      .subscribe();
+
+    // Clean up subscription when component unmounts
+    return () => {
+      console.log("Cleaning up realtime subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [restaurantId, categories]);
 
   // Group items by category
   const itemsByCategory = useMemo(() => {
@@ -184,7 +244,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     });
 
     // Add all in-stock items to their respective category groups
-    items.filter(item => item.in_stock).forEach(item => {
+    menuItems.filter(item => item.in_stock).forEach(item => {
       if (grouped[item.category_id]) {
         grouped[item.category_id].push(item);
       }
@@ -199,7 +259,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       });
     });
     return grouped;
-  }, [items, categories]);
+  }, [menuItems, categories]);
 
   // Sort categories by putting the active category first, then by display_order
   const sortedCategories = useMemo(() => {
@@ -235,7 +295,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           visibleItemsRef.current.add(itemId);
 
           // Get the image URL for this item
-          const item = items.find(i => i.id === itemId);
+          const item = menuItems.find(i => i.id === itemId);
           if (item?.image && !item.image.startsWith('data:') && !cachedImages[itemId]) {
             // Add to preload queue if not already cached
             if (!imagePreloadQueue.current.includes(item.image)) {
@@ -261,7 +321,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       });
     }, 100);
     return observer;
-  }, [items, cachedImages]);
+  }, [menuItems, cachedImages]);
 
   // Process image queue one at a time
   const processImageQueue = useCallback(async () => {
@@ -275,7 +335,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         // Find the item that uses this image
         if (isMounted.current) {
           setCachedImages(prev => {
-            const itemsWithImage = items.filter(item => item.image === url);
+            const itemsWithImage = menuItems.filter(item => item.image === url);
             if (itemsWithImage.length === 0) return prev;
             const updates: Record<string, string> = {};
             itemsWithImage.forEach(item => {
@@ -297,7 +357,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     if (imagePreloadQueue.current.length > 0) {
       setTimeout(processImageQueue, 50);
     }
-  }, [items]);
+  }, [menuItems]);
 
   // Effect to initialize intersection observer
   useEffect(() => {
@@ -309,22 +369,23 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
 
   // Pre-cache all images when component mounts or items change
   useEffect(() => {
-    const imageUrls = items.filter(item => item.image).map(item => item.image || '').slice(0, 10); // Limit initial preload to first 10 images
+    const imageUrls = menuItems.filter(item => item.image).map(item => item.image || '').slice(0, 10); // Limit initial preload to first 10 images
 
     if (imageUrls.length > 0) {
       // Attempt to precache the first few images
       precacheImages(imageUrls).catch(err => console.error("Error pre-caching images:", err));
     }
-  }, [items, refreshTrigger]);
+  }, [menuItems, refreshTrigger]);
+  
   useEffect(() => {
     isMounted.current = true;
     setLoadingImages(true);
     const cacheImages = async () => {
-      if (items.length === 0) {
+      if (menuItems.length === 0) {
         setLoadingImages(false);
         return;
       }
-      console.log(`Caching images for ${items.length} menu items`);
+      console.log(`Caching images for ${menuItems.length} menu items`);
       try {
         // Get storage information
         const storageInfo = await getStorageEstimate();
@@ -332,7 +393,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         console.log(`Storage usage: ${(storageInfo.used / (1024 * 1024)).toFixed(2)}MB / ${(storageInfo.quota / (1024 * 1024)).toFixed(2)}MB (${usedPercent.toFixed(1)}%)`);
 
         // Process first batch of images synchronously for initial display
-        const initialBatch = items.slice(0, 5);
+        const initialBatch = menuItems.slice(0, 5);
         const newCachedImages: Record<string, string> = {};
         const newFailedImages = new Set<string>();
         for (const item of initialBatch) {
@@ -359,7 +420,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         }
 
         // Queue remaining images to be loaded in background
-        const remainingItems = items.slice(5);
+        const remainingItems = menuItems.slice(5);
         const remainingUrls = remainingItems.filter(item => item.image).map(item => item.image || '');
         imagePreloadQueue.current = [...remainingUrls];
         processImageQueue();
@@ -370,7 +431,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         }
       }
     };
-    if (items.length > 0) {
+    if (menuItems.length > 0) {
       cacheImages();
     } else {
       setLoadingImages(false);
@@ -381,10 +442,12 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       isMounted.current = false;
       imagePreloadQueue.current = [];
     };
-  }, [items, refreshTrigger]);
+  }, [menuItems, refreshTrigger]);
+  
   const handleImageError = useCallback((itemId: string) => {
     setFailedImages(prev => new Set([...prev, itemId]));
   }, []);
+  
   return <div className="space-y-8 pb-20">
       {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20 pt-0 py-0">
           <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide pl-4">
