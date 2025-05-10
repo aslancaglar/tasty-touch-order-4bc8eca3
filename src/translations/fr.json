@@ -38,8 +38,7 @@
   "cart": {
     "viewCart": "Voir le panier"
   },
-  "currentlyUnavailable": "INDISPONIBLE",
-  "betweenTime": "ENTRE",
+  "currentlyUnavailable": "Actuellement Indisponible",
   "dashboard": {
     "title": "Tableau de bord",
     "welcome": "Bienvenue sur votre tableau de bord TastyTouch",
