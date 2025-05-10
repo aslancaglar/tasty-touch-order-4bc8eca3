@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,8 @@ const translations = {
     processingPayment: "TRAITEMENT DU PAIEMENT...",
     waitingForTerminal: "En attente du terminal de paiement...",
     paymentError: "Erreur de paiement",
-    paymentErrorDesc: "Un problème est survenu lors du paiement. Veuillez réessayer ou choisir un autre mode de paiement."
+    paymentErrorDesc: "Un problème est survenu lors du paiement. Veuillez réessayer ou choisir un autre mode de paiement.",
+    paymentRecordError: "Impossible de créer l'enregistrement de paiement. Veuillez réessayer ou choisir un autre mode de paiement."
   },
   en: {
     orderSummary: "ORDER SUMMARY",
@@ -43,7 +45,8 @@ const translations = {
     processingPayment: "PROCESSING PAYMENT...",
     waitingForTerminal: "Waiting for payment terminal...",
     paymentError: "Payment Error",
-    paymentErrorDesc: "There was a problem initiating the payment. Please try again or choose another payment method."
+    paymentErrorDesc: "There was a problem initiating the payment. Please try again or choose another payment method.",
+    paymentRecordError: "Could not create payment record. Please try again or choose a different payment method."
   },
   tr: {
     orderSummary: "SİPARİŞ ÖZETİ",
@@ -59,7 +62,8 @@ const translations = {
     processingPayment: "İŞLENİYOR...",
     waitingForTerminal: "Ödeme terminali bekleniyor...",
     paymentError: "Ödeme Hatası",
-    paymentErrorDesc: "Ödeme başlatılırken bir sorun oluştu. Lütfen tekrar deneyin veya başka bir ödeme yöntemi seçin."
+    paymentErrorDesc: "Ödeme başlatılırken bir sorun oluştu. Lütfen tekrar deneyin veya başka bir ödeme yöntemi seçin.",
+    paymentRecordError: "Ödeme kaydı oluşturulamadı. Lütfen tekrar deneyin veya başka bir ödeme yöntemi seçin."
   }
 };
 
@@ -105,6 +109,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [processingCardPayment, setProcessingCardPayment] = useState<boolean>(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [isCreatingPayment, setIsCreatingPayment] = useState<boolean>(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -210,14 +215,15 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     // Reset previous errors
     setPaymentError(null);
     
-    // Prevent multiple clicks
-    if (processingCardPayment) {
+    // Prevent multiple clicks or clicks while already processing
+    if (processingCardPayment || isCreatingPayment) {
       console.log("Payment already processing, ignoring click");
       return;
     }
     
     try {
       console.log("Starting card payment process with total:", total);
+      setIsCreatingPayment(true);
       setProcessingCardPayment(true);
       
       // Create a payment record in the database
@@ -230,13 +236,19 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         .select()
         .single();
       
+      setIsCreatingPayment(false);
+      
       if (error) {
         console.error("Error creating payment record:", error);
         setProcessingCardPayment(false);
-        setPaymentError("Could not create payment record");
+        
+        // Show detailed error message
+        const errorMessage = translations[uiLanguage]?.paymentRecordError || "Could not create payment record. Please try again or choose a different payment method.";
+        setPaymentError(errorMessage);
+        
         toast({
           title: t("paymentError"),
-          description: t("paymentErrorDesc"),
+          description: errorMessage,
           variant: "destructive"
         });
         return;
@@ -245,10 +257,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       if (!payment) {
         console.error("No payment data returned after insert");
         setProcessingCardPayment(false);
-        setPaymentError("Payment record creation failed");
+        
+        const errorMessage = translations[uiLanguage]?.paymentRecordError || "Could not create payment record. Please try again or choose a different payment method.";
+        setPaymentError(errorMessage);
+        
         toast({
           title: t("paymentError"),
-          description: t("paymentErrorDesc"),
+          description: errorMessage,
           variant: "destructive"
         });
         return;
@@ -289,10 +304,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     } catch (error) {
       console.error("Error processing card payment:", error);
       setProcessingCardPayment(false);
-      setPaymentError("Payment processing error");
+      setIsCreatingPayment(false);
+      
+      const errorMessage = translations[uiLanguage]?.paymentErrorDesc || "There was a problem with your payment. Please try again or choose another payment method.";
+      setPaymentError(errorMessage);
+      
       toast({
         title: t("paymentError"),
-        description: t("paymentErrorDesc"),
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -556,10 +575,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               {restaurant?.card_payment_enabled && (
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6"
-                  onClick={() => processingCardPayment ? null : handleCardPayment()}
-                  disabled={placingOrder || processingCardPayment}
+                  onClick={() => (!processingCardPayment && !isCreatingPayment) ? handleCardPayment() : null}
+                  disabled={placingOrder || processingCardPayment || isCreatingPayment}
                 >
-                  {processingCardPayment ? (
+                  {processingCardPayment || isCreatingPayment ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                       {t("processingPayment")}
@@ -577,7 +596,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <Button 
                   className="w-full bg-green-700 hover:bg-green-800 text-white py-6"
                   onClick={() => handleConfirmOrder("cash")}
-                  disabled={placingOrder || processingCardPayment}
+                  disabled={placingOrder || processingCardPayment || isCreatingPayment}
                 >
                   <Banknote className="mr-2 h-5 w-5" />
                   {t("payWithCash")}
@@ -586,7 +605,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               
               {paymentError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
-                  {paymentError}. Please try again or choose a different payment method.
+                  {paymentError}
                 </div>
               )}
             </div>

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ const translations = {
     errorPrinting: "Une erreur s'est produite lors de l'impression du reçu.",
     paymentError: "Erreur de paiement",
     paymentErrorDesc: "Un problème est survenu lors du paiement. Veuillez réessayer ou choisir un autre mode de paiement.",
+    paymentRecordError: "Impossible de créer l'enregistrement de paiement. Veuillez réessayer ou choisir un autre mode de paiement.",
     payWithCard: "PAYER PAR CARTE",
     payWithCash: "PAYER EN ESPÈCES",
     processingPayment: "TRAITEMENT DU PAIEMENT...",
@@ -68,6 +70,7 @@ const translations = {
     errorPrinting: "An error occurred while printing the receipt.",
     paymentError: "Payment Error",
     paymentErrorDesc: "There was a problem initiating the payment. Please try again or choose another payment method.",
+    paymentRecordError: "Could not create payment record. Please try again or choose a different payment method.",
     payWithCard: "PAY WITH CARD",
     payWithCash: "PAY WITH CASH",
     processingPayment: "PROCESSING PAYMENT...",
@@ -89,6 +92,7 @@ const translations = {
     errorPrinting: "Fiş yazdırılırken bir hata oluştu.",
     paymentError: "Ödeme Hatası",
     paymentErrorDesc: "Ödeme başlatılırken bir sorun oluştu. Lütfen tekrar deneyin veya başka bir ödeme yöntemi seçin.",
+    paymentRecordError: "Ödeme kaydı oluşturulamadı. Lütfen tekrar deneyin veya başka bir ödeme yöntemi seçin.",
     payWithCard: "KART İLE ÖDE",
     payWithCash: "NAKİT İLE ÖDE",
     processingPayment: "ÖDEME İŞLENİYOR...",
@@ -141,6 +145,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [processingCardPayment, setProcessingCardPayment] = useState<boolean>(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [isCreatingPayment, setIsCreatingPayment] = useState<boolean>(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const { t } = useTranslation(uiLanguage);
@@ -244,45 +249,73 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     // Reset previous errors
     setPaymentError(null);
     
-    // Prevent multiple clicks
-    if (processingCardPayment) {
+    // Prevent multiple clicks or clicks while already processing
+    if (processingCardPayment || isCreatingPayment) {
       console.log("Payment already processing, ignoring click");
       return;
     }
     
     try {
       console.log("Starting card payment process with total:", total);
+      setIsCreatingPayment(true);
       setProcessingCardPayment(true);
       
-      // Create a payment record in the database
-      const { data: payment, error } = await supabase
-        .from('payments')
-        .insert({
-          amount: total,
-          status: 'pending'
-        })
-        .select()
-        .single();
+      // Create a payment record in the database - with retry logic
+      let payment = null;
+      let error = null;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (!payment && retryCount <= maxRetries) {
+        if (retryCount > 0) {
+          console.log(`Retry attempt ${retryCount} for creating payment record`);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retry
+        }
+        
+        const response = await supabase
+          .from('payments')
+          .insert({
+            amount: total,
+            status: 'pending'
+          })
+          .select()
+          .single();
+          
+        error = response.error;
+        payment = response.data;
+        
+        if (!error && payment) break;
+        retryCount++;
+      }
+      
+      setIsCreatingPayment(false);
       
       if (error) {
-        console.error("Error creating payment record:", error);
+        console.error("Error creating payment record after retries:", error);
         setProcessingCardPayment(false);
-        setPaymentError("Could not create payment record");
+        
+        // Show detailed error message from translation
+        const errorMessage = translations[uiLanguage]?.paymentRecordError || "Could not create payment record. Please try again or choose a different payment method.";
+        setPaymentError(errorMessage);
+        
         toast({
           title: translations[uiLanguage]?.paymentError || "Payment Error",
-          description: translations[uiLanguage]?.paymentErrorDesc || "There was a problem initiating the payment.",
+          description: errorMessage,
           variant: "destructive"
         });
         return;
       }
       
       if (!payment) {
-        console.error("No payment data returned after insert");
+        console.error("No payment data returned after insert, even with retries");
         setProcessingCardPayment(false);
-        setPaymentError("Payment record creation failed");
+        
+        const errorMessage = translations[uiLanguage]?.paymentRecordError || "Could not create payment record. Please try again or choose a different payment method.";
+        setPaymentError(errorMessage);
+        
         toast({
           title: translations[uiLanguage]?.paymentError || "Payment Error",
-          description: translations[uiLanguage]?.paymentErrorDesc || "There was a problem initiating the payment.",
+          description: errorMessage,
           variant: "destructive"
         });
         return;
@@ -323,10 +356,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     } catch (error) {
       console.error("Error processing card payment:", error);
       setProcessingCardPayment(false);
-      setPaymentError("Payment processing error");
+      setIsCreatingPayment(false);
+      
+      const errorMessage = translations[uiLanguage]?.paymentErrorDesc || "There was a problem with your payment. Please try again or choose another payment method.";
+      setPaymentError(errorMessage);
+      
       toast({
         title: translations[uiLanguage]?.paymentError || "Payment Error",
-        description: translations[uiLanguage]?.paymentErrorDesc || "There was a problem with your payment.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -567,11 +604,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <div className="grid grid-cols-2 gap-4 mt-4">
                 {restaurant?.card_payment_enabled && (
                   <Button 
-                    onClick={processingCardPayment ? undefined : handleCardPayment} 
-                    disabled={placingOrder || processingCardPayment} 
+                    onClick={(!processingCardPayment && !isCreatingPayment) ? handleCardPayment : undefined} 
+                    disabled={placingOrder || processingCardPayment || isCreatingPayment} 
                     className="bg-blue-600 hover:bg-blue-700 text-white uppercase font-medium text-2xl py-6"
                   >
-                    {processingCardPayment ? (
+                    {processingCardPayment || isCreatingPayment ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         {translations[uiLanguage]?.processingPayment || "PROCESSING PAYMENT..."}
@@ -588,7 +625,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 {restaurant?.cash_payment_enabled && (
                   <Button 
                     onClick={() => handleConfirmOrder("cash")} 
-                    disabled={placingOrder || processingCardPayment} 
+                    disabled={placingOrder || processingCardPayment || isCreatingPayment} 
                     className="bg-green-700 hover:bg-green-800 text-white uppercase font-medium text-2xl py-6"
                   >
                     <Banknote className="mr-2 h-5 w-5" />
@@ -605,7 +642,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             
             {paymentError && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm mt-2">
-                {paymentError}. Please try again or choose a different payment method.
+                {paymentError}
               </div>
             )}
           </div>
