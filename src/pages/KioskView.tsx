@@ -17,7 +17,6 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
-
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -25,7 +24,6 @@ type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
-
 const KioskView = () => {
   const {
     restaurantSlug
@@ -210,30 +208,23 @@ const KioskView = () => {
         const menuData = await getMenuForRestaurant(restaurantData.id);
 
         // Sort categories by display_order before setting state
-        const sortedCategories = [...menuData.categories].sort((a, b) => {
+        const sortedCategories = [...menuData].sort((a, b) => {
           const orderA = a.display_order ?? 1000;
           const orderB = b.display_order ?? 1000;
           return orderA - orderB;
         });
 
         // Also sort the items within each category
-        const processedCategories = sortedCategories.map(category => {
-          const items = menuData.menuItems[category.id] || [];
-          const sortedItems = [...items].sort((a, b) => {
+        sortedCategories.forEach(category => {
+          category.items = [...category.items].sort((a, b) => {
             const orderA = a.display_order ?? 1000;
             const orderB = b.display_order ?? 1000;
             return orderA - orderB;
           });
-          
-          return {
-            ...category,
-            items: sortedItems
-          };
         });
-        
-        setCategories(processedCategories);
-        if (processedCategories.length > 0) {
-          setActiveCategory(processedCategories[0].id);
+        setCategories(sortedCategories);
+        if (sortedCategories.length > 0) {
+          setActiveCategory(sortedCategories[0].id);
         }
         setLoading(false);
       } catch (error) {
@@ -612,27 +603,18 @@ const KioskView = () => {
         total: calculateCartTotal(),
         customer_name: null
       });
-      
-      // Fix the format for createOrderItems
-      const orderItemsData = {
+      const orderItems = await createOrderItems(cart.map(item => ({
         order_id: order.id,
-        items: cart.map(item => ({
-          menu_item_id: item.menuItem.id,
-          quantity: item.quantity,
-          price: item.itemPrice,
-          special_instructions: item.specialInstructions || null
-        }))
-      };
-      
-      const orderItems = await createOrderItems(orderItemsData);
-      
+        menu_item_id: item.menuItem.id,
+        quantity: item.quantity,
+        price: item.itemPrice,
+        special_instructions: item.specialInstructions || null
+      })));
       const orderItemOptionsToCreate = [];
       const orderItemToppingsToCreate = [];
-      
       for (let i = 0; i < cart.length; i++) {
         const cartItem = cart[i];
         const orderItem = orderItems[i];
-        
         for (const selectedOption of cartItem.selectedOptions) {
           for (const choiceId of selectedOption.choiceIds) {
             orderItemOptionsToCreate.push({
@@ -642,7 +624,6 @@ const KioskView = () => {
             });
           }
         }
-        
         for (const selectedCategory of cartItem.selectedToppings) {
           for (const toppingId of selectedCategory.toppingIds) {
             orderItemToppingsToCreate.push({
@@ -652,21 +633,17 @@ const KioskView = () => {
           }
         }
       }
-      
       if (orderItemOptionsToCreate.length > 0) {
-        await createOrderItemOptions({ options: orderItemOptionsToCreate });
+        await createOrderItemOptions(orderItemOptionsToCreate);
       }
-      
       if (orderItemToppingsToCreate.length > 0) {
-        await createOrderItemToppings({ toppings: orderItemToppingsToCreate });
+        await createOrderItemToppings(orderItemToppingsToCreate);
       }
-      
       setOrderPlaced(true);
       toast({
         title: "Commande passée",
         description: "Votre commande a été passée avec succès !"
       });
-      
       setTimeout(() => {
         setOrderPlaced(false);
         setCart([]);
@@ -729,14 +706,8 @@ const KioskView = () => {
       if (!data) throw new Error("Restaurant not found");
       const menuData = await getMenuForRestaurant(data.id);
 
-      // Process the menu data to create CategoryWithItems objects
-      const processedCategories = menuData.categories.map(category => ({
-        ...category,
-        items: menuData.menuItems[category.id] || []
-      }));
-      
-      // Sort the processedCategories before setting state or caching
-      const sortedMenuData = [...processedCategories].sort((a, b) => {
+      // Sort the menuData before setting state or caching
+      const sortedMenuData = [...menuData].sort((a, b) => {
         const orderA = a.display_order ?? 1000;
         const orderB = b.display_order ?? 1000;
         return orderA - orderB;
@@ -811,14 +782,8 @@ const KioskView = () => {
       if (!restaurant) return;
       const menuData = await getMenuForRestaurant(restaurant.id);
 
-      // Process the menu data to create CategoryWithItems objects
-      const processedCategories = menuData.categories.map(category => ({
-        ...category,
-        items: menuData.menuItems[category.id] || []
-      }));
-      
-      // Sort the processedCategories before setting state or caching
-      const sortedMenuData = [...processedCategories].sort((a, b) => {
+      // Sort the menuData before setting state or caching
+      const sortedMenuData = [...menuData].sort((a, b) => {
         const orderA = a.display_order ?? 1000;
         const orderB = b.display_order ?? 1000;
         return orderA - orderB;

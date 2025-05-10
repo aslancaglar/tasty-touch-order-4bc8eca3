@@ -1,725 +1,808 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { Restaurant, MenuCategory, MenuItem, ToppingCategory, Topping, Order, OrderStatus, PaymentStatus, OrderType } from "@/types/database-types";
-import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { 
+  Restaurant, 
+  MenuCategory, 
+  MenuItem, 
+  MenuItemOption, 
+  OptionChoice, 
+  Order, 
+  OrderItem, 
+  OrderItemOption,
+  OrderStatus,
+  ToppingCategory,
+  Topping
+} from "@/types/database-types";
 
-// Function to get all restaurants
+// Restaurant services
 export const getRestaurants = async (): Promise<Restaurant[]> => {
-  try {
-    const { data: restaurants, error } = await supabase
-      .from('restaurants')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from("restaurants")
+    .select("*");
 
-    if (error) {
-      console.error('Error fetching restaurants:', error);
-      throw error;
-    }
+  if (error) {
+    console.error("Error fetching restaurants:", error);
+    throw error;
+  }
 
-    return restaurants || [];
-  } catch (error) {
-    console.error('Error in getRestaurants:', error);
-    return [];
+  return data;
+};
+
+export const createRestaurant = async (restaurant: Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>): Promise<Restaurant> => {
+  const { data, error } = await supabase
+    .from("restaurants")
+    .insert(restaurant)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating restaurant:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const updateRestaurant = async (id: string, updates: Partial<Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>>): Promise<Restaurant> => {
+  console.log("Updating restaurant:", id, "with data:", updates);
+  
+  const { data, error } = await supabase
+    .from("restaurants")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating restaurant:", error);
+    throw error;
+  }
+
+  console.log("Restaurant updated successfully:", data);
+  return data;
+};
+
+export const deleteRestaurant = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from("restaurants")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting restaurant:", error);
+    throw error;
   }
 };
 
-// Function to get a restaurant by slug
 export const getRestaurantBySlug = async (slug: string): Promise<Restaurant | null> => {
-  try {
-    const { data: restaurant, error } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('slug', slug)
-      .single();
+  const { data, error } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("slug", slug)
+    .single();
 
-    if (error) {
-      console.error('Error fetching restaurant by slug:', error);
+  if (error) {
+    if (error.code === 'PGRST116') {
       return null;
     }
-
-    return restaurant || null;
-  } catch (error) {
-    console.error('Error in getRestaurantBySlug:', error);
-    return null;
-  }
-};
-
-// Function to get a restaurant by ID
-export const getRestaurantById = async (id: string): Promise<Restaurant | null> => {
-  try {
-    const { data: restaurant, error } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      console.error('Error fetching restaurant by ID:', error);
-      return null;
-    }
-
-    return restaurant || null;
-  } catch (error) {
-    console.error('Error in getRestaurantById:', error);
-    return null;
-  }
-};
-
-// Function to create a new restaurant
-export const createRestaurant = async (data: TablesInsert<'restaurants'>): Promise<Restaurant | null> => {
-  try {
-    const { data: restaurant, error } = await supabase
-      .from('restaurants')
-      .insert(data)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating restaurant:', error);
-      throw error;
-    }
-
-    return restaurant;
-  } catch (error) {
-    console.error('Error in createRestaurant:', error);
-    return null;
-  }
-};
-
-// Function to update a restaurant
-export const updateRestaurant = async (id: string, data: {
-  name?: string;
-  location?: string | null;
-  image_url?: string | null;
-  slug?: string;
-  ui_language?: string;
-  currency?: string;
-  card_payment_enabled?: boolean;
-  cash_payment_enabled?: boolean;
-}): Promise<Restaurant | null> => {
-  try {
-    const { data: restaurant, error } = await supabase
-      .from('restaurants')
-      .update({
-        name: data.name,
-        location: data.location,
-        image_url: data.image_url,
-        slug: data.slug,
-        ui_language: data.ui_language,
-        currency: data.currency,
-        card_payment_enabled: data.card_payment_enabled,
-        cash_payment_enabled: data.cash_payment_enabled
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating restaurant:', error);
-      throw error;
-    }
-
-    return restaurant;
-  } catch (error) {
-    console.error('Error in updateRestaurant:', error);
-    return null;
-  }
-};
-
-// Function to delete a restaurant by ID
-export const deleteRestaurant = async (id: string): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('restaurants')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting restaurant:', error);
-      throw error;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in deleteRestaurant:', error);
-    return false;
-  }
-};
-
-// Function to duplicate a restaurant
-export const duplicateRestaurant = async (sourceRestaurantId: string): Promise<{ id: string }> => {
-  try {
-    const { data, error } = await supabase.rpc('duplicate_restaurant', {
-      source_restaurant_id: sourceRestaurantId,
-    });
-
-    if (error) {
-      console.error('Error duplicating restaurant:', error);
-      throw error;
-    }
-
-    if (!data) {
-      throw new Error('No restaurant ID returned after duplication.');
-    }
-
-    return { id: data };
-  } catch (error) {
-    console.error('Error in duplicateRestaurant:', error);
+    console.error("Error fetching restaurant by slug:", error);
     throw error;
   }
+
+  return data;
 };
 
-// Function to get categories by restaurant ID
+// Menu Category services
 export const getCategoriesByRestaurantId = async (restaurantId: string): Promise<MenuCategory[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('menu_categories')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .order('display_order', { ascending: true });
+  console.log("Fetching categories for restaurant:", restaurantId);
+  const { data, error } = await supabase
+    .from("menu_categories")
+    .select("*")
+    .eq("restaurant_id", restaurantId)
+    .order('display_order', { ascending: true });  // Order by display_order
 
-    if (error) {
-      console.error('Error fetching categories:', error);
-      throw error;
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error('Error in getCategoriesByRestaurantId:', error);
-    return [];
+  if (error) {
+    console.error("Error fetching menu categories:", error);
+    throw error;
   }
+
+  return data;
 };
 
-// Function to create a new menu category
-export const createCategory = async (data: TablesInsert<'menu_categories'>): Promise<MenuCategory> => {
-  try {
-    const { data: category, error } = await supabase
-      .from('menu_categories')
-      .insert(data)
-      .select()
-      .single();
+export const createCategory = async (category: Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>): Promise<MenuCategory> => {
+  console.log("Creating category with data:", category);
+  const { data, error } = await supabase
+    .from("menu_categories")
+    .insert(category)
+    .select()
+    .single();
 
-    if (error) {
-      console.error('Error creating category:', error);
-      throw error;
-    }
+  if (error) {
+    console.error("Error creating category:", error);
+    throw error;
+  }
 
-    return category;
-  } catch (error) {
-    console.error('Error in createCategory:', error);
+  return data;
+};
+
+export const updateCategory = async (id: string, updates: Partial<Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuCategory> => {
+  console.log("Updating category:", id, "with data:", updates);
+  const { data, error } = await supabase
+    .from("menu_categories")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating category:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteCategory = async (id: string): Promise<void> => {
+  console.log("Deleting category:", id);
+  const { error } = await supabase
+    .from("menu_categories")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting category:", error);
     throw error;
   }
 };
 
-// Function to update a menu category
-export const updateCategory = async (id: string, data: Partial<MenuCategory>): Promise<MenuCategory> => {
-  try {
-    const { data: updatedCategory, error } = await supabase
-      .from('menu_categories')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating category:', error);
-      throw error;
-    }
-
-    return updatedCategory;
-  } catch (error) {
-    console.error('Error in updateCategory:', error);
-    throw error;
-  }
-};
-
-// Function to delete a menu category
-export const deleteCategory = async (id: string): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('menu_categories')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting category:', error);
-      throw error;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in deleteCategory:', error);
-    throw error;
-  }
-};
-
-// Function to get menu items by category
+// Menu Item services
 export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuItem[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('menu_items')
-      .select('*')
-      .eq('category_id', categoryId)
-      .order('display_order', { ascending: true });
+  const { data: menuItems, error } = await supabase
+    .from("menu_items")
+    .select("*")
+    .eq("category_id", categoryId);
 
-    if (error) {
-      console.error('Error fetching menu items:', error);
-      throw error;
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error('Error in getMenuItemsByCategory:', error);
-    return [];
-  }
-};
-
-// Function to get complete menu for a restaurant
-export const getMenuForRestaurant = async (restaurantId: string): Promise<{ categories: MenuCategory[], menuItems: Record<string, MenuItem[]> }> => {
-  try {
-    const categories = await getCategoriesByRestaurantId(restaurantId);
-    const menuItems: Record<string, MenuItem[]> = {};
-
-    for (const category of categories) {
-      const items = await getMenuItemsByCategory(category.id);
-      menuItems[category.id] = items;
-    }
-
-    return { categories, menuItems };
-  } catch (error) {
-    console.error('Error in getMenuForRestaurant:', error);
-    return { categories: [], menuItems: {} };
-  }
-};
-
-// Function to create a new menu item
-export const createMenuItem = async (data: TablesInsert<'menu_items'> & { topping_categories?: string[] }): Promise<MenuItem> => {
-  try {
-    // First, create the menu item
-    const { data: menuItem, error } = await supabase
-      .from('menu_items')
-      .insert({
-        name: data.name,
-        description: data.description,
-        price: data.price,
-        promotion_price: data.promotion_price,
-        image: data.image,
-        category_id: data.category_id,
-        tax_percentage: data.tax_percentage,
-        in_stock: data.in_stock !== undefined ? data.in_stock : true,
-        display_order: data.display_order
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating menu item:', error);
-      throw error;
-    }
-
-    // If topping categories are provided, create the associations
-    if (data.topping_categories && data.topping_categories.length > 0) {
-      const toppingCategoryAssociations = data.topping_categories.map((categoryId, index) => ({
-        menu_item_id: menuItem.id,
-        topping_category_id: categoryId,
-        display_order: index
-      }));
-
-      const { error: toppingCategoryError } = await supabase
-        .from('menu_item_topping_categories')
-        .insert(toppingCategoryAssociations);
-
-      if (toppingCategoryError) {
-        console.error('Error associating topping categories:', toppingCategoryError);
-      }
-
-      // Add topping categories to the returned menu item
-      (menuItem as any).topping_categories = data.topping_categories;
-    }
-
-    return menuItem;
-  } catch (error) {
-    console.error('Error in createMenuItem:', error);
+  if (error) {
+    console.error("Error fetching menu items:", error);
     throw error;
   }
-};
 
-// Function to update a menu item
-export const updateMenuItem = async (id: string, data: Partial<MenuItem> & { topping_categories?: string[] }): Promise<MenuItem> => {
-  try {
-    // First, update the menu item
-    const { data: updatedMenuItem, error } = await supabase
-      .from('menu_items')
-      .update({
-        name: data.name,
-        description: data.description,
-        price: data.price,
-        promotion_price: data.promotion_price,
-        image: data.image,
-        tax_percentage: data.tax_percentage,
-        in_stock: data.in_stock,
-        display_order: data.display_order
-      })
-      .eq('id', id)
-      .select()
-      .single();
+  const menuItemsWithToppingCategories = await Promise.all(
+    menuItems.map(async (item) => {
+      const { data: toppingCategoryRelations, error: relationsError } = await supabase
+        .from("menu_item_topping_categories")
+        .select("topping_category_id")
+        .eq("menu_item_id", item.id)
+        .order("display_order", { ascending: true }); // Order by display_order
 
-    if (error) {
-      console.error('Error updating menu item:', error);
-      throw error;
-    }
-
-    // If topping categories are provided, update the associations
-    if (data.topping_categories !== undefined) {
-      // First, remove all existing associations
-      const { error: deleteError } = await supabase
-        .from('menu_item_topping_categories')
-        .delete()
-        .eq('menu_item_id', id);
-
-      if (deleteError) {
-        console.error('Error removing existing topping categories:', deleteError);
+      if (relationsError) {
+        console.error("Error fetching menu item topping category relations:", relationsError);
+        return { ...item, topping_categories: [] };
       }
 
-      // Then, create new associations
-      if (data.topping_categories.length > 0) {
-        const toppingCategoryAssociations = data.topping_categories.map((categoryId, index) => ({
-          menu_item_id: id,
-          topping_category_id: categoryId,
-          display_order: index
-        }));
+      return {
+        ...item,
+        topping_categories: toppingCategoryRelations.map(tc => tc.topping_category_id)
+      };
+    })
+  );
 
-        const { error: insertError } = await supabase
-          .from('menu_item_topping_categories')
-          .insert(toppingCategoryAssociations);
-
-        if (insertError) {
-          console.error('Error associating topping categories:', insertError);
-        }
-      }
-
-      // Add topping categories to the returned menu item
-      (updatedMenuItem as any).topping_categories = data.topping_categories;
-    }
-
-    return updatedMenuItem;
-  } catch (error) {
-    console.error('Error in updateMenuItem:', error);
-    throw error;
-  }
+  return menuItemsWithToppingCategories;
 };
 
-// Function to delete a menu item
-export const deleteMenuItem = async (id: string): Promise<boolean> => {
-  try {
-    // First delete related topping category associations
-    await supabase
-      .from('menu_item_topping_categories')
-      .delete()
-      .eq('menu_item_id', id);
+export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
+  const { data, error } = await supabase
+    .from("menu_items")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-    // Then delete the menu item
-    const { error } = await supabase
-      .from('menu_items')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting menu item:', error);
-      throw error;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null;
     }
-
-    return true;
-  } catch (error) {
-    console.error('Error in deleteMenuItem:', error);
+    console.error("Error fetching menu item by id:", error);
     throw error;
   }
-};
 
-// Function to get a menu item with its options
-export const getMenuItemWithOptions = async (id: string): Promise<any> => {
-  try {
-    // Get the menu item
-    const { data: menuItem, error: menuItemError } = await supabase
-      .from('menu_items')
-      .select('*')
-      .eq('id', id)
-      .single();
+  const { data: toppingCategoryRelations, error: relationsError } = await supabase
+    .from("menu_item_topping_categories")
+    .select("topping_category_id")
+    .eq("menu_item_id", id)
+    .order("display_order", { ascending: true }); // Order by display_order
 
-    if (menuItemError) {
-      console.error('Error fetching menu item:', menuItemError);
-      throw menuItemError;
-    }
-
-    // Get topping categories for the menu item
-    const { data: menuItemToppingCategories, error: toppingCatError } = await supabase
-      .from('menu_item_topping_categories')
-      .select('topping_category_id')
-      .eq('menu_item_id', id)
-      .order('display_order', { ascending: true });
-
-    if (toppingCatError) {
-      console.error('Error fetching topping categories for menu item:', toppingCatError);
-    }
-
-    const toppingCategoryIds = menuItemToppingCategories?.map(item => item.topping_category_id) || [];
-    
-    // Add the topping_categories field to the menu item
-    const enrichedMenuItem = {
-      ...menuItem,
-      topping_categories: toppingCategoryIds
+  if (relationsError) {
+    console.error("Error fetching menu item topping category relations:", relationsError);
+    return {
+      ...data,
+      topping_categories: []
     };
+  }
 
-    return enrichedMenuItem;
-  } catch (error) {
-    console.error('Error in getMenuItemWithOptions:', error);
+  return {
+    ...data,
+    topping_categories: toppingCategoryRelations.map(tc => tc.topping_category_id)
+  };
+};
+
+export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
+  console.log("Creating menu item with data:", item);
+
+  const { topping_categories, tax_percentage, ...menuItemData } = item as any;
+
+  const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
+    ? (Number(tax_percentage) || 10)
+    : 10;
+
+  const { data, error } = await supabase
+    .from("menu_items")
+    .insert({ ...menuItemData, tax_percentage: taxValue })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating menu item:", error);
     throw error;
   }
-};
 
-// Function to get topping categories by restaurant ID
-export const getToppingCategoriesByRestaurantId = async (restaurantId: string): Promise<ToppingCategory[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('topping_categories')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .order('display_order', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching topping categories:', error);
-      throw error;
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error('Error in getToppingCategoriesByRestaurantId:', error);
-    return [];
-  }
-};
-
-// Function to get toppings by category
-export const getToppingsByCategory = async (categoryId: string): Promise<Topping[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('toppings')
-      .select('*')
-      .eq('category_id', categoryId)
-      .order('display_order', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching toppings:', error);
-      throw error;
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error('Error in getToppingsByCategory:', error);
-    return [];
-  }
-};
-
-// Function to update a topping
-export const updateTopping = async (id: string, data: Partial<Topping>): Promise<Topping> => {
-  try {
-    const { data: updatedTopping, error } = await supabase
-      .from('toppings')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating topping:', error);
-      throw error;
-    }
-
-    return updatedTopping;
-  } catch (error) {
-    console.error('Error in updateTopping:', error);
-    throw error;
-  }
-};
-
-// Function to create an order
-export const createOrder = async (data: {
-  restaurant_id: string;
-  customer_name?: string;
-  total: number;
-  status: OrderStatus;
-  order_type?: OrderType;
-  table_number?: string;
-}): Promise<Order> => {
-  try {
-    const { data: order, error } = await supabase
-      .from('orders')
-      .insert({
-        restaurant_id: data.restaurant_id,
-        customer_name: data.customer_name || null,
-        total: data.total,
-        status: data.status,
-        order_type: data.order_type || null,
-        table_number: data.table_number || null,
-        payment_status: 'pending'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating order:', error);
-      throw error;
-    }
-
-    // Make sure the returned data conforms to Order type
-    return order as Order;
-  } catch (error) {
-    console.error('Error in createOrder:', error);
-    throw error;
-  }
-};
-
-// Function to update an order status
-export const updateOrderStatus = async (id: string, status: OrderStatus): Promise<Order> => {
-  try {
-    const { data: updatedOrder, error } = await supabase
-      .from('orders')
-      .update({ status })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating order status:', error);
-      throw error;
-    }
-
-    // Make sure the returned data conforms to Order type
-    return updatedOrder as Order;
-  } catch (error) {
-    console.error('Error in updateOrderStatus:', error);
-    throw error;
-  }
-};
-
-// Function to update an order's payment status
-export const updateOrderPaymentStatus = async (id: string, paymentStatus: PaymentStatus, paymentId?: string): Promise<Order> => {
-  try {
-    const updateData: { payment_status: PaymentStatus; payment_id?: string } = { payment_status: paymentStatus };
-    if (paymentId) {
-      updateData.payment_id = paymentId;
-    }
-    
-    const { data: updatedOrder, error } = await supabase
-      .from('orders')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating order payment status:', error);
-      throw error;
-    }
-
-    // Make sure the returned data conforms to Order type
-    return updatedOrder as Order;
-  } catch (error) {
-    console.error('Error in updateOrderPaymentStatus:', error);
-    throw error;
-  }
-};
-
-// Function to create order items
-export const createOrderItems = async (data: {
-  order_id: string;
-  items: {
-    menu_item_id: string;
-    quantity: number;
-    price: number;
-    special_instructions?: string;
-  }[];
-}): Promise<any[]> => {
-  try {
-    const orderItems = data.items.map(item => ({
-      order_id: data.order_id,
-      menu_item_id: item.menu_item_id,
-      quantity: item.quantity,
-      price: item.price,
-      special_instructions: item.special_instructions || null
+  if (topping_categories && topping_categories.length > 0) {
+    const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
+      menu_item_id: data.id,
+      topping_category_id: categoryId,
+      display_order: index // Save the order based on array index
     }));
 
-    const { data: createdItems, error } = await supabase
-      .from('order_items')
-      .insert(orderItems)
-      .select();
+    const { error: relationError } = await supabase
+      .from("menu_item_topping_categories")
+      .insert(toppingCategoryRelations);
 
-    if (error) {
-      console.error('Error creating order items:', error);
-      throw error;
+    if (relationError) {
+      console.error("Error creating topping category relations:", relationError);
+    }
+  }
+
+  return {
+    ...data,
+    topping_categories: topping_categories || []
+  };
+};
+
+export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
+  console.log("Updating menu item:", id, "with data:", updates);
+
+  const { topping_categories, tax_percentage, ...menuItemData } = updates as any;
+  
+  const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
+    ? (Number(tax_percentage) || 10)
+    : 10;
+
+  const { data, error } = await supabase
+    .from("menu_items")
+    .update({ ...menuItemData, tax_percentage: taxValue })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating menu item:", error);
+    throw error;
+  }
+
+  if (topping_categories !== undefined) {
+    const { error: deleteError } = await supabase
+      .from("menu_item_topping_categories")
+      .delete()
+      .eq("menu_item_id", id);
+
+    if (deleteError) {
+      console.error("Error deleting existing topping category relations:", deleteError);
     }
 
-    return createdItems || [];
-  } catch (error) {
-    console.error('Error in createOrderItems:', error);
+    if (topping_categories && topping_categories.length > 0) {
+      const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
+        menu_item_id: id,
+        topping_category_id: categoryId,
+        display_order: index // Add display_order based on the array index
+      }));
+
+      const { error: insertError } = await supabase
+        .from("menu_item_topping_categories")
+        .insert(toppingCategoryRelations);
+
+      if (insertError) {
+        console.error("Error creating new topping category relations:", insertError);
+      }
+    }
+  }
+
+  return {
+    ...data,
+    topping_categories: topping_categories || []
+  };
+};
+
+export const deleteMenuItem = async (id: string): Promise<void> => {
+  console.log("Deleting menu item:", id);
+  const { error } = await supabase
+    .from("menu_items")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting menu item:", error);
     throw error;
   }
 };
 
-// Function to create order item options
-export const createOrderItemOptions = async (data: {
-  options: {
-    order_item_id: string;
-    option_id: string;
-    choice_id: string;
-  }[];
-}): Promise<any[]> => {
-  if (!data.options || data.options.length === 0) {
-    return [];
+// Menu Item Options services
+export const getMenuItemOptions = async (menuItemId: string): Promise<MenuItemOption[]> => {
+  const { data, error } = await supabase
+    .from("menu_item_options")
+    .select("*")
+    .eq("menu_item_id", menuItemId);
+
+  if (error) {
+    console.error("Error fetching menu item options:", error);
+    throw error;
   }
 
+  return data;
+};
+
+// Option Choices services
+export const getOptionChoices = async (optionId: string): Promise<OptionChoice[]> => {
+  const { data, error } = await supabase
+    .from("option_choices")
+    .select("*")
+    .eq("option_id", optionId);
+
+  if (error) {
+    console.error("Error fetching option choices:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Order services
+interface CreateOrderParams {
+  restaurant_id: string;
+  customer_name: string | null;
+  status: string;
+  total: number;
+  order_type?: string;
+  table_number?: string;
+}
+
+export const createOrder = async (params: CreateOrderParams): Promise<any> => {
   try {
-    const { data: createdOptions, error } = await supabase
-      .from('order_item_options')
-      .insert(data.options)
-      .select();
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        restaurant_id: params.restaurant_id,
+        customer_name: params.customer_name,
+        status: params.status,
+        total: params.total,
+        order_type: params.order_type,
+        table_number: params.table_number
+      })
+      .select()
+      .single();
 
-    if (error) {
-      console.error('Error creating order item options:', error);
-      throw error;
-    }
-
-    return createdOptions || [];
+    if (error) throw error;
+    return data;
   } catch (error) {
-    console.error('Error in createOrderItemOptions:', error);
+    console.error('Error creating order:', error);
     throw error;
   }
 };
 
-// Function to create order item toppings
-export const createOrderItemToppings = async (data: {
-  toppings: {
-    order_item_id: string;
-    topping_id: string;
-  }[];
-}): Promise<any[]> => {
-  if (!data.toppings || data.toppings.length === 0) {
-    return [];
-  }
+export const getOrderById = async (id: string): Promise<Order | null> => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-  try {
-    const { data: createdToppings, error } = await supabase
-      .from('order_item_toppings')
-      .insert(data.toppings)
-      .select();
-
-    if (error) {
-      console.error('Error creating order item toppings:', error);
-      throw error;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null;
     }
-
-    return createdToppings || [];
-  } catch (error) {
-    console.error('Error in createOrderItemToppings:', error);
+    console.error("Error fetching order by id:", error);
     throw error;
   }
+
+  return data ? {
+    ...data,
+    status: data.status as OrderStatus
+  } : null;
+};
+
+export const getOrdersByRestaurantId = async (restaurantId: string): Promise<Order[]> => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("restaurant_id", restaurantId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching orders by restaurant id:", error);
+    throw error;
+  }
+
+  return data.map(order => ({
+    ...order,
+    status: order.status as OrderStatus
+  }));
+};
+
+export const updateOrderStatus = async (id: string, status: OrderStatus): Promise<Order> => {
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ status })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating order status:", error);
+    throw error;
+  }
+
+  return {
+    ...data,
+    status: data.status as OrderStatus
+  };
+};
+
+// Order Item services
+export const createOrderItems = async (items: Omit<OrderItem, 'id' | 'created_at' | 'updated_at'>[]): Promise<OrderItem[]> => {
+  const { data, error } = await supabase
+    .from("order_items")
+    .insert(items)
+    .select();
+
+  if (error) {
+    console.error("Error creating order items:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Order Item Options services
+export const createOrderItemOptions = async (options: Omit<OrderItemOption, 'id' | 'created_at' | 'updated_at'>[]): Promise<OrderItemOption[]> => {
+  const { data, error } = await supabase
+    .from("order_item_options")
+    .insert(options)
+    .select();
+
+  if (error) {
+    console.error("Error creating order item options:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Order Item Toppings services
+export const createOrderItemToppings = async (toppings: Array<{order_item_id: string, topping_id: string}>): Promise<any> => {
+  const { data, error } = await supabase
+    .from("order_item_toppings")
+    .insert(toppings)
+    .select();
+
+  if (error) {
+    console.error("Error creating order item toppings:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Helper function to get a complete menu item with its options and choices
+export const getMenuItemWithOptions = async (menuItemId: string) => {
+  const menuItem = await getMenuItemById(menuItemId);
+  if (!menuItem) return null;
+
+  const options = await getMenuItemOptions(menuItemId);
+  
+  const optionsWithChoices = await Promise.all(
+    options.map(async (option) => {
+      const choices = await getOptionChoices(option.id);
+      return {
+        ...option,
+        choices
+      };
+    })
+  );
+
+  // Fetch topping categories linked to this menu item
+  const { data: toppingCategoryRelations, error: relError } = await supabase
+    .from("menu_item_topping_categories")
+    .select("topping_category_id, display_order")
+    .eq("menu_item_id", menuItemId)
+    .order("display_order", { ascending: true });
+
+  if (relError) {
+    console.error("Error fetching menu item topping category relations:", relError);
+    return {
+      ...menuItem,
+      options: optionsWithChoices,
+      toppingCategories: []
+    };
+  }
+
+  // Get the ids of the topping categories
+  const toppingCategoryIds = toppingCategoryRelations.map(rel => rel.topping_category_id);
+  
+  // Create a map of id to display_order for sorting later
+  const displayOrderMap = toppingCategoryRelations.reduce((map, rel) => {
+    map[rel.topping_category_id] = rel.display_order ?? 1000; // Default to high number if null
+    return map;
+  }, {} as Record<string, number>);
+
+  if (toppingCategoryIds.length === 0) {
+    return {
+      ...menuItem,
+      options: optionsWithChoices,
+      toppingCategories: []
+    };
+  }
+
+  // Fetch the actual topping categories
+  const { data: toppingCategories, error: tcError } = await supabase
+    .from("topping_categories")
+    .select("*")
+    .in("id", toppingCategoryIds);
+
+  if (tcError) {
+    console.error("Error fetching topping categories:", tcError);
+    return {
+      ...menuItem,
+      options: optionsWithChoices,
+      toppingCategories: []
+    };
+  }
+
+  // Now fetch toppings for each category and create the full structure
+  const toppingCategoriesWithToppings = await Promise.all(
+    toppingCategories.map(async (category) => {
+      const toppings = await getToppingsByCategory(category.id);
+      
+      // Use the display_order from the relation table
+      const relationDisplayOrder = displayOrderMap[category.id];
+      
+      return {
+        ...category,
+        display_order: relationDisplayOrder,  // Use relation display_order for category sorting
+        required: category.min_selections ? category.min_selections > 0 : false, // Add required property
+        toppings
+      };
+    })
+  );
+
+  // Sort the topping categories based on display_order from the relation table
+  const sortedCategories = toppingCategoriesWithToppings.sort((a, b) => {
+    const orderA = a.display_order ?? 1000;
+    const orderB = b.display_order ?? 1000;
+    return orderA - orderB;
+  });
+
+  return {
+    ...menuItem,
+    options: optionsWithChoices,
+    toppingCategories: sortedCategories
+  };
+};
+
+// Helper function to get all menu items for a restaurant with their categories
+export const getMenuForRestaurant = async (restaurantId: string) => {
+  const categories = await getCategoriesByRestaurantId(restaurantId);
+  
+  const categoriesWithItems = await Promise.all(
+    categories.map(async (category) => {
+      const items = await getMenuItemsByCategory(category.id);
+      return {
+        ...category,
+        items
+      };
+    })
+  );
+
+  return categoriesWithItems;
+};
+
+// Helper function to get order items for a specific order
+export const getOrderItemsByOrderId = async (orderId: string) => {
+  const { data, error } = await supabase
+    .from("order_items")
+    .select(`
+      id,
+      quantity,
+      price,
+      special_instructions,
+      menu_items (
+        id,
+        name,
+        description
+      )
+    `)
+    .eq("order_id", orderId);
+
+  if (error) {
+    console.error("Error fetching order items:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+// Topping Category services
+export const getToppingCategoriesByRestaurantId = async (restaurantId: string): Promise<ToppingCategory[]> => {
+  console.log("Fetching topping categories for restaurant:", restaurantId);
+  const { data, error } = await supabase
+    .from("topping_categories")
+    .select("*")
+    .eq("restaurant_id", restaurantId);
+
+  if (error) {
+    console.error("Error fetching topping categories:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const createToppingCategory = async (category: Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>): Promise<ToppingCategory> => {
+  console.log("Creating topping category with data:", category);
+  const { data, error } = await supabase
+    .from("topping_categories")
+    .insert(category)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating topping category:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const updateToppingCategory = async (id: string, updates: Partial<Omit<ToppingCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<ToppingCategory> => {
+  console.log("Updating topping category:", id, "with data:", updates);
+  const { data, error } = await supabase
+    .from("topping_categories")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating topping category:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteToppingCategory = async (id: string): Promise<void> => {
+  console.log("Deleting topping category:", id);
+  const { error } = await supabase
+    .from("topping_categories")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting topping category:", error);
+    throw error;
+  }
+};
+
+// Topping services
+export const getToppingsByCategory = async (categoryId: string): Promise<Topping[]> => {
+  const { data, error } = await supabase
+    .from("toppings")
+    .select("*")
+    .eq("category_id", categoryId)
+    .order('display_order', { ascending: true }); // Order by display_order
+
+  if (error) {
+    console.error("Error fetching toppings:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const createTopping = async (topping: Omit<Topping, 'id' | 'created_at' | 'updated_at'>): Promise<Topping> => {
+  console.log("Creating topping with data:", topping);
+  const { data, error } = await supabase
+    .from("toppings")
+    .insert(topping)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating topping:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const updateTopping = async (id: string, updates: Partial<Omit<Topping, 'id' | 'created_at' | 'updated_at'>>): Promise<Topping> => {
+  console.log("Updating topping:", id, "with data:", updates);
+  const { data, error } = await supabase
+    .from("toppings")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating topping:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteTopping = async (id: string): Promise<void> => {
+  console.log("Deleting topping:", id);
+  const { error } = await supabase
+    .from("toppings")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting topping:", error);
+    throw error;
+  }
+};
+
+// Helper function to get all toppings for a restaurant with their categories
+export const getToppingsForRestaurant = async (restaurantId: string) => {
+  const categories = await getToppingCategoriesByRestaurantId(restaurantId);
+  
+  const categoriesWithToppings = await Promise.all(
+    categories.map(async (category) => {
+      const toppings = await getToppingsByCategory(category.id);
+      return {
+        ...category,
+        toppings
+      };
+    })
+  );
+
+  return categoriesWithToppings;
+};
+
+export const duplicateRestaurant = async (restaurantId: string): Promise<Restaurant> => {
+  console.log("Duplicating restaurant:", restaurantId);
+  
+  const { data, error } = await supabase
+    .rpc('duplicate_restaurant', {
+      source_restaurant_id: restaurantId
+    })
+    .single();
+
+  if (error) {
+    console.error("Error duplicating restaurant:", error);
+    throw error;
+  }
+
+  // Fetch the newly created restaurant
+  const { data: newRestaurant, error: fetchError } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("id", data)
+    .single();
+
+  if (fetchError) {
+    console.error("Error fetching new restaurant:", fetchError);
+    throw fetchError;
+  }
+
+  return newRestaurant;
 };

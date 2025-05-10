@@ -362,12 +362,8 @@ export type Database = {
           created_at: string
           customer_name: string | null
           id: string
-          order_type: string | null
-          payment_id: string | null
-          payment_status: string | null
           restaurant_id: string
           status: string
-          table_number: string | null
           total: number
           updated_at: string
         }
@@ -375,12 +371,8 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           id?: string
-          order_type?: string | null
-          payment_id?: string | null
-          payment_status?: string | null
           restaurant_id: string
           status: string
-          table_number?: string | null
           total: number
           updated_at?: string
         }
@@ -388,79 +380,14 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           id?: string
-          order_type?: string | null
-          payment_id?: string | null
-          payment_status?: string | null
           restaurant_id?: string
           status?: string
-          table_number?: string | null
           total?: number
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "orders_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "payment_records"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "orders_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payment_records: {
-        Row: {
-          amount: number
-          created_at: string
-          id: string
-          order_id: string
-          payment_method: string
-          restaurant_id: string
-          status: string
-          terminal_reference: string | null
-          transaction_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          id?: string
-          order_id: string
-          payment_method?: string
-          restaurant_id: string
-          status?: string
-          terminal_reference?: string | null
-          transaction_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          id?: string
-          order_id?: string
-          payment_method?: string
-          restaurant_id?: string
-          status?: string
-          terminal_reference?: string | null
-          transaction_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_records_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payment_records_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
@@ -691,8 +618,6 @@ export type Database = {
       }
       restaurants: {
         Row: {
-          card_payment_enabled: boolean | null
-          cash_payment_enabled: boolean | null
           created_at: string
           currency: string
           id: string
@@ -704,8 +629,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          card_payment_enabled?: boolean | null
-          cash_payment_enabled?: boolean | null
           created_at?: string
           currency?: string
           id?: string
@@ -717,8 +640,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          card_payment_enabled?: boolean | null
-          cash_payment_enabled?: boolean | null
           created_at?: string
           currency?: string
           id?: string
@@ -848,8 +769,6 @@ export type Database = {
       get_owned_restaurants: {
         Args: Record<PropertyKey, never>
         Returns: {
-          card_payment_enabled: boolean | null
-          cash_payment_enabled: boolean | null
           created_at: string
           currency: string
           id: string

@@ -10,9 +10,7 @@ export type Restaurant = {
   created_at: string;
   updated_at: string;
   ui_language?: string;
-  currency?: string; // ISO 4217 code, e.g. "EUR", "USD", ...
-  card_payment_enabled?: boolean; // Added this property for card payments
-  cash_payment_enabled?: boolean; // Added this property for cash payments
+  currency?: string; // NEW: ISO 4217 code, e.g. "EUR", "USD", ...
 };
 
 export type MenuCategory = {
@@ -99,9 +97,8 @@ export type Topping = {
 };
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
-export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
-// Define OrderType explicitly as its own type
+// Add the missing OrderType type
 export type OrderType = 'dine-in' | 'takeaway' | null;
 
 export interface Order {
@@ -109,13 +106,11 @@ export interface Order {
   restaurant_id: string;
   customer_id?: string;
   customer_name?: string;
-  status: OrderStatus;
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at: string;
   total: number;
-  order_type?: OrderType; // Use the explicit OrderType
-  table_number?: string | null;
-  payment_status?: PaymentStatus;
-  payment_id?: string;
+  order_type?: OrderType;
+  table_number?: string;
 }
 
 export type OrderItem = {
@@ -134,19 +129,6 @@ export type OrderItemOption = {
   order_item_id: string;
   option_id: string;
   choice_id: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type PaymentRecord = {
-  id: string;
-  order_id: string;
-  restaurant_id: string;
-  amount: number;
-  status: PaymentStatus;
-  payment_method: 'card' | 'cash';
-  terminal_reference?: string;
-  transaction_id?: string;
   created_at: string;
   updated_at: string;
 };

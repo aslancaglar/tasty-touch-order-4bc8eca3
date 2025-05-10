@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Printer, Check, XCircle, Trash2, Copy, CreditCard, Banknote } from "lucide-react";
+import { Loader2, Printer, Check, XCircle, Trash2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Restaurant } from "@/types/database-types";
 import ImageUpload from "@/components/ImageUpload";
@@ -103,12 +103,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
-  
-  // Payment settings
-  const [cardPaymentEnabled, setCardPaymentEnabled] = useState(restaurant.card_payment_enabled || false);
-  const [cashPaymentEnabled, setCashPaymentEnabled] = useState(restaurant.cash_payment_enabled || false);
-  const [isSavingPaymentSettings, setIsSavingPaymentSettings] = useState(false);
-
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -123,8 +117,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     setSlug(restaurant.slug || "");
     setUiLanguage(restaurant.ui_language || "fr");
     setCurrency(restaurant.currency || "EUR");
-    setCardPaymentEnabled(restaurant.card_payment_enabled || false);
-    setCashPaymentEnabled(restaurant.cash_payment_enabled || false);
   }, [restaurant]);
 
   useEffect(() => {
@@ -428,46 +420,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     }
   };
 
-  const handleSavePaymentSettings = async () => {
-    setIsSavingPaymentSettings(true);
-    
-    try {
-      const { data, error } = await supabase
-        .from("restaurants")
-        .update({
-          card_payment_enabled: cardPaymentEnabled,
-          cash_payment_enabled: cashPaymentEnabled
-        })
-        .eq("id", restaurant.id)
-        .select();
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Paramètres de paiement enregistrés",
-        description: "Les options de paiement ont été mises à jour.",
-      });
-
-      if (onRestaurantUpdated && data && data.length > 0) {
-        const updatedRestaurant = {
-          ...restaurant,
-          card_payment_enabled: cardPaymentEnabled,
-          cash_payment_enabled: cashPaymentEnabled
-        };
-        onRestaurantUpdated(updatedRestaurant);
-      }
-    } catch (error) {
-      console.error("Error updating payment settings:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour les options de paiement.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSavingPaymentSettings(false);
-    }
-  };
-
   const selectedCurrencyOption = currencyOptions.find(opt => opt.value === currency);
   const currencySymbol = selectedCurrencyOption?.symbol || currency;
 
@@ -477,7 +429,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         <TabsList>
           <TabsTrigger value="basic">Informations</TabsTrigger>
           <TabsTrigger value="print">Impression</TabsTrigger>
-          <TabsTrigger value="payment">Paiement</TabsTrigger>
         </TabsList>
         
         <TabsContent value="basic" className="space-y-6">
@@ -792,64 +743,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               <p>Merci de votre visite!</p>
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="payment" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Options de Paiement</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between border-b pb-4">
-                <div className="space-y-0.5 flex items-center">
-                  <CreditCard className="mr-2 h-5 w-5 text-gray-600" />
-                  <div>
-                    <Label htmlFor="card-payment" className="text-base font-medium">Paiement par Carte</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Permettre aux clients de payer par carte bancaire
-                    </p>
-                  </div>
-                </div>
-                <Switch 
-                  id="card-payment"
-                  checked={cardPaymentEnabled}
-                  onCheckedChange={setCardPaymentEnabled}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between border-b pb-4">
-                <div className="space-y-0.5 flex items-center">
-                  <Banknote className="mr-2 h-5 w-5 text-gray-600" />
-                  <div>
-                    <Label htmlFor="cash-payment" className="text-base font-medium">Paiement en Espèces</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Permettre aux clients de payer en espèces
-                    </p>
-                  </div>
-                </div>
-                <Switch 
-                  id="cash-payment"
-                  checked={cashPaymentEnabled}
-                  onCheckedChange={setCashPaymentEnabled}
-                />
-              </div>
-              
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleSavePaymentSettings} 
-                  className="bg-green-600 hover:bg-green-700"
-                  disabled={isSavingPaymentSettings}
-                >
-                  {isSavingPaymentSettings ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="mr-2 h-4 w-4" />
-                  )}
-                  Enregistrer les options de paiement
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

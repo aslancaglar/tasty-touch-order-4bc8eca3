@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 /**
@@ -56,13 +57,11 @@ export const rightAlignText = (text: string, command: string = ESCPOS.FONT_NORMA
  * Format a line with label on left and value on right
  * @param label The left-aligned label
  * @param value The right-aligned value
- * @param width The width of the line in characters
  * @param command Optional formatting command to apply
  * @returns Formatted line with ESC/POS commands
  */
-export const formatLine = (label: string, value: string, width: number = 48, command: string = ESCPOS.FONT_NORMAL): string => {
-  const spaces = Math.max(0, width - label.length - value.length);
-  return command + label + ' '.repeat(spaces) + value + ESCPOS.FONT_NORMAL + ESCPOS.ALIGN_LEFT;
+export const formatLine = (label: string, value: string, command: string = ESCPOS.FONT_NORMAL): string => {
+  return command + label + ESCPOS.ALIGN_RIGHT + value + ESCPOS.FONT_NORMAL + ESCPOS.ALIGN_LEFT;
 };
 
 /**
