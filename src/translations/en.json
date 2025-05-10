@@ -1,4 +1,3 @@
-
 {
   "orderType": {
     "title": "How would you like to order?",
@@ -111,5 +110,8 @@
     "now": "now",
     "last7Days": "Last 7 days",
     "noData": "No data available for the selected time period."
+  },
+  "menuItem": {
+    "unavailable": "CURRENTLY UNAVAILABLE"
   }
 }

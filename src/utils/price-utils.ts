@@ -11,6 +11,34 @@ export const calculateTaxAmount = (totalPrice: number, percentage: number = 10):
   return totalPrice - priceWithoutTax;
 };
 
+// Check if a menu item is available based on time constraints
+export const isItemAvailable = (item: any): boolean => {
+  if (!item.available_from || !item.available_until) {
+    return true; // If no time constraint is set, the item is always available
+  }
+
+  const currentDate = new Date();
+  const currentTime = currentDate.getHours() * 60 + currentDate.getMinutes(); // Convert to minutes since midnight
+  
+  // Parse HH:MM:SS format to minutes since midnight
+  const parseTimeToMinutes = (timeString: string): number => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+  
+  const fromMinutes = parseTimeToMinutes(item.available_from);
+  const untilMinutes = parseTimeToMinutes(item.available_until);
+  
+  // Handle cases where availability crosses midnight
+  if (fromMinutes <= untilMinutes) {
+    // Regular time range (e.g., 11:00 to 14:00)
+    return currentTime >= fromMinutes && currentTime <= untilMinutes;
+  } else {
+    // Time range spans midnight (e.g., 22:00 to 02:00)
+    return currentTime >= fromMinutes || currentTime <= untilMinutes;
+  }
+};
+
 // Updated utility function to calculate cart totals with proper topping VAT
 export const calculateCartTotals = (cart: CartItem[]) => {
   let total = 0;

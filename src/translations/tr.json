@@ -1,4 +1,3 @@
-
 {
   "orderType": {
     "title": "Nasıl sipariş vermek istersiniz?",
@@ -111,5 +110,8 @@
     "now": "şimdi",
     "last7Days": "Son 7 gün",
     "noData": "Seçilen zaman dilimi için veri bulunamadı."
+  },
+  "menuItem": {
+    "unavailable": "MEVCUT DEĞİL"
   }
 }

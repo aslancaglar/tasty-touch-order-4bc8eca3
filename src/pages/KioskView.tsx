@@ -950,6 +950,7 @@ const KioskView = () => {
               restaurantId={restaurant?.id} 
               refreshTrigger={refreshTrigger}
               categories={categories}
+              uiLanguage={uiLanguage}
             />
           </div>
         </div>
