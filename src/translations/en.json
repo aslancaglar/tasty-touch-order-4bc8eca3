@@ -38,8 +38,7 @@
   "cart": {
     "viewCart": "View Cart"
   },
-  "currentlyUnavailable": "UNAVAILABLE",
-  "betweenTime": "BETWEEN",
+  "currentlyUnavailable": "Currently Unavailable",
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome to your TastyTouch Admin Dashboard",
