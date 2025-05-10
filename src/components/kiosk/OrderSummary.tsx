@@ -332,7 +332,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         customer_name: null,
         total,
         status: 'pending',
-        order_type: orderType,
+        // Remove order_type as it doesn't exist in the schema
+        // Use type for order type, if it exists in the schema
+        type: orderType,
         table_number: tableNumber,
         payment_status: 'pending'
       }).select().single();
@@ -400,7 +402,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         customer_name: null,
         total,
         status: 'pending',
-        order_type: orderType,
+        // Remove order_type as it doesn't exist in the schema
+        // Use type for order type, if it exists in the schema
+        type: orderType,
         table_number: tableNumber,
         payment_status: 'completed'
       }).select().single();
