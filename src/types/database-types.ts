@@ -99,6 +99,7 @@ export type Topping = {
 };
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
 // Add the missing OrderType type
 export type OrderType = 'dine-in' | 'takeaway' | null;
@@ -113,6 +114,8 @@ export interface Order {
   total: number;
   order_type?: OrderType;
   table_number?: string;
+  payment_status?: PaymentStatus;
+  payment_id?: string;
 }
 
 export type OrderItem = {
@@ -131,6 +134,19 @@ export type OrderItemOption = {
   order_item_id: string;
   option_id: string;
   choice_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PaymentRecord = {
+  id: string;
+  order_id: string;
+  restaurant_id: string;
+  amount: number;
+  status: PaymentStatus;
+  payment_method: 'card' | 'cash';
+  terminal_reference?: string;
+  transaction_id?: string;
   created_at: string;
   updated_at: string;
 };

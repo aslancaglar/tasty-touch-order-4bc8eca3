@@ -362,6 +362,8 @@ export type Database = {
           created_at: string
           customer_name: string | null
           id: string
+          payment_id: string | null
+          payment_status: string | null
           restaurant_id: string
           status: string
           total: number
@@ -371,6 +373,8 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           id?: string
+          payment_id?: string | null
+          payment_status?: string | null
           restaurant_id: string
           status: string
           total: number
@@ -380,12 +384,21 @@ export type Database = {
           created_at?: string
           customer_name?: string | null
           id?: string
+          payment_id?: string | null
+          payment_status?: string | null
           restaurant_id?: string
           status?: string
           total?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_records"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_restaurant_id_fkey"
             columns: ["restaurant_id"]
@@ -395,43 +408,56 @@ export type Database = {
           },
         ]
       }
-      payments: {
+      payment_records: {
         Row: {
           amount: number
           created_at: string
           id: string
-          order_id: string | null
-          payment_method: string | null
-          pos_response: string | null
+          order_id: string
+          payment_method: string
+          restaurant_id: string
           status: string
+          terminal_reference: string | null
+          transaction_id: string | null
           updated_at: string
         }
         Insert: {
           amount: number
           created_at?: string
           id?: string
-          order_id?: string | null
-          payment_method?: string | null
-          pos_response?: string | null
+          order_id: string
+          payment_method?: string
+          restaurant_id: string
           status?: string
+          terminal_reference?: string | null
+          transaction_id?: string | null
           updated_at?: string
         }
         Update: {
           amount?: number
           created_at?: string
           id?: string
-          order_id?: string | null
-          payment_method?: string | null
-          pos_response?: string | null
+          order_id?: string
+          payment_method?: string
+          restaurant_id?: string
           status?: string
+          terminal_reference?: string | null
+          transaction_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "payments_order_id_fkey"
+            foreignKeyName: "payment_records_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_records_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
         ]

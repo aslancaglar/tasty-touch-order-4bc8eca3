@@ -1,6 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { Restaurant, MenuCategory, MenuItem, ToppingCategory, Topping, Order, OrderStatus } from "@/types/database-types";
+import { Restaurant, MenuCategory, MenuItem, ToppingCategory, Topping, Order, OrderStatus, PaymentStatus } from "@/types/database-types";
 import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 // Function to get all restaurants
@@ -547,6 +546,8 @@ export const createOrder = async (data: {
   customer_name?: string;
   total: number;
   status: OrderStatus;
+  order_type?: string;
+  table_number?: string;
 }): Promise<Order> => {
   try {
     const { data: order, error } = await supabase
@@ -555,7 +556,10 @@ export const createOrder = async (data: {
         restaurant_id: data.restaurant_id,
         customer_name: data.customer_name || null,
         total: data.total,
-        status: data.status
+        status: data.status,
+        order_type: data.order_type || null,
+        table_number: data.table_number || null,
+        payment_status: 'pending'
       })
       .select()
       .single();
@@ -592,6 +596,34 @@ export const updateOrderStatus = async (id: string, status: OrderStatus): Promis
     return updatedOrder as Order;
   } catch (error) {
     console.error('Error in updateOrderStatus:', error);
+    throw error;
+  }
+};
+
+// Function to update an order's payment status
+export const updateOrderPaymentStatus = async (id: string, paymentStatus: PaymentStatus, paymentId?: string): Promise<Order> => {
+  try {
+    const updateData: { payment_status: PaymentStatus; payment_id?: string } = { payment_status: paymentStatus };
+    if (paymentId) {
+      updateData.payment_id = paymentId;
+    }
+    
+    const { data: updatedOrder, error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating order payment status:', error);
+      throw error;
+    }
+
+    // Make sure the returned data conforms to Order type
+    return updatedOrder as Order;
+  } catch (error) {
+    console.error('Error in updateOrderPaymentStatus:', error);
     throw error;
   }
 };
