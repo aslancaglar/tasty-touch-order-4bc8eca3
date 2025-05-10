@@ -9,13 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import ImageUpload from "@/components/ImageUpload";
-import { Loader2, ArrowUp, ArrowDown, Clock } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, Clock, Infinity } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { getToppingCategoriesByRestaurantId } from "@/services/kiosk-service";
 import { ToppingCategory } from "@/types/database-types";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Define the form schema with Zod for validation
 const formSchema = z.object({
@@ -53,6 +55,7 @@ const formSchema = z.object({
   ),
   available_from: z.string().optional(),
   available_until: z.string().optional(),
+  availability_type: z.enum(["always", "time_restricted"]),
 });
 
 interface MenuItemFormProps {
@@ -75,6 +78,11 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
   );
   // Track the order of selected categories
   const [toppingCategoryOrder, setToppingCategoryOrder] = useState<Record<string, number>>({});
+  
+  // Determine initial availability type based on initialValues
+  const initialAvailabilityType = initialValues?.available_from && initialValues?.available_until
+    ? "time_restricted"
+    : "always";
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -89,8 +97,20 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       display_order: initialValues?.display_order || "0",
       available_from: initialValues?.available_from || "",
       available_until: initialValues?.available_until || "",
+      availability_type: initialAvailabilityType,
     },
   });
+
+  // Watch for availability type changes to conditionally show/hide time fields
+  const availabilityType = form.watch("availability_type");
+
+  // Reset times when switching to "always available"
+  useEffect(() => {
+    if (availabilityType === "always") {
+      form.setValue("available_from", "");
+      form.setValue("available_until", "");
+    }
+  }, [availabilityType, form]);
 
   useEffect(() => {
     const fetchToppingCategories = async () => {
@@ -208,11 +228,17 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       (a, b) => toppingCategoryOrder[a] - toppingCategoryOrder[b]
     );
     
-    onSubmit({
+    // Only include time fields if time restricted
+    const finalValues = {
       ...values,
       image: imageUrl,
       topping_categories: sortedToppingCategories,
-    });
+      // Set time fields to null if always available
+      available_from: values.availability_type === "always" ? "" : values.available_from,
+      available_until: values.availability_type === "always" ? "" : values.available_until,
+    };
+    
+    onSubmit(finalValues);
   };
 
   // Sort the categories by their assigned order for display
@@ -318,45 +344,78 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="available_from"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" /> Available From
-                </FormLabel>
-                <FormControl>
-                  <Input 
-                    type="time" 
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="available_until"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" /> Available Until
-                </FormLabel>
-                <FormControl>
-                  <Input 
-                    type="time" 
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="availability_type"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Availability</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="always" id="always" />
+                    <Label htmlFor="always" className="flex items-center gap-2">
+                      <Infinity className="h-4 w-4" /> Always available
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="time_restricted" id="time_restricted" />
+                    <Label htmlFor="time_restricted" className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" /> Available during specific hours
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {availabilityType === "time_restricted" && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="available_from"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" /> Available From
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="time" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="available_until"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" /> Available Until
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="time" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         <FormField
           control={form.control}
