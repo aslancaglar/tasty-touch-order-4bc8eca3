@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, CreditCard, Banknote } from "lucide-react";
+import { ArrowLeft, Check, CreditCard, Banknote, Loader2 } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -24,7 +24,9 @@ const translations = {
     confirm: "CONFIRMER LA COMMANDE",
     back: "Retour",
     payWithCard: "PAYER PAR CARTE",
-    payWithCash: "PAYER EN ESPÈCES"
+    payWithCash: "PAYER EN ESPÈCES",
+    processingPayment: "TRAITEMENT DU PAIEMENT...",
+    waitingForTerminal: "En attente du terminal de paiement..."
   },
   en: {
     orderSummary: "ORDER SUMMARY",
@@ -36,7 +38,9 @@ const translations = {
     confirm: "CONFIRM ORDER",
     back: "Back",
     payWithCard: "PAY WITH CARD",
-    payWithCash: "PAY WITH CASH"
+    payWithCash: "PAY WITH CASH",
+    processingPayment: "PROCESSING PAYMENT...",
+    waitingForTerminal: "Waiting for payment terminal..."
   },
   tr: {
     orderSummary: "SİPARİŞ ÖZETİ",
@@ -48,7 +52,9 @@ const translations = {
     confirm: "SİPARİŞİ ONAYLA",
     back: "Geri",
     payWithCard: "KART İLE ÖDE",
-    payWithCash: "NAKİT İLE ÖDE"
+    payWithCash: "NAKİT İLE ÖDE",
+    processingPayment: "İŞLENİYOR...",
+    waitingForTerminal: "Ödeme terminali bekleniyor..."
   }
 };
 
@@ -91,6 +97,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | null>(null);
+  const [processingCardPayment, setProcessingCardPayment] = useState<boolean>(false);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -114,6 +122,104 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
+
+  // Check payment status periodically if card payment is in progress
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    
+    if (processingCardPayment && paymentId) {
+      interval = setInterval(async () => {
+        try {
+          const { data: payment, error } = await supabase
+            .from('payments')
+            .select('status, pos_response')
+            .eq('id', paymentId)
+            .single();
+          
+          if (error) {
+            console.error("Error checking payment status:", error);
+            return;
+          }
+          
+          if (payment && payment.status === 'approved') {
+            clearInterval(interval);
+            setProcessingCardPayment(false);
+            
+            // Complete the order
+            handleConfirmOrder("card");
+            
+            toast({
+              title: "Payment Approved",
+              description: "Your card payment has been processed successfully.",
+              variant: "default"
+            });
+          } else if (payment && payment.status === 'declined') {
+            clearInterval(interval);
+            setProcessingCardPayment(false);
+            
+            toast({
+              title: "Payment Declined",
+              description: payment.pos_response || "Your card payment was declined.",
+              variant: "destructive"
+            });
+          }
+          // Continue polling if status is still 'pending'
+        } catch (error) {
+          console.error("Error in payment status check:", error);
+        }
+      }, 2000); // Check every 2 seconds
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [processingCardPayment, paymentId]);
+
+  const handleCardPayment = async () => {
+    try {
+      setProcessingCardPayment(true);
+      
+      // Create a payment record in the database
+      const { data: payment, error } = await supabase
+        .from('payments')
+        .insert({
+          amount: total,
+          status: 'pending'
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error creating payment record:", error);
+        toast({
+          title: "Error",
+          description: "There was a problem initiating the payment.",
+          variant: "destructive"
+        });
+        setProcessingCardPayment(false);
+        return;
+      }
+      
+      setPaymentId(payment.id);
+      
+      toast({
+        title: t("waitingForTerminal"),
+        description: "Please complete the payment on the terminal.",
+        duration: 5000
+      });
+      
+      // Payment status will be checked by the useEffect above
+      
+    } catch (error) {
+      console.error("Error processing card payment:", error);
+      setProcessingCardPayment(false);
+      toast({
+        title: "Error",
+        description: "There was a problem processing your payment.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleConfirmOrder = async (selectedPaymentMethod?: "card" | "cash") => {
     if (selectedPaymentMethod) {
@@ -373,11 +479,20 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               {restaurant?.card_payment_enabled && (
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6"
-                  onClick={() => handleConfirmOrder("card")}
-                  disabled={placingOrder}
+                  onClick={() => processingCardPayment ? null : handleCardPayment()}
+                  disabled={placingOrder || processingCardPayment}
                 >
-                  <CreditCard className="mr-2 h-5 w-5" />
-                  {t("payWithCard")}
+                  {processingCardPayment ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      {t("processingPayment")}
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="mr-2 h-5 w-5" />
+                      {t("payWithCard")}
+                    </>
+                  )}
                 </Button>
               )}
               
@@ -385,7 +500,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <Button 
                   className="w-full bg-green-700 hover:bg-green-800 text-white py-6"
                   onClick={() => handleConfirmOrder("cash")}
-                  disabled={placingOrder}
+                  disabled={placingOrder || processingCardPayment}
                 >
                   <Banknote className="mr-2 h-5 w-5" />
                   {t("payWithCash")}
