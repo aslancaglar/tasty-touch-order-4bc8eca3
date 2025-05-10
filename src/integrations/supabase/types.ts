@@ -666,6 +666,7 @@ export type Database = {
           id: string
           image_url: string | null
           location: string | null
+          logo_url: string | null
           name: string
           slug: string
           ui_language: string
@@ -679,6 +680,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           location?: string | null
+          logo_url?: string | null
           name: string
           slug: string
           ui_language?: string
@@ -692,6 +694,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           location?: string | null
+          logo_url?: string | null
           name?: string
           slug?: string
           ui_language?: string
@@ -823,6 +826,7 @@ export type Database = {
           id: string
           image_url: string | null
           location: string | null
+          logo_url: string | null
           name: string
           slug: string
           ui_language: string

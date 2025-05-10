@@ -6,6 +6,7 @@ export type Restaurant = {
   name: string;
   slug: string;
   image_url: string | null;
+  logo_url: string | null;
   location: string | null;
   created_at: string;
   updated_at: string;
