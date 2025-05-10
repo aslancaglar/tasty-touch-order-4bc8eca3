@@ -872,7 +872,13 @@ const KioskView = () => {
 
   return (
     <div className="kiosk-view">
-      <KioskHeader />
+      <KioskHeader 
+        restaurant={restaurant} 
+        orderType={orderType} 
+        tableNumber={tableNumber} 
+        t={t} 
+        onRefresh={handleRefreshMenu}
+      />
       <div className="flex flex-col">
         <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
         <MenuItemGrid categories={categories} activeCategory={activeCategory} onSelectItem={handleSelectItem} />
