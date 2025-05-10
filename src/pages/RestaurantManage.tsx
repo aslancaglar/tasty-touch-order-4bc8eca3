@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -5,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
 import { 
+  Loader2, 
   ArrowLeft, 
   UtensilsCrossed, 
   Cherry, 
   Receipt, 
   Settings,
-  Package
+  Package,
+  ChartBar
 } from "lucide-react";
 import { getRestaurants } from "@/services/kiosk-service";
 import { Restaurant } from "@/types/database-types";
@@ -21,6 +23,7 @@ import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
 import SettingsTab from "@/components/restaurant/SettingsTab";
 import StockTab from "@/components/restaurant/StockTab";
+import StatisticsTab from "@/components/restaurant/StatisticsTab";
 import { useTranslation } from "@/utils/language-utils";
 
 const RestaurantManage = () => {
@@ -123,7 +126,7 @@ const RestaurantManage = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-5 mb-8">
+            <TabsList className="grid grid-cols-6 mb-8">
               <TabsTrigger value="menu" className="flex items-center">
                 <UtensilsCrossed className="mr-2 h-4 w-4" />
                 {t("restaurant.menu")}
@@ -143,6 +146,10 @@ const RestaurantManage = () => {
               <TabsTrigger value="stock" className="flex items-center">
                 <Package className="mr-2 h-4 w-4" />
                 {t("restaurant.stock")}
+              </TabsTrigger>
+              <TabsTrigger value="statistics" className="flex items-center">
+                <ChartBar className="mr-2 h-4 w-4" />
+                {t("restaurant.statistics") || "Statistics"}
               </TabsTrigger>
             </TabsList>
             
@@ -170,6 +177,12 @@ const RestaurantManage = () => {
             <TabsContent value="stock">
               {restaurant && (
                 <StockTab restaurant={restaurant} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="statistics">
+              {restaurant && (
+                <StatisticsTab restaurant={restaurant} />
               )}
             </TabsContent>
           </Tabs>
