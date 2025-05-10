@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -173,9 +174,7 @@ const MenuItemCard = memo(({
           }`}
           disabled={!isAvailable}
         >
-          {isAvailable ? t("addToCart") : (
-            <span className="text-[15px] px-1 sm:px-2 md:px-3 lg:px-4">{t("currentlyUnavailable")}</span>
-          )}
+          {isAvailable ? t("addToCart") : t("currentlyUnavailable")}
           {isAvailable && <ChevronRight className="h-4 w-4 ml-2" />}
         </Button>
       </div>
