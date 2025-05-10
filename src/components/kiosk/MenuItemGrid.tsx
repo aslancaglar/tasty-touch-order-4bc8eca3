@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,7 +106,10 @@ const MenuItemCard = memo(({
     const startTime = formatTimeDisplay(item.available_from);
     const endTime = formatTimeDisplay(item.available_until);
     
-    return t("betweenTime")
+    // Add safety check for undefined translation
+    const betweenTimeTemplate = t("betweenTime") || "BETWEEN: {start} - {end}";
+    
+    return betweenTimeTemplate
       .replace("{start}", startTime)
       .replace("{end}", endTime);
   }, [t]);
