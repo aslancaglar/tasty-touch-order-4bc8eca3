@@ -5,6 +5,7 @@ import { ChevronRight, ImageOff, Clock } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
+
 interface MenuItemGridProps {
   items: MenuItem[];
   handleSelectItem: (item: MenuItem) => void;
@@ -100,7 +101,7 @@ const MenuItemCard = memo(({
         {isAvailable ? <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
             {t("addToCart")}
             <ChevronRight className="h-4 w-4 ml-2" />
-          </Button> : <div className="w-full mt-4 px-0 text-center text-white-700 font-bebas tracking-wide text-xl py-[10px] bg-red-400 rounded-md">
+          </Button> : <div className="w-full mt-4 px-0 text-center text-white font-bebas tracking-wide text-xl py-[10px] bg-red-400 rounded-md">
             {unavailableText}
           </div>}
       </div>
