@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -355,7 +356,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       });
       
       // Create the order first with proper fields
-      const orderData = {
+      const orderData: any = {
         restaurant_id: restaurant.id,
         customer_name: null,
         total,
@@ -365,16 +366,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
       // Only add table_number if it exists (not null or undefined)
       if (tableNumber) {
-        // @ts-ignore - We need to use a dynamic field here
         orderData.table_number = tableNumber;
       }
 
       // Add order_type if it exists
       if (orderType) {
-        // @ts-ignore - We need to use the correct field name for type
-        orderData.type = orderType;
+        orderData.order_type = orderType;
       }
 
+      console.log("Order data being sent:", orderData);
+      
       // Insert the order into the database
       const { data: createdOrder, error: orderError } = await supabase
         .from('orders')
@@ -451,7 +452,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       });
       
       // Create the order first with proper fields
-      const orderData = {
+      const orderData: any = {
         restaurant_id: restaurant.id,
         customer_name: null,
         total,
@@ -461,16 +462,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
       // Only add table_number if it exists (not null or undefined)
       if (tableNumber) {
-        // @ts-ignore - We need to use a dynamic field here
         orderData.table_number = tableNumber;
       }
 
       // Add order_type if it exists
       if (orderType) {
-        // @ts-ignore - We need to use the correct field name for type
-        orderData.type = orderType;
+        orderData.order_type = orderType;
       }
 
+      console.log("Order data being sent:", orderData);
+      
       // Insert the order into the database
       const { data: createdOrder, error: orderError } = await supabase
         .from('orders')
