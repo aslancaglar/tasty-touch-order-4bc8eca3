@@ -105,6 +105,9 @@ const MenuItemCard = memo(({
     }
   }, []);
   
+  // Debug line to check translation is correctly passed
+  console.log("Unavailable translation:", t("menuItem.unavailable"));
+  
   return (
     <Card 
       className={`overflow-hidden transition-shadow select-none cursor-pointer ${
