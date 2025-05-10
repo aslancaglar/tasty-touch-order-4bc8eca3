@@ -121,7 +121,5 @@
     "availableUntil": "Disponible jusqu'à",
     "timeAvailability": "Disponibilité horaire",
     "selectTime": "Sélectionner l'heure"
-  },
-  "addToCart": "Ajouter au panier",
-  "currentlyUnavailable": "Actuellement Indisponible"
+  }
 }

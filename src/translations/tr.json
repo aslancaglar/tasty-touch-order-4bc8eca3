@@ -121,7 +121,5 @@
     "availableUntil": "Şu saate kadar kullanılabilir",
     "timeAvailability": "Zaman Kullanılabilirliği",
     "selectTime": "Zaman seç"
-  },
-  "addToCart": "Sepete ekle",
-  "currentlyUnavailable": "Şu Anda Mevcut Değil"
+  }
 }

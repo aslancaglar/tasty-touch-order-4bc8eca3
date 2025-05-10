@@ -121,7 +121,5 @@
     "availableUntil": "Available until",
     "timeAvailability": "Time Availability",
     "selectTime": "Select time"
-  },
-  "addToCart": "Add to cart",
-  "currentlyUnavailable": "Currently Unavailable"
+  }
 }
