@@ -46,6 +46,8 @@ const translations = {
     printErrorDesc: "Impossible d'imprimer le reçu. Veuillez réessayer.",
     error: "Erreur",
     errorPrinting: "Une erreur s'est produite lors de l'impression du reçu.",
+    paymentError: "Erreur de paiement",
+    paymentErrorDesc: "Un problème est survenu lors du paiement. Veuillez réessayer ou choisir un autre mode de paiement.",
     payWithCard: "PAYER PAR CARTE",
     payWithCash: "PAYER EN ESPÈCES",
     processingPayment: "TRAITEMENT DU PAIEMENT...",
@@ -65,6 +67,8 @@ const translations = {
     printErrorDesc: "Unable to print receipt. Please try again.",
     error: "Error",
     errorPrinting: "An error occurred while printing the receipt.",
+    paymentError: "Payment Error",
+    paymentErrorDesc: "There was a problem initiating the payment. Please try again or choose another payment method.",
     payWithCard: "PAY WITH CARD",
     payWithCash: "PAY WITH CASH",
     processingPayment: "PROCESSING PAYMENT...",
@@ -84,6 +88,8 @@ const translations = {
     printErrorDesc: "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
     error: "Hata",
     errorPrinting: "Fiş yazdırılırken bir hata oluştu.",
+    paymentError: "Ödeme Hatası",
+    paymentErrorDesc: "Ödeme başlatılırken bir sorun oluştu. Lütfen tekrar deneyin veya başka bir ödeme yöntemi seçin.",
     payWithCard: "KART İLE ÖDE",
     payWithCash: "NAKİT İLE ÖDE",
     processingPayment: "ÖDEME İŞLENİYOR...",
@@ -147,11 +153,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        const { count } = await supabase.from('orders').select('*', {
-          count: 'exact',
-          head: true
-        }).eq('restaurant_id', restaurant.id);
-        setOrderNumber(((count || 0) + 1).toString());
+        try {
+          const { count, error } = await supabase.from('orders').select('*', {
+            count: 'exact',
+            head: true
+          }).eq('restaurant_id', restaurant.id);
+          
+          if (error) {
+            console.error("Error fetching order count:", error);
+            return;
+          }
+          
+          setOrderNumber(((count || 0) + 1).toString());
+        } catch (err) {
+          console.error("Exception when fetching order count:", err);
+        }
       }
     };
     fetchOrderCount();
@@ -163,40 +179,44 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     
     if (processingCardPayment && paymentId) {
       interval = setInterval(async () => {
-        const { data: payment, error } = await supabase
-          .from('payments')
-          .select('status, pos_response')
-          .eq('id', paymentId)
-          .single();
-        
-        if (error) {
-          console.error("Error checking payment status:", error);
-          return;
+        try {
+          const { data: payment, error } = await supabase
+            .from('payments')
+            .select('status, pos_response')
+            .eq('id', paymentId)
+            .single();
+          
+          if (error) {
+            console.error("Error checking payment status:", error);
+            return;
+          }
+          
+          if (payment && payment.status === 'approved') {
+            clearInterval(interval);
+            setProcessingCardPayment(false);
+            
+            // Complete the order
+            handleConfirmOrder("card");
+            
+            toast({
+              title: "Payment Approved",
+              description: "Your card payment has been processed successfully.",
+              variant: "default"
+            });
+          } else if (payment && payment.status === 'declined') {
+            clearInterval(interval);
+            setProcessingCardPayment(false);
+            
+            toast({
+              title: "Payment Declined",
+              description: payment.pos_response || "Your card payment was declined.",
+              variant: "destructive"
+            });
+          }
+          // Continue polling if status is still 'pending'
+        } catch (error) {
+          console.error("Error in payment status check:", error);
         }
-        
-        if (payment && payment.status === 'approved') {
-          clearInterval(interval);
-          setProcessingCardPayment(false);
-          
-          // Complete the order
-          handleConfirmOrder("card");
-          
-          toast({
-            title: "Payment Approved",
-            description: "Your card payment has been processed successfully.",
-            variant: "default"
-          });
-        } else if (payment && payment.status === 'declined') {
-          clearInterval(interval);
-          setProcessingCardPayment(false);
-          
-          toast({
-            title: "Payment Declined",
-            description: payment.pos_response || "Your card payment was declined.",
-            variant: "destructive"
-          });
-        }
-        // Continue polling if status is still 'pending'
       }, 2000); // Check every 2 seconds
     }
     
@@ -206,6 +226,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   }, [processingCardPayment, paymentId]);
 
   const handleCardPayment = async () => {
+    // Prevent multiple clicks
+    if (processingCardPayment) return;
+    
     try {
       setProcessingCardPayment(true);
       
@@ -222,14 +245,26 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       if (error) {
         console.error("Error creating payment record:", error);
         toast({
-          title: "Error",
-          description: "There was a problem initiating the payment.",
+          title: translations[uiLanguage]?.paymentError || "Payment Error",
+          description: translations[uiLanguage]?.paymentErrorDesc || "There was a problem initiating the payment.",
           variant: "destructive"
         });
         setProcessingCardPayment(false);
         return;
       }
       
+      if (!payment) {
+        console.error("No payment data returned after insert");
+        toast({
+          title: translations[uiLanguage]?.paymentError || "Payment Error",
+          description: translations[uiLanguage]?.paymentErrorDesc || "There was a problem initiating the payment.",
+          variant: "destructive"
+        });
+        setProcessingCardPayment(false);
+        return;
+      }
+      
+      console.log("Payment record created:", payment);
       setPaymentId(payment.id);
       
       toast({
@@ -244,8 +279,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.error("Error processing card payment:", error);
       setProcessingCardPayment(false);
       toast({
-        title: "Error",
-        description: "There was a problem processing your payment.",
+        title: translations[uiLanguage]?.paymentError || "Payment Error",
+        description: translations[uiLanguage]?.paymentErrorDesc || "There was a problem with your payment.",
         variant: "destructive"
       });
     }

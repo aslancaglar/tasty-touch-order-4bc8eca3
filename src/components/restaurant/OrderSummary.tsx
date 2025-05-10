@@ -26,7 +26,9 @@ const translations = {
     payWithCard: "PAYER PAR CARTE",
     payWithCash: "PAYER EN ESPÈCES",
     processingPayment: "TRAITEMENT DU PAIEMENT...",
-    waitingForTerminal: "En attente du terminal de paiement..."
+    waitingForTerminal: "En attente du terminal de paiement...",
+    paymentError: "Erreur de paiement",
+    paymentErrorDesc: "Un problème est survenu lors du paiement. Veuillez réessayer ou choisir un autre mode de paiement."
   },
   en: {
     orderSummary: "ORDER SUMMARY",
@@ -40,7 +42,9 @@ const translations = {
     payWithCard: "PAY WITH CARD",
     payWithCash: "PAY WITH CASH",
     processingPayment: "PROCESSING PAYMENT...",
-    waitingForTerminal: "Waiting for payment terminal..."
+    waitingForTerminal: "Waiting for payment terminal...",
+    paymentError: "Payment Error",
+    paymentErrorDesc: "There was a problem initiating the payment. Please try again or choose another payment method."
   },
   tr: {
     orderSummary: "SİPARİŞ ÖZETİ",
@@ -54,7 +58,9 @@ const translations = {
     payWithCard: "KART İLE ÖDE",
     payWithCash: "NAKİT İLE ÖDE",
     processingPayment: "İŞLENİYOR...",
-    waitingForTerminal: "Ödeme terminali bekleniyor..."
+    waitingForTerminal: "Ödeme terminali bekleniyor...",
+    paymentError: "Ödeme Hatası",
+    paymentErrorDesc: "Ödeme başlatılırken bir sorun oluştu. Lütfen tekrar deneyin veya başka bir ödeme yöntemi seçin."
   }
 };
 
@@ -113,11 +119,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        const { count } = await supabase
-          .from('orders')
-          .select('*', { count: 'exact', head: true })
-          .eq('restaurant_id', restaurant.id);
-        setOrderNumber(((count || 0) + 1).toString());
+        try {
+          const { count, error } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('restaurant_id', restaurant.id);
+          
+          if (error) {
+            console.error("Error fetching order count:", error);
+            return;
+          }
+          
+          setOrderNumber(((count || 0) + 1).toString());
+        } catch (err) {
+          console.error("Exception when fetching order count:", err);
+        }
       }
     };
     fetchOrderCount();
@@ -176,6 +192,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   }, [processingCardPayment, paymentId]);
 
   const handleCardPayment = async () => {
+    // Prevent multiple clicks
+    if (processingCardPayment) return;
+    
     try {
       setProcessingCardPayment(true);
       
@@ -192,14 +211,26 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       if (error) {
         console.error("Error creating payment record:", error);
         toast({
-          title: "Error",
-          description: "There was a problem initiating the payment.",
+          title: t("paymentError"),
+          description: t("paymentErrorDesc"),
           variant: "destructive"
         });
         setProcessingCardPayment(false);
         return;
       }
       
+      if (!payment) {
+        console.error("No payment data returned after insert");
+        toast({
+          title: t("paymentError"),
+          description: t("paymentErrorDesc"),
+          variant: "destructive"
+        });
+        setProcessingCardPayment(false);
+        return;
+      }
+      
+      console.log("Payment record created:", payment);
       setPaymentId(payment.id);
       
       toast({
@@ -214,8 +245,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.error("Error processing card payment:", error);
       setProcessingCardPayment(false);
       toast({
-        title: "Error",
-        description: "There was a problem processing your payment.",
+        title: t("paymentError"),
+        description: t("paymentErrorDesc"),
         variant: "destructive"
       });
     }
