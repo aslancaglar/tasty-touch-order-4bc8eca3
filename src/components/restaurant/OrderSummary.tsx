@@ -146,6 +146,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     if (processingCardPayment && paymentId) {
       interval = setInterval(async () => {
         try {
+          console.log("Checking payment status for paymentId:", paymentId);
           const { data: payment, error } = await supabase
             .from('payments')
             .select('status, pos_response')
@@ -156,6 +157,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             console.error("Error checking payment status:", error);
             return;
           }
+          
+          console.log("Payment status check result:", payment);
           
           if (payment && payment.status === 'approved') {
             clearInterval(interval);
@@ -193,9 +196,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   const handleCardPayment = async () => {
     // Prevent multiple clicks
-    if (processingCardPayment) return;
+    if (processingCardPayment) {
+      console.log("Payment already processing, ignoring click");
+      return;
+    }
     
     try {
+      console.log("Starting card payment process...");
       setProcessingCardPayment(true);
       
       // Create a payment record in the database
@@ -232,6 +239,25 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       
       console.log("Payment record created:", payment);
       setPaymentId(payment.id);
+      
+      // In a real environment, this would trigger a POS terminal
+      // For demo/development, we'll simulate payment approval after a delay
+      setTimeout(async () => {
+        try {
+          console.log("Simulating payment approval...");
+          const { error: updateError } = await supabase
+            .from('payments')
+            .update({ status: 'approved' })
+            .eq('id', payment.id);
+            
+          if (updateError) {
+            console.error("Error updating payment status:", updateError);
+            // The useEffect polling will handle this case
+          }
+        } catch (simError) {
+          console.error("Error simulating payment approval:", simError);
+        }
+      }, 5000); // Simulate a 5-second payment process
       
       toast({
         title: t("waitingForTerminal"),
