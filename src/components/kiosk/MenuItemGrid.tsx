@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -87,7 +86,7 @@ const MenuItemCard = memo(({
     return isItemAvailableNow(item);
   }, [item]);
   
-  // Format time for display (24-hour format)
+  // Format time for display (12-hour format with AM/PM)
   const formatTimeDisplay = useCallback((timeString: string | null | undefined): string => {
     if (!timeString) return "";
     
@@ -98,7 +97,7 @@ const MenuItemCard = memo(({
       return new Intl.DateTimeFormat('default', { 
         hour: 'numeric', 
         minute: 'numeric',
-        hour12: false
+        hour12: true 
       }).format(date);
     } catch (error) {
       return timeString;
@@ -108,7 +107,7 @@ const MenuItemCard = memo(({
   return (
     <Card 
       className={`overflow-hidden transition-shadow select-none cursor-pointer ${
-        isAvailable ? 'hover:shadow-md' : 'opacity-80'
+        isAvailable ? 'hover:shadow-md' : 'opacity-60 grayscale'
       }`} 
       onClick={isAvailable ? handleItemClick : undefined}
     >
@@ -170,11 +169,11 @@ const MenuItemCard = memo(({
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
         <Button 
           className={`w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide ${
-            isAvailable ? 'bg-kiosk-primary' : 'bg-[#ea384c] text-white font-bold'
+            isAvailable ? 'bg-kiosk-primary' : 'bg-gray-400'
           }`}
           disabled={!isAvailable}
         >
-          {isAvailable ? t("addToCart") : t("currentlyUnavailable")}
+          {isAvailable ? t("addToCart") : "Currently Unavailable"}
           {isAvailable && <ChevronRight className="h-4 w-4 ml-2" />}
         </Button>
       </div>
