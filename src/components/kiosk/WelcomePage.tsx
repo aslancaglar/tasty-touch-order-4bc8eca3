@@ -1,3 +1,4 @@
+
 import { Restaurant } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
@@ -17,10 +18,7 @@ const WelcomePage = ({
   return <div className="fixed inset-0 flex flex-col items-center justify-center bg-cover bg-center" style={{
     backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url(${restaurant.image_url || "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"})`
   }}>
-      {/* Logo if available */}
-      {restaurant.logo_url && <div className="mb-8">
-          <img src={restaurant.logo_url} alt={restaurant.name} className="h-56 w-56 object-cover rounded-full bg-white p-2" />
-        </div>}
+      {/* Logo hidden for now */}
       
       {/* Center content with restaurant name and welcome text */}
       <div className="text-center px-4 mb-20">
