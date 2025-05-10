@@ -5,7 +5,6 @@ import { ChevronRight, ImageOff, Clock } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
-
 interface MenuItemGridProps {
   items: MenuItem[];
   handleSelectItem: (item: MenuItem) => void;
@@ -23,19 +22,17 @@ const isItemAvailable = (item: MenuItem): boolean => {
   if (!item.available_from || !item.available_until) {
     return true; // If no time constraint is set, the item is always available
   }
-
   const currentDate = new Date();
   const currentTime = currentDate.getHours() * 60 + currentDate.getMinutes(); // Convert to minutes since midnight
-  
+
   // Parse HH:MM:SS format to minutes since midnight
   const parseTimeToMinutes = (timeString: string): number => {
     const [hours, minutes] = timeString.split(':').map(Number);
     return hours * 60 + minutes;
   };
-  
   const fromMinutes = parseTimeToMinutes(item.available_from);
   const untilMinutes = parseTimeToMinutes(item.available_until);
-  
+
   // Handle cases where availability crosses midnight
   if (fromMinutes <= untilMinutes) {
     // Regular time range (e.g., 11:00 to 14:00)
@@ -76,18 +73,12 @@ const MenuItemCard = memo(({
       handleSelectItem(item);
     }
   }, [item, handleSelectItem]);
-  
   const formattedPrice = useMemo(() => {
     return parseFloat(item.price.toString()).toFixed(2);
   }, [item.price]);
-  
   const isAvailable = isItemAvailable(item);
   const unavailableText = getTranslation('menuItem.unavailable', uiLanguage);
-  
-  return <Card 
-    className={`overflow-hidden hover:shadow-md transition-shadow select-none ${isAvailable ? 'cursor-pointer' : 'cursor-not-allowed'}`} 
-    onClick={handleItemClick}
-  >
+  return <Card className={`overflow-hidden hover:shadow-md transition-shadow select-none ${isAvailable ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={handleItemClick}>
       <div className="h-40 bg-cover bg-center relative select-none" style={{
       backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
       backgroundColor: hasImageFailed ? '#f0f0f0' : undefined
@@ -95,12 +86,10 @@ const MenuItemCard = memo(({
         {hasImageFailed && <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
             <ImageOff className="h-10 w-10 text-gray-400" />
           </div>}
-        {(item.available_from && item.available_until) && (
-          <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-md text-xs flex items-center">
+        {item.available_from && item.available_until && <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-md text-xs flex items-center">
             <Clock className="h-3 w-3 mr-1" />
             {formatTime(item.available_from)} - {formatTime(item.available_until)}
-          </div>
-        )}
+          </div>}
       </div>
       <div className="p-4 select-none">
         <div className="flex justify-between">
@@ -108,21 +97,16 @@ const MenuItemCard = memo(({
           <p className="font-bebas text-lg whitespace-nowrap ml-2">{formattedPrice} {currencySymbol}</p>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
-        {isAvailable ? (
-          <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
+        {isAvailable ? <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
             {t("addToCart")}
             <ChevronRight className="h-4 w-4 ml-2" />
-          </Button>
-        ) : (
-          <div className="w-full mt-4 py-[25px] px-0 bg-gray-300 text-center text-gray-700 font-bebas tracking-wide text-xl">
+          </Button> : <div className="w-full mt-4 px-0 text-center text-white-700 font-bebas tracking-wide text-xl py-[10px] bg-red-400 rounded-md">
             {unavailableText}
-          </div>
-        )}
+          </div>}
       </div>
     </Card>;
 });
 MenuItemCard.displayName = 'MenuItemCard';
-
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
@@ -361,15 +345,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none px-4">
             {itemsByCategory[category.id]?.map(item => <div key={item.id} data-item-id={item.id}>
-                <MenuItemCard 
-                  item={item} 
-                  handleSelectItem={handleSelectItem} 
-                  t={t} 
-                  currencySymbol={currencySymbol} 
-                  cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} 
-                  hasImageFailed={failedImages.has(item.id)}
-                  uiLanguage={uiLanguage} 
-                />
+                <MenuItemCard item={item} handleSelectItem={handleSelectItem} t={t} currencySymbol={currencySymbol} cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} hasImageFailed={failedImages.has(item.id)} uiLanguage={uiLanguage} />
               </div>)}
             {itemsByCategory[category.id]?.length === 0 && <div className="col-span-3 py-8 text-center text-gray-500 font-inter">
                 No items in this category
