@@ -135,6 +135,8 @@ export type Database = {
       }
       menu_items: {
         Row: {
+          available_from: string | null
+          available_until: string | null
           category_id: string
           created_at: string
           description: string | null
@@ -149,6 +151,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          available_from?: string | null
+          available_until?: string | null
           category_id: string
           created_at?: string
           description?: string | null
@@ -163,6 +167,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          available_from?: string | null
+          available_until?: string | null
           category_id?: string
           created_at?: string
           description?: string | null
@@ -840,6 +846,10 @@ export type Database = {
       get_popular_restaurants: {
         Args: { limit_count: number }
         Returns: Json
+      }
+      is_menu_item_available_now: {
+        Args: { item_id: string }
+        Returns: boolean
       }
       is_restaurant_owner: {
         Args: { restaurant_uuid: string }

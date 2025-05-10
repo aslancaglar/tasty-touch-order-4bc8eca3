@@ -13,11 +13,17 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import ImageUpload from "@/components/ImageUpload";
 import { Loader2, ArrowUp, ArrowDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/time-picker";
+import { 
+  RadioGroup,
+  RadioGroupItem 
+} from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -28,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { getToppingCategoriesByRestaurantId } from "@/services/kiosk-service";
 import { ToppingCategory } from "@/types/database-types";
+import { useTranslation } from "@/utils/language-utils";
 
 // Define the form schema with Zod for validation
 const formSchema = z.object({
@@ -51,6 +58,9 @@ const formSchema = z.object({
     (val) => !isNaN(Number(val)),
     { message: "Display order must be a number" }
   ),
+  availability_type: z.enum(["all_day", "specific_hours"]).default("all_day"),
+  available_from: z.string().optional(),
+  available_until: z.string().optional(),
 });
 
 interface MenuItemFormProps {
@@ -58,6 +68,7 @@ interface MenuItemFormProps {
   initialValues?: Partial<z.infer<typeof formSchema>>;
   isLoading?: boolean;
   restaurantId: string;
+  language?: string;
 }
 
 // Define a type for the ordered topping category
@@ -65,7 +76,13 @@ interface OrderedToppingCategory extends ToppingCategory {
   order: number;
 }
 
-const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: MenuItemFormProps) => {
+const MenuItemForm = ({ 
+  onSubmit, 
+  initialValues, 
+  isLoading, 
+  restaurantId,
+  language = "en" 
+}: MenuItemFormProps) => {
   const [imageUrl, setImageUrl] = useState<string | undefined>(initialValues?.image || undefined);
   const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
   const [selectedToppingCategories, setSelectedToppingCategories] = useState<string[]>(
@@ -73,6 +90,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
   );
   // Track the order of selected categories
   const [toppingCategoryOrder, setToppingCategoryOrder] = useState<Record<string, number>>({});
+  const { t } = useTranslation(language);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -85,8 +103,15 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       tax_percentage: initialValues?.tax_percentage || "10",
       topping_categories: initialValues?.topping_categories || [],
       display_order: initialValues?.display_order || "0",
+      availability_type: initialValues?.available_from && initialValues?.available_until 
+        ? "specific_hours" 
+        : "all_day",
+      available_from: initialValues?.available_from || "",
+      available_until: initialValues?.available_until || "",
     },
   });
+
+  const availabilityType = form.watch("availability_type");
 
   useEffect(() => {
     const fetchToppingCategories = async () => {
@@ -204,11 +229,17 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       (a, b) => toppingCategoryOrder[a] - toppingCategoryOrder[b]
     );
     
-    onSubmit({
+    // Process availability times
+    const processedValues = {
       ...values,
       image: imageUrl,
       topping_categories: sortedToppingCategories,
-    });
+      // Only include availability times if specific hours are selected
+      available_from: values.availability_type === "specific_hours" ? values.available_from : null,
+      available_until: values.availability_type === "specific_hours" ? values.available_until : null,
+    };
+    
+    onSubmit(processedValues);
   };
 
   // Sort the categories by their assigned order for display
@@ -331,6 +362,79 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
             </FormItem>
           )}
         />
+
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-medium mb-2">{t("menuItem.timeAvailability")}</h3>
+            <FormDescription>{t("menuItem.availabilityDesc")}</FormDescription>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="availability_type"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <RadioGroup
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="all_day" id="all_day" />
+                      <Label htmlFor="all_day">{t("menuItem.availableAllDay")}</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="specific_hours" id="specific_hours" />
+                      <Label htmlFor="specific_hours">{t("menuItem.availableBetween")}</Label>
+                    </div>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {availabilityType === "specific_hours" && (
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <FormField
+                control={form.control}
+                name="available_from"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <TimePicker
+                        label={t("menuItem.availableFrom")}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={t("menuItem.selectTime")}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="available_until"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <TimePicker
+                        label={t("menuItem.availableUntil")}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={t("menuItem.selectTime")}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+        </div>
 
         {toppingCategories.length > 0 && (
           <FormItem>

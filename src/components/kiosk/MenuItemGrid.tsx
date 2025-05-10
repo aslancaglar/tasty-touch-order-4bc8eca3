@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ImageOff } from "lucide-react";
+import { ChevronRight, ImageOff, Clock } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
+
 interface MenuItemGridProps {
   items: MenuItem[];
   handleSelectItem: (item: MenuItem) => void;
@@ -14,6 +15,37 @@ interface MenuItemGridProps {
   categories: MenuCategory[];
   activeCategory?: string;
 }
+
+// Check if a menu item is currently available based on time
+const isItemAvailableNow = (item: MenuItem): boolean => {
+  // If no availability times set, item is always available
+  if (!item.available_from || !item.available_until) {
+    return true;
+  }
+  
+  const currentTime = new Date();
+  const currentHour = currentTime.getHours();
+  const currentMinute = currentTime.getMinutes();
+  
+  // Convert time strings (HH:MM:SS) to minutes since midnight
+  const getMinutesSinceMidnight = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+  
+  const fromMinutes = getMinutesSinceMidnight(item.available_from);
+  const untilMinutes = getMinutesSinceMidnight(item.available_until);
+  const currentMinutes = currentHour * 60 + currentMinute;
+  
+  // Check if current time falls within availability window
+  if (fromMinutes <= untilMinutes) {
+    // Normal time range (e.g., 11:00 to 14:00)
+    return currentMinutes >= fromMinutes && currentMinutes <= untilMinutes;
+  } else {
+    // Time range spans midnight (e.g., 22:00 to 02:00)
+    return currentMinutes >= fromMinutes || currentMinutes <= untilMinutes;
+  }
+};
 
 // Individual menu item component, memoized to prevent re-renders
 const MenuItemCard = memo(({
@@ -34,32 +66,85 @@ const MenuItemCard = memo(({
   const handleItemClick = useCallback(() => {
     handleSelectItem(item);
   }, [item, handleSelectItem]);
+  
   const formattedPrice = useMemo(() => {
     return parseFloat(item.price.toString()).toFixed(2);
   }, [item.price]);
-  return <Card className="overflow-hidden hover:shadow-md transition-shadow select-none cursor-pointer" onClick={handleItemClick}>
-      <div className="h-40 bg-cover bg-center relative select-none" style={{
-      backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
-      backgroundColor: hasImageFailed ? '#f0f0f0' : undefined
-    }}>
-        {hasImageFailed && <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+  
+  const isAvailable = useMemo(() => {
+    return isItemAvailableNow(item);
+  }, [item]);
+  
+  // Format time for display (12-hour format with AM/PM)
+  const formatTimeDisplay = useCallback((timeString: string | null | undefined): string => {
+    if (!timeString) return "";
+    
+    try {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes, 0);
+      return new Intl.DateTimeFormat('default', { 
+        hour: 'numeric', 
+        minute: 'numeric',
+        hour12: true 
+      }).format(date);
+    } catch (error) {
+      return timeString;
+    }
+  }, []);
+  
+  return (
+    <Card 
+      className={`overflow-hidden transition-shadow select-none cursor-pointer ${
+        isAvailable ? 'hover:shadow-md' : 'opacity-60 grayscale'
+      }`} 
+      onClick={isAvailable ? handleItemClick : undefined}
+    >
+      <div 
+        className="h-40 bg-cover bg-center relative select-none" 
+        style={{
+          backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
+          backgroundColor: hasImageFailed ? '#f0f0f0' : undefined
+        }}
+      >
+        {hasImageFailed && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
             <ImageOff className="h-10 w-10 text-gray-400" />
-          </div>}
+          </div>
+        )}
+        
+        {/* Availability indicator for time-restricted items */}
+        {!isAvailable && item.available_from && item.available_until && (
+          <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-md text-xs flex items-center">
+            <Clock className="h-3 w-3 mr-1" />
+            <span>
+              {formatTimeDisplay(item.available_from)} - {formatTimeDisplay(item.available_until)}
+            </span>
+          </div>
+        )}
       </div>
+      
       <div className="p-4 select-none">
         <div className="flex justify-between">
           <h3 className="font-bebas text-lg tracking-wide break-words">{item.name}</h3>
           <p className="font-bebas text-lg whitespace-nowrap ml-2">{formattedPrice} {currencySymbol}</p>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
-        <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
-          {t("addToCart")}
-          <ChevronRight className="h-4 w-4 ml-2" />
+        <Button 
+          className={`w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide ${
+            isAvailable ? 'bg-kiosk-primary' : 'bg-gray-400'
+          }`}
+          disabled={!isAvailable}
+        >
+          {isAvailable ? t("addToCart") : "Currently Unavailable"}
+          {isAvailable && <ChevronRight className="h-4 w-4 ml-2" />}
         </Button>
       </div>
-    </Card>;
+    </Card>
+  );
 });
 MenuItemCard.displayName = 'MenuItemCard';
+
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
@@ -78,7 +163,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const imagePreloadQueue = useRef<string[]>([]);
   const isPreloadingRef = useRef<boolean>(false);
 
-  // Group items by category
+  // Group items by category and filter out unavailable items
   const itemsByCategory = useMemo(() => {
     // Create an object to hold items grouped by their category
     const grouped: Record<string, MenuItem[]> = {};
@@ -89,11 +174,13 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     });
 
     // Add all in-stock items to their respective category groups
-    items.filter(item => item.in_stock).forEach(item => {
-      if (grouped[item.category_id]) {
-        grouped[item.category_id].push(item);
-      }
-    });
+    items
+      .filter(item => item.in_stock)
+      .forEach(item => {
+        if (grouped[item.category_id]) {
+          grouped[item.category_id].push(item);
+        }
+      });
 
     // Sort items by display_order within each category
     Object.keys(grouped).forEach(categoryId => {

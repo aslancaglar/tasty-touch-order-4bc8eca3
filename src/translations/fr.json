@@ -111,5 +111,15 @@
     "now": "maintenant",
     "last7Days": "7 derniers jours",
     "noData": "Aucune donnée disponible pour la période sélectionnée."
+  },
+  "menuItem": {
+    "availability": "Disponibilité",
+    "availabilityDesc": "Définir quand cet article de menu est disponible pour la commande",
+    "availableAllDay": "Disponible toute la journée",
+    "availableBetween": "Disponible entre des heures spécifiques",
+    "availableFrom": "Disponible à partir de",
+    "availableUntil": "Disponible jusqu'à",
+    "timeAvailability": "Disponibilité horaire",
+    "selectTime": "Sélectionner l'heure"
   }
 }

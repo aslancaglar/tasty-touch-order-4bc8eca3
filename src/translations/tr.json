@@ -111,5 +111,15 @@
     "now": "şimdi",
     "last7Days": "Son 7 gün",
     "noData": "Seçilen zaman dilimi için veri bulunamadı."
+  },
+  "menuItem": {
+    "availability": "Kullanılabilirlik",
+    "availabilityDesc": "Bu menü öğesinin sipariş için ne zaman kullanılabilir olacağını ayarlayın",
+    "availableAllDay": "Tüm gün kullanılabilir",
+    "availableBetween": "Belirli saatler arasında kullanılabilir",
+    "availableFrom": "Şu saatten itibaren kullanılabilir",
+    "availableUntil": "Şu saate kadar kullanılabilir",
+    "timeAvailability": "Zaman Kullanılabilirliği",
+    "selectTime": "Zaman seç"
   }
 }
