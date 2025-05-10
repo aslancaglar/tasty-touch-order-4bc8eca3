@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -355,16 +354,33 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         tableNumber
       });
       
-      // Create the order first
-      const { data: orderData, error: orderError } = await supabase.from('orders').insert({
+      // Create the order first with proper fields
+      const orderData = {
         restaurant_id: restaurant.id,
         customer_name: null,
         total,
         status: 'pending',
-        type: orderType, // Using type field instead of order_type
-        table_number: tableNumber,
         payment_status: 'pending'
-      }).select().single();
+      };
+
+      // Only add table_number if it exists (not null or undefined)
+      if (tableNumber) {
+        // @ts-ignore - We need to use a dynamic field here
+        orderData.table_number = tableNumber;
+      }
+
+      // Add order_type if it exists
+      if (orderType) {
+        // @ts-ignore - We need to use the correct field name for type
+        orderData.type = orderType;
+      }
+
+      // Insert the order into the database
+      const { data: createdOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderData)
+        .select()
+        .single();
       
       if (orderError) {
         console.error("Error creating order:", orderError);
@@ -377,13 +393,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         return;
       }
       
-      console.log("Created order:", orderData);
-      setOrderId(orderData.id);
+      console.log("Created order:", createdOrder);
+      setOrderId(createdOrder.id);
 
       // Create the payment record
       try {
         const paymentRecord = await createCardPaymentRecord(
-          orderData.id,
+          createdOrder.id,
           restaurant.id,
           total
         );
@@ -392,7 +408,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         
         // Update the order with the payment ID
         await updateOrderPaymentInfo(
-          orderData.id,
+          createdOrder.id,
           paymentRecord.id,
           'pending'
         );
@@ -434,16 +450,33 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         tableNumber
       });
       
-      // Create the order first
-      const { data: orderData, error: orderError } = await supabase.from('orders').insert({
+      // Create the order first with proper fields
+      const orderData = {
         restaurant_id: restaurant.id,
         customer_name: null,
         total,
         status: 'pending',
-        type: orderType, // Using type field instead of order_type
-        table_number: tableNumber,
         payment_status: 'completed'
-      }).select().single();
+      };
+
+      // Only add table_number if it exists (not null or undefined)
+      if (tableNumber) {
+        // @ts-ignore - We need to use a dynamic field here
+        orderData.table_number = tableNumber;
+      }
+
+      // Add order_type if it exists
+      if (orderType) {
+        // @ts-ignore - We need to use the correct field name for type
+        orderData.type = orderType;
+      }
+
+      // Insert the order into the database
+      const { data: createdOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderData)
+        .select()
+        .single();
       
       if (orderError) {
         console.error("Error creating order:", orderError);
@@ -456,12 +489,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         return;
       }
       
-      console.log("Created order:", orderData);
+      console.log("Created order:", createdOrder);
       
       // Create the payment record (for cash, it's automatically completed)
       try {
         const paymentRecord = await createCashPaymentRecord(
-          orderData.id,
+          createdOrder.id,
           restaurant.id,
           total
         );
@@ -470,7 +503,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         
         // Update the order with the payment ID
         await updateOrderPaymentInfo(
-          orderData.id,
+          createdOrder.id,
           paymentRecord.id,
           'completed'
         );
