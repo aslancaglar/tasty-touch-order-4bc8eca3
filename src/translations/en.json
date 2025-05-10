@@ -18,7 +18,9 @@
     "printError": "Print Error",
     "printErrorDesc": "Unable to print receipt. Please try again.",
     "error": "Error",
-    "errorPrinting": "An error occurred while printing the receipt."
+    "errorPrinting": "An error occurred while printing the receipt.",
+    "success": "Order Placed",
+    "successDesc": "Your order has been successfully placed!"
   },
   "receipt": {
     "order": "Order",
@@ -36,7 +38,9 @@
     "start": "TOUCH TO START ORDERING"
   },
   "cart": {
-    "viewCart": "View Cart"
+    "viewCart": "View Cart",
+    "addedToCart": "Added to cart",
+    "added": "added to your order"
   },
   "currentlyUnavailable": "UNAVAILABLE",
   "betweenTime": "BETWEEN",
@@ -78,6 +82,7 @@
     "needLogin": "You need to be logged in to view and manage restaurants",
     "signIn": "Sign In",
     "notFound": "Restaurant not found",
+    "sorryNotFound": "Sorry, we couldn't find this restaurant.",
     "backToRestaurants": "Back to Restaurants",
     "noLocationDefined": "No location defined",
     "management": "Restaurant Management"
@@ -123,6 +128,13 @@
     "availableFrom": "Available from",
     "availableUntil": "Available until",
     "timeAvailability": "Time Availability",
-    "selectTime": "Select time"
-  }
+    "selectTime": "Select time",
+    "selectionsRequired": "Selections required",
+    "pleaseSelectRequired": "Please make all required selections before adding to cart",
+    "maxSelectionsReached": "Maximum selections reached",
+    "maxSelectionsMessage": "You can only select {max} items in this category."
+  },
+  "error": "Error",
+  "menuRefreshed": "Menu refreshed",
+  "menuRefreshSuccess": "Menu has been refreshed successfully"
 }

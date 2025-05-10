@@ -18,7 +18,9 @@
     "printError": "Erreur d'impression",
     "printErrorDesc": "Impossible d'imprimer le reçu. Veuillez réessayer.",
     "error": "Erreur",
-    "errorPrinting": "Une erreur s'est produite lors de l'impression du reçu."
+    "errorPrinting": "Une erreur s'est produite lors de l'impression du reçu.",
+    "success": "Commande passée",
+    "successDesc": "Votre commande a été passée avec succès !"
   },
   "receipt": {
     "order": "Commande",
@@ -36,7 +38,9 @@
     "start": "TOUCHEZ POUR COMMANDER"
   },
   "cart": {
-    "viewCart": "Voir le panier"
+    "viewCart": "Voir le panier",
+    "addedToCart": "Ajouté au panier",
+    "added": "ajouté à votre commande"
   },
   "currentlyUnavailable": "INDISPONIBLE",
   "betweenTime": "ENTRE",
@@ -78,6 +82,7 @@
     "needLogin": "Vous devez être connecté pour voir et gérer les restaurants",
     "signIn": "Se Connecter",
     "notFound": "Restaurant non trouvé",
+    "sorryNotFound": "Désolé, nous n'avons pas pu trouver ce restaurant.",
     "backToRestaurants": "Retour aux Restaurants",
     "noLocationDefined": "Aucun emplacement défini",
     "management": "Gestion du Restaurant"
@@ -123,6 +128,13 @@
     "availableFrom": "Disponible à partir de",
     "availableUntil": "Disponible jusqu'à",
     "timeAvailability": "Disponibilité horaire",
-    "selectTime": "Sélectionner l'heure"
-  }
+    "selectTime": "Sélectionner l'heure",
+    "selectionsRequired": "Sélections requises",
+    "pleaseSelectRequired": "Veuillez faire toutes les sélections requises avant d'ajouter au panier",
+    "maxSelectionsReached": "Nombre maximum de sélections atteint",
+    "maxSelectionsMessage": "Vous ne pouvez sélectionner que {max} éléments dans cette catégorie."
+  },
+  "error": "Erreur",
+  "menuRefreshed": "Menu rafraîchi",
+  "menuRefreshSuccess": "Le menu a été rafraîchi avec succès"
 }
