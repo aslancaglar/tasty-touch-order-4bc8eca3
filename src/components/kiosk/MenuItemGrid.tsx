@@ -174,7 +174,9 @@ const MenuItemCard = memo(({
           }`}
           disabled={!isAvailable}
         >
-          {isAvailable ? t("addToCart") : t("currentlyUnavailable")}
+          {isAvailable ? t("addToCart") : (
+            <span className="px-2 sm:px-4 md:px-6 lg:px-8 uppercase">{t("currentlyUnavailable")}</span>
+          )}
           {isAvailable && <ChevronRight className="h-4 w-4 ml-2" />}
         </Button>
       </div>
