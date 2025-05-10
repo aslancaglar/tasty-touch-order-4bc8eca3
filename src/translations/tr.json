@@ -84,6 +84,32 @@
     "toppings": "İlave Malzemeler",
     "orders": "Siparişler",
     "settings": "Ayarlar",
-    "stock": "Stok"
+    "stock": "Stok",
+    "statistics": "İstatistikler"
+  },
+  "statistics": {
+    "title": "Restoran İstatistikleri",
+    "error": "Hata",
+    "loadError": "İstatistik verileri yüklenemedi",
+    "customPeriodError": "Özel dönem verileri yüklenemedi",
+    "customDateRange": "Özel Tarih Aralığı",
+    "pickDate": "Tarih seçin",
+    "barChart": "Çubuk",
+    "lineChart": "Çizgi",
+    "selectedPeriodOrders": "Seçilen Dönemdeki Siparişler",
+    "todaysOrders": "Bugünkü Siparişler",
+    "selectedPeriodItems": "Seçilen Dönemdeki Öğeler", 
+    "thisMonthsOrders": "Bu Ayki Siparişler",
+    "selectedPeriodRevenue": "Seçilen Dönemdeki Gelir",
+    "todaysRevenue": "Bugünkü Gelir",
+    "selectedPeriodTotal": "Seçilen Dönemin Toplamı",
+    "thisMonthsRevenue": "Bu Ayki Gelir",
+    "orders": "Siparişler",
+    "sales": "Satışlar",
+    "ordersAndSales": "Siparişler ve Satışlar",
+    "to": "ile",
+    "now": "şimdi",
+    "last7Days": "Son 7 gün",
+    "noData": "Seçilen zaman dilimi için veri bulunamadı."
   }
 }

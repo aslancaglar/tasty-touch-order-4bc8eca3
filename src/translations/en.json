@@ -84,6 +84,32 @@
     "toppings": "Toppings",
     "orders": "Orders",
     "settings": "Settings",
-    "stock": "Stock"
+    "stock": "Stock",
+    "statistics": "Statistics"
+  },
+  "statistics": {
+    "title": "Restaurant Statistics",
+    "error": "Error",
+    "loadError": "Failed to load statistics data",
+    "customPeriodError": "Failed to load custom period data",
+    "customDateRange": "Custom Date Range",
+    "pickDate": "Pick a date",
+    "barChart": "Bar",
+    "lineChart": "Line",
+    "selectedPeriodOrders": "Selected Period Orders",
+    "todaysOrders": "Today's Orders",
+    "selectedPeriodItems": "Selected Period Items", 
+    "thisMonthsOrders": "This Month's Orders",
+    "selectedPeriodRevenue": "Selected Period Revenue",
+    "todaysRevenue": "Today's Revenue",
+    "selectedPeriodTotal": "Selected Period Total",
+    "thisMonthsRevenue": "This Month's Revenue",
+    "orders": "Orders",
+    "sales": "Sales",
+    "ordersAndSales": "Orders and Sales",
+    "to": "to",
+    "now": "now",
+    "last7Days": "Last 7 days",
+    "noData": "No data available for the selected time period."
   }
 }

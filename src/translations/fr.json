@@ -84,6 +84,32 @@
     "toppings": "Suppléments",
     "orders": "Commandes",
     "settings": "Paramètres",
-    "stock": "Stock"
+    "stock": "Stock",
+    "statistics": "Statistiques"
+  },
+  "statistics": {
+    "title": "Statistiques du Restaurant",
+    "error": "Erreur",
+    "loadError": "Impossible de charger les données statistiques",
+    "customPeriodError": "Impossible de charger les données pour la période personnalisée",
+    "customDateRange": "Période Personnalisée",
+    "pickDate": "Choisir une date",
+    "barChart": "Barre",
+    "lineChart": "Ligne",
+    "selectedPeriodOrders": "Commandes de la Période Sélectionnée",
+    "todaysOrders": "Commandes d'Aujourd'hui",
+    "selectedPeriodItems": "Articles de la Période Sélectionnée", 
+    "thisMonthsOrders": "Commandes du Mois",
+    "selectedPeriodRevenue": "Revenu de la Période Sélectionnée",
+    "todaysRevenue": "Revenu d'Aujourd'hui",
+    "selectedPeriodTotal": "Total de la Période Sélectionnée",
+    "thisMonthsRevenue": "Revenu du Mois",
+    "orders": "Commandes",
+    "sales": "Ventes",
+    "ordersAndSales": "Commandes et Ventes",
+    "to": "à",
+    "now": "maintenant",
+    "last7Days": "7 derniers jours",
+    "noData": "Aucune donnée disponible pour la période sélectionnée."
   }
 }

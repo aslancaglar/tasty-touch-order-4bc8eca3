@@ -36,6 +36,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 
 interface StatisticsTabProps {
   restaurant: Restaurant;
@@ -64,21 +65,29 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
     dailySales: 0,
     monthlySales: 0
   });
-  const [dateRange, setDateRange] = useState<DateRange>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
     to: new Date(),
   });
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [customPeriodActive, setCustomPeriodActive] = useState(false);
   const [chartType, setChartType] = useState<"bar" | "line">("bar");
+  const [language, setLanguage] = useState<SupportedLanguage>(
+    (restaurant?.ui_language as SupportedLanguage) || DEFAULT_LANGUAGE
+  );
   
   const { toast } = useToast();
+  const { t } = useTranslation(language);
 
   useEffect(() => {
     if (restaurant) {
+      // Update language when restaurant settings change
+      if (restaurant.ui_language) {
+        setLanguage(restaurant.ui_language as SupportedLanguage);
+      }
       fetchStatistics();
     }
-  }, [restaurant.id]);
+  }, [restaurant.id, restaurant.ui_language]);
 
   useEffect(() => {
     if (customPeriodActive && dateRange && dateRange.from) {
@@ -165,8 +174,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
     } catch (error) {
       console.error("Error fetching statistics:", error);
       toast({
-        title: "Error",
-        description: "Failed to load statistics data",
+        title: t("statistics.error") || "Error",
+        description: t("statistics.loadError") || "Failed to load statistics data",
         variant: "destructive"
       });
       setLoading(false);
@@ -228,8 +237,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
     } catch (error) {
       console.error("Error fetching custom period data:", error);
       toast({
-        title: "Error",
-        description: "Failed to load custom period data",
+        title: t("statistics.error") || "Error",
+        description: t("statistics.customPeriodError") || "Failed to load custom period data",
         variant: "destructive"
       });
       setLoading(false);
@@ -249,8 +258,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
       return (
         <div className="bg-white p-3 border rounded-md shadow-md">
           <p className="font-bold">{label}</p>
-          <p className="text-sm">{`Orders: ${payload[0].value}`}</p>
-          <p className="text-sm">{`Sales: ${formatCurrency(payload[1].value as number)}`}</p>
+          <p className="text-sm">{`${t("statistics.orders")}: ${payload[0].value}`}</p>
+          <p className="text-sm">{`${t("statistics.sales")}: ${formatCurrency(payload[1].value as number)}`}</p>
         </div>
       );
     }
@@ -260,14 +269,14 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
 
   // Safe date format function to handle undefined dates
   const formatDate = (date: Date | undefined): string => {
-    return date ? format(date, "LLL dd, yyyy") : "";
+    return date && isValid(date) ? format(date, "LLL dd, yyyy") : "";
   };
 
   return (
     <div>
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-2xl font-semibold">Restaurant Statistics</h2>
+          <h2 className="text-2xl font-semibold">{t("statistics.title") || "Restaurant Statistics"}</h2>
           
           <div className="flex items-center gap-3">
             <div className="flex items-center space-x-2">
@@ -276,7 +285,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                 checked={customPeriodActive}
                 onCheckedChange={setCustomPeriodActive}
               />
-              <Label htmlFor="custom-period">Custom Date Range</Label>
+              <Label htmlFor="custom-period">{t("statistics.customDateRange") || "Custom Date Range"}</Label>
             </div>
             
             {customPeriodActive && (
@@ -292,8 +301,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                       )}
                     >
                       <Calendar className="mr-2 h-4 w-4" />
-                      {dateRange?.from ? (
-                        dateRange.to ? (
+                      {dateRange?.from && isValid(dateRange.from) ? (
+                        dateRange.to && isValid(dateRange.to) ? (
                           <>
                             {formatDate(dateRange.from)} -{" "}
                             {formatDate(dateRange.to)}
@@ -302,7 +311,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                           formatDate(dateRange.from)
                         )
                       ) : (
-                        <span>Pick a date</span>
+                        <span>{t("statistics.pickDate") || "Pick a date"}</span>
                       )}
                     </Button>
                   </PopoverTrigger>
@@ -324,11 +333,11 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
             <div className="flex">
               <Button variant="outline" size="sm" onClick={() => setChartType("bar")}>
                 <ChartBar className="h-4 w-4 mr-1" />
-                Bar
+                {t("statistics.barChart") || "Bar"}
               </Button>
               <Button variant="outline" size="sm" onClick={() => setChartType("line")}>
                 <ChartPie className="h-4 w-4 mr-1" />
-                Line
+                {t("statistics.lineChart") || "Line"}
               </Button>
             </div>
           </div>
@@ -345,12 +354,14 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {customPeriodActive ? "Selected Period Orders" : "Today's Orders"}
+                    {customPeriodActive 
+                      ? (t("statistics.selectedPeriodOrders") || "Selected Period Orders") 
+                      : (t("statistics.todaysOrders") || "Today's Orders")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{orderStats.dailyCount}</div>
-                  <Badge className="mt-1">Orders</Badge>
+                  <Badge className="mt-1">{t("statistics.orders") || "Orders"}</Badge>
                 </CardContent>
               </Card>
               
@@ -358,12 +369,14 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {customPeriodActive ? "Selected Period Items" : "This Month's Orders"}
+                    {customPeriodActive 
+                      ? (t("statistics.selectedPeriodItems") || "Selected Period Items") 
+                      : (t("statistics.thisMonthsOrders") || "This Month's Orders")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{orderStats.monthlyCount}</div>
-                  <Badge className="mt-1">Orders</Badge>
+                  <Badge className="mt-1">{t("statistics.orders") || "Orders"}</Badge>
                 </CardContent>
               </Card>
               
@@ -371,12 +384,14 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {customPeriodActive ? "Selected Period Revenue" : "Today's Revenue"}
+                    {customPeriodActive 
+                      ? (t("statistics.selectedPeriodRevenue") || "Selected Period Revenue") 
+                      : (t("statistics.todaysRevenue") || "Today's Revenue")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{formatCurrency(orderStats.dailySales)}</div>
-                  <Badge variant="secondary" className="mt-1">Sales</Badge>
+                  <Badge variant="secondary" className="mt-1">{t("statistics.sales") || "Sales"}</Badge>
                 </CardContent>
               </Card>
               
@@ -384,12 +399,14 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {customPeriodActive ? "Selected Period Total" : "This Month's Revenue"}
+                    {customPeriodActive 
+                      ? (t("statistics.selectedPeriodTotal") || "Selected Period Total") 
+                      : (t("statistics.thisMonthsRevenue") || "This Month's Revenue")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{formatCurrency(orderStats.monthlySales)}</div>
-                  <Badge variant="secondary" className="mt-1">Sales</Badge>
+                  <Badge variant="secondary" className="mt-1">{t("statistics.sales") || "Sales"}</Badge>
                 </CardContent>
               </Card>
             </div>
@@ -399,8 +416,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                 <CardHeader>
                   <CardTitle>
                     {customPeriodActive 
-                      ? `Orders and Sales (${dateRange?.from ? formatDate(dateRange.from) : ""} to ${dateRange?.to ? formatDate(dateRange.to) : "now"})`
-                      : "Orders and Sales (Last 7 days)"
+                      ? `${t("statistics.ordersAndSales") || "Orders and Sales"} (${dateRange?.from && isValid(dateRange.from) ? formatDate(dateRange.from) : ""} ${t("statistics.to") || "to"} ${dateRange?.to && isValid(dateRange.to) ? formatDate(dateRange.to) : t("statistics.now") || "now"})`
+                      : `${t("statistics.ordersAndSales") || "Orders and Sales"} (${t("statistics.last7Days") || "Last 7 days"})`
                     }
                   </CardTitle>
                 </CardHeader>
@@ -425,8 +442,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                           <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
                           <Tooltip content={<CustomTooltip />} />
                           <Legend />
-                          <Bar yAxisId="left" dataKey="orders" fill="#8884d8" name="Orders" />
-                          <Bar yAxisId="right" dataKey="sales" fill="#82ca9d" name="Sales" />
+                          <Bar yAxisId="left" dataKey="orders" fill="#8884d8" name={t("statistics.orders") || "Orders"} />
+                          <Bar yAxisId="right" dataKey="sales" fill="#82ca9d" name={t("statistics.sales") || "Sales"} />
                         </BarChart>
                       ) : (
                         <LineChart
@@ -451,7 +468,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                             type="monotone" 
                             dataKey="orders" 
                             stroke="#8884d8" 
-                            name="Orders"
+                            name={t("statistics.orders") || "Orders"}
                             activeDot={{ r: 8 }}
                           />
                           <Line 
@@ -459,7 +476,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                             type="monotone" 
                             dataKey="sales" 
                             stroke="#82ca9d" 
-                            name="Sales"
+                            name={t("statistics.sales") || "Sales"}
                           />
                         </LineChart>
                       )}
@@ -469,7 +486,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
               </Card>
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No data available for the selected time period.</p>
+                <p className="text-muted-foreground">{t("statistics.noData") || "No data available for the selected time period."}</p>
               </div>
             )}
           </>
