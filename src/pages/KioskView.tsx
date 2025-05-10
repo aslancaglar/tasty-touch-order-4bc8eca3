@@ -102,7 +102,7 @@ const KioskView = () => {
       refreshMenu: "Rafraîchir le menu",
       menuRefreshed: "Menu rafraîchi",
       menuRefreshSuccess: "Le menu a été rafraîchi avec succès",
-      currentlyUnavailable: "Actuellement Indisponible"
+      currentlyUnavailable: "Indisponible"
     },
     en: {
       restaurantNotFound: "Restaurant not found",
