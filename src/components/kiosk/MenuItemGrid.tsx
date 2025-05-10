@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,6 @@ import { ChevronRight, ImageOff, Clock, Percent } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 import { calculateDiscountPercentage } from "@/utils/price-utils";
-import { useResponsiveText } from "@/hooks/use-responsive-text";
 
 interface MenuItemGridProps {
   items: MenuItem[];
@@ -174,7 +174,7 @@ const MenuItemCard = memo(({
           }`}
           disabled={!isAvailable}
         >
-          {isAvailable ? t("addToCart") : <span className="text-[0.9em]">{t("currentlyUnavailable")}</span>}
+          {isAvailable ? t("addToCart") : t("currentlyUnavailable")}
           {isAvailable && <ChevronRight className="h-4 w-4 ml-2" />}
         </Button>
       </div>
