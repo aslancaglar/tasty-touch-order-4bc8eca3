@@ -51,7 +51,9 @@ const translations = {
     payWithCard: "PAYER PAR CARTE",
     payWithCash: "PAYER EN ESPÈCES",
     paymentError: "Erreur de paiement",
-    paymentErrorMessage: "Impossible de traiter le paiement. Veuillez réessayer."
+    paymentErrorMessage: "Impossible de traiter le paiement. Veuillez réessayer.",
+    orderError: "Erreur de commande",
+    orderErrorMessage: "Impossible de créer la commande. Veuillez réessayer."
   },
   en: {
     orderSummary: "Order Summary",
@@ -70,7 +72,9 @@ const translations = {
     payWithCard: "PAY WITH CARD",
     payWithCash: "PAY WITH CASH",
     paymentError: "Payment Error",
-    paymentErrorMessage: "Unable to process payment. Please try again."
+    paymentErrorMessage: "Unable to process payment. Please try again.",
+    orderError: "Order Error",
+    orderErrorMessage: "Failed to create order. Please try again."
   },
   tr: {
     orderSummary: "Sipariş Özeti",
@@ -89,7 +93,9 @@ const translations = {
     payWithCard: "KART İLE ÖDE",
     payWithCash: "NAKİT İLE ÖDE",
     paymentError: "Ödeme Hatası",
-    paymentErrorMessage: "Ödeme işlenemiyor. Lütfen tekrar deneyin."
+    paymentErrorMessage: "Ödeme işlenemiyor. Lütfen tekrar deneyin.",
+    orderError: "Sipariş Hatası",
+    orderErrorMessage: "Sipariş oluşturulamadı. Lütfen tekrar deneyin."
   }
 };
 
@@ -138,10 +144,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [showPaymentProcessing, setShowPaymentProcessing] = useState<boolean>(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false); // Added state for processing payments
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const { t } = useTranslation(uiLanguage);
   
   const { total, subtotal, tax } = calculateCartTotals(cart);
   
@@ -180,8 +185,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       if (shouldUseBrowserPrinting) {
         console.log("Using browser printing for receipt");
         toast({
-          title: t("order.printing"),
-          description: t("order.printingPreparation")
+          title: "Impression",
+          description: "Préparation de l'impression..."
         });
         setTimeout(() => {
           try {
@@ -190,8 +195,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           } catch (printError) {
             console.error("Error during browser printing:", printError);
             toast({
-              title: t("order.printError"),
-              description: t("order.printErrorDesc"),
+              title: "Erreur d'impression",
+              description: "Impossible d'imprimer le reçu. Vérifiez les paramètres de votre navigateur.",
               variant: "destructive"
             });
           }
@@ -226,8 +231,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     } catch (error) {
       console.error("Error during receipt printing:", error);
       toast({
-        title: t("order.error"),
-        description: t("order.errorPrinting"),
+        title: translations[uiLanguage].error,
+        description: translations[uiLanguage].errorPrinting,
         variant: "destructive"
       });
     }
@@ -335,8 +340,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       if (orderError) {
         console.error("Error creating order:", orderError);
         toast({
-          title: t("order.error"),
-          description: "Failed to create order",
+          title: translations[uiLanguage].orderError,
+          description: translations[uiLanguage].orderErrorMessage,
           variant: "destructive"
         });
         setIsProcessing(false);
@@ -403,8 +408,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       if (orderError) {
         console.error("Error creating order:", orderError);
         toast({
-          title: t("order.error"),
-          description: "Failed to create order",
+          title: translations[uiLanguage].orderError,
+          description: translations[uiLanguage].orderErrorMessage,
           variant: "destructive"
         });
         setIsProcessing(false);
@@ -427,6 +432,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         );
       } catch (paymentError) {
         console.error("Error creating cash payment record:", paymentError);
+        toast({
+          title: translations[uiLanguage].paymentError,
+          description: translations[uiLanguage].paymentErrorMessage,
+          variant: "destructive"
+        });
+        setIsProcessing(false);
+        return;
       }
       
       // Proceed with the rest of the order flow
@@ -456,7 +468,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <h2 className="text-xl font-bold">{t("order.summary")}</h2>
+              <h2 className="text-xl font-bold">{translations[uiLanguage].orderSummary}</h2>
             </div>
             <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 bg-red-100 hover:bg-red-200">
               <X className="h-5 w-5 text-red-600" />
@@ -465,7 +477,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           
           {/* Scrollable Content */}
           <div className="overflow-y-auto p-6 pb-[180px]">
-            <h3 className="font-bold text-xl mb-6">{t("order.items")}</h3>
+            <h3 className="font-bold text-xl mb-6">{translations[uiLanguage].orderedItems}</h3>
             
             <div className="space-y-6 mb-6">
               {cart.map(item => <div key={item.id} className="space-y-2 border-b pb-4">
@@ -513,16 +525,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="border-t fixed bottom-0 left-0 right-0 bg-white z-10 w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto">
             <div className="p-4 space-y-2">
               <div className="flex justify-between text-gray-700">
-                <span>{t("order.subtotal")}</span>
+                <span>{translations[uiLanguage].totalHT}</span>
                 <span>{subtotal.toFixed(2)} {currencySymbol}</span>
               </div>
               <div className="flex justify-between text-gray-700">
-                <span>{uiLanguage === "fr" ? t("order.vatWithRate") : t("order.vat")}</span>
+                <span>{uiLanguage === "fr" ? translations[uiLanguage].vatWithRate : translations[uiLanguage].vat}</span>
                 <span>{tax.toFixed(2)} {currencySymbol}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between font-bold text-lg">
-                <span>{t("order.totalTTC")}</span>
+                <span>{translations[uiLanguage].totalTTC}</span>
                 <span>{total.toFixed(2)} {currencySymbol}</span>
               </div>
 
@@ -531,21 +543,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   {restaurant?.card_payment_enabled && (
                     <Button onClick={handleCardPayment} disabled={placingOrder || isProcessing} className="bg-blue-600 hover:bg-blue-700 text-white uppercase font-medium text-2xl py-6">
                       <CreditCard className="mr-2 h-5 w-5" />
-                      {translations[uiLanguage]?.payWithCard || "PAY WITH CARD"}
+                      {translations[uiLanguage].payWithCard}
                     </Button>
                   )}
                   
                   {restaurant?.cash_payment_enabled && (
                     <Button onClick={handleCashPayment} disabled={placingOrder || isProcessing} className="bg-green-700 hover:bg-green-800 text-white uppercase font-medium text-2xl py-6">
                       <Banknote className="mr-2 h-5 w-5" />
-                      {translations[uiLanguage]?.payWithCash || "PAY WITH CASH"}
+                      {translations[uiLanguage].payWithCash}
                     </Button>
                   )}
                 </div>
               ) : (
                 <Button onClick={handleConfirmOrder} disabled={placingOrder || isProcessing} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
                   <Check className="mr-2 h-5 w-5" />
-                  {t("order.confirm")}
+                  {translations[uiLanguage].confirm}
                 </Button>
               )}
             </div>
@@ -567,7 +579,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
       <PaymentProcessing 
         isOpen={showPaymentProcessing}
-        onClose={() => setShowPaymentProcessing(false)}
+        onClose={() => {
+          setShowPaymentProcessing(false);
+          setIsProcessing(false);
+        }}
         paymentId={paymentId}
         onPaymentComplete={handlePaymentComplete}
         uiLanguage={uiLanguage}
