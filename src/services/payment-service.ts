@@ -18,7 +18,7 @@ export const createCardPaymentRecord = async (
         restaurant_id: restaurantId,
         amount,
         payment_method: 'card',
-        status: 'pending'
+        status: 'pending' as PaymentStatus
       })
       .select()
       .single();
@@ -28,7 +28,7 @@ export const createCardPaymentRecord = async (
       throw error;
     }
 
-    return data;
+    return data as PaymentRecord;
   } catch (error) {
     console.error('Error in createCardPaymentRecord:', error);
     throw error;
@@ -51,7 +51,7 @@ export const createCashPaymentRecord = async (
         restaurant_id: restaurantId,
         amount,
         payment_method: 'cash',
-        status: 'completed'
+        status: 'completed' as PaymentStatus
       })
       .select()
       .single();
@@ -61,7 +61,7 @@ export const createCashPaymentRecord = async (
       throw error;
     }
 
-    return data;
+    return data as PaymentRecord;
   } catch (error) {
     console.error('Error in createCashPaymentRecord:', error);
     throw error;
@@ -94,7 +94,7 @@ export const updatePaymentStatus = async (
       throw error;
     }
 
-    return data;
+    return data as PaymentRecord;
   } catch (error) {
     console.error('Error in updatePaymentStatus:', error);
     throw error;
@@ -144,7 +144,7 @@ export const getPaymentRecord = async (paymentId: string): Promise<PaymentRecord
       return null;
     }
 
-    return data;
+    return data as PaymentRecord;
   } catch (error) {
     console.error('Error in getPaymentRecord:', error);
     return null;

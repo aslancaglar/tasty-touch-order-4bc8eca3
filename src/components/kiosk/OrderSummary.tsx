@@ -138,6 +138,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [showPaymentProcessing, setShowPaymentProcessing] = useState<boolean>(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false); // Added state for processing payments
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const { t } = useTranslation(uiLanguage);
@@ -318,7 +319,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     if (!restaurant?.id) return;
     try {
       setPaymentMethod("card");
-      setPlacingOrder(true);
+      setIsProcessing(true);
       
       // Create the order first
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
@@ -338,7 +339,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           description: "Failed to create order",
           variant: "destructive"
         });
-        setPlacingOrder(false);
+        setIsProcessing(false);
         return;
       }
       
@@ -370,7 +371,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         });
       }
       
-      setPlacingOrder(false);
+      setIsProcessing(false);
     } catch (error) {
       console.error("Error during card payment process:", error);
       toast({
@@ -378,7 +379,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         description: "An error occurred during the payment process",
         variant: "destructive"
       });
-      setPlacingOrder(false);
+      setIsProcessing(false);
     }
   };
 
@@ -386,7 +387,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     if (!restaurant?.id) return;
     try {
       setPaymentMethod("cash");
-      setPlacingOrder(true);
+      setIsProcessing(true);
       
       // Create the order first
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
@@ -406,7 +407,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           description: "Failed to create order",
           variant: "destructive"
         });
-        setPlacingOrder(false);
+        setIsProcessing(false);
         return;
       }
       
@@ -431,7 +432,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       // Proceed with the rest of the order flow
       handleConfirmOrder();
       handlePrintReceipt();
-      setPlacingOrder(false);
+      setIsProcessing(false);
     } catch (error) {
       console.error("Error during cash payment process:", error);
       toast({
@@ -439,7 +440,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         description: "An error occurred during the payment process",
         variant: "destructive"
       });
-      setPlacingOrder(false);
+      setIsProcessing(false);
     }
   };
 
@@ -528,21 +529,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               {showPaymentOptions ? (
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   {restaurant?.card_payment_enabled && (
-                    <Button onClick={handleCardPayment} disabled={placingOrder} className="bg-blue-600 hover:bg-blue-700 text-white uppercase font-medium text-2xl py-6">
+                    <Button onClick={handleCardPayment} disabled={placingOrder || isProcessing} className="bg-blue-600 hover:bg-blue-700 text-white uppercase font-medium text-2xl py-6">
                       <CreditCard className="mr-2 h-5 w-5" />
                       {translations[uiLanguage]?.payWithCard || "PAY WITH CARD"}
                     </Button>
                   )}
                   
                   {restaurant?.cash_payment_enabled && (
-                    <Button onClick={handleCashPayment} disabled={placingOrder} className="bg-green-700 hover:bg-green-800 text-white uppercase font-medium text-2xl py-6">
+                    <Button onClick={handleCashPayment} disabled={placingOrder || isProcessing} className="bg-green-700 hover:bg-green-800 text-white uppercase font-medium text-2xl py-6">
                       <Banknote className="mr-2 h-5 w-5" />
                       {translations[uiLanguage]?.payWithCash || "PAY WITH CASH"}
                     </Button>
                   )}
                 </div>
               ) : (
-                <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
+                <Button onClick={handleConfirmOrder} disabled={placingOrder || isProcessing} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
                   <Check className="mr-2 h-5 w-5" />
                   {t("order.confirm")}
                 </Button>
