@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -168,7 +169,7 @@ const MenuItemCard = memo(({
           </Button>
         ) : (
           <Button 
-            className="w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide bg-[#ea384c] hover:bg-[#ea384c]/90"
+            className="w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide bg-[#ea384c] hover:bg-[#ea384c]/90 text-white"
             disabled
           >
             {t("menuItem.currentlyUnavailable")}
