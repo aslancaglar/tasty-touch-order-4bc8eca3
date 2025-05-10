@@ -40,6 +40,7 @@
   },
   "currentlyUnavailable": "UNAVAILABLE",
   "betweenTime": "BETWEEN",
+  "addToCart": "ADD TO CART",
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome to your TastyTouch Admin Dashboard",
