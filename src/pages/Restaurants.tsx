@@ -76,7 +76,8 @@ const AddRestaurantDialog = ({ onRestaurantAdded, t }: { onRestaurantAdded: () =
         name,
         slug,
         location,
-        image_url: imageUrl
+        image_url: imageUrl,
+        logo_url: null // Add the missing logo_url property with null as default value
       });
       
       toast({
