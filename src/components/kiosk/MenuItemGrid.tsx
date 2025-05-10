@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ImageOff, Clock } from "lucide-react";
+import { ChevronRight, ImageOff, Clock, Percent } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
+import { calculateDiscountPercentage } from "@/utils/price-utils";
 
 interface MenuItemGridProps {
   items: MenuItem[];
@@ -70,7 +71,17 @@ const MenuItemCard = memo(({
   const formattedPrice = useMemo(() => {
     return parseFloat(item.price.toString()).toFixed(2);
   }, [item.price]);
+
+  const formattedPromotionPrice = useMemo(() => {
+    if (!item.promotion_price) return null;
+    return parseFloat(item.promotion_price.toString()).toFixed(2);
+  }, [item.promotion_price]);
   
+  const discountPercentage = useMemo(() => {
+    if (!item.promotion_price) return 0;
+    return calculateDiscountPercentage(item.price, item.promotion_price);
+  }, [item.price, item.promotion_price]);
+
   const isAvailable = useMemo(() => {
     return isItemAvailableNow(item);
   }, [item]);
@@ -113,6 +124,17 @@ const MenuItemCard = memo(({
           </div>
         )}
         
+        {/* Promotion badge */}
+        {item.promotion_price && item.promotion_price < item.price && (
+          <div className="absolute top-2 left-2 bg-[#ea384c] text-white w-12 h-12 rounded-full flex items-center justify-center font-bold">
+            <div className="flex items-center">
+              <span className="text-xs">-</span>
+              <span className="text-lg">{discountPercentage}</span>
+              <Percent className="h-3 w-3" />
+            </div>
+          </div>
+        )}
+        
         {/* Availability indicator for time-restricted items */}
         {!isAvailable && item.available_from && item.available_until && (
           <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-md text-xs flex items-center">
@@ -127,7 +149,22 @@ const MenuItemCard = memo(({
       <div className="p-4 select-none">
         <div className="flex justify-between">
           <h3 className="font-bebas text-lg tracking-wide break-words">{item.name}</h3>
-          <p className="font-bebas text-lg whitespace-nowrap ml-2">{formattedPrice} {currencySymbol}</p>
+          <div className="text-right">
+            {item.promotion_price && item.promotion_price < item.price ? (
+              <div>
+                <p className="text-gray-500 line-through text-sm font-bebas">
+                  {formattedPrice} {currencySymbol}
+                </p>
+                <p className="font-bebas text-lg text-[#ea384c]">
+                  {formattedPromotionPrice} {currencySymbol}
+                </p>
+              </div>
+            ) : (
+              <p className="font-bebas text-lg whitespace-nowrap ml-2">
+                {formattedPrice} {currencySymbol}
+              </p>
+            )}
+          </div>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
         <Button 

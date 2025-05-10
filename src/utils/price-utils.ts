@@ -11,6 +11,13 @@ export const calculateTaxAmount = (totalPrice: number, percentage: number = 10):
   return totalPrice - priceWithoutTax;
 };
 
+// New utility function to calculate percentage discount
+export const calculateDiscountPercentage = (originalPrice: number, discountedPrice: number): number => {
+  if (!originalPrice || !discountedPrice || originalPrice <= 0 || discountedPrice <= 0) return 0;
+  const discount = ((originalPrice - discountedPrice) / originalPrice) * 100;
+  return Math.round(discount); // Round to whole number
+};
+
 // Updated utility function to calculate cart totals with proper topping VAT
 export const calculateCartTotals = (cart: CartItem[]) => {
   let total = 0;
