@@ -47,7 +47,9 @@ const translations = {
     error: "Erreur",
     errorPrinting: "Une erreur s'est produite lors de l'impression du reçu.",
     payWithCard: "PAYER PAR CARTE",
-    payWithCash: "PAYER EN ESPÈCES"
+    payWithCash: "PAYER EN ESPÈCES",
+    processingPayment: "TRAITEMENT DU PAIEMENT...",
+    waitingForTerminal: "En attente du terminal de paiement..."
   },
   en: {
     orderSummary: "Order Summary",
@@ -64,7 +66,9 @@ const translations = {
     error: "Error",
     errorPrinting: "An error occurred while printing the receipt.",
     payWithCard: "PAY WITH CARD",
-    payWithCash: "PAY WITH CASH"
+    payWithCash: "PAY WITH CASH",
+    processingPayment: "PROCESSING PAYMENT...",
+    waitingForTerminal: "Waiting for payment terminal..."
   },
   tr: {
     orderSummary: "Sipariş Özeti",
@@ -81,7 +85,9 @@ const translations = {
     error: "Hata",
     errorPrinting: "Fiş yazdırılırken bir hata oluştu.",
     payWithCard: "KART İLE ÖDE",
-    payWithCash: "NAKİT İLE ÖDE"
+    payWithCash: "NAKİT İLE ÖDE",
+    processingPayment: "ÖDEME İŞLENİYOR...",
+    waitingForTerminal: "Ödeme terminali bekleniyor..."
   }
 };
 
@@ -105,7 +111,7 @@ interface OrderSummaryProps {
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
-  uiLanguage?: "fr" | "en" | "tr";
+  uiLanguage?: SupportedLanguage;
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -127,6 +133,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | null>(null);
+  const [processingCardPayment, setProcessingCardPayment] = useState<boolean>(false);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const { t } = useTranslation(uiLanguage);
@@ -148,6 +156,100 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
+
+  // Check payment status periodically if card payment is in progress
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    
+    if (processingCardPayment && paymentId) {
+      interval = setInterval(async () => {
+        const { data: payment, error } = await supabase
+          .from('payments')
+          .select('status, pos_response')
+          .eq('id', paymentId)
+          .single();
+        
+        if (error) {
+          console.error("Error checking payment status:", error);
+          return;
+        }
+        
+        if (payment && payment.status === 'approved') {
+          clearInterval(interval);
+          setProcessingCardPayment(false);
+          
+          // Complete the order
+          handleConfirmOrder("card");
+          
+          toast({
+            title: "Payment Approved",
+            description: "Your card payment has been processed successfully.",
+            variant: "default"
+          });
+        } else if (payment && payment.status === 'declined') {
+          clearInterval(interval);
+          setProcessingCardPayment(false);
+          
+          toast({
+            title: "Payment Declined",
+            description: payment.pos_response || "Your card payment was declined.",
+            variant: "destructive"
+          });
+        }
+        // Continue polling if status is still 'pending'
+      }, 2000); // Check every 2 seconds
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [processingCardPayment, paymentId]);
+
+  const handleCardPayment = async () => {
+    try {
+      setProcessingCardPayment(true);
+      
+      // Create a payment record in the database
+      const { data: payment, error } = await supabase
+        .from('payments')
+        .insert({
+          amount: total,
+          status: 'pending'
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error creating payment record:", error);
+        toast({
+          title: "Error",
+          description: "There was a problem initiating the payment.",
+          variant: "destructive"
+        });
+        setProcessingCardPayment(false);
+        return;
+      }
+      
+      setPaymentId(payment.id);
+      
+      toast({
+        title: translations[uiLanguage]?.waitingForTerminal || "Waiting for payment terminal",
+        description: "Please complete the payment on the terminal.",
+        duration: 5000
+      });
+      
+      // Payment status will be checked by the useEffect above
+      
+    } catch (error) {
+      console.error("Error processing card payment:", error);
+      setProcessingCardPayment(false);
+      toast({
+        title: "Error",
+        description: "There was a problem processing your payment.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleConfirmOrder = async (selectedPaymentMethod?: "card" | "cash") => {
     if (selectedPaymentMethod) {
@@ -383,14 +485,31 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             {showPaymentOptions ? (
               <div className="grid grid-cols-2 gap-4 mt-4">
                 {restaurant?.card_payment_enabled && (
-                  <Button onClick={() => handleConfirmOrder("card")} disabled={placingOrder} className="bg-blue-600 hover:bg-blue-700 text-white uppercase font-medium text-2xl py-6">
-                    <CreditCard className="mr-2 h-5 w-5" />
-                    {translations[uiLanguage]?.payWithCard || "PAY WITH CARD"}
+                  <Button 
+                    onClick={processingCardPayment ? undefined : handleCardPayment} 
+                    disabled={placingOrder || processingCardPayment} 
+                    className="bg-blue-600 hover:bg-blue-700 text-white uppercase font-medium text-2xl py-6"
+                  >
+                    {processingCardPayment ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        {translations[uiLanguage]?.processingPayment || "PROCESSING PAYMENT..."}
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="mr-2 h-5 w-5" />
+                        {translations[uiLanguage]?.payWithCard || "PAY WITH CARD"}
+                      </>
+                    )}
                   </Button>
                 )}
                 
                 {restaurant?.cash_payment_enabled && (
-                  <Button onClick={() => handleConfirmOrder("cash")} disabled={placingOrder} className="bg-green-700 hover:bg-green-800 text-white uppercase font-medium text-2xl py-6">
+                  <Button 
+                    onClick={() => handleConfirmOrder("cash")} 
+                    disabled={placingOrder || processingCardPayment} 
+                    className="bg-green-700 hover:bg-green-800 text-white uppercase font-medium text-2xl py-6"
+                  >
                     <Banknote className="mr-2 h-5 w-5" />
                     {translations[uiLanguage]?.payWithCash || "PAY WITH CASH"}
                   </Button>

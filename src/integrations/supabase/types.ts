@@ -400,8 +400,6 @@ export type Database = {
           amount: number
           created_at: string
           id: string
-          order_id: string | null
-          payment_method: string | null
           pos_response: string | null
           status: string
           updated_at: string
@@ -410,8 +408,6 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
-          order_id?: string | null
-          payment_method?: string | null
           pos_response?: string | null
           status?: string
           updated_at?: string
@@ -420,21 +416,11 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
-          order_id?: string | null
-          payment_method?: string | null
           pos_response?: string | null
           status?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "payments_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       printer_settings: {
         Row: {
