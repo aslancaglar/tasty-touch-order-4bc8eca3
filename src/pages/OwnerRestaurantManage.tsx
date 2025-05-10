@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,8 +12,10 @@ import MenuTab from "@/components/restaurant/MenuTab";
 import ToppingsTab from "@/components/restaurant/ToppingsTab";
 import OrdersTab from "@/components/restaurant/OrdersTab";
 import StockTab from "@/components/restaurant/StockTab";
+import SettingsTab from "@/components/restaurant/SettingsTab";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+
 const OwnerRestaurantManage = () => {
   const {
     id
@@ -30,6 +33,7 @@ const OwnerRestaurantManage = () => {
   const {
     t
   } = useTranslation(language);
+  
   useEffect(() => {
     const fetchRestaurant = async () => {
       if (!id) return;
@@ -83,6 +87,7 @@ const OwnerRestaurantManage = () => {
     };
     fetchRestaurant();
   }, [id, toast]);
+  
   const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
     setRestaurant(updatedRestaurant);
 
@@ -92,11 +97,13 @@ const OwnerRestaurantManage = () => {
       setLanguage(updatedRestaurant.ui_language as SupportedLanguage);
     }
   };
+  
   if (loading && !restaurant) {
     return <div className="flex justify-center items-center h-[80vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>;
   }
+  
   if (!restaurant) {
     return <div className="container mx-auto py-8 px-4">
         <div className="text-center py-10">
@@ -107,6 +114,7 @@ const OwnerRestaurantManage = () => {
         </div>
       </div>;
   }
+  
   return <div className="container mx-auto py-4 sm:py-8 px-3 sm:px-4">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 sm:mb-8">
         <Button variant="ghost" asChild className="self-start">
@@ -121,7 +129,9 @@ const OwnerRestaurantManage = () => {
         </div>
         <div className="ml-0 sm:ml-auto mt-2 sm:mt-0">
           <Button variant="outline" asChild size={isMobile ? "sm" : "default"}>
-            
+            <Link to={`/r/${restaurant?.slug}`} target="_blank">
+              {t("restaurants.viewKiosk")}
+            </Link>
           </Button>
         </div>
       </div>
@@ -132,7 +142,7 @@ const OwnerRestaurantManage = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-4 gap-1">
+            <TabsList className="grid grid-cols-5 gap-1">
               <TabsTrigger value="menu" className="flex items-center justify-center">
                 <UtensilsCrossed className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
                 {!isMobile && t("restaurant.menu")}
@@ -148,6 +158,10 @@ const OwnerRestaurantManage = () => {
               <TabsTrigger value="stock" className="flex items-center justify-center">
                 <Package className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
                 {!isMobile && t("restaurant.stock")}
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center justify-center">
+                <Settings className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+                {!isMobile && t("restaurant.settings")}
               </TabsTrigger>
             </TabsList>
             
@@ -166,9 +180,14 @@ const OwnerRestaurantManage = () => {
             <TabsContent value="stock">
               {restaurant && <StockTab restaurant={restaurant} />}
             </TabsContent>
+
+            <TabsContent value="settings">
+              {restaurant && <SettingsTab restaurant={restaurant} onRestaurantUpdated={handleRestaurantUpdated} />}
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
     </div>;
 };
+
 export default OwnerRestaurantManage;

@@ -93,6 +93,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [name, setName] = useState(restaurant.name);
   const [location, setLocation] = useState(restaurant.location || "");
   const [image, setImage] = useState(restaurant.image_url || "");
+  const [logo, setLogo] = useState(restaurant.logo_url || "");
   const [slug, setSlug] = useState(restaurant.slug || "");
   const [isSaving, setIsSaving] = useState(false);
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
@@ -114,6 +115,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     setName(restaurant.name);
     setLocation(restaurant.location || "");
     setImage(restaurant.image_url || "");
+    setLogo(restaurant.logo_url || "");
     setSlug(restaurant.slug || "");
     setUiLanguage(restaurant.ui_language || "fr");
     setCurrency(restaurant.currency || "EUR");
@@ -171,6 +173,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         name,
         location,
         image_url: image,
+        logo_url: logo,
         ui_language: uiLanguage,
         currency,
         slug: slug.toLowerCase().trim(),
@@ -472,13 +475,34 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
             </div>
             
             <div className="sm:col-span-2">
-              <Label>Image du Restaurant</Label>
+              <Label>Image d'arrière-plan</Label>
               <div className="mt-1">
                 <ImageUpload 
                   value={image} 
-                  onChange={(url) => setImage(url)} 
-                  label="Télécharger une image..."
+                  onChange={(url) => setImage(url)}
+                  label="Image d'arrière-plan"
+                  uploadFolder="restaurant-covers"
+                  clearable={true}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Cette image sera utilisée comme fond d'écran sur la page d'accueil et l'en-tête du menu
+                </p>
+              </div>
+            </div>
+
+            <div className="sm:col-span-2">
+              <Label>Logo du Restaurant</Label>
+              <div className="mt-1">
+                <ImageUpload 
+                  value={logo} 
+                  onChange={(url) => setLogo(url)} 
+                  label="Logo du restaurant"
+                  uploadFolder="restaurant-logos"
+                  clearable={true}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ce logo sera utilisé sur l'en-tête du menu et les reçus
+                </p>
               </div>
             </div>
             

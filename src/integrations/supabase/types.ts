@@ -395,6 +395,47 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string | null
+          payment_method: string | null
+          pos_response: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          payment_method?: string | null
+          pos_response?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          payment_method?: string | null
+          pos_response?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       printer_settings: {
         Row: {
           created_at: string | null
@@ -618,6 +659,8 @@ export type Database = {
       }
       restaurants: {
         Row: {
+          card_payment_enabled: boolean | null
+          cash_payment_enabled: boolean | null
           created_at: string
           currency: string
           id: string
@@ -629,6 +672,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          card_payment_enabled?: boolean | null
+          cash_payment_enabled?: boolean | null
           created_at?: string
           currency?: string
           id?: string
@@ -640,6 +685,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          card_payment_enabled?: boolean | null
+          cash_payment_enabled?: boolean | null
           created_at?: string
           currency?: string
           id?: string
@@ -769,6 +816,8 @@ export type Database = {
       get_owned_restaurants: {
         Args: Record<PropertyKey, never>
         Returns: {
+          card_payment_enabled: boolean | null
+          cash_payment_enabled: boolean | null
           created_at: string
           currency: string
           id: string

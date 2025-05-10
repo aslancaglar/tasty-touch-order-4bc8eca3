@@ -42,11 +42,25 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
       
       <div className="absolute inset-0 flex items-center p-6">
         <div className="flex items-center">
-          <img 
-            src={restaurant.image_url || 'https://via.placeholder.com/100'} 
-            alt={restaurant.name} 
-            className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
-          />
+          {restaurant.logo_url ? (
+            <img 
+              src={restaurant.logo_url} 
+              alt={restaurant.name} 
+              className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover bg-white p-1" 
+            />
+          ) : restaurant.image_url ? (
+            <img 
+              src={restaurant.image_url} 
+              alt={restaurant.name} 
+              className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
+            />
+          ) : (
+            <img 
+              src="https://via.placeholder.com/100" 
+              alt={restaurant.name} 
+              className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
+            />
+          )}
           <div>
             <h1 className="text-white text-3xl font-bebas tracking-wider">{restaurant.name}</h1>
             <div className="flex items-center text-white text-sm mt-1 font-inter">
