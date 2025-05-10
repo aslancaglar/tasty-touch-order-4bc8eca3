@@ -164,6 +164,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
     return CURRENCY_SYMBOLS[code] || code;
   };
 
+  // Update the useTranslation call to handle string language properly
   const { t } = useTranslation(restaurant.ui_language || "en");
 
   useEffect(() => {
