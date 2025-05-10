@@ -120,6 +120,7 @@
     "availableFrom": "Available from",
     "availableUntil": "Available until",
     "timeAvailability": "Time Availability",
-    "selectTime": "Select time"
+    "selectTime": "Select time",
+    "currentlyUnavailable": "Currently Unavailable"
   }
 }

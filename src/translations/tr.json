@@ -120,6 +120,7 @@
     "availableFrom": "Şu saatten itibaren kullanılabilir",
     "availableUntil": "Şu saate kadar kullanılabilir",
     "timeAvailability": "Zaman Kullanılabilirliği",
-    "selectTime": "Zaman seç"
+    "selectTime": "Zaman seç",
+    "currentlyUnavailable": "Şu Anda Kullanılamıyor"
   }
 }
