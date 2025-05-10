@@ -169,7 +169,7 @@ const MenuItemCard = memo(({
           </Button>
         ) : (
           <Button 
-            className="w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide bg-[#ea384c] hover:bg-[#ea384c]/90 text-white"
+            className="w-full mt-4 text-xl py-[25px] px-0 font-bebas tracking-wide bg-[#ea384c] hover:bg-[#ea384c]/90 text-white font-bold"
             disabled
           >
             {t("menuItem.currentlyUnavailable")}
