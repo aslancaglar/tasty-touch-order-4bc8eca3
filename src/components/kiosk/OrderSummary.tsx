@@ -156,11 +156,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        const { count } = await supabase.from('orders').select('*', {
-          count: 'exact',
-          head: true
-        }).eq('restaurant_id', restaurant.id);
-        setOrderNumber(((count || 0) + 1).toString());
+        try {
+          const { count, error } = await supabase.from('orders').select('*', {
+            count: 'exact',
+            head: true
+          }).eq('restaurant_id', restaurant.id);
+          
+          if (error) {
+            console.error("Error fetching order count:", error);
+            return;
+          }
+          
+          setOrderNumber(((count || 0) + 1).toString());
+        } catch (err) {
+          console.error("Exception in fetchOrderCount:", err);
+        }
       }
     };
     fetchOrderCount();
@@ -176,18 +186,25 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     if (!restaurant?.id) return;
     try {
       console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
-      const { data: printConfig, error } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
+      const { data: printConfig, error } = await supabase
+        .from('restaurant_print_config')
+        .select('api_key, configured_printers, browser_printing_enabled')
+        .eq('restaurant_id', restaurant.id)
+        .single();
+        
       if (error) {
         console.error("Error fetching print configuration:", error);
         return;
       }
+      
       const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
       if (shouldUseBrowserPrinting) {
         console.log("Using browser printing for receipt");
         toast({
-          title: "Impression",
-          description: "Préparation de l'impression..."
+          title: translations[uiLanguage].printing,
+          description: translations[uiLanguage].printingPreparation
         });
+        
         setTimeout(() => {
           try {
             printReceipt('receipt-content');
@@ -195,8 +212,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           } catch (printError) {
             console.error("Error during browser printing:", printError);
             toast({
-              title: "Erreur d'impression",
-              description: "Impossible d'imprimer le reçu. Vérifiez les paramètres de votre navigateur.",
+              title: translations[uiLanguage].printError,
+              description: translations[uiLanguage].printErrorDesc,
               variant: "destructive"
             });
           }
@@ -209,9 +226,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           console.log("Browser printing disabled in restaurant settings");
         }
       }
+      
       if (printConfig?.api_key && printConfig?.configured_printers) {
         const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
         const printerIds = printerArray.map(id => String(id));
+        
         if (printerIds.length > 0) {
           await sendReceiptToPrintNode(printConfig.api_key, printerIds, {
             restaurant,
@@ -256,6 +275,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       const textEncoder = new TextEncoder();
       const encodedBytes = textEncoder.encode(receiptContent);
       const encodedContent = btoa(Array.from(encodedBytes).map(byte => String.fromCharCode(byte)).join(''));
+      
       console.log("Sending receipt to PrintNode printers:", printerIds);
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
@@ -273,6 +293,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             source: "Restaurant Kiosk"
           })
         });
+        
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`PrintNode API error: ${response.status}`, errorText);
@@ -322,9 +343,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   const handleCardPayment = async () => {
     if (!restaurant?.id) return;
+    
     try {
       setPaymentMethod("card");
       setIsProcessing(true);
+      
+      console.log("Creating order with:", { 
+        restaurant_id: restaurant.id,
+        total,
+        orderType,
+        tableNumber
+      });
       
       // Create the order first
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
@@ -332,9 +361,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         customer_name: null,
         total,
         status: 'pending',
-        // Remove order_type as it doesn't exist in the schema
-        // Use type for order type, if it exists in the schema
-        type: orderType,
+        type: orderType, // Using type field instead of order_type
         table_number: tableNumber,
         payment_status: 'pending'
       }).select().single();
@@ -343,13 +370,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         console.error("Error creating order:", orderError);
         toast({
           title: translations[uiLanguage].orderError,
-          description: translations[uiLanguage].orderErrorMessage,
+          description: translations[uiLanguage].orderErrorMessage + ` (${orderError.message})`,
           variant: "destructive"
         });
         setIsProcessing(false);
         return;
       }
       
+      console.log("Created order:", orderData);
       setOrderId(orderData.id);
 
       // Create the payment record
@@ -359,6 +387,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           restaurant.id,
           total
         );
+        
+        console.log("Created payment record:", paymentRecord);
         
         // Update the order with the payment ID
         await updateOrderPaymentInfo(
@@ -392,9 +422,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   const handleCashPayment = async () => {
     if (!restaurant?.id) return;
+    
     try {
       setPaymentMethod("cash");
       setIsProcessing(true);
+      
+      console.log("Creating order with:", { 
+        restaurant_id: restaurant.id,
+        total,
+        orderType,
+        tableNumber
+      });
       
       // Create the order first
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
@@ -402,9 +440,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         customer_name: null,
         total,
         status: 'pending',
-        // Remove order_type as it doesn't exist in the schema
-        // Use type for order type, if it exists in the schema
-        type: orderType,
+        type: orderType, // Using type field instead of order_type
         table_number: tableNumber,
         payment_status: 'completed'
       }).select().single();
@@ -413,12 +449,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         console.error("Error creating order:", orderError);
         toast({
           title: translations[uiLanguage].orderError,
-          description: translations[uiLanguage].orderErrorMessage,
+          description: translations[uiLanguage].orderErrorMessage + ` (${orderError.message})`,
           variant: "destructive"
         });
         setIsProcessing(false);
         return;
       }
+      
+      console.log("Created order:", orderData);
       
       // Create the payment record (for cash, it's automatically completed)
       try {
@@ -427,6 +465,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           restaurant.id,
           total
         );
+        
+        console.log("Created cash payment record:", paymentRecord);
         
         // Update the order with the payment ID
         await updateOrderPaymentInfo(
@@ -545,21 +585,33 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               {showPaymentOptions ? (
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   {restaurant?.card_payment_enabled && (
-                    <Button onClick={handleCardPayment} disabled={placingOrder || isProcessing} className="bg-blue-600 hover:bg-blue-700 text-white uppercase font-medium text-2xl py-6">
+                    <Button 
+                      onClick={handleCardPayment} 
+                      disabled={placingOrder || isProcessing} 
+                      className="bg-blue-600 hover:bg-blue-700 text-white uppercase font-medium text-2xl py-6"
+                    >
                       <CreditCard className="mr-2 h-5 w-5" />
                       {translations[uiLanguage].payWithCard}
                     </Button>
                   )}
                   
                   {restaurant?.cash_payment_enabled && (
-                    <Button onClick={handleCashPayment} disabled={placingOrder || isProcessing} className="bg-green-700 hover:bg-green-800 text-white uppercase font-medium text-2xl py-6">
+                    <Button 
+                      onClick={handleCashPayment} 
+                      disabled={placingOrder || isProcessing} 
+                      className="bg-green-700 hover:bg-green-800 text-white uppercase font-medium text-2xl py-6"
+                    >
                       <Banknote className="mr-2 h-5 w-5" />
                       {translations[uiLanguage].payWithCash}
                     </Button>
                   )}
                 </div>
               ) : (
-                <Button onClick={handleConfirmOrder} disabled={placingOrder || isProcessing} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">
+                <Button 
+                  onClick={handleConfirmOrder} 
+                  disabled={placingOrder || isProcessing} 
+                  className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8"
+                >
                   <Check className="mr-2 h-5 w-5" />
                   {translations[uiLanguage].confirm}
                 </Button>
