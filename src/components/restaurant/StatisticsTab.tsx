@@ -35,6 +35,7 @@ import {
   TooltipProps,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
 
 interface StatisticsTabProps {
   restaurant: Restaurant;
@@ -63,10 +64,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
     dailySales: 0,
     monthlySales: 0
   });
-  const [dateRange, setDateRange] = useState<{
-    from: Date;
-    to: Date | undefined;
-  }>({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: subDays(new Date(), 7),
     to: new Date(),
   });
@@ -83,7 +81,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
   }, [restaurant.id]);
 
   useEffect(() => {
-    if (customPeriodActive && dateRange.from && dateRange.to) {
+    if (customPeriodActive && dateRange && dateRange.from) {
       fetchCustomPeriodData();
     }
   }, [dateRange, customPeriodActive]);
@@ -176,7 +174,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
   };
 
   const fetchCustomPeriodData = async () => {
-    if (!dateRange.from || !dateRange.to) return;
+    if (!dateRange || !dateRange.from || !dateRange.to) return;
     
     try {
       setLoading(true);
@@ -260,6 +258,11 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
     return null;
   };
 
+  // Safe date format function to handle undefined dates
+  const formatDate = (date: Date | undefined): string => {
+    return date ? format(date, "LLL dd, yyyy") : "";
+  };
+
   return (
     <div>
       <div className="space-y-4">
@@ -292,11 +295,11 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                       {dateRange?.from ? (
                         dateRange.to ? (
                           <>
-                            {format(dateRange.from, "LLL dd, y")} -{" "}
-                            {format(dateRange.to, "LLL dd, y")}
+                            {formatDate(dateRange.from)} -{" "}
+                            {formatDate(dateRange.to)}
                           </>
                         ) : (
-                          format(dateRange.from, "LLL dd, y")
+                          formatDate(dateRange.from)
                         )
                       ) : (
                         <span>Pick a date</span>
@@ -396,7 +399,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                 <CardHeader>
                   <CardTitle>
                     {customPeriodActive 
-                      ? `Orders and Sales (${format(dateRange.from, "MMM dd, yyyy")} to ${dateRange.to ? format(dateRange.to, "MMM dd, yyyy") : "now"})`
+                      ? `Orders and Sales (${dateRange?.from ? formatDate(dateRange.from) : ""} to ${dateRange?.to ? formatDate(dateRange.to) : "now"})`
                       : "Orders and Sales (Last 7 days)"
                     }
                   </CardTitle>
