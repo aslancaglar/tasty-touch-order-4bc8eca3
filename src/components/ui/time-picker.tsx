@@ -3,6 +3,7 @@ import * as React from "react";
 import { Clock } from "lucide-react";
 import { Label } from "./label";
 import { Button } from "./button";
+import { ScrollArea } from "./scroll-area";
 import {
   Popover,
   PopoverContent,
@@ -59,7 +60,7 @@ export function TimePicker({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <div className="h-[300px] overflow-y-auto p-2">
+          <ScrollArea className="h-[300px] p-2">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {timeOptions.map((time) => (
                 <Button
@@ -78,7 +79,7 @@ export function TimePicker({
                 </Button>
               ))}
             </div>
-          </div>
+          </ScrollArea>
         </PopoverContent>
       </Popover>
     </div>
