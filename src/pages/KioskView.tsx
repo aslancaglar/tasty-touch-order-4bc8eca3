@@ -101,7 +101,8 @@ const KioskView = () => {
       no: "Non",
       refreshMenu: "Rafraîchir le menu",
       menuRefreshed: "Menu rafraîchi",
-      menuRefreshSuccess: "Le menu a été rafraîchi avec succès"
+      menuRefreshSuccess: "Le menu a été rafraîchi avec succès",
+      currentlyUnavailable: "Actuellement Indisponible"
     },
     en: {
       restaurantNotFound: "Restaurant not found",
@@ -128,7 +129,8 @@ const KioskView = () => {
       no: "No",
       refreshMenu: "Refresh menu",
       menuRefreshed: "Menu refreshed",
-      menuRefreshSuccess: "Menu has been refreshed successfully"
+      menuRefreshSuccess: "Menu has been refreshed successfully",
+      currentlyUnavailable: "Currently Unavailable"
     },
     tr: {
       restaurantNotFound: "Restoran bulunamadı",
@@ -155,7 +157,8 @@ const KioskView = () => {
       no: "Hayır",
       refreshMenu: "Menüyü yenile",
       menuRefreshed: "Menü yenilendi",
-      menuRefreshSuccess: "Menü başarıyla yenilendi"
+      menuRefreshSuccess: "Menü başarıyla yenilendi",
+      currentlyUnavailable: "Şu Anda Mevcut Değil"
     }
   };
   const t = (key: keyof typeof translations.en) => {
