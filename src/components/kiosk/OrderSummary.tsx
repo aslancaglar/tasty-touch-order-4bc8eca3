@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings } from "@/utils/receipt-templates";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -22,11 +20,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
-
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -47,7 +43,6 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: SupportedLanguage;
 }
-
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -74,7 +69,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     // Simply call onPlaceOrder and let the parent component handle the rest
     onPlaceOrder();
   };
-  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-2xl md:max-w-2xl p-0 max-h-[80vh] flex flex-col">
         {/* Fixed Header - shrink-0 ensures it doesn't shrink */}
@@ -149,7 +143,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
         </div>
         
-        <div className="p-4 bg-gray-50 shrink-0">
+        <div className="p-4 bg-gray-50 shrink-0 rounded-lg">
           <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[30px]">
             <Check className="mr-2 h-5 w-5" />
             {t("order.confirm")}
@@ -158,6 +152,4 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       </DialogContent>
     </Dialog>;
 };
-
 export default OrderSummary;
-
