@@ -3,6 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag } from "lucide-react";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { calculateCartTotals } from "@/utils/price-utils";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",

@@ -1,3 +1,4 @@
+
 import { CartItem, MenuItem } from "@/types/database-types";
 
 // Helper function to get the active price (promotion price if available, otherwise regular price)
@@ -86,7 +87,7 @@ export const calculateCartTotals = (cart: CartItem[]) => {
           toppingCategory.toppingIds.forEach(toppingId => {
             const topping = category.toppings.find(t => t.id === toppingId);
             if (topping) {
-              const toppingPrice = topping.price ? parseFloat(topping.price.toString()) * item.quantity : 0;
+              const toppingPrice = topping.price ? parseFloat(String(topping.price)) * item.quantity : 0;
               itemToppingsTotal += toppingPrice;
               
               // Use topping specific tax rate if available
