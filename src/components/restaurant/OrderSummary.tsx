@@ -11,6 +11,7 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
 const translations = {
   fr: {
@@ -59,6 +60,7 @@ interface OrderSummaryProps {
     id?: string;
     name: string;
     location?: string;
+    currency?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
@@ -83,11 +85,29 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { t } = useTranslation(uiLanguage);
   
   const { total, subtotal, tax } = calculateCartTotals(cart);
 
-  const t = (key: keyof typeof translations["en"]) =>
-    translations[uiLanguage]?.[key] ?? translations.fr[key];
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    TRY: "₺",
+    JPY: "¥",
+    CAD: "$",
+    AUD: "$",
+    CHF: "Fr.",
+    CNY: "¥",
+    RUB: "₽"
+  };
+
+  const getCurrencySymbol = (currency: string) => {
+    const code = (currency || "EUR").toUpperCase();
+    return CURRENCY_SYMBOLS[code] || code;
+  };
+
+  const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
 
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
@@ -105,6 +125,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   const handleConfirmOrder = async () => {
     onPlaceOrder();
+    
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
@@ -113,18 +134,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           .select('api_key, configured_printers, browser_printing_enabled')
           .eq('restaurant_id', restaurant.id)
           .single();
+        
         if (error) {
           console.error("Error fetching print configuration:", error);
           return;
         }
+        
         const shouldUseBrowserPrinting = 
           !isMobile && 
           (printConfig === null || printConfig.browser_printing_enabled !== false);
+        
         if (shouldUseBrowserPrinting) {
           console.log("Using browser printing for receipt");
           toast({
-            title: "Impression",
-            description: "Préparation de l'impression du reçu..."
+            title: t("order.printing"),
+            description: t("order.printingPreparation")
           });
           setTimeout(() => {
             try {
@@ -133,8 +157,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             } catch (printError) {
               console.error("Error during browser printing:", printError);
               toast({
-                title: "Erreur d'impression",
-                description: "Impossible d'imprimer le reçu. Vérifiez les paramètres de votre navigateur.",
+                title: t("order.printError"),
+                description: t("order.printErrorDesc"),
                 variant: "destructive"
               });
             }
@@ -147,11 +171,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             console.log("Browser printing disabled in restaurant settings");
           }
         }
+        
         if (printConfig?.api_key && printConfig?.configured_printers) {
           const printerArray = Array.isArray(printConfig.configured_printers) 
             ? printConfig.configured_printers 
             : [];
           const printerIds = printerArray.map(id => String(id));
+          
           if (printerIds.length > 0) {
             await sendReceiptToPrintNode(
               printConfig.api_key,
@@ -174,8 +200,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       } catch (error) {
         console.error("Error during receipt printing:", error);
         toast({
-          title: "Erreur",
-          description: "Une erreur est survenue lors de l'impression",
+          title: t("order.error"),
+          description: t("order.errorPrinting"),
           variant: "destructive"
         });
       }
@@ -277,12 +303,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <DialogTitle className="text-xl font-bold">{t("orderSummary")}</DialogTitle>
+            <DialogTitle className="text-xl font-bold">{t("order.summary")}</DialogTitle>
           </div>
         </DialogHeader>
         
         <div className="p-6">
-          <h3 className="font-bold text-lg mb-4">{t("orderedItems")}</h3>
+          <h3 className="font-bold text-lg mb-4">{t("order.items")}</h3>
           
           <div className="space-y-6 mb-6">
             {cart.map((item) => (
@@ -292,7 +318,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <span className="font-medium mr-2">{item.quantity}x</span>
                     <span className="font-medium">{item.menuItem.name}</span>
                   </div>
-                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
+                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
                 
                 {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
@@ -301,7 +327,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                     {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
                       <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
-                        <span>0.00 €</span>
+                        <span>0.00 {currencySymbol}</span>
                       </div>
                     ))}
                     {/* Grouped toppings by category, show price if > 0 */}
@@ -315,7 +341,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                           return (
                             <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
                               <span style={{ paddingLeft: 6 }}>+ {toppingObj}</span>
-                              <span>{price > 0 ? price.toFixed(2) + " €" : ""}</span>
+                              <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
                             </div>
                           )
                         })}
@@ -331,17 +357,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           
           <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
-              <span>{t("totalHT")}</span>
-              <span>{subtotal.toFixed(2)} €</span>
+              <span>{t("order.subtotal")}</span>
+              <span>{subtotal.toFixed(2)} {currencySymbol}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>{uiLanguage === "fr" ? t("vatWithRate") : t("vat")}</span>
-              <span>{tax.toFixed(2)} €</span>
+              <span>{uiLanguage === "fr" ? t("order.vatWithRate") : t("order.vat")}</span>
+              <span>{tax.toFixed(2)} {currencySymbol}</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
-              <span>{t("totalTTC")}</span>
-              <span>{total.toFixed(2)} €</span>
+              <span>{t("order.totalTTC")}</span>
+              <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
           </div>
         </div>
@@ -353,7 +379,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             disabled={placingOrder}
           >
             <Check className="mr-2 h-5 w-5" />
-            {t("confirm")}
+            {t("order.confirm")}
           </Button>
         </div>
       </DialogContent>

@@ -14,9 +14,11 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
+import OrderConfirmationPage from "@/components/kiosk/OrderConfirmationPage";
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
+
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -24,6 +26,7 @@ type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -49,6 +52,9 @@ const KioskView = () => {
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
+  const [orderTotal, setOrderTotal] = useState(0);
+  const [confirmedOrderNumber, setConfirmedOrderNumber] = useState("");
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
@@ -174,6 +180,7 @@ const KioskView = () => {
     setSpecialInstructions("");
     setOrderType(null);
     setTableNumber(null);
+    setShowOrderConfirmation(false);
     if (categories.length > 0) {
       setActiveCategory(categories[0].id);
     }
@@ -605,14 +612,17 @@ const KioskView = () => {
   };
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
+    
     try {
       setPlacingOrder(true);
+      
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
         total: calculateCartTotal(),
         customer_name: null
       });
+      
       const orderItems = await createOrderItems(cart.map(item => ({
         order_id: order.id,
         menu_item_id: item.menuItem.id,
@@ -620,11 +630,14 @@ const KioskView = () => {
         price: item.itemPrice,
         special_instructions: item.specialInstructions || null
       })));
+      
       const orderItemOptionsToCreate = [];
       const orderItemToppingsToCreate = [];
+      
       for (let i = 0; i < cart.length; i++) {
         const cartItem = cart[i];
         const orderItem = orderItems[i];
+        
         for (const selectedOption of cartItem.selectedOptions) {
           for (const choiceId of selectedOption.choiceIds) {
             orderItemOptionsToCreate.push({
@@ -634,6 +647,7 @@ const KioskView = () => {
             });
           }
         }
+        
         for (const selectedCategory of cartItem.selectedToppings) {
           for (const toppingId of selectedCategory.toppingIds) {
             orderItemToppingsToCreate.push({
@@ -643,27 +657,30 @@ const KioskView = () => {
           }
         }
       }
+      
       if (orderItemOptionsToCreate.length > 0) {
         await createOrderItemOptions(orderItemOptionsToCreate);
       }
+      
       if (orderItemToppingsToCreate.length > 0) {
         await createOrderItemToppings(orderItemToppingsToCreate);
       }
+      
+      // Set order confirmation data
       setOrderPlaced(true);
+      setOrderTotal(calculateCartTotal());
+      setConfirmedOrderNumber(order.id.toString());
+      setShowOrderConfirmation(true);
+      setIsCartOpen(false);
+      
       toast({
         title: "Commande passée",
         description: "Votre commande a été passée avec succès !"
       });
-      setTimeout(() => {
-        setOrderPlaced(false);
-        setCart([]);
-        setIsCartOpen(false);
-        setPlacingOrder(false);
-        setShowWelcome(true);
-        if (categories.length > 0) {
-          setActiveCategory(categories[0].id);
-        }
-      }, 3000);
+      
+      // Don't reset to welcome page immediately - we'll show confirmation first
+      setPlacingOrder(false);
+      
     } catch (error) {
       console.error("Erreur lors de la commande:", error);
       toast({
@@ -955,7 +972,7 @@ const KioskView = () => {
             <MenuItemGrid 
               items={categories.flatMap(c => c.items)} 
               handleSelectItem={handleSelectItem} 
-              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")} 
+              currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} 
               t={t} 
               restaurantId={restaurant?.id} 
               refreshTrigger={refreshTrigger}
@@ -975,6 +992,14 @@ const KioskView = () => {
       </div>
 
       {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
+
+      {showOrderConfirmation && <OrderConfirmationPage
+        orderNumber={confirmedOrderNumber}
+        total={orderTotal}
+        onTimerComplete={handleOrderConfirmationComplete}
+        uiLanguage={uiLanguage}
+        currency={restaurant?.currency}
+      />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
     </div>;
