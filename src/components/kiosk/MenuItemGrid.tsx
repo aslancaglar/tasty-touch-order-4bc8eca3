@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,6 @@ import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/i
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
 interface MenuItemGridProps {
   items: MenuItem[];
   handleSelectItem: (item: MenuItem) => void;
@@ -58,8 +56,7 @@ const calculatePromotionPercentage = (originalPrice: number, promotionPrice: num
   if (!originalPrice || !promotionPrice || originalPrice <= 0 || promotionPrice >= originalPrice) {
     return 0;
   }
-  
-  const reduction = ((originalPrice - promotionPrice) / originalPrice) * 100;
+  const reduction = (originalPrice - promotionPrice) / originalPrice * 100;
   return Math.round(reduction);
 };
 
@@ -88,30 +85,18 @@ const MenuItemCard = memo(({
       handleSelectItem(item);
     }
   }, [item, handleSelectItem, currentAvailabilityStatus]);
-  
   const formattedPrice = useMemo(() => {
     return parseFloat(item.price.toString()).toFixed(2);
   }, [item.price]);
-  
   const formattedPromotionPrice = useMemo(() => {
-    return item.promotion_price 
-      ? parseFloat(item.promotion_price.toString()).toFixed(2)
-      : null;
+    return item.promotion_price ? parseFloat(item.promotion_price.toString()).toFixed(2) : null;
   }, [item.promotion_price]);
-  
   const promotionPercentage = useMemo(() => {
     if (!item.promotion_price) return 0;
-    return calculatePromotionPercentage(
-      parseFloat(item.price.toString()),
-      parseFloat(item.promotion_price.toString())
-    );
+    return calculatePromotionPercentage(parseFloat(item.price.toString()), parseFloat(item.promotion_price.toString()));
   }, [item.price, item.promotion_price]);
-  
   const unavailableText = getTranslation('menuItem.unavailable', uiLanguage);
-  const hasPromotion = item.promotion_price && 
-                       parseFloat(item.promotion_price.toString()) > 0 &&
-                       parseFloat(item.promotion_price.toString()) < parseFloat(item.price.toString());
-  
+  const hasPromotion = item.promotion_price && parseFloat(item.promotion_price.toString()) > 0 && parseFloat(item.promotion_price.toString()) < parseFloat(item.price.toString());
   return <Card className={`overflow-hidden hover:shadow-md transition-shadow select-none ${currentAvailabilityStatus ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={handleItemClick}>
       <div className="h-40 bg-cover bg-center relative select-none" style={{
       backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
@@ -125,24 +110,18 @@ const MenuItemCard = memo(({
             {formatTime(item.available_from)} - {formatTime(item.available_until)}
           </div>}
           
-        {hasPromotion && promotionPercentage > 0 && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bebas text-sm">
+        {hasPromotion && promotionPercentage > 0 && <div className="absolute top-2 left-2 bg-red-500 text-white w-12 h-12 rounded-full flex items-center justify-center font-bebas text-m">
             -{promotionPercentage}%
-          </div>
-        )}
+          </div>}
       </div>
       <div className="p-4 select-none">
         <div className="flex justify-between">
           <h3 className="font-bebas text-lg tracking-wide break-words">{item.name}</h3>
           <div className="flex flex-col items-end ml-2">
-            {hasPromotion ? (
-              <>
+            {hasPromotion ? <>
                 <p className="font-bebas text-lg whitespace-nowrap text-kiosk-primary">{formattedPromotionPrice} {currencySymbol}</p>
                 <p className="font-inter text-xs text-gray-500 line-through whitespace-nowrap">{formattedPrice} {currencySymbol}</p>
-              </>
-            ) : (
-              <p className="font-bebas text-lg whitespace-nowrap">{formattedPrice} {currencySymbol}</p>
-            )}
+              </> : <p className="font-bebas text-lg whitespace-nowrap">{formattedPrice} {currencySymbol}</p>}
           </div>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
@@ -156,7 +135,6 @@ const MenuItemCard = memo(({
     </Card>;
 });
 MenuItemCard.displayName = 'MenuItemCard';
-
 const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
@@ -168,7 +146,9 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   activeCategory,
   uiLanguage
 }) => {
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<boolean>(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -237,15 +217,15 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       currentAvailability[item.id] = isItemAvailable(item);
     });
     setItemAvailability(currentAvailability);
-    
     console.log("[MenuItemGrid] Initialized availability for", items.length, "items");
   }, [items]);
 
   // Check item availability every minute and update the state
   const updateAvailability = useCallback(() => {
     let hasChanges = false;
-    
-    const newAvailability = { ...itemAvailability };
+    const newAvailability = {
+      ...itemAvailability
+    };
     items.forEach(item => {
       const newStatus = isItemAvailable(item);
       if (newAvailability[item.id] !== newStatus) {
@@ -254,7 +234,6 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
         console.log(`[MenuItemGrid] Item ${item.name} availability changed to ${newStatus ? 'available' : 'unavailable'}`);
       }
     });
-    
     if (hasChanges) {
       console.log("[MenuItemGrid] Updating availability state after time-based changes");
       setItemAvailability(newAvailability);
@@ -264,46 +243,41 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   // Setup realtime subscription for menu items changes
   const setupRealtimeSubscription = useCallback(() => {
     if (!restaurantId) return;
-    
+
     // Clean up existing subscription if any
     if (realtimeChannelRef.current) {
       supabase.removeChannel(realtimeChannelRef.current);
     }
-    
     try {
       console.log("[MenuItemGrid] Setting up realtime subscription for menu items");
-      
-      const channel = supabase
-        .channel('menu-items-changes')
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'menu_items',
-          filter: `category_id=in.(${categories.map(c => `'${c.id}'`).join(',')})`,
-        }, (payload) => {
-          console.log("[MenuItemGrid] Received realtime update for menu item:", payload);
-          
-          // Get the updated item from the payload
-          const updatedItem = payload.new as MenuItem;
-          if (!updatedItem) return;
-          
-          // Update the availability state for this specific item
-          setItemAvailability(prev => ({
-            ...prev,
-            [updatedItem.id]: isItemAvailable(updatedItem)
-          }));
-          
-          // Toast notification for debugging
-          toast({
-            title: "Menu item updated",
-            description: `${updatedItem.name} availability updated`,
-            duration: 3000,
-          });
-        })
-        .subscribe((status) => {
-          console.log("[MenuItemGrid] Realtime subscription status:", status);
+      const channel = supabase.channel('menu-items-changes').on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'menu_items',
+        filter: `category_id=in.(${categories.map(c => `'${c.id}'`).join(',')})`
+      }, payload => {
+        console.log("[MenuItemGrid] Received realtime update for menu item:", payload);
+
+        // Get the updated item from the payload
+        const updatedItem = payload.new as MenuItem;
+        if (!updatedItem) return;
+
+        // Update the availability state for this specific item
+        setItemAvailability(prev => ({
+          ...prev,
+          [updatedItem.id]: isItemAvailable(updatedItem)
+        }));
+
+        // Toast notification for debugging
+        toast({
+          title: "Menu item updated",
+          description: `${updatedItem.name} availability updated`,
+          duration: 3000
         });
-      
+      }).subscribe(status => {
+        console.log("[MenuItemGrid] Realtime subscription status:", status);
+      });
+
       // Save the channel reference for cleanup
       realtimeChannelRef.current = channel;
     } catch (error) {
@@ -396,23 +370,22 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   useEffect(() => {
     // Initial check
     updateAvailability();
-    
+
     // Calculate seconds until the next full minute
     const now = new Date();
     const secondsToNextMinute = 60 - now.getSeconds();
-    
+
     // Wait until the next full minute, then start checking every minute
     const initialTimeout = setTimeout(() => {
       updateAvailability();
-      
+
       // Start the interval at exactly the beginning of a minute
       const intervalId = setInterval(() => {
         updateAvailability();
       }, 60000); // Check every minute
-      
+
       availabilityTimerRef.current = intervalId as unknown as number;
     }, secondsToNextMinute * 1000);
-    
     return () => {
       clearTimeout(initialTimeout);
       if (availabilityTimerRef.current) {
@@ -450,7 +423,6 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       precacheImages(imageUrls).catch(err => console.error("Error pre-caching images:", err));
     }
   }, [items, refreshTrigger]);
-
   useEffect(() => {
     isMounted.current = true;
     setLoadingImages(true);
@@ -517,11 +489,9 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       imagePreloadQueue.current = [];
     };
   }, [items, refreshTrigger]);
-
   const handleImageError = useCallback((itemId: string) => {
     setFailedImages(prev => new Set([...prev, itemId]));
   }, []);
-
   return <div className="space-y-8 pb-20">
       {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20 pt-0 py-0">
           <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide pl-4">
@@ -529,16 +499,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none px-4">
             {itemsByCategory[category.id]?.map(item => <div key={item.id} data-item-id={item.id}>
-                <MenuItemCard 
-                  item={item} 
-                  handleSelectItem={handleSelectItem} 
-                  t={t} 
-                  currencySymbol={currencySymbol} 
-                  cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} 
-                  hasImageFailed={failedImages.has(item.id)} 
-                  uiLanguage={uiLanguage}
-                  currentAvailabilityStatus={itemAvailability[item.id] ?? isItemAvailable(item)} 
-                />
+                <MenuItemCard item={item} handleSelectItem={handleSelectItem} t={t} currencySymbol={currencySymbol} cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} hasImageFailed={failedImages.has(item.id)} uiLanguage={uiLanguage} currentAvailabilityStatus={itemAvailability[item.id] ?? isItemAvailable(item)} />
               </div>)}
             {itemsByCategory[category.id]?.length === 0 && <div className="col-span-3 py-8 text-center text-gray-500 font-inter">
                 No items in this category
