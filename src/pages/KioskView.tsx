@@ -18,6 +18,7 @@ import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
 import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
+
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -25,6 +26,7 @@ type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -187,6 +189,11 @@ const KioskView = () => {
     handleCancel,
     fullReset
   } = useInactivityTimer(resetToWelcome);
+  const handleConfirmationClose = () => {
+    // Reset the kiosk to the welcome page after order confirmation
+    setShowConfirmationDialog(false);
+    resetToWelcome();
+  };
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
