@@ -953,6 +953,10 @@ const KioskView = () => {
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
+  const handleOrderConfirmationComplete = () => {
+    // Reset to welcome page after confirmation is shown
+    resetToWelcome();
+  };
   return <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">

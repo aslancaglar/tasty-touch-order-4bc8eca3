@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
-import { ChefHat, CreditCard, Cash, CircleCheck } from "lucide-react";
+import { ChefHat, CreditCard, DollarSign, CircleCheck } from "lucide-react";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { motion } from "framer-motion";
 
@@ -111,7 +111,7 @@ const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({
           <h2 className="text-2xl font-bold text-blue-800 mb-2 flex items-center justify-center">
             <div className="flex space-x-2">
               <CreditCard className="h-6 w-6 mr-1" />
-              <Cash className="h-6 w-6" />
+              <DollarSign className="h-6 w-6" />
             </div>
             <span className="ml-2">{t("orderConfirmation.paymentInstructions")}</span>
           </h2>
