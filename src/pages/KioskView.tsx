@@ -665,8 +665,8 @@ const KioskView = () => {
       setShowConfirmationDialog(true);
       
       toast({
-        title: t("orderConfirmation.orderPlaced"),
-        description: t("orderConfirmation.orderSuccess")
+        title: getTranslation("orderConfirmation.orderPlaced", uiLanguage),
+        description: getTranslation("orderConfirmation.orderSuccess", uiLanguage)
       });
       
       // Don't reset immediately, let the dialog handle it
@@ -680,6 +680,12 @@ const KioskView = () => {
       setPlacingOrder(false);
     }
   };
+  
+  const handleConfirmationClose = () => {
+    setShowConfirmationDialog(false);
+    resetToWelcome();
+  };
+  
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
