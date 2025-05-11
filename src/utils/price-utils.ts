@@ -1,5 +1,13 @@
 import { CartItem } from "@/types/database-types";
 
+// Get the active price (promotion price if available, otherwise regular price)
+export const getActivePrice = (menuItem: any): number => {
+  if (menuItem.promotion_price !== null && menuItem.promotion_price !== undefined && menuItem.promotion_price > 0) {
+    return parseFloat(menuItem.promotion_price.toString());
+  }
+  return parseFloat(menuItem.price.toString());
+};
+
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
   if (percentage === null || percentage === undefined) percentage = 10;
   return totalPrice / (1 + percentage / 100);
@@ -45,7 +53,7 @@ export const calculateCartTotals = (cart: CartItem[]) => {
 
   cart.forEach(item => {
     // Base menu item price with its VAT
-    const baseItemTotal = item.quantity * (item.menuItem.price || 0);
+    const baseItemTotal = item.quantity * (item.itemPrice || 0);
     const vatPercentage = item.menuItem.tax_percentage ?? 10;
     
     let itemToppingsTotal = 0;
