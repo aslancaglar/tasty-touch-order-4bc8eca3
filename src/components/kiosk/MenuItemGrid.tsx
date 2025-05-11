@@ -110,7 +110,7 @@ const MenuItemCard = memo(({
             {formatTime(item.available_from)} - {formatTime(item.available_until)}
           </div>}
           
-        {hasPromotion && promotionPercentage > 0 && <div className="absolute top-2 left-2 bg-red-500 text-white w-12 h-12 rounded-full flex items-center justify-center font-bebas text-m">
+        {hasPromotion && promotionPercentage > 0 && <div className="absolute top-2 left-2 bg-red-500 text-white w-14 h-14 rounded-full flex items-center justify-center font-bebas text-xl">
             -{promotionPercentage}%
           </div>}
       </div>
