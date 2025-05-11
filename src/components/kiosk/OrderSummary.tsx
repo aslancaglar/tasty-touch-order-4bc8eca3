@@ -145,11 +145,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
-        const { data: printConfig, error } = await supabase
-          .from('restaurant_print_config')
-          .select('api_key, configured_printers, browser_printing_enabled')
-          .eq('restaurant_id', restaurant.id)
-          .single();
+        const {
+          data: printConfig,
+          error
+        } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
         if (error) {
           console.error("Error fetching print configuration:", error);
           return;
@@ -161,10 +160,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             title: t("order.printing"),
             description: t("order.printingPreparation")
           });
-          // Delay printing to ensure the receipt is rendered properly
           setTimeout(() => {
             try {
-              console.log("Initiating browser print for receipt-content");
               printReceipt('receipt-content');
               console.log("Print receipt triggered successfully");
             } catch (printError) {
@@ -175,7 +172,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 variant: "destructive"
               });
             }
-          }, 1000);
+          }, 500);
         } else {
           console.log("Browser printing disabled for this device or restaurant");
           if (isMobile) {
@@ -184,7 +181,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             console.log("Browser printing disabled in restaurant settings");
           }
         }
-
         if (printConfig?.api_key && printConfig?.configured_printers) {
           const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
           const printerIds = printerArray.map(id => String(id));

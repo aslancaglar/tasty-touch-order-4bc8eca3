@@ -99,152 +99,129 @@ export const printReceipt = (elementId: string) => {
     return;
   }
 
-  // Create a hidden iframe for printing to avoid conflicts with the main window
+  // Create a hidden iframe for printing
   const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = 'none';
+  iframe.style.display = 'none';
   document.body.appendChild(iframe);
   
   console.log("Created iframe for printing");
   
-  // Wait for iframe to be loaded before writing content
-  iframe.onload = () => {
-    try {
-      // Write content to iframe with print-specific styles
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) {
-        console.error("Could not access iframe document");
-        return;
+  // Setup print-specific styles for 80mm thermal printer (typically 302px wide)
+  iframe.contentDocument?.write(`
+    <html>
+      <head>
+        <title>Order Receipt</title>
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 0mm;
+          }
+          body {
+            font-family: 'Courier New', monospace;
+            width: 72mm; /* Accounting for printer margins */
+            margin: 0 auto;
+            padding: 5mm 0;
+            font-size: 12px;
+            line-height: 1.2;
+            font-weight: 600;
+          }
+          .receipt {
+            width: 100%;
+            display: block !important;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 600;
+          }
+          .logo {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 5px;
+          }
+          .divider {
+            border-top: 1px dashed #000;
+            margin: 10px 0;
+          }
+          .item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-weight: 600;
+          }
+          .item-details {
+            padding-left: 15px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+          .total-section {
+            margin-top: 10px;
+            font-weight: 600;
+          }
+          .total-line {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+          }
+          .grand-total {
+            font-weight: 700;
+            font-size: 16px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+          /* Order number style */
+          .order-number-container {
+            background-color: #000000;
+            padding: 4px 8px;
+            margin: 8px 0;
+          }
+          .order-number {
+            font-size: 24px;
+            font-weight: 900;
+            color: white;
+          }
+          @media print {
+            html, body {
+              width: 72mm;
+              background-color: white;
+              color: black;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+    </html>
+  `);
+  
+  iframe.contentDocument?.close();
+  
+  // Wait for resources to load before printing
+  const iframeWindow = iframe.contentWindow;
+  if (iframeWindow) {
+    console.log("Preparing to print...");
+    setTimeout(() => {
+      try {
+        console.log("Opening print dialog...");
+        iframeWindow.focus();
+        iframeWindow.print();
+        console.log("Print dialog opened");
+      } catch (error) {
+        console.error("Error opening print dialog:", error);
       }
       
-      iframeDoc.open();
-      iframeDoc.write(`
-        <html>
-          <head>
-            <title>Order Receipt</title>
-            <style>
-              @page {
-                size: 80mm auto;
-                margin: 0mm;
-              }
-              body {
-                font-family: 'Courier New', monospace;
-                width: 72mm; /* Accounting for printer margins */
-                margin: 0 auto;
-                padding: 5mm 0;
-                font-size: 12px;
-                line-height: 1.2;
-                font-weight: 600;
-              }
-              .receipt {
-                width: 100%;
-                display: block !important;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 20px;
-                font-weight: 600;
-              }
-              .logo {
-                font-size: 20px;
-                font-weight: 700;
-                margin-bottom: 5px;
-              }
-              .divider {
-                border-top: 1px dashed #000;
-                margin: 10px 0;
-              }
-              .item {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 4px;
-                font-weight: 600;
-              }
-              .item-details {
-                padding-left: 15px;
-                font-size: 12px;
-                font-weight: 600;
-              }
-              .total-section {
-                margin-top: 10px;
-                font-weight: 600;
-              }
-              .total-line {
-                display: flex;
-                justify-content: space-between;
-                font-weight: 600;
-              }
-              .grand-total {
-                font-weight: 700;
-                font-size: 16px;
-              }
-              .footer {
-                text-align: center;
-                margin-top: 20px;
-                font-size: 12px;
-                font-weight: 600;
-              }
-              /* Order number style */
-              .order-number-container {
-                background-color: #000000;
-                padding: 4px 8px;
-                margin: 8px 0;
-              }
-              .order-number {
-                font-size: 24px;
-                font-weight: 900;
-                color: white;
-              }
-              @media print {
-                html, body {
-                  width: 72mm;
-                  background-color: white;
-                  color: black;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            ${printContent.innerHTML}
-          </body>
-        </html>
-      `);
-      iframeDoc.close();
-      
-      console.log("Content written to iframe, preparing to print...");
-      
-      // Wait a moment for the content to render before printing
+      // Remove the iframe after printing is done or canceled
       setTimeout(() => {
-        try {
-          // Focus the iframe before printing
-          if (iframe.contentWindow) {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-            console.log("Print dialog opened successfully");
-            
-            // Remove iframe after a delay to ensure print dialog has time to open
-            setTimeout(() => {
-              document.body.removeChild(iframe);
-              console.log("Print iframe removed");
-            }, 2000);
-          } else {
-            console.error("Cannot access iframe contentWindow");
-          }
-        } catch (printErr) {
-          console.error("Error during print operation:", printErr);
-        }
+        document.body.removeChild(iframe);
+        console.log("Print iframe removed from DOM");
       }, 1000);
-    } catch (err) {
-      console.error("Error setting up print iframe:", err);
-      document.body.removeChild(iframe);
-    }
-  };
-  
-  // Trigger iframe load event
-  iframe.src = 'about:blank';
+    }, 500);
+  } else {
+    console.error("Failed to access iframe window");
+  }
 };
-
