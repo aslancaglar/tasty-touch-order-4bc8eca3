@@ -1,16 +1,16 @@
 {
   "orderType": {
     "title": "Comment souhaitez-vous commander ?",
-    "dineIn": "Sur Place",
-    "takeaway": "À Emporter"
+    "dineIn": "Sur place",
+    "takeaway": "À emporter"
   },
   "order": {
     "summary": "Résumé de la commande",
     "items": "Articles commandés",
-    "subtotal": "Total HT",
+    "subtotal": "Sous-total",
     "vatWithRate": "TVA",
     "vat": "TVA",
-    "totalTTC": "TOTAL TTC",
+    "totalTTC": "TOTAL",
     "confirm": "Confirmer la commande",
     "printing": "Impression",
     "printingPreparation": "Préparation de l'impression...",
@@ -25,14 +25,29 @@
     "subtotal": "Sous-total",
     "vat": "TVA",
     "total": "TOTAL",
-    "thanks": "Merci de votre visite!",
-    "seeYouSoon": "A bientôt!",
-    "dineIn": "Sur Place",
-    "takeaway": "À Emporter"
+    "thanks": "Merci de votre visite !",
+    "seeYouSoon": "À bientôt !",
+    "dineIn": "Sur place",
+    "takeaway": "À emporter"
+  },
+  "orderConfirmation": {
+    "success": "Votre commande a été passée !",
+    "receiptPrinted": "Un ticket a été imprimé",
+    "sentToKitchen": "et envoyé à la cuisine.",
+    "preparingMeal": "L'équipe commence à préparer votre repas.",
+    "payNow": "Veuillez payer maintenant",
+    "payDescription": "Pour finaliser votre commande, veuillez payer le montant total au personnel du restaurant au comptoir.",
+    "total": "Total :",
+    "orderNumber": "Numéro de commande :",
+    "warning": "Votre nourriture sera préparée une fois le paiement effectué.",
+    "thanks": "Merci pour votre visite",
+    "enjoyMeal": "et bon appétit !",
+    "redirectingIn": "Redirection dans {seconds} secondes...",
+    "redirectingNow": "Redirection maintenant..."
   },
   "welcome": {
     "title": "Bienvenue sur notre borne de commande",
-    "start": "TOUCHEZ POUR COMMANDER"
+    "start": "TOUCHEZ POUR COMMENCER À COMMANDER"
   },
   "cart": {
     "viewCart": "Voir le panier"

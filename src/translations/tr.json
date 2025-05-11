@@ -31,6 +31,21 @@
     "dineIn": "Masaya Servis",
     "takeaway": "Paket Servis"
   },
+  "orderConfirmation": {
+    "success": "Siparişiniz alındı!",
+    "receiptPrinted": "Bir fiş yazdırıldı",
+    "sentToKitchen": "ve mutfağa gönderildi.",
+    "preparingMeal": "Ekip yemeğinizi hazırlamaya başlıyor.",
+    "payNow": "Lütfen şimdi ödeyin",
+    "payDescription": "Siparişinizi tamamlamak için, lütfen toplam tutarı restorandaki personele ödeyiniz.",
+    "total": "Toplam:",
+    "orderNumber": "Sipariş Numarası:",
+    "warning": "Yemeğiniz ödeme tamamlandıktan sonra hazırlanacaktır.",
+    "thanks": "Ziyaretiniz için teşekkürler",
+    "enjoyMeal": "ve afiyet olsun!",
+    "redirectingIn": "{seconds} saniye içinde yönlendiriliyorsunuz...",
+    "redirectingNow": "Şimdi yönlendiriliyorsunuz..."
+  },
   "welcome": {
     "title": "Sipariş kioskumuza hoş geldiniz",
     "start": "SİPARİŞE BAŞLAMAK İÇİN DOKUNUN"

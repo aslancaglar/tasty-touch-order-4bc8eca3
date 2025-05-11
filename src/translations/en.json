@@ -31,6 +31,21 @@
     "dineIn": "Dine In",
     "takeaway": "Takeaway"
   },
+  "orderConfirmation": {
+    "success": "Your Order Has Been Placed!",
+    "receiptPrinted": "A ticket has been printed",
+    "sentToKitchen": "and sent to the kitchen.",
+    "preparingMeal": "The team is starting to prepare your meal.",
+    "payNow": "Please Pay Now",
+    "payDescription": "To finalize your order, please pay the total amount to the restaurant staff at the counter.",
+    "total": "Total:",
+    "orderNumber": "Order Number:",
+    "warning": "Your food will be prepared once the payment is completed.",
+    "thanks": "Thank you for your visit",
+    "enjoyMeal": "and enjoy your meal!",
+    "redirectingIn": "Redirecting in {seconds} seconds...",
+    "redirectingNow": "Redirecting now..."
+  },
   "welcome": {
     "title": "Welcome to our ordering kiosk",
     "start": "TOUCH TO START ORDERING"
