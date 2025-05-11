@@ -1,4 +1,3 @@
-
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -166,7 +165,12 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   // Memoized price calculation to prevent recalculation on every render
   const calculateItemPrice = useCallback(() => {
     if (!item) return 0;
-    let price = parseFloat(item.price.toString());
+    
+    // Use active price (regular or promotion)
+    let price = item.promotion_price && item.promotion_price > 0 
+      ? parseFloat(item.promotion_price.toString())
+      : parseFloat(item.price.toString());
+    
     if (item.options) {
       item.options.forEach(option => {
         const selected = selectedOptions.find(o => o.optionId === option.id);
@@ -195,12 +199,32 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
+  
   const handleQuantityDecrease = useCallback(() => {
     if (quantity > 1) onQuantityChange(quantity - 1);
   }, [quantity, onQuantityChange]);
+  
   const handleQuantityIncrease = useCallback(() => {
     onQuantityChange(quantity + 1);
   }, [quantity, onQuantityChange]);
+
+  // Check if a topping category should be required based on selection conditions
+  const isCategoryRequired = useCallback((category: any) => {
+    // If no conditions set, respect the original required flag
+    if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
+      return !!category.required;
+    }
+    
+    // If conditions exist, check if they're met
+    const conditionMet = selectedToppings.some(selection => 
+      selection.toppingIds.some(toppingId => 
+        category.show_if_selection_id?.includes(toppingId)
+      )
+    );
+    
+    // Only required if conditions are met AND it was originally required
+    return conditionMet && !!category.required;
+  }, [selectedToppings]);
 
   // Sort topping categories by display_order if they exist
   const sortedToppingCategories = item.toppingCategories ? [...item.toppingCategories].sort((a, b) => {
@@ -208,7 +232,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     const orderB = b.display_order ?? 1000;
     return orderA - orderB;
   }) : [];
+  
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
+  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
@@ -231,7 +257,10 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map((category, index) => (
             <ToppingCategory 
               key={category.id} 
-              category={category} 
+              category={{
+                ...category,
+                required: isCategoryRequired(category) // Dynamically determine if required
+              }}
               selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
               onToggleTopping={onToggleTopping} 
               t={t} 

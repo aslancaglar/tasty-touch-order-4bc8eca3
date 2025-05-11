@@ -1,3 +1,4 @@
+
 import { CartItem } from "@/types/database-types";
 
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
@@ -8,6 +9,11 @@ export const calculatePriceWithoutTax = (totalPrice: number, percentage: number 
 export const calculateTaxAmount = (totalPrice: number, percentage: number = 10): number => {
   const priceWithoutTax = calculatePriceWithoutTax(totalPrice, percentage);
   return totalPrice - priceWithoutTax;
+};
+
+// Get the active price (regular or promotion)
+export const getActivePrice = (price: number, promotionPrice: number | null): number => {
+  return (promotionPrice !== null && promotionPrice > 0) ? promotionPrice : price;
 };
 
 // Check if a menu item is available based on time constraints
@@ -38,14 +44,48 @@ export const isItemAvailable = (item: any): boolean => {
   }
 };
 
+// Check if a topping category should be required based on selected toppings
+export const shouldToppingCategoryBeRequired = (
+  category: { 
+    required?: boolean; 
+    id: string;
+    show_if_selection_id?: string[] | null;
+  }, 
+  selectedToppings: {
+    categoryId: string;
+    toppingIds: string[];
+  }[]
+): boolean => {
+  // If category has no conditions, respect its original required state
+  if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
+    return !!category.required;
+  }
+  
+  // Category has conditions - it's only required if the conditions are met
+  const conditionMet = selectedToppings.some(selection => 
+    selection.toppingIds.some(toppingId => 
+      category.show_if_selection_id?.includes(toppingId)
+    )
+  );
+  
+  // Only required if conditions are met AND it's originally marked as required
+  return conditionMet && !!category.required;
+};
+
 // Updated utility function to calculate cart totals with proper topping VAT
 export const calculateCartTotals = (cart: CartItem[]) => {
   let total = 0;
   let totalTax = 0;
 
   cart.forEach(item => {
+    // Get the active price (regular or promotion)
+    const itemPrice = getActivePrice(
+      item.menuItem.price, 
+      item.menuItem.promotion_price
+    );
+    
     // Base menu item price with its VAT
-    const baseItemTotal = item.quantity * (item.menuItem.price || 0);
+    const baseItemTotal = item.quantity * itemPrice;
     const vatPercentage = item.menuItem.tax_percentage ?? 10;
     
     let itemToppingsTotal = 0;
