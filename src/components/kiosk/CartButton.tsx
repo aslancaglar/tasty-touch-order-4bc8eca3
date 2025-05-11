@@ -29,6 +29,7 @@ interface CartButtonProps {
   onClick: () => void;
   uiLanguage?: SupportedLanguage;
   currency?: string;
+  cart?: any[];
 }
 
 const CartButton: React.FC<CartButtonProps> = ({
@@ -36,12 +37,18 @@ const CartButton: React.FC<CartButtonProps> = ({
   total,
   onClick,
   uiLanguage = "fr",
-  currency = "EUR"
+  currency = "EUR",
+  cart = []
 }) => {
   if (itemCount === 0) return null;
   
   const { t } = useTranslation(uiLanguage);
   const currencySymbol = getCurrencySymbol(currency);
+  
+  // Calculate the total correctly using calculateCartTotals if cart is provided
+  const displayTotal = cart && cart.length > 0 
+    ? calculateCartTotals(cart).total
+    : total;
   
   return (
     <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center">
@@ -52,7 +59,7 @@ const CartButton: React.FC<CartButtonProps> = ({
         <ShoppingBag className="h-12 w-12 mr-2" />
         <span className="font-bebas text-5xl">{itemCount}</span>
         <span className="mx-2">|</span>
-        <span className="font-bebas text-5xl">{total.toFixed(2)} {currencySymbol}</span>
+        <span className="font-bebas text-5xl">{displayTotal.toFixed(2)} {currencySymbol}</span>
         <span className="ml-3 font-bebas text-5xl">{t("cart.viewCart")}</span>
       </Button>
     </div>
