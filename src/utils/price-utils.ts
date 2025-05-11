@@ -1,31 +1,4 @@
-
-import { CartItem, MenuItem } from "@/types/database-types";
-
-// Helper function to get the active price (promotion price if available, otherwise regular price)
-export const getActivePrice = (item: MenuItem | { price: number; promotion_price?: number | null }): number => {
-  if (item.promotion_price !== undefined && item.promotion_price !== null && item.promotion_price > 0) {
-    return parseFloat(item.promotion_price.toString());
-  }
-  return parseFloat(item.price.toString());
-};
-
-// Helper function to check if item has a valid promotion price
-export const hasPromotionPrice = (item: MenuItem | { price: number; promotion_price?: number | null }): boolean => {
-  return item.promotion_price !== undefined && 
-         item.promotion_price !== null && 
-         item.promotion_price > 0 &&
-         item.promotion_price < parseFloat(item.price.toString());
-};
-
-// Helper function to calculate discount percentage
-export const getDiscountPercentage = (item: MenuItem | { price: number; promotion_price?: number | null }): number => {
-  if (!hasPromotionPrice(item)) return 0;
-  
-  const originalPrice = parseFloat(item.price.toString());
-  const promoPrice = parseFloat(item.promotion_price!.toString());
-  
-  return Math.round(((originalPrice - promoPrice) / originalPrice) * 100);
-};
+import { CartItem } from "@/types/database-types";
 
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
   if (percentage === null || percentage === undefined) percentage = 10;
@@ -65,15 +38,14 @@ export const isItemAvailable = (item: any): boolean => {
   }
 };
 
-// Updated utility function to calculate cart totals with proper topping VAT and promotion prices
+// Updated utility function to calculate cart totals with proper topping VAT
 export const calculateCartTotals = (cart: CartItem[]) => {
   let total = 0;
   let totalTax = 0;
 
   cart.forEach(item => {
-    // Use active price (promotion price if available) for the menu item
-    const activePrice = getActivePrice(item.menuItem);
-    const baseItemTotal = item.quantity * activePrice;
+    // Base menu item price with its VAT
+    const baseItemTotal = item.quantity * (item.menuItem.price || 0);
     const vatPercentage = item.menuItem.tax_percentage ?? 10;
     
     let itemToppingsTotal = 0;
@@ -87,7 +59,7 @@ export const calculateCartTotals = (cart: CartItem[]) => {
           toppingCategory.toppingIds.forEach(toppingId => {
             const topping = category.toppings.find(t => t.id === toppingId);
             if (topping) {
-              const toppingPrice = topping.price ? parseFloat(String(topping.price)) * item.quantity : 0;
+              const toppingPrice = topping.price ? parseFloat(topping.price.toString()) * item.quantity : 0;
               itemToppingsTotal += toppingPrice;
               
               // Use topping specific tax rate if available

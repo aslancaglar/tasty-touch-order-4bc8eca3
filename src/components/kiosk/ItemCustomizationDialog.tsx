@@ -1,11 +1,10 @@
+
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
-import { getActivePrice } from "@/utils/price-utils";
-
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
   isOpen: boolean;
@@ -167,9 +166,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   // Memoized price calculation to prevent recalculation on every render
   const calculateItemPrice = useCallback(() => {
     if (!item) return 0;
-    // Use active price (promotion price if available) instead of regular price
-    let price = getActivePrice(item);
-    
+    let price = parseFloat(item.price.toString());
     if (item.options) {
       item.options.forEach(option => {
         const selected = selectedOptions.find(o => o.optionId === option.id);
@@ -183,7 +180,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         }
       });
     }
-    
     if (item.toppingCategories) {
       item.toppingCategories.forEach(category => {
         const selected = selectedToppings.find(t => t.categoryId === category.id);
@@ -199,11 +195,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
-  
   const handleQuantityDecrease = useCallback(() => {
     if (quantity > 1) onQuantityChange(quantity - 1);
   }, [quantity, onQuantityChange]);
-  
   const handleQuantityIncrease = useCallback(() => {
     onQuantityChange(quantity + 1);
   }, [quantity, onQuantityChange]);
