@@ -30,7 +30,6 @@ import {
 import { getToppingCategoriesByRestaurantId } from "@/services/kiosk-service";
 import { ToppingCategory } from "@/types/database-types";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useToast } from "@/hooks/use-toast";
 
 // Define the form schema with Zod for validation
 const formSchema = z.object({
@@ -72,7 +71,6 @@ interface OrderedToppingCategory extends ToppingCategory {
 }
 
 const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: MenuItemFormProps) => {
-  const { toast } = useToast();
   const [imageUrl, setImageUrl] = useState<string | undefined>(initialValues?.image || undefined);
   const [toppingCategories, setToppingCategories] = useState<ToppingCategory[]>([]);
   const [selectedToppingCategories, setSelectedToppingCategories] = useState<string[]>(
@@ -225,8 +223,6 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
   };
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Submitting menu item form with values:", values);
-    
     // Sort the topping categories by their order before submitting
     const sortedToppingCategories = [...selectedToppingCategories].sort(
       (a, b) => toppingCategoryOrder[a] - toppingCategoryOrder[b]
@@ -237,16 +233,10 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       ...values,
       image: imageUrl,
       topping_categories: sortedToppingCategories,
-      // Set time fields based on availability type
+      // Set time fields to null if always available
       available_from: values.availability_type === "always" ? "" : values.available_from,
       available_until: values.availability_type === "always" ? "" : values.available_until,
     };
-    
-    console.log("Final submission values:", finalValues);
-    toast({
-      title: "Updating menu item",
-      description: `Saving changes for ${values.name}`,
-    });
     
     onSubmit(finalValues);
   };
@@ -364,7 +354,6 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
                 <RadioGroup
                   onValueChange={field.onChange}
                   defaultValue={field.value}
-                  value={field.value}
                   className="flex flex-col space-y-1"
                 >
                   <div className="flex items-center space-x-2">
