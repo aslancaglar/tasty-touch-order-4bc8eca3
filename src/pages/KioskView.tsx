@@ -475,14 +475,7 @@ const KioskView = () => {
     optionId: string;
     choiceIds: string[];
   }[], toppings: SelectedToppingCategory[]): number => {
-    // Get the effective price (regular or promotion price)
-    let price = item.promotion_price && 
-                parseFloat(item.promotion_price.toString()) > 0 && 
-                parseFloat(item.promotion_price.toString()) < parseFloat(item.price.toString()) 
-                ? parseFloat(item.promotion_price.toString()) 
-                : parseFloat(item.price.toString());
-    
-    // Add option prices
+    let price = parseFloat(item.price.toString());
     if (item.options) {
       item.options.forEach(option => {
         const selectedOption = options.find(o => o.optionId === option.id);
@@ -496,8 +489,6 @@ const KioskView = () => {
         }
       });
     }
-
-    // Add topping prices
     if (item.toppingCategories) {
       item.toppingCategories.forEach(category => {
         const selectedToppingCategory = toppings.find(t => t.categoryId === category.id);
