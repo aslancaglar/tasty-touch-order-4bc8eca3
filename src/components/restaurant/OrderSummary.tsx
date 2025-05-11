@@ -126,8 +126,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             title: "Impression",
             description: "Préparation de l'impression du reçu..."
           });
+          // Delay printing to ensure the receipt is rendered properly
           setTimeout(() => {
             try {
+              console.log("Initiating browser print for receipt-content");
               printReceipt('receipt-content');
               console.log("Print receipt triggered successfully");
             } catch (printError) {
@@ -138,7 +140,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 variant: "destructive"
               });
             }
-          }, 500);
+          }, 1000);
         } else {
           console.log("Browser printing disabled for this device or restaurant");
           if (isMobile) {
