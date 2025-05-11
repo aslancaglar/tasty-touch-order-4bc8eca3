@@ -67,18 +67,18 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
   
   return (
-    <div id="receipt-content" className="receipt">
+    <div id="receipt-content" className="receipt" style={{ display: "none" }}>
       <div className="header">
         <div className="logo">{sanitizeText(restaurant.name)}</div>
         {restaurant.location && <div>{sanitizeText(restaurant.location)}</div>}
         <div>{currentDate}</div>
         <div className="order-number-container" style={{ backgroundColor: "#000", padding: "4px 8px", marginTop: "5px", marginBottom: "5px" }}>
           <div className="order-number" style={{ color: "#fff", fontSize: "2em", fontWeight: "bold" }}>
-            {t("order")} #{orderNumber}
+            {t("receipt.order")} #{orderNumber}
           </div>
         </div>
-        {orderType === "dine-in" && <div>{t("dineIn")}</div>}
-        {orderType === "takeaway" && <div>{t("takeaway")}</div>}
+        {orderType === "dine-in" && <div>{t("receipt.dineIn")}</div>}
+        {orderType === "takeaway" && <div>{t("receipt.takeaway")}</div>}
       </div>
 
       <div className="divider"></div>
@@ -128,23 +128,23 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
 
       <div className="total-section">
         <div className="total-line">
-          <span>{t("subtotal")}</span>
+          <span>{t("receipt.subtotal")}</span>
           <span>{subtotal.toFixed(2)} {currencySymbol}</span>
         </div>
         <div className="total-line">
-          <span>{t("vat")}</span>
+          <span>{t("receipt.vat")}</span>
           <span>{tax.toFixed(2)} {currencySymbol}</span>
         </div>
         <div className="divider"></div>
         <div className="total-line grand-total">
-          <span>{t("total")}</span>
+          <span>{t("receipt.total")}</span>
           <span>{total.toFixed(2)} {currencySymbol}</span>
         </div>
       </div>
 
       <div className="footer">
-        <p>{t("thanks")}</p>
-        <p>{t("seeYouSoon")}</p>
+        <p>{t("receipt.thanks")}</p>
+        <p>{t("receipt.seeYouSoon")}</p>
       </div>
     </div>
   );

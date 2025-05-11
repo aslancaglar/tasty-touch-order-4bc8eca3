@@ -18,19 +18,7 @@
     "printError": "Yazdırma Hatası",
     "printErrorDesc": "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
     "error": "Hata",
-    "errorPrinting": "Fiş yazdırılırken bir hata oluştu.",
-    "confirmation": {
-      "title": "Siparişiniz Alındı!",
-      "receiptPrinted": "Bir fiş yazdırıldı ve mutfağa gönderildi.",
-      "preparingMeal": "Ekip yemeğinizi hazırlamaya başlıyor.",
-      "payNow": "Lütfen Şimdi Ödeme Yapın",
-      "paymentInstructions": "Siparişinizi tamamlamak için, lütfen toplam tutarı restoran personeline kasada ödeyin.",
-      "total": "Toplam",
-      "orderNumber": "Sipariş Numarası",
-      "preparationWarning": "Yemeğiniz ödeme tamamlandıktan sonra hazırlanacaktır.",
-      "thankYou": "Ziyaretiniz için teşekkür eder, afiyet olsun dileriz!",
-      "redirecting": "Yönlendiriliyor"
-    }
+    "errorPrinting": "Fiş yazdırılırken bir hata oluştu."
   },
   "receipt": {
     "order": "Sipariş",

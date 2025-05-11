@@ -15,10 +15,7 @@ const translations = {
   tr
 };
 
-/**
- * Get translation for a specific key
- * Supports both flat keys and nested dot notation (e.g., "receipt.printing")
- */
+// Get translation for a specific key
 export function getTranslation(
   key: string, 
   language: SupportedLanguage = DEFAULT_LANGUAGE
