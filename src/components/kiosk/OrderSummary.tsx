@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,6 @@ import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings } from "@/utils/receipt-templates";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -24,7 +22,6 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -45,7 +42,6 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: SupportedLanguage;
 }
-
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -54,20 +50,25 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   placingOrder,
   getFormattedOptions,
   getFormattedToppings,
-  restaurant = { name: "Restaurant" },
+  restaurant = {
+    name: "Restaurant"
+  },
   uiLanguage = "fr"
 }) => {
-  const { t } = useTranslation(uiLanguage);
-  const { total, subtotal, tax } = calculateCartTotals(cart);
+  const {
+    t
+  } = useTranslation(uiLanguage);
+  const {
+    total,
+    subtotal,
+    tax
+  } = calculateCartTotals(cart);
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
-
   const handleConfirmOrder = async () => {
     // Simply call onPlaceOrder and let the parent component handle the rest
     onPlaceOrder();
   };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-md md:max-w-lg p-0">
         <div className="p-4 border-b flex items-center space-x-2">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
@@ -80,8 +81,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <h3 className="font-bold text-lg mb-4">{t("order.items")}</h3>
           
           <div className="space-y-6 mb-6">
-            {cart.map((item) => (
-              <div key={item.id} className="space-y-2">
+            {cart.map(item => <div key={item.id} className="space-y-2">
                 <div className="flex justify-between">
                   <div className="flex items-center">
                     <span className="font-medium mr-2">{item.quantity}x</span>
@@ -90,36 +90,32 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
                 
-                {(getFormattedOptions(item) || (item.selectedToppings?.length > 0)) && (
-                  <div className="pl-6 space-y-1 text-sm text-gray-600">
+                {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && <div className="pl-6 space-y-1 text-sm text-gray-600">
                     {/* Options */}
-                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
-                      <div key={`${item.id}-option-${idx}`} className="flex justify-between">
+                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
                         <span>0.00 {currencySymbol}</span>
-                      </div>
-                    ))}
+                      </div>)}
                     {/* Grouped toppings by category, show price if > 0 */}
-                    {getGroupedToppings(item).map((group, groupIdx) => (
-                      <div key={`${item.id}-cat-summary-${groupIdx}`}>
-                        <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
+                    {getGroupedToppings(item).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                        <div style={{
+                  fontWeight: 500,
+                  paddingLeft: 0
+                }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
-                          const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                          const toppingRef = category?.toppings.find(t => t.name === toppingObj);
-                          const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                          return (
-                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                              <span style={{ paddingLeft: 6 }}>+ {toppingObj}</span>
+                  const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                  const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                  const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                  return <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                              <span style={{
+                      paddingLeft: 6
+                    }}>+ {toppingObj}</span>
                               <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                            </div>;
+                })}
+                      </div>)}
+                  </div>}
+              </div>)}
           </div>
           
           <Separator className="my-4" />
@@ -142,18 +138,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
         
         <div className="p-4 bg-gray-50">
-          <Button 
-            className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
-            onClick={handleConfirmOrder}
-            disabled={placingOrder}
-          >
+          <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[30px]">
             <Check className="mr-2 h-5 w-5" />
             {t("order.confirm")}
           </Button>
         </div>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 };
-
 export default OrderSummary;
