@@ -256,10 +256,10 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
           
           {/* Payment Section */}
           <div className="bg-blue-50 p-4 rounded-lg w-full">
-            <h3 className="text-xl font-bold text-blue-800 mb-2">
+            <h3 className="font-bold text-blue-800 mb-2 text-3xl">
               {t("orderConfirmation.payNow")}
             </h3>
-            <p>{t("orderConfirmation.paymentInstructions")}</p>
+            <p className="text-xl">{t("orderConfirmation.paymentInstructions")}</p>
             
             <div className="mt-4 space-y-2">
               <div className="flex justify-between font-semibold">
