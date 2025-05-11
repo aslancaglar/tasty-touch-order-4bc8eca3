@@ -1,6 +1,6 @@
 
 import React, { memo, useCallback } from "react";
-import { Check, Plus, Minus } from "lucide-react";
+import { Check, Plus, Minus, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -106,7 +106,13 @@ const ToppingCategory = memo(({
   } else if (toppingCount === 2) {
     gridCols = "grid-cols-2"; // 2 columns for 2 toppings
   }
-  return <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass}`}>
+
+  // Check if this category needs a warning icon (required but not enough selections)
+  const selectedToppingsCount = selectedCategory?.toppingIds.length || 0;
+  const minRequired = category.required ? (category.min_selections > 0 ? category.min_selections : 1) : 0;
+  const showWarning = category.required && selectedToppingsCount < minRequired;
+
+  return <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}>
       <div className="font-bold text-xl flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
@@ -114,6 +120,14 @@ const ToppingCategory = memo(({
           {category.max_selections > 0 ? `(${t("selectUpTo")} ${category.max_selections})` : `(${t("multipleSelection")})`}
         </span>
       </div>
+      
+      {/* Warning Icon */}
+      {showWarning && (
+        <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
+          <AlertCircle className="h-6 w-6 text-[#ea384c]" />
+        </div>
+      )}
+
       <div className={`grid ${gridCols} gap-1`}>
         {sortedToppings.map(topping => {
         const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
