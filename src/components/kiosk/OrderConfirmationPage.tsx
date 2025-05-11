@@ -42,6 +42,9 @@ const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({
   const timerDuration = 10; // seconds
   const currencySymbol = getCurrencySymbol(currency);
 
+  // Format order number to just show a simple "#123" format
+  const displayOrderNumber = `#${orderNumber}`;
+
   useEffect(() => {
     const startTime = Date.now();
     const endTime = startTime + timerDuration * 1000;
@@ -125,7 +128,7 @@ const OrderConfirmationPage: React.FC<OrderConfirmationPageProps> = ({
             </div>
             <div className="flex justify-between bg-white rounded-lg p-3 shadow-sm">
               <span className="font-medium">{t("orderConfirmation.orderNumber")}:</span>
-              <span className="font-bold">#{orderNumber}</span>
+              <span className="font-bold">{displayOrderNumber}</span>
             </div>
           </div>
           
