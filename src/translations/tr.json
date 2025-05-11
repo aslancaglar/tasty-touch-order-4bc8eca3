@@ -114,5 +114,20 @@
   },
   "menuItem": {
     "unavailable": "MEVCUT DEĞİL"
+  },
+  "orderConfirmation": {
+    "successTitle": "✅ Siparişiniz Alındı!",
+    "receiptPrinted": "Bir fiş yazdırıldı ve mutfağa gönderildi.",
+    "preparingMeal": "Ekip yemeğinizi hazırlamaya başlıyor.",
+    "pleasePayNow": "Lütfen Şimdi Ödeme Yapın",
+    "paymentInstructions": "Siparişinizi tamamlamak için, lütfen toplam tutarı restoran personeline ödeyiniz.",
+    "total": "Toplam:",
+    "orderNumber": "Sipariş Numarası:",
+    "paymentWarning": "Yemeğiniz ödeme tamamlandıktan sonra hazırlanacaktır.",
+    "thankYou": "Ziyaretiniz için teşekkür ederiz, afiyet olsun!",
+    "closing": "Bu sayfa {seconds} saniye içinde kapanacak...",
+    "continue": "Devam Et",
+    "orderPlaced": "Sipariş Verildi",
+    "orderSuccess": "Siparişiniz başarıyla alındı."
   }
 }
