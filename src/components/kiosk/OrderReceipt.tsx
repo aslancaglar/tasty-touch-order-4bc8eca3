@@ -2,7 +2,7 @@
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
-import { calculateCartTotals } from "@/utils/price-utils";
+import { calculateCartTotals, hasPromotionPrice, getActivePrice } from "@/utils/price-utils";
 import { getGroupedToppings } from "@/utils/receipt-templates";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
@@ -84,44 +84,49 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
       <div className="divider"></div>
 
       <div>
-        {cart.map((item, index) => (
-          <div key={item.id} style={{ marginBottom: "8px" }}>
-            <div className="item">
-              <span>{item.quantity}x {sanitizeText(item.menuItem.name)}</span>
-              <span>{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
+        {cart.map((item, index) => {
+          const hasPromo = hasPromotionPrice(item.menuItem);
+          const activePrice = getActivePrice(item.menuItem);
+          
+          return (
+            <div key={item.id} style={{ marginBottom: "8px" }}>
+              <div className="item">
+                <span>{item.quantity}x {sanitizeText(item.menuItem.name)}</span>
+                <span>{activePrice.toFixed(2)} {currencySymbol}</span>
+              </div>
+              {getFormattedOptions(item) && (
+                <div className="item-details text-xs">
+                  {/* Options */}
+                  {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
+                    <div key={`${item.id}-option-${idx}`} className="item">
+                      <span>+ {sanitizeText(option)}</span>
+                      <span></span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Add toppings without category headers and tax info */}
+              {item.selectedToppings && item.selectedToppings.length > 0 && (
+                <div className="item-details text-xs">
+                  {getGroupedToppings(item).flatMap((group) => 
+                    group.toppings.map((topping, toppingIdx) => {
+                      const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                      const toppingObj = category?.toppings.find(t => t.name === topping);
+                      const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
+                      
+                      return (
+                        <div key={`${item.id}-topping-${toppingIdx}`} className="item">
+                          <span>+ {sanitizeText(topping)}</span>
+                          {price > 0 && <span>{price.toFixed(2)} {currencySymbol}</span>}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
-            {getFormattedOptions(item) && (
-              <div className="item-details text-xs">
-                {/* Options */}
-                {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
-                  <div key={`${item.id}-option-${idx}`} className="item">
-                    <span>+ {sanitizeText(option)}</span>
-                    <span></span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* Add toppings without category headers and tax info */}
-            {item.selectedToppings && item.selectedToppings.length > 0 && (
-              <div className="item-details text-xs">
-                {getGroupedToppings(item).flatMap((group) => 
-                  group.toppings.map((topping, toppingIdx) => {
-                    const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                    const toppingObj = category?.toppings.find(t => t.name === topping);
-                    const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
-                    
-                    return (
-                      <div key={`${item.id}-topping-${toppingIdx}`} className="item">
-                        <span>+ {sanitizeText(topping)}</span>
-                        {price > 0 && <span>{price.toFixed(2)} {currencySymbol}</span>}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="divider"></div>
