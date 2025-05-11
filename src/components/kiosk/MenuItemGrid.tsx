@@ -119,7 +119,7 @@ const MenuItemCard = memo(({
           <h3 className="font-bebas text-lg tracking-wide break-words">{item.name}</h3>
           <div className="flex flex-col items-end ml-2">
             {hasPromotion ? <>
-                <p className="font-bebas text-lg whitespace-nowrap text-kiosk-primary">{formattedPromotionPrice} {currencySymbol}</p>
+                <p className="font-bebas text-lg whitespace-nowrap text-black">{formattedPromotionPrice} {currencySymbol}</p>
                 <p className="font-inter text-xs text-gray-500 line-through whitespace-nowrap">{formattedPrice} {currencySymbol}</p>
               </> : <p className="font-bebas text-lg whitespace-nowrap">{formattedPrice} {currencySymbol}</p>}
           </div>
