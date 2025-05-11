@@ -1,4 +1,3 @@
-
 import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -30,13 +29,17 @@ interface ItemCustomizationDialogProps {
 }
 
 // Define alternating background colors for topping categories
-const CATEGORY_BACKGROUNDS = [
-  "bg-[#F2FCE2]", // Soft Green
-  "bg-[#E5DEFF]", // Soft Purple
-  "bg-[#FEF7CD]", // Soft Yellow
-  "bg-[#D3E4FD]", // Soft Blue
-  "bg-[#FFDEE2]", // Soft Pink
-  "bg-[#FDE1D3]", // Soft Peach
+const CATEGORY_BACKGROUNDS = ["bg-[#F2FCE2]",
+// Soft Green
+"bg-[#E5DEFF]",
+// Soft Purple
+"bg-[#FEF7CD]",
+// Soft Yellow
+"bg-[#D3E4FD]",
+// Soft Blue
+"bg-[#FFDEE2]",
+// Soft Pink
+"bg-[#FDE1D3]" // Soft Peach
 ];
 
 // Memoize the Option component to prevent unnecessary re-renders
@@ -81,7 +84,7 @@ const ToppingCategory = memo(({
   onToggleTopping,
   t,
   currencySymbol,
-  bgColorClass,
+  bgColorClass
 }: {
   category: any;
   selectedCategory: any;
@@ -109,9 +112,8 @@ const ToppingCategory = memo(({
 
   // Check if this category needs a warning icon (required but not enough selections)
   const selectedToppingsCount = selectedCategory?.toppingIds.length || 0;
-  const minRequired = category.required ? (category.min_selections > 0 ? category.min_selections : 1) : 0;
+  const minRequired = category.required ? category.min_selections > 0 ? category.min_selections : 1 : 0;
   const showWarning = category.required && selectedToppingsCount < minRequired;
-
   return <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}>
       <div className="font-bold text-xl flex items-center">
         {category.name}
@@ -122,11 +124,9 @@ const ToppingCategory = memo(({
       </div>
       
       {/* Warning Icon */}
-      {showWarning && (
-        <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
+      {showWarning && <div className="absolute top-0 right-4 bg-white rounded-full p-1 shadow-md py-[6px] px-[6px]">
           <AlertCircle className="h-6 w-6 text-[#ea384c]" />
-        </div>
-      )}
+        </div>}
 
       <div className={`grid ${gridCols} gap-1`}>
         {sortedToppings.map(topping => {
@@ -242,17 +242,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
             </div>)}
 
           {/* Toppings section - only show if there are toppings, using sorted categories */}
-          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map((category, index) => (
-            <ToppingCategory 
-              key={category.id} 
-              category={category} 
-              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
-              onToggleTopping={onToggleTopping} 
-              t={t} 
-              currencySymbol={currencySymbol}
-              bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
-            />
-          ))}
+          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map((category, index) => <ToppingCategory key={category.id} category={category} selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} onToggleTopping={onToggleTopping} t={t} currencySymbol={currencySymbol} bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]} />)}
         </div>
         
         <DialogFooter className="mt-3 pt-2">
