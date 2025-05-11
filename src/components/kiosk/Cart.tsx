@@ -179,7 +179,7 @@ const Cart: React.FC<CartProps> = ({
                       <div className="flex items-start space-x-3">
                         <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
                         <div className="flex flex-col">
-                          <h3 className="text-responsive-body font-bold">{item.menuItem.name}</h3>
+                          <h3 className="text-responsive-body font-bold font-bebas text-lg">{item.menuItem.name}</h3>
                           <p className="text-responsive-price text-gray-700">
                             {parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}
                           </p>
