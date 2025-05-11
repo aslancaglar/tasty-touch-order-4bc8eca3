@@ -50,8 +50,9 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     
-    // Reset the countdown when dialog opens
+    // Reset the countdown and print status when dialog opens
     setCountdown(10);
+    setPrinted(false);
     
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -67,16 +68,18 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     return () => clearInterval(timer);
   }, [isOpen, onClose]);
 
-  // Handle receipt printing
+  // Handle receipt printing - only print once when the dialog is opened
   useEffect(() => {
+    // Only attempt to print if the dialog is open and we haven't printed yet
     if (isOpen && !isPrinted) {
       // Small delay to ensure DOM is ready
       const printTimer = setTimeout(() => {
+        console.log("Printing receipt once");
         printReceipt("receipt-content");
         setPrinted(true);
       }, 500);
       
-      return () => clearInterval(printTimer);
+      return () => clearTimeout(printTimer);
     }
   }, [isOpen, isPrinted]);
 
@@ -144,16 +147,18 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       </Dialog>
 
       {/* Hidden receipt content for printing */}
-      <OrderReceipt
-        restaurant={restaurant || { name: "" }}
-        cart={cart}
-        orderNumber={orderNumber}
-        tableNumber={tableNumber}
-        orderType={orderType}
-        getFormattedOptions={getFormattedOptions}
-        getFormattedToppings={getFormattedToppings}
-        uiLanguage={uiLanguage}
-      />
+      <div id="receipt-content" style={{ display: "none" }}>
+        <OrderReceipt
+          restaurant={restaurant || { name: "" }}
+          cart={cart}
+          orderNumber={orderNumber}
+          tableNumber={tableNumber}
+          orderType={orderType}
+          getFormattedOptions={getFormattedOptions}
+          getFormattedToppings={getFormattedToppings}
+          uiLanguage={uiLanguage}
+        />
+      </div>
     </>
   );
 };

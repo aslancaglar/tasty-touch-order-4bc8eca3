@@ -67,7 +67,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
   
   return (
-    <div id="receipt-content" className="receipt" style={{ display: "none" }}>
+    <div className="receipt">
       <div className="header">
         <div className="logo">{sanitizeText(restaurant.name)}</div>
         {restaurant.location && <div>{sanitizeText(restaurant.location)}</div>}
@@ -85,7 +85,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
 
       <div>
         {cart.map((item, index) => (
-          <div key={item.id} style={{ marginBottom: "8px" }}>
+          <div key={`item-${item.id}`} style={{ marginBottom: "8px" }}>
             <div className="item">
               <span>{item.quantity}x {sanitizeText(item.menuItem.name)}</span>
               <span>{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
@@ -94,7 +94,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
               <div className="item-details text-xs">
                 {/* Options */}
                 {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
-                  <div key={`${item.id}-option-${idx}`} className="item">
+                  <div key={`option-${item.id}-${idx}`} className="item">
                     <span>+ {sanitizeText(option)}</span>
                     <span></span>
                   </div>
@@ -104,14 +104,14 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
             {/* Add toppings without category headers and tax info */}
             {item.selectedToppings && item.selectedToppings.length > 0 && (
               <div className="item-details text-xs">
-                {getGroupedToppings(item).flatMap((group) => 
+                {getGroupedToppings(item).flatMap((group, groupIdx) => 
                   group.toppings.map((topping, toppingIdx) => {
                     const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
                     const toppingObj = category?.toppings.find(t => t.name === topping);
                     const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
                     
                     return (
-                      <div key={`${item.id}-topping-${toppingIdx}`} className="item">
+                      <div key={`topping-${item.id}-${groupIdx}-${toppingIdx}`} className="item">
                         <span>+ {sanitizeText(topping)}</span>
                         {price > 0 && <span>{price.toFixed(2)} {currencySymbol}</span>}
                       </div>

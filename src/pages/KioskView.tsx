@@ -655,10 +655,12 @@ const KioskView = () => {
         await createOrderItemToppings(orderItemToppingsToCreate);
       }
       
-      // Extract order number
-      const orderIdParts = order.id.split('-');
-      const generatedOrderNumber = orderIdParts[0];
-      setOrderNumber(generatedOrderNumber);
+      // Use a simple numeric order number format (like dashboard)
+      // Extract numeric part from the order id or create a new one
+      // This simulates what would happen with an auto-incrementing database field
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      const simpleOrderNumber = currentTimestamp % 10000; // Keep it at most 4 digits
+      setOrderNumber(simpleOrderNumber.toString());
       
       setOrderPlaced(true);
       setIsCartOpen(false);
