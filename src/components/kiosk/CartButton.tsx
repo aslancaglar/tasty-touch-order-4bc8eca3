@@ -44,7 +44,8 @@ const CartButton: React.FC<CartButtonProps> = ({
   const { t } = useTranslation(uiLanguage);
   const currencySymbol = getCurrencySymbol(currency);
   
-  const hasDiscount = originalTotal && originalTotal > total;
+  // Only show discount if originalTotal is provided and greater than the promotional total
+  const hasDiscount = originalTotal !== undefined && originalTotal > total;
   
   return <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center">
       <Button onClick={onClick} className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl font-bebas tracking-wide py-[50px] px-[102px]">
@@ -54,7 +55,7 @@ const CartButton: React.FC<CartButtonProps> = ({
         <div className="flex flex-col items-center">
           <span className="font-bebas text-5xl">{total.toFixed(2)} {currencySymbol}</span>
           {hasDiscount && (
-            <span className="line-through text-gray-300 text-2xl">{originalTotal.toFixed(2)} {currencySymbol}</span>
+            <span className="line-through text-gray-300 text-2xl">{originalTotal?.toFixed(2)} {currencySymbol}</span>
           )}
         </div>
         <span className="ml-3 font-bebas text-5xl">{t("cart.viewCart")}</span>

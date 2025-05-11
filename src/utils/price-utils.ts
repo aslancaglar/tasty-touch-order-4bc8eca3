@@ -9,6 +9,28 @@ export const getActivePrice = (menuItem: any): number => {
   return parseFloat(menuItem.price.toString());
 };
 
+// Get the original price regardless of promotion
+export const getOriginalPrice = (menuItem: any): number => {
+  return parseFloat(menuItem.price?.toString() || "0");
+};
+
+// Check if an item has a valid promotion price
+export const hasPromotionPrice = (menuItem: any): boolean => {
+  return menuItem.promotion_price !== null && 
+         menuItem.promotion_price !== undefined && 
+         parseFloat(menuItem.promotion_price.toString()) > 0;
+};
+
+// Calculate the discount percentage if a promotion is active
+export const getDiscountPercentage = (menuItem: any): number => {
+  if (hasPromotionPrice(menuItem)) {
+    const originalPrice = getOriginalPrice(menuItem);
+    const promotionPrice = parseFloat(menuItem.promotion_price.toString());
+    return Math.round((1 - promotionPrice / originalPrice) * 100);
+  }
+  return 0;
+};
+
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
   if (percentage === null || percentage === undefined) percentage = 10;
   return totalPrice / (1 + percentage / 100);
@@ -51,11 +73,18 @@ export const isItemAvailable = (item: any): boolean => {
 export const calculateCartTotals = (cart: CartItem[]) => {
   let total = 0;
   let totalTax = 0;
+  let originalTotal = 0;
+  let originalTax = 0;
 
   cart.forEach(item => {
     // Base menu item price with its VAT
     const baseItemTotal = item.quantity * (item.itemPrice || 0);
     const vatPercentage = item.menuItem.tax_percentage ?? 10;
+    
+    // Calculate original price if promotion exists
+    const originalItemPrice = hasPromotionPrice(item.menuItem) ? 
+      getOriginalPrice(item.menuItem) : item.itemPrice || 0;
+    const originalItemTotal = item.quantity * originalItemPrice;
     
     let itemToppingsTotal = 0;
     let itemToppingsTax = 0;
@@ -82,17 +111,26 @@ export const calculateCartTotals = (cart: CartItem[]) => {
     
     // Calculate base item tax
     const baseItemTax = calculateTaxAmount(baseItemTotal, vatPercentage);
+    const originalItemTax = calculateTaxAmount(originalItemTotal, vatPercentage);
     
     // Add to totals
     total += baseItemTotal + itemToppingsTotal;
     totalTax += baseItemTax + itemToppingsTax;
+    
+    // Add to original totals
+    originalTotal += originalItemTotal + itemToppingsTotal;
+    originalTax += originalItemTax + itemToppingsTax;
   });
 
   const subtotal = total - totalTax;
+  const originalSubtotal = originalTotal - originalTax;
 
   return {
     total,
     subtotal,
-    tax: totalTax
+    tax: totalTax,
+    originalTotal,
+    originalSubtotal,
+    originalTax
   };
 };
