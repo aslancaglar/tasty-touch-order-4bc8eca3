@@ -114,20 +114,5 @@
   },
   "menuItem": {
     "unavailable": "CURRENTLY UNAVAILABLE"
-  },
-  "orderConfirmation": {
-    "successTitle": "✅ Your Order Has Been Placed!",
-    "receiptPrinted": "A ticket has been printed and sent to the kitchen.",
-    "preparingMeal": "The team is starting to prepare your meal.",
-    "pleasePayNow": "Please Pay Now",
-    "paymentInstructions": "To finalize your order, please pay the total amount to the restaurant staff at the counter.",
-    "total": "Total:",
-    "orderNumber": "Order Number:",
-    "paymentWarning": "Your food will be prepared once the payment is completed.",
-    "thankYou": "Thank you for your visit and enjoy your meal!",
-    "closing": "This page will close in {seconds} seconds...",
-    "continue": "Continue",
-    "orderPlaced": "Order Placed",
-    "orderSuccess": "Your order has been successfully placed."
   }
 }

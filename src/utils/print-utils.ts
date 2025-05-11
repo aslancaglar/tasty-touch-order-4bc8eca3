@@ -82,24 +82,11 @@ export const addLineFeed = (count: number = 1): string => {
   return ESCPOS.LINE_FEED.repeat(count);
 };
 
-// Track the last printed element to prevent duplicate printing
-let lastPrintedId: string | null = null;
-let lastPrintTime: number = 0;
-const PRINT_COOLDOWN = 2000; // 2 seconds cooldown between prints
-
 /**
  * Prints the content of a specified element for a thermal printer
  * @param elementId The ID of the element to print
  */
 export const printReceipt = (elementId: string) => {
-  const now = Date.now();
-  
-  // Prevent duplicate printing of the same element in a short time period
-  if (elementId === lastPrintedId && now - lastPrintTime < PRINT_COOLDOWN) {
-    console.log(`Skipping duplicate print of ${elementId}, last printed ${now - lastPrintTime}ms ago`);
-    return;
-  }
-  
   console.log(`Attempting to print element with ID: ${elementId}`, {
     userAgent: navigator.userAgent,
     screen: { width: window.innerWidth, height: window.innerHeight },
@@ -223,11 +210,6 @@ export const printReceipt = (elementId: string) => {
         console.log("Opening print dialog...");
         iframeWindow.focus();
         iframeWindow.print();
-        
-        // Update tracking variables
-        lastPrintedId = elementId;
-        lastPrintTime = Date.now();
-        
         console.log("Print dialog opened");
       } catch (error) {
         console.error("Error opening print dialog:", error);
