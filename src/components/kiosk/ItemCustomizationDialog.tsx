@@ -124,7 +124,7 @@ const ToppingCategory = memo(({
       </div>
       
       {/* Warning Icon */}
-      {showWarning && <div className="absolute top-0 right-4 bg-white rounded-full p-1 shadow-md py-[6px] px-[6px]">
+      {showWarning && <div className="absolute top--4 right-4 rounded-full p-1 shadow-md py-[6px] px-[6px] bg-red-200">
           <AlertCircle className="h-8 w-8 text-[#ea384c]" />
         </div>}
 
