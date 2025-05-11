@@ -17,6 +17,7 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
+import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -55,6 +56,8 @@ const KioskView = () => {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
+  const [orderNumber, setOrderNumber] = useState('0'); // Add order number state
   const cartRef = useRef<HTMLDivElement | null>(null);
   const {
     toast
@@ -607,12 +610,23 @@ const KioskView = () => {
     if (!restaurant || cart.length === 0) return;
     try {
       setPlacingOrder(true);
+      
+      // Get the next order number
+      const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('restaurant_id', restaurant.id);
+      
+      const nextOrderNumber = ((count || 0) + 1).toString();
+      setOrderNumber(nextOrderNumber);
+      
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
         total: calculateCartTotal(),
         customer_name: null
       });
+      
       const orderItems = await createOrderItems(cart.map(item => ({
         order_id: order.id,
         menu_item_id: item.menuItem.id,
@@ -654,7 +668,14 @@ const KioskView = () => {
         title: "Commande passée",
         description: "Votre commande a été passée avec succès !"
       });
+
+      // Show order confirmation dialog before resetting
+      setIsCartOpen(false);
+      setShowOrderConfirmation(true);
+      
+      // Set a timeout to reset after 10 seconds
       setTimeout(() => {
+        setShowOrderConfirmation(false);
         setOrderPlaced(false);
         setCart([]);
         setIsCartOpen(false);
@@ -663,7 +684,7 @@ const KioskView = () => {
         if (categories.length > 0) {
           setActiveCategory(categories[0].id);
         }
-      }, 3000);
+      }, 10000);
     } catch (error) {
       console.error("Erreur lors de la commande:", error);
       toast({
@@ -977,6 +998,16 @@ const KioskView = () => {
       {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+
+      {/* Order confirmation dialog */}
+      <OrderConfirmationDialog
+        isOpen={showOrderConfirmation}
+        orderNumber={orderNumber}
+        total={calculateCartTotal()}
+        restaurant={restaurant}
+        uiLanguage={uiLanguage}
+        currency={restaurant?.currency || "EUR"}
+      />
     </div>;
 };
 
