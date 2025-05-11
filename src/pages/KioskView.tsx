@@ -112,14 +112,12 @@ const KioskView = () => {
       refreshMenu: "Rafraîchir le menu",
       menuRefreshed: "Menu rafraîchi",
       menuRefreshSuccess: "Le menu a été rafraîchi avec succès",
-      receipt: {
-        printing: "Impression",
-        printingPreparation: "Préparation de l'impression...",
-        printError: "Erreur d'impression",
-        printErrorDesc: "Impossible d'imprimer le reçu. Veuillez réessayer.",
-        error: "Erreur",
-        errorPrinting: "Une erreur s'est produite lors de l'impression du reçu."
-      }
+      printingStatus: "Impression",
+      printingPreparation: "Préparation de l'impression...",
+      printError: "Erreur d'impression",
+      printErrorDesc: "Impossible d'imprimer le reçu. Veuillez réessayer.",
+      printingError: "Erreur",
+      printingErrorDesc: "Une erreur s'est produite lors de l'impression du reçu."
     },
     en: {
       restaurantNotFound: "Restaurant not found",
@@ -147,14 +145,12 @@ const KioskView = () => {
       refreshMenu: "Refresh menu",
       menuRefreshed: "Menu refreshed",
       menuRefreshSuccess: "Menu has been refreshed successfully",
-      receipt: {
-        printing: "Printing",
-        printingPreparation: "Preparing to print...",
-        printError: "Print Error",
-        printErrorDesc: "Unable to print receipt. Please try again.",
-        error: "Error",
-        errorPrinting: "An error occurred while printing the receipt."
-      }
+      printingStatus: "Printing",
+      printingPreparation: "Preparing to print...",
+      printError: "Print Error",
+      printErrorDesc: "Unable to print receipt. Please try again.",
+      printingError: "Error",
+      printingErrorDesc: "An error occurred while printing the receipt."
     },
     tr: {
       restaurantNotFound: "Restoran bulunamadı",
@@ -182,14 +178,12 @@ const KioskView = () => {
       refreshMenu: "Menüyü yenile",
       menuRefreshed: "Menü yenilendi",
       menuRefreshSuccess: "Menü başarıyla yenilendi",
-      receipt: {
-        printing: "Yazdırılıyor",
-        printingPreparation: "Yazdırma hazırlanıyor...",
-        printError: "Yazdırma Hatası",
-        printErrorDesc: "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
-        error: "Hata",
-        errorPrinting: "Fiş yazdırılırken bir hata oluştu."
-      }
+      printingStatus: "Yazdırılıyor",
+      printingPreparation: "Yazdırma hazırlanıyor...",
+      printError: "Yazdırma Hatası",
+      printErrorDesc: "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
+      printingError: "Hata",
+      printingErrorDesc: "Fiş yazdırılırken bir hata oluştu."
     }
   };
   const t = (key: keyof typeof translations.en) => {
@@ -721,8 +715,8 @@ const KioskView = () => {
             if (shouldUseBrowserPrinting) {
               console.log("Using browser printing for receipt");
               toast({
-                title: t("receipt.printing"),
-                description: t("receipt.printingPreparation")
+                title: t("printingStatus"),
+                description: t("printingPreparation")
               });
               
               setTimeout(() => {
@@ -732,8 +726,8 @@ const KioskView = () => {
                 } catch (printError) {
                   console.error("Error during browser printing:", printError);
                   toast({
-                    title: t("receipt.printError"),
-                    description: t("receipt.printErrorDesc"),
+                    title: t("printError"),
+                    description: t("printErrorDesc"),
                     variant: "destructive"
                   });
                 }
@@ -776,8 +770,8 @@ const KioskView = () => {
         } catch (error) {
           console.error("Error during receipt printing:", error);
           toast({
-            title: t("receipt.error"),
-            description: t("receipt.errorPrinting"),
+            title: t("printingError"),
+            description: t("printingErrorDesc"),
             variant: "destructive"
           });
         }
