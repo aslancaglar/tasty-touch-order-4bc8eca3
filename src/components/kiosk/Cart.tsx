@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Check, ArrowRight, Loader2, Plus, Minus, X, Tag } from "lucide-react";
+import { Check, ArrowRight, Loader2, Plus, Minus, X } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import { calculateCartTotals, hasPromotionPrice, getActivePrice, getDiscountPercentage } from "@/utils/price-utils";
-
+import { calculateCartTotals } from "@/utils/price-utils";
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
@@ -33,7 +32,6 @@ interface CartProps {
   uiLanguage?: "fr" | "en" | "tr";
   t: (key: string) => string;
 }
-
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -46,11 +44,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
-
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 const cartTranslations = {
   fr: {
     yourOrder: "VOTRE COMMANDE",
@@ -86,7 +82,6 @@ const cartTranslations = {
     empty: "Ürün yok"
   }
 };
-
 const Cart: React.FC<CartProps> = ({
   cart,
   isOpen,
@@ -122,7 +117,6 @@ const Cart: React.FC<CartProps> = ({
       return t(key);
     }
   };
-  
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && !showOrderSummary && cartRef.current && !cartRef.current.contains(event.target as Node)) {
@@ -134,38 +128,26 @@ const Cart: React.FC<CartProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onToggleOpen, showOrderSummary]);
-  
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
   };
-  
   const handleCloseOrderSummary = () => {
     setShowOrderSummary(false);
   };
-  
   const handlePlaceOrder = () => {
     onPlaceOrder();
     setShowOrderSummary(false);
   };
-  
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
-  
-  // Use the updated calculateCartTotals which includes original pricing
   const {
     total,
     subtotal,
-    tax,
-    originalTotal,
-    originalSubtotal,
-    originalTax
+    tax
   } = calculateCartTotals(cart);
-  
-  const showOriginalPrices = originalTotal > total;
   const reversedCart = [...cart].reverse();
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
-  
   return <>
       <div ref={cartRef} style={{
       maxHeight: "60vh"
@@ -188,52 +170,33 @@ const Cart: React.FC<CartProps> = ({
             containScroll: "trimSnaps"
           }} className="w-full">
               <CarouselContent className="-ml-2">
-                {reversedCart.length === 0 ? <div className="p-4 text-gray-400 text-center text-responsive-body">{tCart("empty")}</div> : reversedCart.map(item => {
-                  const isPromoted = hasPromotionPrice(item.menuItem);
-                  const discountPercentage = isPromoted ? getDiscountPercentage(item.menuItem) : 0;
-                  
-                  return (
-                    <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
-                      <div className="border border-violet-500 rounded-lg p-3 relative bg-[kiosk-base-100] bg-violet-100">
-                        <Button variant="ghost" size="icon" className="absolute right-1 top-1 text-red-500 h-7 w-7" onClick={() => onRemoveItem(item.id)}>
-                          <X className="h-5 w-5" />
-                        </Button>
-                        
-                        <div className="flex items-start space-x-3">
-                          <div className="relative">
-                            <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
-                            {isPromoted && (
-                              <div className="absolute top-0 right-0 bg-red-600 text-white text-xs p-1 rounded-bl rounded-tr">
-                                <span>-{discountPercentage}%</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex flex-col">
-                            <h3 className="text-responsive-body font-bold">{item.menuItem.name}</h3>
-                            <p className="text-responsive-price text-gray-700">
-                              {isPromoted && (
-                                <span className="line-through text-gray-400 mr-1">
-                                  {parseFloat(item.menuItem.price.toString()).toFixed(2)} {currencySymbol}
-                                </span>
-                              )}
-                              {parseFloat(getActivePrice(item.menuItem).toString()).toFixed(2)} {currencySymbol}
-                            </p>
-                            
-                            <div className="flex items-center mt-2">
-                              <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="h-8 w-8 rounded-full p-0 bg-violet-700 hover:bg-violet-700 text-white font-bold">
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="w-8 text-center text-responsive-body font-medium">{item.quantity}</span>
-                              <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="h-8 w-8 rounded-full p-0 bg-violet-800 hover:bg-violet-700 text-white">
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
+                {reversedCart.length === 0 ? <div className="p-4 text-gray-400 text-center text-responsive-body">{tCart("empty")}</div> : reversedCart.map(item => <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
+                    <div className="border border-violet-500 rounded-lg p-3 relative bg-[kiosk-base-100] bg-violet-100">
+                      <Button variant="ghost" size="icon" className="absolute right-1 top-1 text-red-500 h-7 w-7" onClick={() => onRemoveItem(item.id)}>
+                        <X className="h-5 w-5" />
+                      </Button>
+                      
+                      <div className="flex items-start space-x-3">
+                        <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
+                        <div className="flex flex-col">
+                          <h3 className="text-responsive-body font-bold">{item.menuItem.name}</h3>
+                          <p className="text-responsive-price text-gray-700">
+                            {parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}
+                          </p>
+                          
+                          <div className="flex items-center mt-2">
+                            <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="h-8 w-8 rounded-full p-0 bg-violet-700 hover:bg-violet-700 text-white font-bold">
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-8 text-center text-responsive-body font-medium">{item.quantity}</span>
+                            <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="h-8 w-8 rounded-full p-0 bg-violet-800 hover:bg-violet-700 text-white">
+                              <Plus className="h-3 w-3" />
+                            </Button>
                           </div>
                         </div>
                       </div>
-                    </CarouselItem>
-                  );
-                })}
+                    </div>
+                  </CarouselItem>)}
               </CarouselContent>
             </Carousel>
           </ScrollArea>
@@ -242,31 +205,16 @@ const Cart: React.FC<CartProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-responsive-body text-gray-600">{tCart("totalHT")}</span>
-                <div className="flex flex-col items-end">
-                  {showOriginalPrices && (
-                    <span className="text-responsive-body text-gray-400 line-through">{originalSubtotal.toFixed(2)} {currencySymbol}</span>
-                  )}
-                  <span className="text-responsive-body font-medium">{subtotal.toFixed(2)} {currencySymbol}</span>
-                </div>
+                <span className="text-responsive-body font-medium">{subtotal.toFixed(2)} {currencySymbol}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-responsive-body text-gray-600">{tCart("vat")}</span>
-                <div className="flex flex-col items-end">
-                  {showOriginalPrices && (
-                    <span className="text-responsive-body text-gray-400 line-through">{originalTax.toFixed(2)} {currencySymbol}</span>
-                  )}
-                  <span className="text-responsive-body font-medium">{tax.toFixed(2)} {currencySymbol}</span>
-                </div>
+                <span className="text-responsive-body font-medium">{tax.toFixed(2)} {currencySymbol}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between text-responsive-subtitle font-bold">
                 <span>{tCart("totalTTC")}</span>
-                <div className="flex flex-col items-end">
-                  {showOriginalPrices && (
-                    <span className="text-responsive-body text-gray-500 line-through">{originalTotal.toFixed(2)} {currencySymbol}</span>
-                  )}
-                  <span>{total.toFixed(2)} {currencySymbol}</span>
-                </div>
+                <span>{total.toFixed(2)} {currencySymbol}</span>
               </div>
             </div>
 
@@ -285,22 +233,7 @@ const Cart: React.FC<CartProps> = ({
         </div>
       </div>
 
-      <OrderSummary 
-        isOpen={showOrderSummary} 
-        onClose={handleCloseOrderSummary} 
-        cart={cart} 
-        onPlaceOrder={handlePlaceOrder} 
-        placingOrder={placingOrder} 
-        calculateSubtotal={calculateSubtotal} 
-        calculateTax={calculateTax} 
-        getFormattedOptions={getFormattedOptions} 
-        getFormattedToppings={getFormattedToppings} 
-        restaurant={restaurant} 
-        orderType={orderType} 
-        tableNumber={tableNumber} 
-        uiLanguage={uiLanguage} 
-      />
+      <OrderSummary isOpen={showOrderSummary} onClose={handleCloseOrderSummary} cart={cart} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} />
     </>;
 };
-
 export default Cart;

@@ -475,14 +475,7 @@ const KioskView = () => {
     optionId: string;
     choiceIds: string[];
   }[], toppings: SelectedToppingCategory[]): number => {
-    // Use getActivePrice to get the promotional price if available
-    let price = item.promotion_price !== null && 
-                item.promotion_price !== undefined && 
-                parseFloat(item.promotion_price.toString()) > 0 && 
-                parseFloat(item.promotion_price.toString()) < parseFloat(item.price.toString())
-                ? parseFloat(item.promotion_price.toString())
-                : parseFloat(item.price.toString());
-                
+    let price = parseFloat(item.price.toString());
     if (item.options) {
       item.options.forEach(option => {
         const selectedOption = options.find(o => o.optionId === option.id);
@@ -590,66 +583,16 @@ const KioskView = () => {
     });
   };
   const calculateCartTotal = (): number => {
-    // Calculate cart total using promotion prices if available
     return cart.reduce((total, item) => {
-      const basePrice = item.menuItem.promotion_price !== null && 
-                      item.menuItem.promotion_price !== undefined && 
-                      parseFloat(item.menuItem.promotion_price.toString()) > 0 && 
-                      parseFloat(item.menuItem.promotion_price.toString()) < parseFloat(item.menuItem.price.toString())
-                      ? parseFloat(item.menuItem.promotion_price.toString())
-                      : parseFloat(item.menuItem.price.toString());
-      
       return total + item.itemPrice * item.quantity;
     }, 0);
   };
-  
-  // Add a new method to calculate the original cart total (without promotions)
-  const calculateOriginalCartTotal = (): number => {
-    return cart.reduce((total, item) => {
-      let itemTotal = parseFloat(item.menuItem.price.toString()) * item.quantity;
-      
-      // Add option prices
-      if (item.selectedOptions && item.menuItem.options) {
-        item.selectedOptions.forEach(selectedOption => {
-          const option = item.menuItem.options?.find(o => o.id === selectedOption.optionId);
-          if (option) {
-            selectedOption.choiceIds.forEach(choiceId => {
-              const choice = option.choices.find(c => c.id === choiceId);
-              if (choice && choice.price) {
-                itemTotal += parseFloat(choice.price.toString()) * item.quantity;
-              }
-            });
-          }
-        });
-      }
-      
-      // Add topping prices
-      if (item.selectedToppings && item.menuItem.toppingCategories) {
-        item.selectedToppings.forEach(selectedCategory => {
-          const category = item.menuItem.toppingCategories?.find(c => c.id === selectedCategory.categoryId);
-          if (category) {
-            selectedCategory.toppingIds.forEach(toppingId => {
-              const topping = category.toppings.find(t => t.id === toppingId);
-              if (topping && topping.price) {
-                itemTotal += parseFloat(topping.price.toString()) * item.quantity;
-              }
-            });
-          }
-        });
-      }
-      
-      return total + itemTotal;
-    }, 0);
-  };
-
   const calculateSubtotal = () => {
     return calculateCartTotal();
   };
-
   const calculateTax = () => {
     return calculateCartTotal() * 0.1; // 10% tax
   };
-
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
     try {
@@ -1013,16 +956,7 @@ const KioskView = () => {
         </div>
       </div>
 
-      {!isCartOpen && !cartIsEmpty && (
-        <CartButton 
-          itemCount={cartItemCount} 
-          total={calculateCartTotal()} 
-          originalTotal={calculateOriginalCartTotal()} 
-          onClick={toggleCart} 
-          uiLanguage={uiLanguage} 
-          currency={restaurant.currency} 
-        />
-      )}
+      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} uiLanguage={uiLanguage} currency={restaurant.currency} />}
 
       <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
       maxHeight: "60vh"

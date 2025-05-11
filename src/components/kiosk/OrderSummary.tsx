@@ -2,12 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, X, Tag } from "lucide-react";
+import { ArrowLeft, Check, X } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "./OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
-import { calculateCartTotals, hasPromotionPrice, getActivePrice, getDiscountPercentage } from "@/utils/price-utils";
+import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
@@ -123,14 +123,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const {
     total,
     subtotal,
-    tax,
-    originalTotal,
-    originalSubtotal,
-    originalTax
+    tax
   } = calculateCartTotals(cart);
-  
-  const showOriginalPrices = originalTotal > total;
-  
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     const fetchOrderCount = async () => {
@@ -146,7 +140,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
-  
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     if (restaurant?.id) {
@@ -216,7 +209,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       }
     }
   };
-  
   const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -263,7 +255,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
-  
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -291,7 +282,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       useCurrencyCode: true
     });
   };
-  
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
   
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
@@ -314,74 +304,44 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <h3 className="font-bold text-xl mb-6">{t("order.items")}</h3>
           
           <div className="space-y-6 mb-6">
-            {cart.map(item => {
-              const isPromoted = hasPromotionPrice(item.menuItem);
-              const discountPercentage = isPromoted ? getDiscountPercentage(item.menuItem) : 0;
-              const itemActivePrice = getActivePrice(item.menuItem);
-              const originalItemPrice = parseFloat(item.menuItem.price.toString());
-              
-              return (
-                <div key={item.id} className="space-y-2 border-b pb-4">
-                  <div className="flex justify-between">
-                    <div className="flex items-center">
-                      {isPromoted && (
-                        <Tag className="h-4 w-4 text-red-600 mr-1" />
-                      )}
-                      <span className="font-medium mr-2">{item.quantity}x</span>
-                      <span className="font-medium">{item.menuItem.name}</span>
-                      {isPromoted && (
-                        <span className="ml-2 text-xs bg-red-600 text-white px-1 py-0.5 rounded">-{discountPercentage}%</span>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end">
-                      {isPromoted && (
-                        <span className="line-through text-gray-400 text-sm">
-                          {originalItemPrice.toFixed(2)} {currencySymbol}
-                        </span>
-                      )}
-                      <span className="font-medium">{itemActivePrice.toFixed(2)} {currencySymbol}</span>
-                    </div>
+            {cart.map(item => <div key={item.id} className="space-y-2 border-b pb-4">
+                <div className="flex justify-between">
+                  <div className="flex items-center">
+                    <span className="font-medium mr-2">{item.quantity}x</span>
+                    <span className="font-medium">{item.menuItem.name}</span>
                   </div>
-                  
-                  {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && (
-                    <div className="pl-6 space-y-1 text-sm text-gray-600">
-                      {/* Options */}
-                      {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
-                        <div key={`${item.id}-option-${idx}`} className="flex justify-between">
-                          <span>+ {option}</span>
-                          <span>0.00 {currencySymbol}</span>
-                        </div>
-                      ))}
-                      
-                      {/* Grouped toppings by category, show price if > 0 */}
-                      {getGroupedToppings(item).map((group, groupIdx) => (
-                        <div key={`${item.id}-cat-summary-${groupIdx}`}>
-                          <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
-                          {group.toppings.map((toppingObj, topIdx) => {
-                            const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                            const toppingRef = category?.toppings.find(t => t.name === toppingObj);
-                            const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                            const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
-                            
-                            return (
-                              <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                                <span style={{ paddingLeft: 6 }}>
-                                  + {toppingObj}
-                                  {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && (
-                                    <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>
-                                  )}
-                                </span>
-                                <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
-              );
-            })}
+                
+                {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && <div className="pl-6 space-y-1 text-sm text-gray-600">
+                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => <div key={`${item.id}-option-${idx}`} className="flex justify-between">
+                        <span>+ {option}</span>
+                        <span>0.00 {currencySymbol}</span>
+                      </div>)}
+                    
+                    {getGroupedToppings(item).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                        <div style={{
+                  fontWeight: 500,
+                  paddingLeft: 0
+                }}>{group.category}:</div>
+                        {group.toppings.map((toppingObj, topIdx) => {
+                  const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                  const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                  const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                  const toppingTaxRate = toppingRef?.tax_percentage ?? item.menuItem.tax_percentage ?? 10;
+                  return <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                              <span style={{
+                      paddingLeft: 6
+                    }}>
+                                + {toppingObj}
+                                {toppingTaxRate !== (item.menuItem.tax_percentage ?? 10) && <span className="text-xs text-gray-500 ml-1">(TVA {toppingTaxRate}%)</span>}
+                              </span>
+                              <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
+                            </div>;
+                })}
+                      </div>)}
+                  </div>}
+              </div>)}
           </div>
         </div>
         
@@ -390,31 +350,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="p-4 space-y-2">
             <div className="flex justify-between text-gray-700">
               <span>{t("order.subtotal")}</span>
-              <div className="flex flex-col items-end">
-                {showOriginalPrices && (
-                  <span className="text-gray-400 text-sm line-through">{originalSubtotal.toFixed(2)} {currencySymbol}</span>
-                )}
-                <span>{subtotal.toFixed(2)} {currencySymbol}</span>
-              </div>
+              <span>{subtotal.toFixed(2)} {currencySymbol}</span>
             </div>
             <div className="flex justify-between text-gray-700">
               <span>{uiLanguage === "fr" ? t("order.vatWithRate") : t("order.vat")}</span>
-              <div className="flex flex-col items-end">
-                {showOriginalPrices && (
-                  <span className="text-gray-400 text-sm line-through">{originalTax.toFixed(2)} {currencySymbol}</span>
-                )}
-                <span>{tax.toFixed(2)} {currencySymbol}</span>
-              </div>
+              <span>{tax.toFixed(2)} {currencySymbol}</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold text-lg">
               <span>{t("order.totalTTC")}</span>
-              <div className="flex flex-col items-end">
-                {showOriginalPrices && (
-                  <span className="text-gray-500 text-sm line-through">{originalTotal.toFixed(2)} {currencySymbol}</span>
-                )}
-                <span>{total.toFixed(2)} {currencySymbol}</span>
-              </div>
+              <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
 
             <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-700 text-white uppercase mt-4 font-medium text-4xl py-8">

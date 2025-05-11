@@ -1,30 +1,4 @@
-
 import { CartItem } from "@/types/database-types";
-
-// Helper function to get the active price (promotion or regular)
-export const getActivePrice = (item: any): number => {
-  if (hasPromotionPrice(item)) {
-    return parseFloat(item.promotion_price.toString());
-  }
-  return parseFloat(item.price.toString());
-};
-
-// Check if an item has a valid promotion price
-export const hasPromotionPrice = (item: any): boolean => {
-  return item.promotion_price !== null && 
-         item.promotion_price !== undefined && 
-         parseFloat(item.promotion_price.toString()) > 0 && 
-         parseFloat(item.promotion_price.toString()) < parseFloat(item.price.toString());
-};
-
-// Calculate discount percentage
-export const getDiscountPercentage = (item: any): number => {
-  if (!hasPromotionPrice(item)) return 0;
-  
-  const regularPrice = parseFloat(item.price.toString());
-  const promoPrice = parseFloat(item.promotion_price.toString());
-  return Math.round(((regularPrice - promoPrice) / regularPrice) * 100);
-};
 
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
   if (percentage === null || percentage === undefined) percentage = 10;
@@ -64,26 +38,14 @@ export const isItemAvailable = (item: any): boolean => {
   }
 };
 
-// Updated utility function to calculate cart totals with proper topping VAT using promotional prices
+// Updated utility function to calculate cart totals with proper topping VAT
 export const calculateCartTotals = (cart: CartItem[]) => {
   let total = 0;
   let totalTax = 0;
-  let originalTotal = 0;
-  let originalTax = 0;
 
   cart.forEach(item => {
-    // Use promotional price if available
-    const basePrice = hasPromotionPrice(item.menuItem) 
-      ? parseFloat(item.menuItem.promotion_price!.toString())
-      : parseFloat(item.menuItem.price.toString());
-      
-    // Original price always uses the regular price
-    const originalBasePrice = parseFloat(item.menuItem.price.toString());
-    
-    // Calculate with quantity
-    const baseItemTotal = item.quantity * basePrice;
-    const originalBaseItemTotal = item.quantity * originalBasePrice;
-    
+    // Base menu item price with its VAT
+    const baseItemTotal = item.quantity * (item.menuItem.price || 0);
     const vatPercentage = item.menuItem.tax_percentage ?? 10;
     
     let itemToppingsTotal = 0;
@@ -111,26 +73,17 @@ export const calculateCartTotals = (cart: CartItem[]) => {
     
     // Calculate base item tax
     const baseItemTax = calculateTaxAmount(baseItemTotal, vatPercentage);
-    const originalBaseItemTax = calculateTaxAmount(originalBaseItemTotal, vatPercentage);
     
     // Add to totals
     total += baseItemTotal + itemToppingsTotal;
     totalTax += baseItemTax + itemToppingsTax;
-    
-    // Add to original totals
-    originalTotal += originalBaseItemTotal + itemToppingsTotal;
-    originalTax += originalBaseItemTax + itemToppingsTax;
   });
 
   const subtotal = total - totalTax;
-  const originalSubtotal = originalTotal - originalTax;
 
   return {
     total,
     subtotal,
-    tax: totalTax,
-    originalTotal,
-    originalSubtotal,
-    originalTax
+    tax: totalTax
   };
 };
