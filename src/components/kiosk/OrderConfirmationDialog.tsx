@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import OrderReceipt from "./OrderReceipt";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-
 interface OrderConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -30,7 +28,6 @@ interface OrderConfirmationDialogProps {
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
 }
-
 const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   isOpen,
   onClose,
@@ -41,23 +38,37 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   tableNumber,
   uiLanguage,
   getFormattedOptions,
-  getFormattedToppings,
+  getFormattedToppings
 }) => {
-  const { t } = useTranslation(uiLanguage);
-  const { toast } = useToast();
+  const {
+    t
+  } = useTranslation(uiLanguage);
+  const {
+    toast
+  } = useToast();
   const isMobile = useIsMobile();
   const [countdown, setCountdown] = useState(10);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrinted, setHasPrinted] = useState(false);
-  
-  const { total, subtotal, tax } = calculateCartTotals(cart);
-  
+  const {
+    total,
+    subtotal,
+    tax
+  } = calculateCartTotals(cart);
+
   // Currency symbol helper
   const CURRENCY_SYMBOLS: Record<string, string> = {
-    EUR: "€", USD: "$", GBP: "£", TRY: "₺", JPY: "¥",
-    CAD: "$", AUD: "$", CHF: "Fr.", CNY: "¥", RUB: "₽"
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    TRY: "₺",
+    JPY: "¥",
+    CAD: "$",
+    AUD: "$",
+    CHF: "Fr.",
+    CNY: "¥",
+    RUB: "₽"
   };
-  
   const getCurrencySymbol = (currency: string = "EUR"): string => {
     const code = currency.toUpperCase();
     return CURRENCY_SYMBOLS[code] || code;
@@ -66,9 +77,8 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   // Handle countdown and auto-close
   useEffect(() => {
     if (!isOpen) return;
-    
     const timer = setInterval(() => {
-      setCountdown((prev) => {
+      setCountdown(prev => {
         if (prev <= 1) {
           clearInterval(timer);
           return 0;
@@ -76,56 +86,47 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         return prev - 1;
       });
     }, 1000);
-    
+
     // Auto close after countdown
     const closeTimer = setTimeout(() => {
       onClose();
     }, 10000);
-    
     return () => {
       clearInterval(timer);
       clearTimeout(closeTimer);
     };
   }, [isOpen, onClose]);
-  
+
   // Handle printing when dialog opens
   useEffect(() => {
     if (isOpen && !hasPrinted && restaurant?.id) {
       handlePrintReceipt();
     }
   }, [isOpen, restaurant?.id]);
-
   const handlePrintReceipt = async () => {
     if (!restaurant?.id || hasPrinted || isPrinting) return;
-    
     try {
       setIsPrinting(true);
-      
+
       // Fetch print configuration
-      const { data: printConfig, error } = await supabase
-        .from('restaurant_print_config')
-        .select('api_key, configured_printers, browser_printing_enabled')
-        .eq('restaurant_id', restaurant.id)
-        .single();
-        
+      const {
+        data: printConfig,
+        error
+      } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
       if (error) {
         console.error("Error fetching print configuration:", error);
         setIsPrinting(false);
         return;
       }
-      
+
       // Handle browser printing
-      const shouldUseBrowserPrinting = 
-        !isMobile && 
-        (printConfig === null || printConfig.browser_printing_enabled !== false);
-        
+      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
       if (shouldUseBrowserPrinting) {
         console.log("Using browser printing for receipt");
         toast({
           title: t("order.printing"),
           description: t("order.printingPreparation")
         });
-        
         setTimeout(() => {
           try {
             printReceipt('receipt-content');
@@ -144,31 +145,24 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       } else {
         console.log("Browser printing disabled for this device or restaurant");
       }
-      
+
       // Handle PrintNode printing
       if (printConfig?.api_key && printConfig?.configured_printers) {
-        const printerArray = Array.isArray(printConfig.configured_printers) 
-          ? printConfig.configured_printers 
-          : [];
+        const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
         const printerIds = printerArray.map(id => String(id));
-        
         if (printerIds.length > 0) {
-          await sendReceiptToPrintNode(
-            printConfig.api_key,
-            printerIds,
-            {
-              restaurant,
-              cart,
-              orderNumber,
-              tableNumber,
-              orderType,
-              subtotal,
-              tax,
-              total,
-              getFormattedOptions,
-              getFormattedToppings
-            }
-          );
+          await sendReceiptToPrintNode(printConfig.api_key, printerIds, {
+            restaurant,
+            cart,
+            orderNumber,
+            tableNumber,
+            orderType,
+            subtotal,
+            tax,
+            total,
+            getFormattedOptions,
+            getFormattedToppings
+          });
         }
         setIsPrinting(false);
         setHasPrinted(true);
@@ -183,39 +177,29 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       setIsPrinting(false);
     }
   };
-  
-  const sendReceiptToPrintNode = async (
-    apiKey: string,
-    printerIds: string[],
-    orderData: {
-      restaurant: typeof restaurant;
-      cart: CartItem[];
-      orderNumber: string;
-      tableNumber?: string | null;
-      orderType: "dine-in" | "takeaway" | null;
-      subtotal: number;
-      tax: number;
-      total: number;
-      getFormattedOptions: (item: CartItem) => string;
-      getFormattedToppings: (item: CartItem) => string;
-    }
-  ) => {
+  const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
+    restaurant: typeof restaurant;
+    cart: CartItem[];
+    orderNumber: string;
+    tableNumber?: string | null;
+    orderType: "dine-in" | "takeaway" | null;
+    subtotal: number;
+    tax: number;
+    total: number;
+    getFormattedOptions: (item: CartItem) => string;
+    getFormattedToppings: (item: CartItem) => string;
+  }) => {
     try {
       const receiptContent = generateStandardReceipt({
         ...orderData,
         uiLanguage,
         useCurrencyCode: true
       });
-      
+
       // Encode special characters for UTF-8
       const textEncoder = new TextEncoder();
       const encodedBytes = textEncoder.encode(receiptContent);
-      const encodedContent = btoa(
-        Array.from(encodedBytes)
-          .map(byte => String.fromCharCode(byte))
-          .join('')
-      );
-      
+      const encodedContent = btoa(Array.from(encodedBytes).map(byte => String.fromCharCode(byte)).join(''));
       console.log("Sending receipt to PrintNode printers:", printerIds);
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
@@ -245,10 +229,8 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md md:max-w-lg">
+  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="sm:max-w-md md:max-w-2xl rounded-lg">
         <div className="flex flex-col items-center text-center p-4 space-y-6">
           {/* Order Confirmation Header */}
           <div className="bg-green-100 rounded-full p-4 mb-2">
@@ -310,18 +292,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       </DialogContent>
 
       {/* Hidden Receipt Component for Printing */}
-      <OrderReceipt
-        restaurant={restaurant}
-        cart={cart}
-        orderNumber={orderNumber}
-        tableNumber={tableNumber}
-        orderType={orderType}
-        getFormattedOptions={getFormattedOptions}
-        getFormattedToppings={getFormattedToppings}
-        uiLanguage={uiLanguage}
-      />
-    </Dialog>
-  );
+      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
+    </Dialog>;
 };
-
 export default OrderConfirmationDialog;
