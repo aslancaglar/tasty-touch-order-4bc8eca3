@@ -14,16 +14,9 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
-import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
-import OrderReceipt from "@/components/kiosk/OrderReceipt";
-import { printReceipt } from "@/utils/print-utils";
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
-import { calculateCartTotals } from "@/utils/price-utils";
-import { generateStandardReceipt } from "@/utils/receipt-templates";
-import { SupportedLanguage } from "@/utils/language-utils";
-
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -31,7 +24,6 @@ type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
-
 const KioskView = () => {
   const {
     restaurantSlug
@@ -63,10 +55,7 @@ const KioskView = () => {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [orderNumber, setOrderNumber] = useState<string>("0");
-  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const cartRef = useRef<HTMLDivElement | null>(null);
-  const receiptRef = useRef<HTMLDivElement | null>(null);
   const {
     toast
   } = useToast();
@@ -665,12 +654,16 @@ const KioskView = () => {
         title: "Commande passée",
         description: "Votre commande a été passée avec succès !"
       });
-      
-      // Show confirmation dialog
-      setIsCartOpen(false);
-      setShowConfirmationDialog(true);
-      
-      // The cleanup will now happen when the confirmation dialog closes
+      setTimeout(() => {
+        setOrderPlaced(false);
+        setCart([]);
+        setIsCartOpen(false);
+        setPlacingOrder(false);
+        setShowWelcome(true);
+        if (categories.length > 0) {
+          setActiveCategory(categories[0].id);
+        }
+      }, 3000);
     } catch (error) {
       console.error("Erreur lors de la commande:", error);
       toast({
@@ -902,19 +895,6 @@ const KioskView = () => {
       document.head.removeChild(styleTag);
     };
   }, []);
-  useEffect(() => {
-    const fetchOrderCount = async () => {
-      if (restaurant?.id) {
-        const { count } = await supabase
-          .from('orders')
-          .select('*', { count: 'exact', head: true })
-          .eq('restaurant_id', restaurant.id);
-        setOrderNumber(((count || 0) + 1).toString());
-      }
-    };
-    fetchOrderCount();
-  }, [restaurant?.id]);
-  
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen kiosk-view">
         <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
@@ -997,34 +977,6 @@ const KioskView = () => {
       {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
-
-      {/* Order receipt element - hidden but used for printing */}
-      <div ref={receiptRef} style={{ position: 'absolute', left: '-9999px' }}>
-        <OrderReceipt
-          restaurant={restaurant}
-          cart={cart}
-          orderNumber={orderNumber}
-          tableNumber={tableNumber}
-          orderType={orderType}
-          getFormattedOptions={getFormattedOptions}
-          getFormattedToppings={getFormattedToppings}
-          uiLanguage={uiLanguage}
-        />
-      </div>
-
-      {/* Order confirmation dialog */}
-      <OrderConfirmationDialog
-        isOpen={showConfirmationDialog}
-        onClose={handleConfirmationClose}
-        orderTotal={calculateCartTotal()}
-        orderNumber={orderNumber}
-        restaurant={restaurant}
-        cart={cart}
-        orderType={orderType}
-        tableNumber={tableNumber}
-        uiLanguage={uiLanguage}
-        onPrintReceipt={handlePrintReceipt}
-      />
     </div>;
 };
 

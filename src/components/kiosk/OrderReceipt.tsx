@@ -67,7 +67,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
   
   return (
-    <div id="receipt-content" className="receipt" style={{ position: "absolute", left: "-9999px", width: "80mm" }}>
+    <div id="receipt-content" className="receipt" style={{ display: "none" }}>
       <div className="header">
         <div className="logo">{sanitizeText(restaurant.name)}</div>
         {restaurant.location && <div>{sanitizeText(restaurant.location)}</div>}
