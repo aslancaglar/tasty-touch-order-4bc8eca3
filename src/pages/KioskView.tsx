@@ -528,16 +528,25 @@ const KioskView = () => {
   };
   const handleAddToCart = () => {
     if (!selectedItem) return;
+    
+    // Validate options as before - no change needed here
     const isOptionsValid = selectedItem.options?.every(option => {
       if (!option.required) return true;
       const selected = selectedOptions.find(o => o.optionId === option.id);
       return selected && selected.choiceIds.length > 0;
     }) ?? true;
+    
+    // Updated validation for topping categories - only validate visible categories
     const isToppingsValid = selectedItem.toppingCategories?.every(category => {
+      // Skip validation for categories that are not visible
+      if (!shouldShowToppingCategory(category)) return true;
+      
+      // Only validate min_selections for visible categories
       if (!category.min_selections || category.min_selections <= 0) return true;
       const selected = selectedToppings.find(t => t.categoryId === category.id);
       return selected && selected.toppingIds.length >= category.min_selections;
     }) ?? true;
+    
     if (!isOptionsValid || !isToppingsValid) {
       toast({
         title: t("selectionsRequired"),
@@ -546,6 +555,7 @@ const KioskView = () => {
       });
       return;
     }
+    
     const itemPrice = calculateItemPrice(selectedItem, selectedOptions, selectedToppings);
     const newItem: CartItem = {
       id: Date.now().toString(),
