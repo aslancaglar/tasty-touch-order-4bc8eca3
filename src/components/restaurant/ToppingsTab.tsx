@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash } from "lucide-react";
+import { Plus, Pencil, Trash, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
@@ -43,6 +43,7 @@ const ToppingsTab = ({
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+  const [isDuplicatingCategory, setIsDuplicatingCategory] = useState(false);
   const [selectedCategoryToDelete, setSelectedCategoryToDelete] = useState<ToppingCategory | null>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [selectedTopping, setSelectedTopping] = useState<Topping | null>(null);
@@ -143,6 +144,78 @@ const ToppingsTab = ({
       });
     }
   };
+
+  const handleDuplicateCategory = async () => {
+    if (!selectedCategory) return;
+    try {
+      setIsDuplicatingCategory(true);
+      
+      // Step 1: Create a new category with copied data
+      const { 
+        data: newCategory, 
+        error: categoryError 
+      } = await supabase
+        .from('topping_categories')
+        .insert({
+          restaurant_id: restaurant.id,
+          name: `${selectedCategory.name} (Copy)`,
+          description: selectedCategory.description,
+          icon: selectedCategory.icon,
+          min_selections: selectedCategory.min_selections,
+          max_selections: selectedCategory.max_selections,
+          show_if_selection_id: selectedCategory.show_if_selection_id,
+          show_if_selection_type: selectedCategory.show_if_selection_type,
+          display_order: selectedCategory.display_order
+        })
+        .select()
+        .single();
+        
+      if (categoryError) throw categoryError;
+      
+      // Step 2: If the original category has toppings, duplicate them too
+      if (selectedCategory.toppings && selectedCategory.toppings.length > 0) {
+        const toppingInserts = selectedCategory.toppings.map(topping => ({
+          category_id: newCategory.id,
+          name: topping.name,
+          price: topping.price,
+          tax_percentage: topping.tax_percentage,
+          display_order: topping.display_order,
+          in_stock: topping.in_stock
+        }));
+        
+        const { error: toppingsError } = await supabase
+          .from('toppings')
+          .insert(toppingInserts);
+          
+        if (toppingsError) throw toppingsError;
+      }
+      
+      // Clear the cache and fetch updated categories
+      clearCache(restaurant.id, 'topping_categories');
+      await fetchCategories();
+      
+      toast({
+        title: "Success",
+        description: "Category duplicated successfully"
+      });
+      
+      setShowUpdateCategoryDialog(false);
+      
+      // Select the newly created category
+      setSelectedCategory(newCategory);
+      
+    } catch (error) {
+      console.error('Error duplicating category:', error);
+      toast({
+        title: "Error",
+        description: "Failed to duplicate category",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDuplicatingCategory(false);
+    }
+  };
+
   const handleDeleteCategory = async () => {
     if (!selectedCategoryToDelete?.id) return;
     try {
@@ -171,6 +244,7 @@ const ToppingsTab = ({
       setIsDeletingCategory(false);
     }
   };
+
   const handleCreateTopping = async (formData: ToppingFormValues) => {
     try {
       setIsCreatingTopping(true);
@@ -205,6 +279,7 @@ const ToppingsTab = ({
       setIsCreatingTopping(false);
     }
   };
+
   const handleUpdateTopping = async (toppingId: string, formData: ToppingFormValues) => {
     try {
       setIsUpdatingTopping(true);
@@ -237,6 +312,7 @@ const ToppingsTab = ({
       setIsUpdatingTopping(false);
     }
   };
+
   const handleDeleteTopping = async () => {
     if (!selectedTopping?.id) return;
     try {
@@ -265,6 +341,7 @@ const ToppingsTab = ({
       setIsDeletingTopping(false);
     }
   };
+
   const handleCreateCategory = async (values: any) => {
     setIsCreatingCategory(true);
     try {
@@ -308,6 +385,7 @@ const ToppingsTab = ({
       setIsCreatingCategory(false);
     }
   };
+
   const handleUpdateCategory = async (values: any) => {
     if (!selectedCategory) return;
     setIsUpdatingCategory(true);
@@ -351,6 +429,7 @@ const ToppingsTab = ({
       setIsUpdatingCategory(false);
     }
   };
+
   return <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Toppings Categories</h2>
@@ -461,6 +540,24 @@ const ToppingsTab = ({
             max_selections: selectedCategory.max_selections || 0,
             show_if_selection_id: selectedCategory.show_if_selection_id || []
           }} onSubmit={handleUpdateCategory} isLoading={isUpdatingCategory} />}
+            
+            <div className="flex justify-end mt-4">
+              <Button 
+                onClick={handleDuplicateCategory} 
+                variant="outline" 
+                className="gap-2" 
+                disabled={isDuplicatingCategory}
+              >
+                {isDuplicatingCategory ? (
+                  <>Duplicating...</>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    Duplicate Category with Toppings
+                  </>
+                )}
+              </Button>
+            </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
