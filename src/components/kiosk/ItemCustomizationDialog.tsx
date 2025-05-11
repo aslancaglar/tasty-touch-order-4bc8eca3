@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
+import { getActivePrice } from "@/utils/price-utils";
+
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
   isOpen: boolean;
@@ -166,7 +168,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   // Memoized price calculation to prevent recalculation on every render
   const calculateItemPrice = useCallback(() => {
     if (!item) return 0;
-    let price = parseFloat(item.price.toString());
+    let price = getActivePrice(item);
     if (item.options) {
       item.options.forEach(option => {
         const selected = selectedOptions.find(o => o.optionId === option.id);
@@ -195,9 +197,11 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
+  
   const handleQuantityDecrease = useCallback(() => {
     if (quantity > 1) onQuantityChange(quantity - 1);
   }, [quantity, onQuantityChange]);
+  
   const handleQuantityIncrease = useCallback(() => {
     onQuantityChange(quantity + 1);
   }, [quantity, onQuantityChange]);
@@ -208,7 +212,14 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     const orderB = b.display_order ?? 1000;
     return orderA - orderB;
   }) : [];
+  
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
+  
+  // Determine if item has a promotion price
+  const hasPromotion = item.promotion_price && parseFloat(item.promotion_price.toString()) > 0;
+  const regularPrice = parseFloat(item.price.toString());
+  const promotionPrice = hasPromotion ? parseFloat(item.promotion_price.toString()) : regularPrice;
+  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
@@ -253,7 +264,17 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               </Button>
             </div>
             <Button onClick={onAddToCart} className="flex-1 bg-kiosk-primary py-[34px] text-3xl">
-              {t("addToCart")} - {calculateItemPrice().toFixed(2)} {currencySymbol}
+              {t("addToCart")} - 
+              <span className="flex items-center">
+                {hasPromotion ? (
+                  <>
+                    <span className="text-3xl">{promotionPrice.toFixed(2)} {currencySymbol}</span>
+                    <span className="text-xl line-through ml-2 text-red-300">{regularPrice.toFixed(2)}</span>
+                  </>
+                ) : (
+                  <span>{calculateItemPrice().toFixed(2)} {currencySymbol}</span>
+                )}
+              </span>
             </Button>
           </div>
         </DialogFooter>
