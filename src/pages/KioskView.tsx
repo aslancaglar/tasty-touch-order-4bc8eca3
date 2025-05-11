@@ -819,4 +819,4 @@ const KioskView = () => {
   };
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
-      if (!restaurantSlug)
+      if (!
