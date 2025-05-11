@@ -6,7 +6,8 @@ import { CartItem } from "@/types/database-types";
 import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import { calculateCartTotals } from "@/utils/price-utils";
+import { calculateCartTotals, getActivePrice } from "@/utils/price-utils";
+
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
@@ -138,16 +139,20 @@ const Cart: React.FC<CartProps> = ({
     onPlaceOrder();
     setShowOrderSummary(false);
   };
+  
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
+
   const {
     total,
     subtotal,
     tax
   } = calculateCartTotals(cart);
+
   const reversedCart = [...cart].reverse();
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+  
   return <>
       <div ref={cartRef} style={{
       maxHeight: "60vh"
@@ -170,33 +175,38 @@ const Cart: React.FC<CartProps> = ({
             containScroll: "trimSnaps"
           }} className="w-full">
               <CarouselContent className="-ml-2">
-                {reversedCart.length === 0 ? <div className="p-4 text-gray-400 text-center text-responsive-body">{tCart("empty")}</div> : reversedCart.map(item => <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
-                    <div className="border border-violet-500 rounded-lg p-3 relative bg-[kiosk-base-100] bg-violet-100">
-                      <Button variant="ghost" size="icon" className="absolute right-1 top-1 text-red-500 h-7 w-7" onClick={() => onRemoveItem(item.id)}>
-                        <X className="h-5 w-5" />
-                      </Button>
-                      
-                      <div className="flex items-start space-x-3">
-                        <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
-                        <div className="flex flex-col">
-                          <h3 className="text-responsive-body font-bold">{item.menuItem.name}</h3>
-                          <p className="text-responsive-price text-gray-700">
-                            {parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}
-                          </p>
-                          
-                          <div className="flex items-center mt-2">
-                            <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="h-8 w-8 rounded-full p-0 bg-violet-700 hover:bg-violet-700 text-white font-bold">
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-8 text-center text-responsive-body font-medium">{item.quantity}</span>
-                            <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="h-8 w-8 rounded-full p-0 bg-violet-800 hover:bg-violet-700 text-white">
-                              <Plus className="h-3 w-3" />
-                            </Button>
+                {reversedCart.length === 0 ? <div className="p-4 text-gray-400 text-center text-responsive-body">{tCart("empty")}</div> : reversedCart.map(item => {
+                  const activeItemPrice = getActivePrice(item.menuItem);
+                  return (
+                    <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
+                      <div className="border border-violet-500 rounded-lg p-3 relative bg-[kiosk-base-100] bg-violet-100">
+                        <Button variant="ghost" size="icon" className="absolute right-1 top-1 text-red-500 h-7 w-7" onClick={() => onRemoveItem(item.id)}>
+                          <X className="h-5 w-5" />
+                        </Button>
+                        
+                        <div className="flex items-start space-x-3">
+                          <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
+                          <div className="flex flex-col">
+                            <h3 className="text-responsive-body font-bold">{item.menuItem.name}</h3>
+                            <p className="text-responsive-price text-gray-700">
+                              {(activeItemPrice * item.quantity).toFixed(2)} {currencySymbol}
+                            </p>
+                            
+                            <div className="flex items-center mt-2">
+                              <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="h-8 w-8 rounded-full p-0 bg-violet-700 hover:bg-violet-700 text-white font-bold">
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-8 text-center text-responsive-body font-medium">{item.quantity}</span>
+                              <Button variant="outline" size="icon" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="h-8 w-8 rounded-full p-0 bg-violet-800 hover:bg-violet-700 text-white">
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </CarouselItem>)}
+                    </CarouselItem>
+                  );
+                })}
               </CarouselContent>
             </Carousel>
           </ScrollArea>
