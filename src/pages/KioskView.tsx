@@ -51,7 +51,7 @@ const KioskView = () => {
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
-  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false); // Reset the orderPlaced state so new orders can be placed
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
@@ -179,6 +179,8 @@ const KioskView = () => {
     setSpecialInstructions("");
     setOrderType(null);
     setTableNumber(null);
+    setOrderPlaced(false); // Reset the orderPlaced state so new orders can be placed
+    setPlacingOrder(false); // Also reset the placingOrder state just to be safe
     if (categories.length > 0) {
       setActiveCategory(categories[0].id);
     }
