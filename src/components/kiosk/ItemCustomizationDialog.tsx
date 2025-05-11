@@ -125,7 +125,7 @@ const ToppingCategory = memo(({
       
       {/* Warning Icon */}
       {showWarning && <div className="absolute top-0 right-4 bg-white rounded-full p-1 shadow-md py-[6px] px-[6px]">
-          <AlertCircle className="h-6 w-6 text-[#ea384c]" />
+          <AlertCircle className="h-8 w-8 text-[#ea384c]" />
         </div>}
 
       <div className={`grid ${gridCols} gap-1`}>
