@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,9 +6,7 @@ import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings } from "@/utils/receipt-templates";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -22,11 +19,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
-
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -47,7 +42,6 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: SupportedLanguage;
 }
-
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -70,80 +64,63 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     tax
   } = calculateCartTotals(cart);
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
-
   const handleConfirmOrder = async () => {
     // Simply call onPlaceOrder and let the parent component handle the rest
     onPlaceOrder();
   };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-2xl md:max-w-2xl p-0 overflow-hidden flex flex-col max-h-[85vh]">
-        {/* Fixed Header */}
-        <div className="p-4 border-b flex items-center space-x-2 shrink-0">
+  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="sm:max-w-2xl md:max-w-2xl p-0 overflow-hidden">
+        <div className="p-4 border-b flex items-center space-x-2">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-xl font-bold">{t("order.summary")}</h2>
         </div>
         
-        <div className="flex flex-col h-full overflow-hidden">
-          {/* Title for the scrollable section */}
-          <h3 className="font-bold text-lg p-6 pb-2 shrink-0">{t("order.items")}</h3>
+        <div className="p-6">
+          <h3 className="font-bold text-lg mb-4">{t("order.items")}</h3>
           
-          {/* Scrollable items area */}
-          <ScrollArea className="px-6 flex-grow" style={{ maxHeight: "50vh" }}>
-            <div className="space-y-6 mb-6">
-              {cart.map(item => (
-                <div key={item.id} className="space-y-2">
-                  <div className="flex justify-between">
-                    <div className="flex items-center">
-                      <span className="font-medium mr-2">{item.quantity}x</span>
-                      <span className="font-medium">{item.menuItem.name}</span>
-                    </div>
-                    <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
+          <div className="space-y-6 mb-6">
+            {cart.map(item => <div key={item.id} className="space-y-2">
+                <div className="flex justify-between">
+                  <div className="flex items-center">
+                    <span className="font-medium mr-2">{item.quantity}x</span>
+                    <span className="font-medium">{item.menuItem.name}</span>
                   </div>
-                  
-                  {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && (
-                    <div className="pl-6 space-y-1 text-sm text-gray-600">
-                      {/* Options */}
-                      {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
-                        <div key={`${item.id}-option-${idx}`} className="flex justify-between">
-                          <span>+ {option}</span>
-                          <span>0.00 {currencySymbol}</span>
-                        </div>
-                      ))}
-                      {/* Grouped toppings by category, show price if > 0 */}
-                      {getGroupedToppings(item).map((group, groupIdx) => (
-                        <div key={`${item.id}-cat-summary-${groupIdx}`}>
-                          <div style={{
-                    fontWeight: 500,
-                    paddingLeft: 0
-                  }}>{group.category}:</div>
-                          {group.toppings.map((toppingObj, topIdx) => {
-                    const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                    const toppingRef = category?.toppings.find(t => t.name === toppingObj);
-                    const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                    return (
-                              <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                                <span style={{
-                        paddingLeft: 6
-                      }}>+ {toppingObj}</span>
-                                <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
-                              </div>
-                    );
-                })}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
-              ))}
-            </div>
-          </ScrollArea>
+                
+                {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && <div className="pl-6 space-y-1 text-sm text-gray-600">
+                    {/* Options */}
+                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => <div key={`${item.id}-option-${idx}`} className="flex justify-between">
+                        <span>+ {option}</span>
+                        <span>0.00 {currencySymbol}</span>
+                      </div>)}
+                    {/* Grouped toppings by category, show price if > 0 */}
+                    {getGroupedToppings(item).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                        <div style={{
+                  fontWeight: 500,
+                  paddingLeft: 0
+                }}>{group.category}:</div>
+                        {group.toppings.map((toppingObj, topIdx) => {
+                  const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                  const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                  const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                  return <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
+                              <span style={{
+                      paddingLeft: 6
+                    }}>+ {toppingObj}</span>
+                              <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
+                            </div>;
+                })}
+                      </div>)}
+                  </div>}
+              </div>)}
+          </div>
           
-          {/* Fixed footer with totals */}
-          <div className="border-t p-6 space-y-2 shrink-0 bg-white">
+          <Separator className="my-4" />
+          
+          <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
               <span>{t("order.subtotal")}:</span>
               <span>{subtotal.toFixed(2)} {currencySymbol}</span>
@@ -160,16 +137,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
         </div>
         
-        {/* Confirmation button area */}
-        <div className="p-4 bg-gray-50 shrink-0">
+        <div className="p-4 bg-gray-50">
           <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[30px]">
             <Check className="mr-2 h-5 w-5" />
             {t("order.confirm")}
           </Button>
         </div>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 };
-
 export default OrderSummary;
