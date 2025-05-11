@@ -72,7 +72,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-2xl md:max-w-2xl p-0 max-h-[80vh] flex flex-col">
         {/* Fixed Header - shrink-0 ensures it doesn't shrink */}
-        <div className="p-4 border-b flex items-center space-x-2 shrink-0">
+        <div className="p-4 border-b flex items-center space-x-2 shrink-0 rounded-lg">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
