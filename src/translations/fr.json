@@ -1,4 +1,3 @@
-
 {
   "orderType": {
     "title": "Comment souhaitez-vous commander ?",
@@ -19,17 +18,6 @@
     "printErrorDesc": "Impossible d'imprimer le reçu. Veuillez réessayer.",
     "error": "Erreur",
     "errorPrinting": "Une erreur s'est produite lors de l'impression du reçu."
-  },
-  "orderConfirmation": {
-    "title": "Votre Commande a Été Passée !",
-    "ticketPrinted": "Un ticket a été imprimé et envoyé en cuisine.",
-    "preparingMeal": "L'équipe commence la préparation de votre repas.",
-    "paymentInstructions": "Veuillez Payer Maintenant",
-    "paymentDetails": "Pour finaliser votre commande, veuillez régler le montant total auprès du personnel du restaurant au comptoir.",
-    "totalAmount": "Montant Total",
-    "orderNumber": "Numéro de Commande",
-    "paymentWarning": "Votre repas sera préparé une fois le paiement effectué.",
-    "thankYou": "Merci de votre visite et bon appétit !"
   },
   "receipt": {
     "order": "Commande",

@@ -25,11 +25,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
-
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 const translations = {
   fr: {
     orderSummary: "Résumé de la commande",
@@ -77,7 +75,6 @@ const translations = {
     errorPrinting: "Fiş yazdırılırken bir hata oluştu."
   }
 };
-
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -98,7 +95,6 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: "fr" | "en" | "tr";
 }
-
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -377,5 +373,4 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
     </Dialog>;
 };
-
 export default OrderSummary;
