@@ -230,7 +230,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     }
   };
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-md md:max-w-2xl rounded-lg">
+      <DialogContent className="sm:max-w-md md:max-w-2xl rounded-lg overflow-hidden">
         <div className="flex flex-col items-center text-center p-4 space-y-6">
           {/* Order Confirmation Header */}
           <div className="bg-green-100 rounded-full p-4 mb-2">
