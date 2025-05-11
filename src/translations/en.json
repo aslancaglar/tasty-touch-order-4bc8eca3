@@ -20,6 +20,20 @@
     "error": "Error",
     "errorPrinting": "An error occurred while printing the receipt."
   },
+  "orderConfirmation": {
+    "title": "✅ Your Order Has Been Placed!",
+    "ticketPrinted": "🧾 A ticket has been printed and sent to the kitchen.",
+    "preparation": "👨‍🍳 The team is starting to prepare your meal.",
+    "printed": "Receipt printed successfully.",
+    "printing": "Printing receipt...",
+    "payNow": "💳 Please Pay Now",
+    "paymentInstructions": "To finalize your order, please pay the total amount to the restaurant staff at the counter.",
+    "total": "Total",
+    "orderNumber": "Order Number",
+    "preparationWarning": "⚠️ Your food will be prepared once the payment is completed.",
+    "thankYou": "Thank you for your visit and enjoy your meal!",
+    "redirecting": "Redirecting in"
+  },
   "receipt": {
     "order": "Order",
     "table": "Table",

@@ -20,6 +20,20 @@
     "error": "Hata",
     "errorPrinting": "Fiş yazdırılırken bir hata oluştu."
   },
+  "orderConfirmation": {
+    "title": "✅ Siparişiniz Alındı!",
+    "ticketPrinted": "🧾 Fiş yazdırıldı ve mutfağa gönderildi.",
+    "preparation": "👨‍🍳 Ekip yemeğinizi hazırlamaya başlıyor.",
+    "printed": "Fiş başarıyla yazdırıldı.",
+    "printing": "Fiş yazdırılıyor...",
+    "payNow": "💳 Lütfen Şimdi Ödeme Yapın",
+    "paymentInstructions": "Siparişinizi tamamlamak için lütfen toplam tutarı restoran personeline ödeyiniz.",
+    "total": "Toplam",
+    "orderNumber": "Sipariş Numarası",
+    "preparationWarning": "⚠️ Yemeğiniz ödeme yapıldıktan sonra hazırlanacaktır.",
+    "thankYou": "Ziyaretiniz için teşekkür ederiz, afiyet olsun!",
+    "redirecting": "Yönlendiriliyor"
+  },
   "receipt": {
     "order": "Sipariş",
     "table": "Masa",

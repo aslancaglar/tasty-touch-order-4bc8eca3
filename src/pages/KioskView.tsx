@@ -17,6 +17,7 @@ import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog"
 import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
+import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -55,6 +56,8 @@ const KioskView = () => {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<string>("0");
   const cartRef = useRef<HTMLDivElement | null>(null);
   const {
     toast
@@ -650,20 +653,21 @@ const KioskView = () => {
         await createOrderItemToppings(orderItemToppingsToCreate);
       }
       setOrderPlaced(true);
-      toast({
-        title: "Commande passée",
-        description: "Votre commande a été passée avec succès !"
-      });
-      setTimeout(() => {
-        setOrderPlaced(false);
-        setCart([]);
-        setIsCartOpen(false);
-        setPlacingOrder(false);
-        setShowWelcome(true);
-        if (categories.length > 0) {
-          setActiveCategory(categories[0].id);
-        }
-      }, 3000);
+      
+      // Get the order number - this will be a simple counter format (#390)
+      const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('restaurant_id', restaurant.id);
+      
+      setConfirmedOrderNumber(String(count || 1));
+      
+      // Show the confirmation dialog instead of immediately resetting
+      setShowConfirmationDialog(true);
+      setIsCartOpen(false);
+      
+      // No need to reset immediately as the dialog will handle redirection
+      
     } catch (error) {
       console.error("Erreur lors de la commande:", error);
       toast({
@@ -977,6 +981,20 @@ const KioskView = () => {
       {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+      
+      {/* New Order Confirmation Dialog */}
+      <OrderConfirmationDialog 
+        isOpen={showConfirmationDialog}
+        onClose={handleConfirmationClose}
+        cart={cart}
+        orderNumber={confirmedOrderNumber}
+        restaurant={restaurant}
+        orderType={orderType}
+        tableNumber={tableNumber}
+        uiLanguage={uiLanguage}
+        getFormattedOptions={getFormattedOptions}
+        getFormattedToppings={getFormattedToppings}
+      />
     </div>;
 };
 

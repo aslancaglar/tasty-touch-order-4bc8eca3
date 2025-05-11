@@ -82,11 +82,23 @@ export const addLineFeed = (count: number = 1): string => {
   return ESCPOS.LINE_FEED.repeat(count);
 };
 
+// Track the last print time to prevent double-printing
+let lastPrintTime = 0;
+const PRINT_DEBOUNCE_MS = 1000; // 1 second debounce
+
 /**
  * Prints the content of a specified element for a thermal printer
  * @param elementId The ID of the element to print
  */
 export const printReceipt = (elementId: string) => {
+  // Prevent double-printing by implementing debounce
+  const now = Date.now();
+  if (now - lastPrintTime < PRINT_DEBOUNCE_MS) {
+    console.log("Print request ignored - too soon after previous print");
+    return;
+  }
+  lastPrintTime = now;
+  
   console.log(`Attempting to print element with ID: ${elementId}`, {
     userAgent: navigator.userAgent,
     screen: { width: window.innerWidth, height: window.innerHeight },

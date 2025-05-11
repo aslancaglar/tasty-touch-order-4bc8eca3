@@ -1,3 +1,4 @@
+
 {
   "orderType": {
     "title": "Comment souhaitez-vous commander ?",
@@ -19,6 +20,20 @@
     "error": "Erreur",
     "errorPrinting": "Une erreur s'est produite lors de l'impression du reçu."
   },
+  "orderConfirmation": {
+    "title": "✅ Votre commande a été passée !",
+    "ticketPrinted": "🧾 Un ticket a été imprimé et envoyé à la cuisine.",
+    "preparation": "👨‍🍳 L'équipe commence à préparer votre repas.",
+    "printed": "Reçu imprimé avec succès.",
+    "printing": "Impression du reçu en cours...",
+    "payNow": "💳 Veuillez payer maintenant",
+    "paymentInstructions": "Pour finaliser votre commande, veuillez payer le montant total au personnel du restaurant au comptoir.",
+    "total": "Total",
+    "orderNumber": "Numéro de commande",
+    "preparationWarning": "⚠️ Votre repas sera préparé une fois le paiement effectué.",
+    "thankYou": "Merci de votre visite et bon appétit !",
+    "redirecting": "Redirection dans"
+  },
   "receipt": {
     "order": "Commande",
     "table": "Table",
@@ -26,7 +41,7 @@
     "vat": "TVA",
     "total": "TOTAL",
     "thanks": "Merci de votre visite!",
-    "seeYouSoon": "A bientôt!",
+    "seeYouSoon": "A bientot!",
     "dineIn": "Sur Place",
     "takeaway": "À Emporter"
   },
