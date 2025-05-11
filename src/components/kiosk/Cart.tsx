@@ -7,6 +7,7 @@ import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { calculateCartTotals } from "@/utils/price-utils";
+
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
@@ -32,6 +33,7 @@ interface CartProps {
   uiLanguage?: "fr" | "en" | "tr";
   t: (key: string) => string;
 }
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -44,9 +46,11 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
+
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
+
 const cartTranslations = {
   fr: {
     yourOrder: "VOTRE COMMANDE",
@@ -82,6 +86,7 @@ const cartTranslations = {
     empty: "Ürün yok"
   }
 };
+
 const Cart: React.FC<CartProps> = ({
   cart,
   isOpen,
@@ -117,6 +122,7 @@ const Cart: React.FC<CartProps> = ({
       return t(key);
     }
   };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && !showOrderSummary && cartRef.current && !cartRef.current.contains(event.target as Node)) {
@@ -128,19 +134,24 @@ const Cart: React.FC<CartProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onToggleOpen, showOrderSummary]);
+
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
   };
+
   const handleCloseOrderSummary = () => {
     setShowOrderSummary(false);
   };
+
   const handlePlaceOrder = () => {
     onPlaceOrder();
     setShowOrderSummary(false);
   };
+
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
+
   const {
     total,
     subtotal,
@@ -148,10 +159,9 @@ const Cart: React.FC<CartProps> = ({
   } = calculateCartTotals(cart);
   const reversedCart = [...cart].reverse();
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+
   return <>
-      <div ref={cartRef} style={{
-      maxHeight: "60vh"
-    }} className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 shadow-lg overflow-hidden bg-[kiosk-base-100] bg-white">
+      <div ref={cartRef} style={{ maxHeight: "60vh" }} className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 shadow-lg overflow-hidden bg-[kiosk-base-100] bg-white">
         <div className="w-full overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b rounded-none bg-kiosk-primary">
             <div className="flex items-center">
@@ -162,13 +172,8 @@ const Cart: React.FC<CartProps> = ({
             </Button>
           </div>
 
-          <ScrollArea className="p-4" style={{
-          maxHeight: "40vh"
-        }}>
-            <Carousel opts={{
-            align: "start",
-            containScroll: "trimSnaps"
-          }} className="w-full">
+          <ScrollArea className="p-4" style={{ maxHeight: "40vh" }}>
+            <Carousel opts={{ align: "start", containScroll: "trimSnaps" }} className="w-full">
               <CarouselContent className="-ml-2">
                 {reversedCart.length === 0 ? <div className="p-4 text-gray-400 text-center text-responsive-body">{tCart("empty")}</div> : reversedCart.map(item => <CarouselItem key={item.id} className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
                     <div className="border border-violet-500 rounded-lg p-3 relative bg-[kiosk-base-100] bg-violet-100">
@@ -236,4 +241,5 @@ const Cart: React.FC<CartProps> = ({
       <OrderSummary isOpen={showOrderSummary} onClose={handleCloseOrderSummary} cart={cart} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} />
     </>;
 };
+
 export default Cart;

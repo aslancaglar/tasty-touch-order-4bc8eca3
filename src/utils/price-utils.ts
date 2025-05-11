@@ -1,3 +1,4 @@
+
 import { CartItem } from "@/types/database-types";
 
 // Get the active price (promotion price if available, otherwise regular price)
