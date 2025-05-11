@@ -18,6 +18,10 @@ import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
 import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
+import { printReceipt } from "@/utils/print-utils";
+import { generateStandardReceipt } from "@/utils/receipt-templates";
+import { useIsMobile } from "@/hooks/use-mobile";
+
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -25,6 +29,7 @@ type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
 };
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -62,6 +67,8 @@ const KioskView = () => {
   const {
     toast
   } = useToast();
+  const isMobile = useIsMobile();
+  
   const CURRENCY_SYMBOLS: Record<string, string> = {
     EUR: "€",
     USD: "$",
@@ -104,7 +111,15 @@ const KioskView = () => {
       no: "Non",
       refreshMenu: "Rafraîchir le menu",
       menuRefreshed: "Menu rafraîchi",
-      menuRefreshSuccess: "Le menu a été rafraîchi avec succès"
+      menuRefreshSuccess: "Le menu a été rafraîchi avec succès",
+      receipt: {
+        printing: "Impression",
+        printingPreparation: "Préparation de l'impression...",
+        printError: "Erreur d'impression",
+        printErrorDesc: "Impossible d'imprimer le reçu. Veuillez réessayer.",
+        error: "Erreur",
+        errorPrinting: "Une erreur s'est produite lors de l'impression du reçu."
+      }
     },
     en: {
       restaurantNotFound: "Restaurant not found",
@@ -131,7 +146,15 @@ const KioskView = () => {
       no: "No",
       refreshMenu: "Refresh menu",
       menuRefreshed: "Menu refreshed",
-      menuRefreshSuccess: "Menu has been refreshed successfully"
+      menuRefreshSuccess: "Menu has been refreshed successfully",
+      receipt: {
+        printing: "Printing",
+        printingPreparation: "Preparing to print...",
+        printError: "Print Error",
+        printErrorDesc: "Unable to print receipt. Please try again.",
+        error: "Error",
+        errorPrinting: "An error occurred while printing the receipt."
+      }
     },
     tr: {
       restaurantNotFound: "Restoran bulunamadı",
@@ -158,7 +181,15 @@ const KioskView = () => {
       no: "Hayır",
       refreshMenu: "Menüyü yenile",
       menuRefreshed: "Menü yenilendi",
-      menuRefreshSuccess: "Menü başarıyla yenilendi"
+      menuRefreshSuccess: "Menü başarıyla yenilendi",
+      receipt: {
+        printing: "Yazdırılıyor",
+        printingPreparation: "Yazdırma hazırlanıyor...",
+        printError: "Yazdırma Hatası",
+        printErrorDesc: "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
+        error: "Hata",
+        errorPrinting: "Fiş yazdırılırken bir hata oluştu."
+      }
     }
   };
   const t = (key: keyof typeof translations.en) => {
@@ -634,11 +665,14 @@ const KioskView = () => {
         price: item.itemPrice,
         special_instructions: item.specialInstructions || null
       })));
+      
       const orderItemOptionsToCreate = [];
       const orderItemToppingsToCreate = [];
+      
       for (let i = 0; i < cart.length; i++) {
         const cartItem = cart[i];
         const orderItem = orderItems[i];
+        
         for (const selectedOption of cartItem.selectedOptions) {
           for (const choiceId of selectedOption.choiceIds) {
             orderItemOptionsToCreate.push({
@@ -648,6 +682,7 @@ const KioskView = () => {
             });
           }
         }
+        
         for (const selectedCategory of cartItem.selectedToppings) {
           for (const toppingId of selectedCategory.toppingIds) {
             orderItemToppingsToCreate.push({
@@ -657,12 +692,97 @@ const KioskView = () => {
           }
         }
       }
+      
       if (orderItemOptionsToCreate.length > 0) {
         await createOrderItemOptions(orderItemOptionsToCreate);
       }
+      
       if (orderItemToppingsToCreate.length > 0) {
         await createOrderItemToppings(orderItemToppingsToCreate);
       }
+      
+      // Handle printing - moved from OrderSummary to here
+      if (restaurant?.id) {
+        try {
+          console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
+          const { data: printConfig, error } = await supabase
+            .from('restaurant_print_config')
+            .select('api_key, configured_printers, browser_printing_enabled')
+            .eq('restaurant_id', restaurant.id)
+            .single();
+            
+          if (error) {
+            console.error("Error fetching print configuration:", error);
+          } else {
+            const shouldUseBrowserPrinting = 
+              !isMobile && 
+              (printConfig === null || printConfig.browser_printing_enabled !== false);
+              
+            if (shouldUseBrowserPrinting) {
+              console.log("Using browser printing for receipt");
+              toast({
+                title: t("receipt.printing"),
+                description: t("receipt.printingPreparation")
+              });
+              
+              setTimeout(() => {
+                try {
+                  printReceipt('receipt-content');
+                  console.log("Print receipt triggered successfully");
+                } catch (printError) {
+                  console.error("Error during browser printing:", printError);
+                  toast({
+                    title: t("receipt.printError"),
+                    description: t("receipt.printErrorDesc"),
+                    variant: "destructive"
+                  });
+                }
+              }, 500);
+            } else {
+              console.log("Browser printing disabled for this device or restaurant");
+              if (isMobile) {
+                console.log("Browser printing disabled because this is a mobile or tablet device");
+              } else if (printConfig?.browser_printing_enabled === false) {
+                console.log("Browser printing disabled in restaurant settings");
+              }
+            }
+            
+            if (printConfig?.api_key && printConfig?.configured_printers) {
+              const printerArray = Array.isArray(printConfig.configured_printers) 
+                ? printConfig.configured_printers 
+                : [];
+              const printerIds = printerArray.map(id => String(id));
+              
+              if (printerIds.length > 0) {
+                await sendReceiptToPrintNode(
+                  printConfig.api_key,
+                  printerIds,
+                  {
+                    restaurant,
+                    cart,
+                    orderNumber: nextOrderNumber,
+                    tableNumber,
+                    orderType,
+                    subtotal: calculateSubtotal(),
+                    tax: calculateTax(),
+                    total: calculateCartTotal(),
+                    getFormattedOptions,
+                    getFormattedToppings
+                  }
+                );
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error during receipt printing:", error);
+          toast({
+            title: t("receipt.error"),
+            description: t("receipt.errorPrinting"),
+            variant: "destructive"
+          });
+        }
+      }
+      
       setOrderPlaced(true);
       toast({
         title: "Commande passée",
@@ -695,6 +815,93 @@ const KioskView = () => {
       setPlacingOrder(false);
     }
   };
+  
+  const sendReceiptToPrintNode = async (
+    apiKey: string,
+    printerIds: string[],
+    orderData: {
+      restaurant: typeof restaurant;
+      cart: CartItem[];
+      orderNumber: string;
+      tableNumber?: string | null;
+      orderType: "dine-in" | "takeaway" | null;
+      subtotal: number;
+      tax: number;
+      total: number;
+      getFormattedOptions: (item: CartItem) => string;
+      getFormattedToppings: (item: CartItem) => string;
+    }
+  ) => {
+    try {
+      const receiptContent = generatePrintNodeReceipt(orderData);
+      
+      // Fix: Properly encode special characters for UTF-8
+      const textEncoder = new TextEncoder();
+      const encodedBytes = textEncoder.encode(receiptContent);
+      const encodedContent = btoa(
+        Array.from(encodedBytes)
+          .map(byte => String.fromCharCode(byte))
+          .join('')
+      );
+      
+      console.log("Sending receipt to PrintNode printers:", printerIds);
+      for (const printerId of printerIds) {
+        console.log(`Sending to printer ID: ${printerId}`);
+        const response = await fetch('https://api.printnode.com/printjobs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${btoa(apiKey + ':')}`
+          },
+          body: JSON.stringify({
+            printer: parseInt(printerId, 10) || printerId,
+            title: `Order #${orderData.orderNumber}`,
+            contentType: "raw_base64",
+            content: encodedContent,
+            source: "Restaurant Kiosk"
+          })
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`PrintNode API error: ${response.status}`, errorText);
+          throw new Error(`Error sending print job: ${response.status} - ${errorText}`);
+        } else {
+          console.log(`PrintNode receipt sent successfully to printer ${printerId}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error sending receipt to PrintNode:", error);
+    }
+  };
+  
+  const generatePrintNodeReceipt = (orderData: {
+    restaurant: typeof restaurant;
+    cart: CartItem[];
+    orderNumber: string;
+    tableNumber?: string | null;
+    orderType: "dine-in" | "takeaway" | null;
+    subtotal: number;
+    tax: number;
+    total: number;
+    getFormattedOptions: (item: CartItem) => string;
+    getFormattedToppings: (item: CartItem) => string;
+  }): string => {
+    return generateStandardReceipt({
+      restaurant: orderData.restaurant,
+      cart: orderData.cart,
+      orderNumber: orderData.orderNumber,
+      tableNumber: orderData.tableNumber,
+      orderType: orderData.orderType,
+      subtotal: orderData.subtotal,
+      tax: orderData.tax,
+      total: orderData.total,
+      getFormattedOptions: orderData.getFormattedOptions,
+      getFormattedToppings: orderData.getFormattedToppings,
+      uiLanguage,
+      useCurrencyCode: true
+    });
+  };
+  
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
