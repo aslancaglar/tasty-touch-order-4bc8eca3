@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, memo, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,8 @@ import { ChevronRight, ImageOff, Clock } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface MenuItemGridProps {
   items: MenuItem[];
@@ -68,7 +71,8 @@ const MenuItemCard = memo(({
   currencySymbol,
   cachedImageUrl,
   hasImageFailed,
-  uiLanguage
+  uiLanguage,
+  currentAvailabilityStatus
 }: {
   item: MenuItem;
   handleSelectItem: (item: MenuItem) => void;
@@ -77,13 +81,13 @@ const MenuItemCard = memo(({
   cachedImageUrl: string;
   hasImageFailed: boolean;
   uiLanguage: SupportedLanguage;
+  currentAvailabilityStatus: boolean;
 }) => {
   const handleItemClick = useCallback(() => {
-    const isAvailable = isItemAvailable(item);
-    if (isAvailable) {
+    if (currentAvailabilityStatus) {
       handleSelectItem(item);
     }
-  }, [item, handleSelectItem]);
+  }, [item, handleSelectItem, currentAvailabilityStatus]);
   
   const formattedPrice = useMemo(() => {
     return parseFloat(item.price.toString()).toFixed(2);
@@ -103,13 +107,12 @@ const MenuItemCard = memo(({
     );
   }, [item.price, item.promotion_price]);
   
-  const isAvailable = isItemAvailable(item);
   const unavailableText = getTranslation('menuItem.unavailable', uiLanguage);
   const hasPromotion = item.promotion_price && 
                        parseFloat(item.promotion_price.toString()) > 0 &&
                        parseFloat(item.promotion_price.toString()) < parseFloat(item.price.toString());
   
-  return <Card className={`overflow-hidden hover:shadow-md transition-shadow select-none ${isAvailable ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={handleItemClick}>
+  return <Card className={`overflow-hidden hover:shadow-md transition-shadow select-none ${currentAvailabilityStatus ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={handleItemClick}>
       <div className="h-40 bg-cover bg-center relative select-none" style={{
       backgroundImage: !hasImageFailed ? `url(${cachedImageUrl})` : 'none',
       backgroundColor: hasImageFailed ? '#f0f0f0' : undefined
@@ -143,7 +146,7 @@ const MenuItemCard = memo(({
           </div>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
-        {isAvailable ? <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
+        {currentAvailabilityStatus ? <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
             {t("addToCart")}
             <ChevronRight className="h-4 w-4 ml-2" />
           </Button> : <div className="w-full mt-4 px-0 text-center text-white font-bebas tracking-wide text-xl py-[10px] bg-red-400 rounded-md">
@@ -165,13 +168,17 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   activeCategory,
   uiLanguage
 }) => {
+  const { toast } = useToast();
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<boolean>(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [itemAvailability, setItemAvailability] = useState<Record<string, boolean>>({});
   const isMounted = useRef<boolean>(true);
   const visibleItemsRef = useRef<Set<string>>(new Set());
   const imagePreloadQueue = useRef<string[]>([]);
   const isPreloadingRef = useRef<boolean>(false);
+  const availabilityTimerRef = useRef<number | null>(null);
+  const realtimeChannelRef = useRef<any>(null);
 
   // Group items by category
   const itemsByCategory = useMemo(() => {
@@ -222,6 +229,87 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     }
     return categoriesCopy;
   }, [categories, activeCategory]);
+
+  // Initialize item availability state
+  const initializeAvailability = useCallback(() => {
+    const currentAvailability: Record<string, boolean> = {};
+    items.forEach(item => {
+      currentAvailability[item.id] = isItemAvailable(item);
+    });
+    setItemAvailability(currentAvailability);
+    
+    console.log("[MenuItemGrid] Initialized availability for", items.length, "items");
+  }, [items]);
+
+  // Check item availability every minute and update the state
+  const updateAvailability = useCallback(() => {
+    let hasChanges = false;
+    
+    const newAvailability = { ...itemAvailability };
+    items.forEach(item => {
+      const newStatus = isItemAvailable(item);
+      if (newAvailability[item.id] !== newStatus) {
+        newAvailability[item.id] = newStatus;
+        hasChanges = true;
+        console.log(`[MenuItemGrid] Item ${item.name} availability changed to ${newStatus ? 'available' : 'unavailable'}`);
+      }
+    });
+    
+    if (hasChanges) {
+      console.log("[MenuItemGrid] Updating availability state after time-based changes");
+      setItemAvailability(newAvailability);
+    }
+  }, [items, itemAvailability]);
+
+  // Setup realtime subscription for menu items changes
+  const setupRealtimeSubscription = useCallback(() => {
+    if (!restaurantId) return;
+    
+    // Clean up existing subscription if any
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+    }
+    
+    try {
+      console.log("[MenuItemGrid] Setting up realtime subscription for menu items");
+      
+      const channel = supabase
+        .channel('menu-items-changes')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'menu_items',
+          filter: `category_id=in.(${categories.map(c => `'${c.id}'`).join(',')})`,
+        }, (payload) => {
+          console.log("[MenuItemGrid] Received realtime update for menu item:", payload);
+          
+          // Get the updated item from the payload
+          const updatedItem = payload.new as MenuItem;
+          if (!updatedItem) return;
+          
+          // Update the availability state for this specific item
+          setItemAvailability(prev => ({
+            ...prev,
+            [updatedItem.id]: isItemAvailable(updatedItem)
+          }));
+          
+          // Toast notification for debugging
+          toast({
+            title: "Menu item updated",
+            description: `${updatedItem.name} availability updated`,
+            duration: 3000,
+          });
+        })
+        .subscribe((status) => {
+          console.log("[MenuItemGrid] Realtime subscription status:", status);
+        });
+      
+      // Save the channel reference for cleanup
+      realtimeChannelRef.current = channel;
+    } catch (error) {
+      console.error("[MenuItemGrid] Error setting up realtime subscription:", error);
+    }
+  }, [restaurantId, categories, toast]);
 
   // Pre-cache only visible items with intersection observer
   const setupIntersectionObserver = useCallback(() => {
@@ -299,6 +387,52 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
     }
   }, [items]);
 
+  // Initialize availability on mount and when items change
+  useEffect(() => {
+    initializeAvailability();
+  }, [items, initializeAvailability]);
+
+  // Setup timer to check availability every minute
+  useEffect(() => {
+    // Initial check
+    updateAvailability();
+    
+    // Calculate seconds until the next full minute
+    const now = new Date();
+    const secondsToNextMinute = 60 - now.getSeconds();
+    
+    // Wait until the next full minute, then start checking every minute
+    const initialTimeout = setTimeout(() => {
+      updateAvailability();
+      
+      // Start the interval at exactly the beginning of a minute
+      const intervalId = setInterval(() => {
+        updateAvailability();
+      }, 60000); // Check every minute
+      
+      availabilityTimerRef.current = intervalId as unknown as number;
+    }, secondsToNextMinute * 1000);
+    
+    return () => {
+      clearTimeout(initialTimeout);
+      if (availabilityTimerRef.current) {
+        clearInterval(availabilityTimerRef.current);
+      }
+    };
+  }, [updateAvailability]);
+
+  // Setup realtime subscription
+  useEffect(() => {
+    if (restaurantId) {
+      setupRealtimeSubscription();
+    }
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+      }
+    };
+  }, [restaurantId, setupRealtimeSubscription]);
+
   // Effect to initialize intersection observer
   useEffect(() => {
     const observer = setupIntersectionObserver();
@@ -316,6 +450,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       precacheImages(imageUrls).catch(err => console.error("Error pre-caching images:", err));
     }
   }, [items, refreshTrigger]);
+
   useEffect(() => {
     isMounted.current = true;
     setLoadingImages(true);
@@ -382,9 +517,11 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
       imagePreloadQueue.current = [];
     };
   }, [items, refreshTrigger]);
+
   const handleImageError = useCallback((itemId: string) => {
     setFailedImages(prev => new Set([...prev, itemId]));
   }, []);
+
   return <div className="space-y-8 pb-20">
       {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20 pt-0 py-0">
           <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide pl-4">
@@ -392,7 +529,16 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none px-4">
             {itemsByCategory[category.id]?.map(item => <div key={item.id} data-item-id={item.id}>
-                <MenuItemCard item={item} handleSelectItem={handleSelectItem} t={t} currencySymbol={currencySymbol} cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} hasImageFailed={failedImages.has(item.id)} uiLanguage={uiLanguage} />
+                <MenuItemCard 
+                  item={item} 
+                  handleSelectItem={handleSelectItem} 
+                  t={t} 
+                  currencySymbol={currencySymbol} 
+                  cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} 
+                  hasImageFailed={failedImages.has(item.id)} 
+                  uiLanguage={uiLanguage}
+                  currentAvailabilityStatus={itemAvailability[item.id] ?? isItemAvailable(item)} 
+                />
               </div>)}
             {itemsByCategory[category.id]?.length === 0 && <div className="col-span-3 py-8 text-center text-gray-500 font-inter">
                 No items in this category
