@@ -10,9 +10,11 @@ import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
 import { setCacheItem, getCacheItem, clearCache } from "@/services/cache-service";
+
 interface ToppingCategoryWithToppings extends ToppingCategory {
   toppings?: Topping[];
 }
+
 interface ToppingsTabProps {
   restaurant: {
     id: string;
@@ -20,6 +22,7 @@ interface ToppingsTabProps {
     currency?: string;
   };
 }
+
 const getCurrencySymbol = (currency: string): string => {
   switch (currency) {
     case 'EUR':
@@ -32,6 +35,7 @@ const getCurrencySymbol = (currency: string): string => {
       return currency;
   }
 };
+
 const ToppingsTab = ({
   restaurant
 }: ToppingsTabProps) => {
@@ -54,14 +58,17 @@ const ToppingsTab = ({
   const [isUpdatingTopping, setIsUpdatingTopping] = useState(false);
   const [isDeletingTopping, setIsDeletingTopping] = useState(false);
   const currencySymbol = getCurrencySymbol(restaurant.currency || 'EUR');
+
   useEffect(() => {
     fetchCategories();
   }, [restaurant.id]);
+
   useEffect(() => {
     if (selectedCategory?.id) {
       fetchToppings(categories);
     }
   }, [categories, selectedCategory?.id]);
+
   const fetchCategories = async () => {
     try {
       // Always clear the cache before fetching to ensure we get fresh data
@@ -96,6 +103,7 @@ const ToppingsTab = ({
       });
     }
   };
+
   const fetchToppings = async (categories: ToppingCategory[]) => {
     if (!selectedCategory?.id) return;
     try {
@@ -621,4 +629,5 @@ const ToppingsTab = ({
       </Dialog>
     </div>;
 };
+
 export default ToppingsTab;
