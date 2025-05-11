@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -99,7 +99,7 @@ interface OrderSummaryProps {
   uiLanguage?: "fr" | "en" | "tr";
 }
 
-const OrderSummary = forwardRef<{getOrderNumber: () => string}, OrderSummaryProps>(({
+const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
   cart,
@@ -115,38 +115,44 @@ const OrderSummary = forwardRef<{getOrderNumber: () => string}, OrderSummaryProp
   orderType = null,
   tableNumber = null,
   uiLanguage = "fr"
-}, ref) => {
+}) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
-  const { toast } = useToast();
-  const { t } = useTranslation(uiLanguage);
-  const { total, subtotal, tax } = calculateCartTotals(cart);
-  
-  // Expose getOrderNumber method via ref
-  useImperativeHandle(ref, () => ({
-    getOrderNumber: () => orderNumber
-  }));
-  
+  const {
+    toast
+  } = useToast();
+  const {
+    t
+  } = useTranslation(uiLanguage);
+  const {
+    total,
+    subtotal,
+    tax
+  } = calculateCartTotals(cart);
   useEffect(() => {
     console.log("OrderSummary mounted, isMobile:", isMobile, "userAgent:", navigator.userAgent);
     const fetchOrderCount = async () => {
       if (restaurant?.id) {
-        const { count } = await supabase
-          .from('orders')
-          .select('*', { count: 'exact', head: true })
-          .eq('restaurant_id', restaurant.id);
+        const {
+          count
+        } = await supabase.from('orders').select('*', {
+          count: 'exact',
+          head: true
+        }).eq('restaurant_id', restaurant.id);
         setOrderNumber(((count || 0) + 1).toString());
       }
     };
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
-  
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
-        const { data: printConfig, error } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
+        const {
+          data: printConfig,
+          error
+        } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
         if (error) {
           console.error("Error fetching print configuration:", error);
           return;
@@ -207,7 +213,6 @@ const OrderSummary = forwardRef<{getOrderNumber: () => string}, OrderSummaryProp
       }
     }
   };
-  
   const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -254,7 +259,6 @@ const OrderSummary = forwardRef<{getOrderNumber: () => string}, OrderSummaryProp
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
-  
   const generatePrintNodeReceipt = (orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -282,7 +286,6 @@ const OrderSummary = forwardRef<{getOrderNumber: () => string}, OrderSummaryProp
       useCurrencyCode: true
     });
   };
-  
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
   
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
@@ -373,8 +376,6 @@ const OrderSummary = forwardRef<{getOrderNumber: () => string}, OrderSummaryProp
 
       <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
     </Dialog>;
-});
-
-OrderSummary.displayName = "OrderSummary";
+};
 
 export default OrderSummary;
