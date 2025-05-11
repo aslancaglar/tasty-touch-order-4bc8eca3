@@ -2,6 +2,8 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag } from "lucide-react";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { getEffectivePrice } from "@/utils/price-utils";
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -14,10 +16,12 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
+
 function getCurrencySymbol(currency: string) {
   const code = currency?.toUpperCase() || "EUR";
   return CURRENCY_SYMBOLS[code] || code;
 }
+
 interface CartButtonProps {
   itemCount: number;
   total: number;
@@ -25,6 +29,7 @@ interface CartButtonProps {
   uiLanguage?: SupportedLanguage;
   currency?: string;
 }
+
 const CartButton: React.FC<CartButtonProps> = ({
   itemCount,
   total,
@@ -47,4 +52,5 @@ const CartButton: React.FC<CartButtonProps> = ({
       </Button>
     </div>;
 };
+
 export default CartButton;

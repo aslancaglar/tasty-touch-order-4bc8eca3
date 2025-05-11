@@ -1,8 +1,7 @@
-
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
-import { calculateCartTotals } from "@/utils/price-utils";
+import { calculateCartTotals, getEffectivePrice } from "@/utils/price-utils";
 import { getGroupedToppings } from "@/utils/receipt-templates";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 

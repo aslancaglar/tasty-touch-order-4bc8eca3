@@ -1,3 +1,4 @@
+
 import { CartItem } from "@/types/database-types";
 
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
@@ -36,6 +37,14 @@ export const isItemAvailable = (item: any): boolean => {
     // Time range spans midnight (e.g., 22:00 to 02:00)
     return currentTime >= fromMinutes || currentTime <= untilMinutes;
   }
+};
+
+// Get the effective price of a menu item, considering promotion price if available
+export const getEffectivePrice = (item: any): number => {
+  if (item.promotion_price && parseFloat(item.promotion_price) > 0 && parseFloat(item.promotion_price) < parseFloat(item.price)) {
+    return parseFloat(item.promotion_price);
+  }
+  return parseFloat(item.price);
 };
 
 // Updated utility function to calculate cart totals with proper topping VAT
