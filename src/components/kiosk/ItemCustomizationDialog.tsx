@@ -321,7 +321,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   }, []);
 
   // Memoized price calculation
-  const calculateItemPrice = useMemo(() => {
+  const itemPrice = useMemo(() => {
     if (!item) return 0;
     
     let price = parseFloat(item.price.toString());
@@ -469,7 +469,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               onClick={handleAddToCartClick} 
               className="flex-1 bg-kiosk-primary py-[34px] text-3xl"
             >
-              {t("addToCart")} - {calculateItemPrice().toFixed(2)} {currencySymbol}
+              {t("addToCart")} - {itemPrice.toFixed(2)} {currencySymbol}
             </Button>
           </div>
         </DialogFooter>
