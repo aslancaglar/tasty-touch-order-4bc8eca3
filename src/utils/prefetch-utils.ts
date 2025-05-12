@@ -133,8 +133,8 @@ export const prefetchMenuItemDetails = async (menuItemId: string, restaurantId: 
       toppingCategories
     };
 
-    // Cache the result
-    setCacheItem(cacheKey, completeMenuItem, restaurantId, 60 * 60); // Cache for 1 hour
+    // Cache the result - fix the number of arguments (remove the 4th argument)
+    setCacheItem(cacheKey, completeMenuItem, restaurantId);
     console.log(`Menu item ${menuItemId} details cached successfully`);
     
   } catch (error) {
@@ -199,8 +199,8 @@ export const prefetchCategoryItems = async (
       const menuItemIds = menuItems.map(item => item.id);
       prefetchMenuItems(menuItemIds, restaurantId);
       
-      // Mark this category as prefetched to avoid redundant calls
-      setCacheItem(cacheKey, true, restaurantId, 60 * 15); // Cache for 15 minutes
+      // Mark this category as prefetched to avoid redundant calls - fix the number of arguments
+      setCacheItem(cacheKey, true, restaurantId);
     }
   } catch (error) {
     console.error('Error in prefetchCategoryItems:', error);

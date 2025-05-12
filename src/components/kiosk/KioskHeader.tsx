@@ -53,7 +53,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = memo(({
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover bg-white p-1" 
               loading="eager"
-              fetchpriority="high"
+              fetchPriority="high"
             />
           ) : restaurant.image_url ? (
             <img 
@@ -61,7 +61,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = memo(({
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
               loading="eager"
-              fetchpriority="high"
+              fetchPriority="high"
             />
           ) : (
             <img 
@@ -69,7 +69,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = memo(({
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
               loading="eager"
-              fetchpriority="high"
+              fetchPriority="high"
             />
           )}
           <div>
