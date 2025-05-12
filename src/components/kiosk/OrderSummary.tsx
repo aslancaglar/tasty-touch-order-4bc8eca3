@@ -22,9 +22,11 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
+
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
+
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -45,6 +47,7 @@ interface OrderSummaryProps {
   tableNumber?: string | null;
   uiLanguage?: SupportedLanguage;
 }
+
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -67,10 +70,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     tax
   } = calculateCartTotals(cart);
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+
   const handleConfirmOrder = async () => {
     // Simply call onPlaceOrder and let the parent component handle the rest
     onPlaceOrder();
   };
+
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-2xl md:max-w-2xl p-0 overflow-hidden flex flex-col max-h-[85vh]">
         {/* Fixed Header */}
@@ -81,7 +86,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <h2 className="text-xl font-bold">{t("order.summary")}</h2>
         </div>
         
-        {/* Scrollable Content Area */}
+        {/* Scrollable Content Area - Now only contains items */}
         <ScrollArea className="flex-grow overflow-auto p-6">
           <h3 className="font-bold text-lg mb-4">{t("order.items")}</h3>
           
@@ -122,10 +127,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                   </div>}
               </div>)}
           </div>
-          
-          <Separator className="my-4" />
-          
-          <div className="space-y-2">
+        </ScrollArea>
+        
+        {/* Fixed Footer - Now includes totals and confirm button */}
+        <div className="p-4 bg-gray-50 border-t flex-shrink-0">
+          {/* Totals section */}
+          <div className="space-y-2 mb-4">
             <div className="flex justify-between text-gray-600">
               <span>{t("order.subtotal")}:</span>
               <span>{subtotal.toFixed(2)} {currencySymbol}</span>
@@ -140,10 +147,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
           </div>
-        </ScrollArea>
-        
-        {/* Fixed Footer */}
-        <div className="p-4 bg-gray-50 border-t flex-shrink-0">
+          
+          {/* Confirm button */}
           <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[30px]">
             <Check className="mr-2 h-5 w-5" />
             {t("order.confirm")}
@@ -152,4 +157,5 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       </DialogContent>
     </Dialog>;
 };
+
 export default OrderSummary;
