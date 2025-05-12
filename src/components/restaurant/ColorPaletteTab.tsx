@@ -52,9 +52,11 @@ const ColorPaletteTab = ({ restaurant, onRestaurantUpdated }: ColorPaletteTabPro
         }
         
         if (data && data.color_palette) {
+          // Type assertion to access the color_palette properly
+          const palette = data.color_palette as Record<string, string>;
           setColors({
             ...DEFAULT_COLORS,
-            ...data.color_palette
+            ...palette
           });
         }
       } catch (error) {
@@ -94,10 +96,19 @@ const ColorPaletteTab = ({ restaurant, onRestaurantUpdated }: ColorPaletteTabPro
       });
 
       if (onRestaurantUpdated && data && data.length > 0) {
+        const typedColorPalette = {
+          primary: colors.primary,
+          secondary: colors.secondary,
+          accent: colors.accent,
+          background: colors.background,
+          text: colors.text
+        };
+        
         const updatedRestaurant = {
           ...restaurant,
-          color_palette: colors
+          color_palette: typedColorPalette
         };
+        
         onRestaurantUpdated(updatedRestaurant);
       }
     } catch (error) {

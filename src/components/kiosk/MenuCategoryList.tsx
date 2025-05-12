@@ -1,7 +1,7 @@
 
-// Add colorPalette prop to the component props interface
 import React from 'react';
 import { MenuCategory, Restaurant } from '@/types/database-types';
+import { Utensils } from 'lucide-react';
 
 interface MenuCategoryListProps {
   categories: MenuCategory[];
@@ -13,7 +13,8 @@ interface MenuCategoryListProps {
 const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   categories,
   activeCategory,
-  setActiveCategory
+  setActiveCategory,
+  colorPalette
 }) => {
   // Sort categories by display_order
   const sortedCategories = [...categories].sort((a, b) => {
@@ -54,6 +55,15 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
     }
   };
 
+  const buttonStyle = (isActive: boolean) => {
+    if (colorPalette) {
+      return isActive 
+        ? { backgroundColor: colorPalette.primary, color: colorPalette.background } 
+        : { backgroundColor: colorPalette.accent, color: colorPalette.text };
+    }
+    return {}; // Default styles will be applied through classes
+  };
+
   return (
     <div className="h-full p-4 overflow-y-auto">
       <div className="space-y-2">
@@ -66,6 +76,7 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
                 ? 'bg-kiosk-primary text-white' 
                 : 'bg-[#D6BCFA] hover:bg-[#E5DEFF] text-gray-800'
             }`}
+            style={buttonStyle(activeCategory === category.id)}
           >
             <div className="mr-3 w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
               {category.icon ? (
@@ -78,7 +89,7 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
                 <div className={`w-full h-full flex items-center justify-center bg-gray-100 ${
                   activeCategory === category.id ? 'text-white' : 'text-gray-500'
                 }`}>
-                  <UtensilsCrossed className="h-8 w-8" />
+                  <Utensils className="h-8 w-8" />
                 </div>
               )}
             </div>

@@ -100,7 +100,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [uiLanguage, setUiLanguage] = useState(restaurant.ui_language || "fr");
+  const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">(restaurant.ui_language || "fr");
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
@@ -362,7 +362,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       console.log("Saving UI language:", uiLanguage);
       
       const updatedData = {
-        ui_language: uiLanguage as "fr" | "en" | "tr" // Type assertion to fix the error
+        ui_language: uiLanguage
       };
       
       const { data, error } = await supabase
