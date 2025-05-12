@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Package, PackageOpen, ChevronRight } from "lucide-react";
@@ -9,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { getCategoriesByRestaurantId, getMenuItemsByCategory, getToppingCategoriesByRestaurantId, getToppingsByCategory, updateMenuItem, updateTopping } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, ToppingCategory, Topping } from "@/types/database-types";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { clearCache } from "@/services/cache-service";
+import { CACHE_KEYS } from "@/services/data-preloader";
 
 interface StockTabProps {
   restaurant: Restaurant;
@@ -153,6 +154,10 @@ const StockTab = ({
         ).sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
       }));
       
+      // Clear cache for this restaurant's menu items when stock changes
+      clearCache(restaurant.id, CACHE_KEYS.CATEGORIES);
+      clearCache(restaurant.id, `${CACHE_KEYS.MENU_ITEM_PREFIX}${item.id}`);
+      
       toast({
         title: "Success",
         description: `${item.name} is now ${!item.in_stock ? 'in' : 'out of'} stock`
@@ -180,6 +185,10 @@ const StockTab = ({
           t.id === topping.id ? updatedTopping : t
         ).sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
       }));
+      
+      // Clear cache for this restaurant's toppings when stock changes
+      clearCache(restaurant.id, CACHE_KEYS.TOPPING_CATEGORIES);
+      clearCache(restaurant.id, `${CACHE_KEYS.TOPPINGS_PREFIX}${topping.category_id}`);
       
       toast({
         title: "Success",

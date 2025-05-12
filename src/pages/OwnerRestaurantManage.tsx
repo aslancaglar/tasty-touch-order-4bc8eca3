@@ -14,6 +14,7 @@ import StockTab from "@/components/restaurant/StockTab";
 import StatisticsTab from "@/components/restaurant/StatisticsTab";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { clearCache } from "@/services/cache-service";
 
 const OwnerRestaurantManage = () => {
   const {
@@ -67,6 +68,12 @@ const OwnerRestaurantManage = () => {
 
         // User has access to this restaurant
         setRestaurant(foundRestaurant);
+        
+        // Clear any cached data for this restaurant to ensure fresh data
+        if (id) {
+          console.log(`Clearing cache for restaurant: ${foundRestaurant.name} (${id})`);
+          clearCache(id);
+        }
 
         // Set language based on restaurant settings
         if (foundRestaurant.ui_language) {
@@ -89,6 +96,11 @@ const OwnerRestaurantManage = () => {
   
   const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
     setRestaurant(updatedRestaurant);
+
+    // Clear cache whenever restaurant details are updated
+    if (id) {
+      clearCache(id);
+    }
 
     // Update language when restaurant settings are changed
     if (updatedRestaurant.ui_language) {

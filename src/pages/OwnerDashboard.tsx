@@ -10,6 +10,8 @@ import { Loader2, Store, LogOut } from "lucide-react";
 import { Restaurant } from "@/types/database-types";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
+import { clearCache } from "@/services/cache-service";
+import { getCachedRestaurantIds } from "@/services/cache-service";
 
 const OwnerDashboard = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -30,6 +32,7 @@ const OwnerDashboard = () => {
         
         setLoading(true);
         
+        // Always fetch fresh data for admin/owner dashboards - never use cache
         const { data, error } = await supabase
           .rpc('get_owned_restaurants');
         
@@ -47,6 +50,17 @@ const OwnerDashboard = () => {
         // Set restaurants data
         const restaurantData = data || [];
         setRestaurants(restaurantData);
+        
+        // Clear cache for all restaurants owned by this user
+        // This ensures fresh data when navigating to the restaurant management page
+        restaurantData.forEach(restaurant => {
+          // Check if we have any cached data for this restaurant
+          const cachedRestaurantIds = getCachedRestaurantIds();
+          if (cachedRestaurantIds.includes(restaurant.id)) {
+            console.log(`Clearing cache for restaurant: ${restaurant.name} (${restaurant.id})`);
+            clearCache(restaurant.id);
+          }
+        });
         
         // Set language based on the first restaurant if available
         if (restaurantData.length > 0 && restaurantData[0].ui_language) {
