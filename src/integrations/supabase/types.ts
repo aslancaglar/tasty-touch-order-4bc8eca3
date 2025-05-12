@@ -667,7 +667,6 @@ export type Database = {
         Row: {
           card_payment_enabled: boolean | null
           cash_payment_enabled: boolean | null
-          color_palette: Json | null
           created_at: string
           currency: string
           id: string
@@ -682,7 +681,6 @@ export type Database = {
         Insert: {
           card_payment_enabled?: boolean | null
           cash_payment_enabled?: boolean | null
-          color_palette?: Json | null
           created_at?: string
           currency?: string
           id?: string
@@ -697,7 +695,6 @@ export type Database = {
         Update: {
           card_payment_enabled?: boolean | null
           cash_payment_enabled?: boolean | null
-          color_palette?: Json | null
           created_at?: string
           currency?: string
           id?: string
@@ -830,7 +827,6 @@ export type Database = {
         Returns: {
           card_payment_enabled: boolean | null
           cash_payment_enabled: boolean | null
-          color_palette: Json | null
           created_at: string
           currency: string
           id: string

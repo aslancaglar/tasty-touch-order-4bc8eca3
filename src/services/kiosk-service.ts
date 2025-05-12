@@ -24,11 +24,7 @@ export const getRestaurants = async (): Promise<Restaurant[]> => {
     throw error;
   }
 
-  // Ensure the data matches the Restaurant type
-  return data.map(restaurant => ({
-    ...restaurant,
-    color_palette: restaurant.color_palette as Restaurant['color_palette']
-  }));
+  return data;
 };
 
 export const createRestaurant = async (restaurant: Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>): Promise<Restaurant> => {
@@ -43,10 +39,7 @@ export const createRestaurant = async (restaurant: Omit<Restaurant, 'id' | 'crea
     throw error;
   }
 
-  return {
-    ...data,
-    color_palette: data.color_palette as Restaurant['color_palette']
-  };
+  return data;
 };
 
 export const updateRestaurant = async (id: string, updates: Partial<Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>>): Promise<Restaurant> => {
@@ -65,10 +58,7 @@ export const updateRestaurant = async (id: string, updates: Partial<Omit<Restaur
   }
 
   console.log("Restaurant updated successfully:", data);
-  return {
-    ...data,
-    color_palette: data.color_palette as Restaurant['color_palette']
-  };
+  return data;
 };
 
 export const deleteRestaurant = async (id: string): Promise<void> => {
@@ -98,10 +88,7 @@ export const getRestaurantBySlug = async (slug: string): Promise<Restaurant | nu
     throw error;
   }
 
-  return {
-    ...data,
-    color_palette: data.color_palette as Restaurant['color_palette']
-  };
+  return data;
 };
 
 // Menu Category services
@@ -792,29 +779,30 @@ export const getToppingsForRestaurant = async (restaurantId: string) => {
 };
 
 export const duplicateRestaurant = async (restaurantId: string): Promise<Restaurant> => {
-  try {
-    const { data, error } = await supabase
-      .rpc('duplicate_restaurant', { source_restaurant_id: restaurantId })
-      .select()
-      .single();
-      
-    if (error) throw error;
-    
-    // Get the newly created restaurant details
-    const { data: newRestaurant, error: fetchError } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('id', data)
-      .single();
-      
-    if (fetchError) throw fetchError;
-    
-    return {
-      ...newRestaurant,
-      color_palette: newRestaurant.color_palette as Restaurant['color_palette']
-    };
-  } catch (error) {
-    console.error('Error duplicating restaurant:', error);
+  console.log("Duplicating restaurant:", restaurantId);
+  
+  const { data, error } = await supabase
+    .rpc('duplicate_restaurant', {
+      source_restaurant_id: restaurantId
+    })
+    .single();
+
+  if (error) {
+    console.error("Error duplicating restaurant:", error);
     throw error;
   }
+
+  // Fetch the newly created restaurant
+  const { data: newRestaurant, error: fetchError } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("id", data)
+    .single();
+
+  if (fetchError) {
+    console.error("Error fetching new restaurant:", fetchError);
+    throw fetchError;
+  }
+
+  return newRestaurant;
 };

@@ -39,7 +39,6 @@ const KioskView = () => {
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [colorPalette, setColorPalette] = useState<Restaurant['color_palette'] | null>(null);
   const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -216,7 +215,6 @@ const KioskView = () => {
           return;
         }
         setRestaurant(restaurantData);
-        setColorPalette(restaurantData.color_palette);
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         const menuData = await getMenuForRestaurant(restaurantData.id);
@@ -861,7 +859,6 @@ const KioskView = () => {
           return;
         }
         setRestaurant(restaurantData);
-        setColorPalette(restaurantData.color_palette);
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         await fetchCategories();
@@ -955,14 +952,7 @@ const KioskView = () => {
   return <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
-        <KioskHeader 
-          restaurant={restaurant} 
-          orderType={orderType} 
-          tableNumber={tableNumber} 
-          t={t} 
-          onRefresh={handleRefreshMenu}
-          colorPalette={colorPalette}
-        />
+        <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
       </div>
 
       {/* Content area with fixed sidebar and scrollable menu grid */}
@@ -989,16 +979,7 @@ const KioskView = () => {
         </div>
       </div>
 
-      {!isCartOpen && !cartIsEmpty && (
-        <CartButton 
-          itemCount={cartItemCount} 
-          total={calculateCartTotal()} 
-          onClick={toggleCart} 
-          uiLanguage={uiLanguage} 
-          currency={restaurant?.currency}
-          colorPalette={colorPalette}
-        />
-      )}
+      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} uiLanguage={uiLanguage} currency={restaurant.currency} />}
 
       <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
       maxHeight: "60vh"

@@ -10,13 +10,6 @@ interface KioskHeaderProps {
   tableNumber: string | null;
   t: (key: string) => string;
   onRefresh?: () => void;
-  colorPalette?: {
-    primary: string;
-    secondary: string;
-    accent: string;
-    background: string;
-    text: string;
-  } | null;
 }
 
 const KioskHeader: React.FC<KioskHeaderProps> = ({
@@ -24,19 +17,13 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
   orderType,
   tableNumber,
   t,
-  onRefresh,
-  colorPalette
+  onRefresh
 }) => {
-  // Apply custom color styling or use default overlay
-  const overlayStyle = colorPalette ? {
-    backgroundColor: `${colorPalette.primary}99`, // Adding alpha transparency
-  } : { backgroundColor: "rgba(0, 0, 0, 0.5)" };
-
   return (
     <div className="h-full w-full bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
     }}>
-      <div className="absolute inset-0" style={overlayStyle}></div>
+      <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       
       {/* Refresh button in top right corner */}
       {onRefresh && (
@@ -81,8 +68,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
               <span>{restaurant.location || t("open")}</span>
             </div>
             {orderType && 
-              <div className="mt-1 px-3 py-1 rounded-full text-white text-sm inline-flex items-center font-bebas tracking-wide"
-                style={colorPalette ? { backgroundColor: `${colorPalette.accent}80` } : { backgroundColor: "rgba(255, 255, 255, 0.2)" }}>
+              <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center font-bebas tracking-wide">
                 {orderType === 'dine-in' ? 
                   <>
                     <span className="mr-1">{t("dineIn")}</span>

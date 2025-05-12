@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { printReceipt } from "@/utils/print-utils";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
-import ColorPaletteTab from "@/components/restaurant/ColorPaletteTab";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 import { updateRestaurant, deleteRestaurant } from "@/services/kiosk-service";
@@ -99,7 +98,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false); // Fixed: initialize isDeleting before use
+  const [isDeleting, setIsDeleting] = useState(false);
   const [uiLanguage, setUiLanguage] = useState(restaurant.ui_language || "fr");
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
@@ -433,7 +432,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         <TabsList>
           <TabsTrigger value="basic">Informations</TabsTrigger>
           <TabsTrigger value="print">Impression</TabsTrigger>
-          <TabsTrigger value="colors">Couleurs</TabsTrigger>
         </TabsList>
         
         <TabsContent value="basic" className="space-y-6">
@@ -769,13 +767,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               <p>Merci de votre visite!</p>
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="colors" className="space-y-6">
-          <ColorPaletteTab 
-            restaurant={restaurant} 
-            onRestaurantUpdated={onRestaurantUpdated} 
-          />
         </TabsContent>
       </Tabs>
     </div>
