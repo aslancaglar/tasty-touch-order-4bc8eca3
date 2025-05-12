@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, UtensilsCrossed, Cherry, Receipt, Package, ChartBar, RefreshCw } from "lucide-react";
+import { Loader2, ArrowLeft, UtensilsCrossed, Cherry, Receipt, Package, ChartBar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Restaurant } from "@/types/database-types";
 import MenuTab from "@/components/restaurant/MenuTab";
@@ -16,7 +16,6 @@ import StatisticsTab from "@/components/restaurant/StatisticsTab";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { forceFlushMenuCache } from "@/services/cache-service";
-import { preloadAllRestaurantData } from "@/utils/data-preloader";
 
 const OwnerRestaurantManage = () => {
   const {
@@ -27,7 +26,6 @@ const OwnerRestaurantManage = () => {
   const [activeTab, setActiveTab] = useState("menu");
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cacheLoading, setCacheLoading] = useState(false);
   const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
   const isMobile = useIsMobile();
   const {
@@ -105,39 +103,6 @@ const OwnerRestaurantManage = () => {
     }
   };
   
-  const handleClearCacheAndPreload = async () => {
-    if (!restaurant) return;
-    
-    try {
-      setCacheLoading(true);
-      
-      // Force flush all cached data for this restaurant
-      forceFlushMenuCache(restaurant.id);
-      
-      // Then preload the data again with force refresh
-      await preloadAllRestaurantData(restaurant.slug, { 
-        forceRefresh: true,
-        isAdmin: false // We want to preload as if we're a kiosk user
-      }, (state) => {
-        console.log("Preload progress:", state.progress, state.stage);
-      });
-      
-      toast({
-        title: t("cache.clearSuccess"),
-        description: t("cache.reloadedSuccess"),
-      });
-    } catch (error) {
-      console.error("Error clearing cache and preloading data:", error);
-      toast({
-        title: t("cache.error"),
-        description: t("cache.errorDetails"),
-        variant: "destructive"
-      });
-    } finally {
-      setCacheLoading(false);
-    }
-  };
-  
   if (loading && !restaurant) {
     return <div className="flex justify-center items-center h-[80vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -167,30 +132,11 @@ const OwnerRestaurantManage = () => {
           <h1 className="text-2xl sm:text-3xl font-bold">{restaurant?.name}</h1>
           <p className="text-muted-foreground">{restaurant?.location || t("restaurants.noLocationDefined")}</p>
         </div>
-        <div className="ml-0 sm:ml-auto mt-2 sm:mt-0 flex flex-col sm:flex-row gap-2">
+        <div className="ml-0 sm:ml-auto mt-2 sm:mt-0">
           <Button variant="outline" asChild size={isMobile ? "sm" : "default"}>
             <Link to={`/r/${restaurant?.slug}`} target="_blank">
               {t("restaurants.viewKiosk")}
             </Link>
-          </Button>
-          <Button 
-            variant="outline" 
-            size={isMobile ? "sm" : "default"} 
-            onClick={handleClearCacheAndPreload}
-            disabled={cacheLoading}
-            className="flex items-center"
-          >
-            {cacheLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t("cache.refreshing")}
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {t("cache.refreshKiosk")}
-              </>
-            )}
           </Button>
         </div>
       </div>

@@ -1,47 +1,132 @@
 
 {
+  "orderType": {
+    "title": "How would you like to order?",
+    "dineIn": "Dine-In",
+    "takeaway": "Takeaway"
+  },
+  "order": {
+    "summary": "Order Summary",
+    "items": "Ordered Items",
+    "subtotal": "Subtotal",
+    "vatWithRate": "VAT",
+    "vat": "VAT",
+    "totalTTC": "TOTAL",
+    "confirm": "Confirm Order",
+    "printing": "Printing",
+    "printingPreparation": "Preparing to print...",
+    "printError": "Print Error",
+    "printErrorDesc": "Unable to print receipt. Please try again.",
+    "error": "Error",
+    "errorPrinting": "An error occurred while printing the receipt."
+  },
+  "orderConfirmation": {
+    "title": "✅ Your Order Has Been Placed!",
+    "ticketPrinted": "🧾 A ticket has been printed and sent to the kitchen.",
+    "preparation": "👨‍🍳 The team is starting to prepare your meal.",
+    "printed": "Receipt printed successfully.",
+    "printing": "Printing receipt...",
+    "payNow": "💳 Please Pay Now",
+    "paymentInstructions": "To finalize your order, please pay the total amount to the restaurant staff at the counter.",
+    "total": "Total",
+    "orderNumber": "Order Number",
+    "preparationWarning": "⚠️ Your food will be prepared once the payment is completed.",
+    "thankYou": "Thank you for your visit and enjoy your meal!",
+    "redirecting": "Redirecting in"
+  },
+  "receipt": {
+    "order": "Order",
+    "table": "Table",
+    "subtotal": "Subtotal",
+    "vat": "VAT",
+    "total": "TOTAL",
+    "thanks": "Thank you for your visit!",
+    "seeYouSoon": "See you soon!",
+    "dineIn": "Dine In",
+    "takeaway": "Takeaway"
+  },
+  "welcome": {
+    "title": "Welcome to our ordering kiosk",
+    "start": "TOUCH TO START ORDERING"
+  },
+  "cart": {
+    "viewCart": "View Cart"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to your TastyTouch Admin Dashboard",
+    "totalRevenue": "Total Revenue",
+    "revenueDesc": "All-time revenue across all restaurants",
+    "restaurants": "Restaurants",
+    "restaurantsDesc": "Active restaurants on the platform",
+    "totalOrders": "Total Orders",
+    "totalOrdersDesc": "Orders processed this month",
+    "dailyOrders": "Daily Orders",
+    "dailyOrdersDesc": "Orders processed today",
+    "popularItems": "Popular Items",
+    "popularItemsDesc": "Most ordered menu items",
+    "popularRestaurants": "Popular Restaurants",
+    "popularRestaurantsDesc": "Top performing restaurants",
+    "fromLastMonth": "from last month"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "restaurants": "Restaurants",
+    "signOut": "Sign Out",
+    "admin": "Admin",
+    "owner": "Restaurant Owner"
+  },
   "restaurants": {
-    "title": "Your Restaurants",
-    "subtitle": "Manage your restaurant menus and settings",
+    "title": "Restaurants",
+    "subtitle": "Manage all the restaurants on your platform",
     "add": "Add Restaurant",
-    "needLogin": "You need to log in to view your restaurants",
-    "signIn": "Sign In",
-    "manage": "Manage",
-    "viewKiosk": "View Kiosk",
-    "backToRestaurants": "Back to Restaurants",
     "orders": "Orders",
     "revenue": "Revenue",
-    "noRestaurants": "You don't have any restaurants yet",
+    "viewKiosk": "View Kiosk",
+    "manage": "Manage",
+    "noRestaurants": "No restaurants found",
     "startAdding": "Start by adding your first restaurant",
-    "management": "Restaurant Management",
+    "needLogin": "You need to be logged in to view and manage restaurants",
+    "signIn": "Sign In",
     "notFound": "Restaurant not found",
-    "noLocationDefined": "No location defined"
+    "backToRestaurants": "Back to Restaurants",
+    "noLocationDefined": "No location defined",
+    "management": "Restaurant Management"
   },
   "restaurant": {
     "menu": "Menu",
     "toppings": "Toppings",
     "orders": "Orders",
+    "settings": "Settings",
     "stock": "Stock",
     "statistics": "Statistics"
   },
-  "cart": {
-    "viewCart": "View Cart",
-    "emptyCart": "Your cart is empty",
-    "total": "Total",
-    "checkout": "Checkout",
-    "back": "Back to Menu",
-    "placeOrder": "Place Order",
-    "removeItem": "Remove",
-    "customizations": "Customizations",
-    "yourOrder": "Your Order",
-    "orderType": "Order Type"
+  "statistics": {
+    "title": "Restaurant Statistics",
+    "error": "Error",
+    "loadError": "Failed to load statistics data",
+    "customPeriodError": "Failed to load custom period data",
+    "customDateRange": "Custom Date Range",
+    "pickDate": "Pick a date",
+    "barChart": "Bar",
+    "lineChart": "Line",
+    "selectedPeriodOrders": "Selected Period Orders",
+    "todaysOrders": "Today's Orders",
+    "selectedPeriodItems": "Selected Period Items", 
+    "thisMonthsOrders": "This Month's Orders",
+    "selectedPeriodRevenue": "Selected Period Revenue",
+    "todaysRevenue": "Today's Revenue",
+    "selectedPeriodTotal": "Selected Period Total",
+    "thisMonthsRevenue": "This Month's Revenue",
+    "orders": "Orders",
+    "sales": "Sales",
+    "ordersAndSales": "Orders and Sales",
+    "to": "to",
+    "now": "now",
+    "last7Days": "Last 7 days",
+    "noData": "No data available for the selected time period."
   },
-  "cache": {
-    "refreshKiosk": "Refresh Kiosk Data",
-    "refreshing": "Refreshing Data...",
-    "clearSuccess": "Cache Cleared",
-    "reloadedSuccess": "Kiosk data has been refreshed",
-    "error": "Cache Error",
-    "errorDetails": "Failed to clear cache or reload data"
+  "menuItem": {
+    "unavailable": "CURRENTLY UNAVAILABLE"
   }
 }
