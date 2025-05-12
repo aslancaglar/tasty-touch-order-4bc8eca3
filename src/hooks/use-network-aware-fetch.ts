@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { addOnlineStatusListener, removeOnlineStatusListener, isOnline as checkIsOnline } from '@/utils/service-worker';
 import { getCacheItem, setCacheItem } from '@/services/cache-service';
 
-// Define the options type without extending UseQueryOptions
+// Define the options type directly with all required properties
 interface NetworkAwareFetchOptions<TData, TError> {
   fetchFn: () => Promise<TData>;
   cacheKey: string;
@@ -12,7 +12,7 @@ interface NetworkAwareFetchOptions<TData, TError> {
   stallTime?: number; // Time in ms to stall before showing loading state
   forceNetwork?: boolean; // Force network fetch even when offline
   // Include query options as separate properties
-  queryKey: unknown[]; // Make queryKey required
+  queryKey: unknown[]; // Required
   enabled?: boolean;
   retry?: boolean | number;
   retryDelay?: number | ((attemptIndex: number) => number);
@@ -30,7 +30,7 @@ interface NetworkAwareFetchResult<TData, TError> {
   lastUpdated: Date | null;
   connectionStatus: 'online' | 'offline';
   refreshData: () => void;
-  // Include all UseQueryResult properties
+  // Include all necessary UseQueryResult properties
   data: TData | undefined;
   dataUpdatedAt: number;
   error: TError | null;
@@ -63,7 +63,7 @@ export function useNetworkAwareFetch<TData, TError = Error>({
   restaurantId,
   stallTime = 50,
   forceNetwork = false,
-  queryKey, // Destructure queryKey separately as it's now required
+  queryKey, // Required
   ...queryOptions
 }: NetworkAwareFetchOptions<TData, TError>): NetworkAwareFetchResult<TData, TError> {
   const [isFromCache, setIsFromCache] = useState<boolean>(false);
@@ -145,13 +145,23 @@ export function useNetworkAwareFetch<TData, TError = Error>({
     queryResult.refetch();
   };
 
-  return {
-    ...queryResult,
+  // Create a complete result object with all required properties
+  const result: NetworkAwareFetchResult<TData, TError> = {
     isFromCache,
     lastUpdated,
     connectionStatus: isOnline ? 'online' : 'offline',
     refreshData,
-  } as NetworkAwareFetchResult<TData, TError>; // Cast to ensure type compatibility
+    // Spread all queryResult properties
+    ...queryResult,
+    // Ensure all required properties are present
+    data: queryResult.data,
+    error: queryResult.error as TError | null,
+    status: queryResult.status,
+    fetchStatus: queryResult.fetchStatus,
+    remove: queryResult.remove
+  };
+
+  return result;
 }
 
 // Helper hook to get the connection status only
