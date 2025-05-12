@@ -25,6 +25,7 @@ import {
   deleteCategory,
   getToppingCategoriesByRestaurantId
 } from "@/services/kiosk-service";
+import { clearCache } from "@/services/cache-service";
 import { Restaurant, MenuCategory, MenuItem, ToppingCategory } from "@/types/database-types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import CategoryForm from "@/components/forms/CategoryForm";
@@ -156,6 +157,9 @@ const MenuPage = () => {
       console.log("New category created:", newCategory);
       setCategories([...categories, newCategory]);
       
+      // Clear the cache after adding a category
+      clearCache(selectedRestaurant, `categories_${selectedRestaurant}`);
+      
       toast({
         title: "Category Added",
         description: `${values.name} has been added to your menu categories.`,
@@ -181,6 +185,11 @@ const MenuPage = () => {
       await deleteCategory(categoryId);
       
       setCategories(categories.filter(cat => cat.id !== categoryId));
+      
+      // Clear the cache after deleting a category
+      if (selectedRestaurant) {
+        clearCache(selectedRestaurant, `categories_${selectedRestaurant}`);
+      }
       
       toast({
         title: "Category Deleted",

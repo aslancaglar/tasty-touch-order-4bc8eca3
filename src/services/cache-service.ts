@@ -81,6 +81,28 @@ export const clearCache = (restaurantId: string, specificKey?: string) => {
   });
 };
 
+// New function to clear menu data cache for a restaurant
+export const clearMenuCache = (restaurantId: string): void => {
+  // Clear categories and menu items cache
+  clearCache(restaurantId, `categories_${restaurantId}`);
+  
+  // Clear any individual menu item caches
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.includes(`${CACHE_PREFIX}${restaurantId}`) && key.includes('menuItem_')) {
+      keysToRemove.push(key);
+    }
+  }
+  
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key);
+    debugCache('CLEAR (MENU)', key);
+  });
+  
+  console.log(`Cleared menu cache for restaurant: ${restaurantId}`);
+};
+
 // New function to clear all cached data for a specific cache type across all restaurants
 export const clearCacheByType = (cacheType: string): void => {
   const keysToRemove: string[] = [];
