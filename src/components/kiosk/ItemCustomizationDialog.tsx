@@ -1,10 +1,9 @@
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback } from "react";
 import { Check, Plus, Minus, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
-
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
   isOpen: boolean;
@@ -85,8 +84,7 @@ const ToppingCategory = memo(({
   onToggleTopping,
   t,
   currencySymbol,
-  bgColorClass,
-  isVisible
+  bgColorClass
 }: {
   category: any;
   selectedCategory: any;
@@ -94,7 +92,6 @@ const ToppingCategory = memo(({
   t: (key: string) => string;
   currencySymbol: string;
   bgColorClass: string;
-  isVisible: boolean;
 }) => {
   // Sort toppings by display_order
   const sortedToppings = [...category.toppings].sort((a, b) => {
@@ -117,15 +114,7 @@ const ToppingCategory = memo(({
   const selectedToppingsCount = selectedCategory?.toppingIds.length || 0;
   const minRequired = category.required ? category.min_selections > 0 ? category.min_selections : 1 : 0;
   const showWarning = category.required && selectedToppingsCount < minRequired;
-  
-  return <div 
-    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}
-    style={{
-      opacity: isVisible ? 1 : 0,
-      transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
-      transition: 'opacity 500ms ease, transform 500ms ease'
-    }}
-  >
+  return <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}>
       <div className="font-bold text-xl flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
@@ -188,46 +177,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 }) => {
   if (!item) return null;
 
-  // State to track which topping categories are visible (for staggered animation)
-  const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
-
-  // Reset visibility state when dialog opens/closes or item changes
-  useEffect(() => {
-    if (isOpen && item) {
-      // Reset all categories to invisible initially
-      if (item.toppingCategories) {
-        const initialVisibility: { [key: string]: boolean } = {};
-        item.toppingCategories.forEach(category => {
-          initialVisibility[category.id] = false;
-        });
-        setVisibleCategories(initialVisibility);
-        
-        // Stagger the appearance of each category with Firefox-compatible approach
-        const sortedCategories = [...(item.toppingCategories || [])].sort((a, b) => {
-          const orderA = a.display_order ?? 1000;
-          const orderB = b.display_order ?? 1000;
-          return orderA - orderB;
-        });
-        
-        // Use separate timeouts for each category to ensure Firefox compatibility
-        sortedCategories.forEach((category, index) => {
-          const timer = setTimeout(() => {
-            setVisibleCategories(prev => ({
-              ...prev,
-              [category.id]: true
-            }));
-          }, 150 * index + 100); // 100ms initial delay, then 150ms per category
-          
-          // Clear timeout on component unmount
-          return () => clearTimeout(timer);
-        });
-      }
-    } else {
-      // Reset visibility when dialog closes
-      setVisibleCategories({});
-    }
-  }, [isOpen, item]);
-
   // Memoized price calculation to prevent recalculation on every render
   const calculateItemPrice = useCallback(() => {
     if (!item) return 0;
@@ -260,11 +209,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
-  
   const handleQuantityDecrease = useCallback(() => {
     if (quantity > 1) onQuantityChange(quantity - 1);
   }, [quantity, onQuantityChange]);
-  
   const handleQuantityIncrease = useCallback(() => {
     onQuantityChange(quantity + 1);
   }, [quantity, onQuantityChange]);
@@ -275,9 +222,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     const orderB = b.display_order ?? 1000;
     return orderA - orderB;
   }) : [];
-  
   const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
-  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
@@ -285,7 +230,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           {item.description && <DialogDescription className="text-xl text-gray-800">{item.description}</DialogDescription>}
         </DialogHeader>
         
-        <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
+        <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none">
           {/* Options section - only show if there are options */}
           {item.options && item.options.length > 0 && item.options.map(option => <div key={option.id} className="space-y-1">
               <Label className="font-medium">
@@ -296,19 +241,8 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               <Option option={option} selectedOption={selectedOptions.find(o => o.optionId === option.id)} onToggleChoice={onToggleChoice} currencySymbol={currencySymbol} />
             </div>)}
 
-          {/* Toppings section - with staggered animation */}
-          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map((category, index) => (
-            <ToppingCategory 
-              key={category.id} 
-              category={category} 
-              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
-              onToggleTopping={onToggleTopping} 
-              t={t} 
-              currencySymbol={currencySymbol} 
-              bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
-              isVisible={visibleCategories[category.id] || false}
-            />
-          ))}
+          {/* Toppings section - only show if there are toppings, using sorted categories */}
+          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map((category, index) => <ToppingCategory key={category.id} category={category} selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} onToggleTopping={onToggleTopping} t={t} currencySymbol={currencySymbol} bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]} />)}
         </div>
         
         <DialogFooter className="mt-3 pt-2">
@@ -330,5 +264,4 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       </DialogContent>
     </Dialog>;
 };
-
 export default memo(ItemCustomizationDialog);

@@ -10,7 +10,6 @@ import { Loader2, Store, LogOut } from "lucide-react";
 import { Restaurant } from "@/types/database-types";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
-import { forceFlushMenuCache } from "@/services/cache-service";
 
 const OwnerDashboard = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -31,7 +30,6 @@ const OwnerDashboard = () => {
         
         setLoading(true);
         
-        // Always fetch fresh data for admin/owner interfaces
         const { data, error } = await supabase
           .rpc('get_owned_restaurants');
         

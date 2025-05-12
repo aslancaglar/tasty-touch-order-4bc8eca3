@@ -7,27 +7,11 @@ interface CacheItem<T> {
   timestamp: number;
 }
 
-// Add flags to control caching behavior
-const CACHE_CONFIG = {
-  // Enable caching only for kiosk/customer views
-  enableCaching: true,
-  // Disable caching for admin/owner views
-  enableCachingForAdmin: false,
-  // Log cache operations
-  debugLogs: true
-};
-
 const debugCache = (action: string, key: string, hit?: boolean) => {
-  if (!CACHE_CONFIG.debugLogs) return;
   console.log(`Cache ${action}: ${key}${hit !== undefined ? ` (Cache ${hit ? 'HIT' : 'MISS'})` : ''}`);
 };
 
-// Modified to support isAdmin flag
-export const setCacheItem = <T>(key: string, data: T, restaurantId: string, isAdmin = false) => {
-  // Skip caching for admin routes if disabled
-  if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) return;
-  if (!CACHE_CONFIG.enableCaching) return;
-
+export const setCacheItem = <T>(key: string, data: T, restaurantId: string) => {
   const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
   const cacheData: CacheItem<T> = {
     data,
@@ -37,12 +21,7 @@ export const setCacheItem = <T>(key: string, data: T, restaurantId: string, isAd
   debugCache('SET', cacheKey);
 };
 
-// Modified to support isAdmin flag
-export const getCacheItem = <T>(key: string, restaurantId: string, isAdmin = false): T | null => {
-  // Skip cache lookup for admin routes if disabled
-  if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) return null;
-  if (!CACHE_CONFIG.enableCaching) return null;
-
+export const getCacheItem = <T>(key: string, restaurantId: string): T | null => {
   const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
   const cached = localStorage.getItem(cacheKey);
   
@@ -53,32 +32,14 @@ export const getCacheItem = <T>(key: string, restaurantId: string, isAdmin = fal
   
   const cacheData: CacheItem<T> = JSON.parse(cached);
   
-  // Allow stale data to be returned, but mark it as stale in the logs
-  const isStale = Date.now() - cacheData.timestamp > CACHE_DURATION;
-  debugCache(isStale ? 'GET (STALE)' : 'GET', cacheKey, true);
-  
-  return cacheData.data;
-};
-
-export const getCacheTimestamp = (key: string, restaurantId: string): number | null => {
-  if (!CACHE_CONFIG.enableCaching) return null;
-
-  const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
-  const cached = localStorage.getItem(cacheKey);
-  
-  if (!cached) {
+  if (Date.now() - cacheData.timestamp > CACHE_DURATION) {
+    localStorage.removeItem(cacheKey);
+    debugCache('EXPIRED', cacheKey);
     return null;
   }
   
-  const cacheData: CacheItem<unknown> = JSON.parse(cached);
-  return cacheData.timestamp;
-};
-
-export const isCacheStale = (key: string, restaurantId: string): boolean => {
-  const timestamp = getCacheTimestamp(key, restaurantId);
-  if (!timestamp) return true;
-  
-  return Date.now() - timestamp > CACHE_DURATION;
+  debugCache('GET', cacheKey, true);
+  return cacheData.data;
 };
 
 export const clearCache = (restaurantId: string, specificKey?: string) => {
@@ -102,109 +63,4 @@ export const clearCache = (restaurantId: string, specificKey?: string) => {
     localStorage.removeItem(key);
     debugCache('CLEAR', key);
   });
-};
-
-// Enhanced function to clear menu data cache for a restaurant
-export const clearMenuCache = (restaurantId: string): void => {
-  console.log(`[CacheService] Clearing complete menu cache for restaurant: ${restaurantId}`);
-  
-  // Clear categories and menu items cache
-  clearCache(restaurantId, `categories_${restaurantId}`);
-  
-  // Track all cleared items for debugging
-  const keysToRemove: string[] = [];
-  
-  // Search through all localStorage items
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.includes(`${CACHE_PREFIX}${restaurantId}`)) {
-      // Clear ALL menu-related caches (expanded patterns)
-      if (key.includes('menuItem_') || 
-          key.includes('categories_') || 
-          key.includes('toppings_') ||
-          key.includes('options_') ||
-          key.includes('choices_') ||
-          key.includes('menu_')) {
-        keysToRemove.push(key);
-      }
-    }
-  }
-  
-  // Force remove all cached items immediately to ensure clean slate
-  keysToRemove.forEach(key => {
-    console.log(`[CacheService] Clearing cache key: ${key}`);
-    localStorage.removeItem(key);
-    debugCache('CLEAR (MENU)', key);
-  });
-  
-  console.log(`[CacheService] Cleared menu cache for restaurant: ${restaurantId} (${keysToRemove.length} items)`);
-};
-
-// New function to clear all cached data for a specific cache type across all restaurants
-export const clearCacheByType = (cacheType: string): void => {
-  const keysToRemove: string[] = [];
-  
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.includes(cacheType)) {
-      keysToRemove.push(key);
-    }
-  }
-  
-  keysToRemove.forEach(key => {
-    localStorage.removeItem(key);
-    debugCache('CLEAR (TYPE)', key);
-  });
-  
-  console.log(`Cleared ${keysToRemove.length} cache items of type: ${cacheType}`);
-};
-
-// New function to get last update time for restaurant data
-export const getLastUpdateTime = (restaurantId: string): Date | null => {
-  let latestTimestamp = 0;
-  
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith(`${CACHE_PREFIX}${restaurantId}`)) {
-      const timestamp = getCacheTimestamp(key.replace(`${CACHE_PREFIX}${restaurantId}_`, ''), restaurantId);
-      if (timestamp && timestamp > latestTimestamp) {
-        latestTimestamp = timestamp;
-      }
-    }
-  }
-  
-  return latestTimestamp > 0 ? new Date(latestTimestamp) : null;
-};
-
-// New function to force flush all restaurant-related cache immediately
-export const forceFlushMenuCache = (restaurantId: string): void => {
-  console.log(`[CacheService] FORCE FLUSHING all menu cache for restaurant: ${restaurantId}`);
-  
-  // Directly delete all cache items for this restaurant
-  for (let i = localStorage.length - 1; i >= 0; i--) {
-    const key = localStorage.key(i);
-    if (key && key.includes(`${CACHE_PREFIX}${restaurantId}`)) {
-      console.log(`[CacheService] Force removing: ${key}`);
-      localStorage.removeItem(key);
-    }
-  }
-  
-  console.log(`[CacheService] Force flush complete for restaurant: ${restaurantId}`);
-};
-
-// Add a new function to toggle caching on/off
-export const setCachingEnabled = (enabled: boolean): void => {
-  CACHE_CONFIG.enableCaching = enabled;
-  console.log(`[CacheService] Caching is now ${enabled ? 'ENABLED' : 'DISABLED'}`);
-};
-
-// Add a new function to toggle admin caching on/off
-export const setCachingEnabledForAdmin = (enabled: boolean): void => {
-  CACHE_CONFIG.enableCachingForAdmin = enabled;
-  console.log(`[CacheService] Admin caching is now ${enabled ? 'ENABLED' : 'DISABLED'}`);
-};
-
-// Add a function to check if caching is enabled
-export const isCachingEnabled = (isAdmin = false): boolean => {
-  return isAdmin ? CACHE_CONFIG.enableCachingForAdmin : CACHE_CONFIG.enableCaching;
 };

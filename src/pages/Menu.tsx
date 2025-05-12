@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,6 @@ import {
   deleteCategory,
   getToppingCategoriesByRestaurantId
 } from "@/services/kiosk-service";
-import { clearCache, clearMenuCache } from "@/services/cache-service";
 import { Restaurant, MenuCategory, MenuItem, ToppingCategory } from "@/types/database-types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import CategoryForm from "@/components/forms/CategoryForm";
@@ -156,9 +156,6 @@ const MenuPage = () => {
       console.log("New category created:", newCategory);
       setCategories([...categories, newCategory]);
       
-      // Clear the menu cache after adding a category
-      clearMenuCache(selectedRestaurant);
-      
       toast({
         title: "Category Added",
         description: `${values.name} has been added to your menu categories.`,
@@ -184,11 +181,6 @@ const MenuPage = () => {
       await deleteCategory(categoryId);
       
       setCategories(categories.filter(cat => cat.id !== categoryId));
-      
-      // Clear the menu cache after deleting a category
-      if (selectedRestaurant) {
-        clearMenuCache(selectedRestaurant);
-      }
       
       toast({
         title: "Category Deleted",

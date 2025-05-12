@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
@@ -355,14 +356,4 @@
   .menu-item {
     @apply p-4 rounded-lg bg-white shadow-sm border border-gray-100 transition-all hover:shadow-md;
   }
-}
-
-/* Custom scrollbar styles */
-.custom-scrollbar {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer and Edge */
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
 }
