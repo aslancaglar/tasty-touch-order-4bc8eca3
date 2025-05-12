@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -71,6 +71,34 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   } = calculateCartTotals(cart);
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
 
+  // State for animating items
+  const [visibleItems, setVisibleItems] = useState<{ [key: string]: boolean }>({});
+
+  // Reset and animate items when the dialog opens
+  useEffect(() => {
+    if (isOpen && cart.length) {
+      // Reset all items to invisible initially
+      const initialVisibility: { [key: string]: boolean } = {};
+      cart.forEach(item => {
+        initialVisibility[item.id] = false;
+      });
+      setVisibleItems(initialVisibility);
+      
+      // Animate items appearing one after another
+      cart.forEach((item, index) => {
+        setTimeout(() => {
+          setVisibleItems(prev => ({
+            ...prev,
+            [item.id]: true
+          }));
+        }, 100 * index); // 100ms delay between items
+      });
+    } else {
+      // Reset visibility when dialog closes
+      setVisibleItems({});
+    }
+  }, [isOpen, cart]);
+
   const handleConfirmOrder = async () => {
     // Simply call onPlaceOrder and let the parent component handle the rest
     onPlaceOrder();
@@ -91,7 +119,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <h3 className="font-bold text-lg mb-4">{t("order.items")}</h3>
           
           <div className="space-y-6 mb-6">
-            {cart.map(item => <div key={item.id} className="space-y-2">
+            {cart.map(item => <div 
+                key={item.id} 
+                className={`space-y-2 transition-all duration-300 ease-out ${visibleItems[item.id] ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}
+              >
                 <div className="flex justify-between">
                   <div className="flex items-center">
                     <span className="font-medium mr-2">{item.quantity}x</span>
@@ -148,8 +179,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
           </div>
           
-          {/* Confirm button */}
-          <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[30px]">
+          {/* Confirm button with animation */}
+          <Button 
+            onClick={handleConfirmOrder} 
+            disabled={placingOrder} 
+            className={`w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[30px] transition-all duration-300 ${isOpen ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}`}
+          >
             <Check className="mr-2 h-5 w-5" />
             {t("order.confirm")}
           </Button>
