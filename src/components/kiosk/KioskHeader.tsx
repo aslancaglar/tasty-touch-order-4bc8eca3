@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { memo } from "react";
 import { Clock, RefreshCw } from "lucide-react";
 import { Restaurant, OrderType } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
@@ -12,17 +12,22 @@ interface KioskHeaderProps {
   onRefresh?: () => void;
 }
 
-const KioskHeader: React.FC<KioskHeaderProps> = ({
+// Memoize the header component to prevent unnecessary re-renders
+const KioskHeader: React.FC<KioskHeaderProps> = memo(({
   restaurant,
   orderType,
   tableNumber,
   t,
   onRefresh
 }) => {
+  // Use a default background image if none is provided
+  const backgroundImage = restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80';
+  
   return (
-    <div className="h-full w-full bg-cover bg-center relative" style={{
-      backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
-    }}>
+    <div 
+      className="h-full w-full bg-cover bg-center relative" 
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       
       {/* Refresh button in top right corner */}
@@ -47,18 +52,21 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
               src={restaurant.logo_url} 
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover bg-white p-1" 
+              loading="eager"
             />
           ) : restaurant.image_url ? (
             <img 
               src={restaurant.image_url} 
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
+              loading="eager"
             />
           ) : (
             <img 
               src="https://via.placeholder.com/100" 
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
+              loading="eager"
             />
           )}
           <div>
@@ -67,22 +75,25 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
               <Clock className="h-4 w-4 mr-1" />
               <span>{restaurant.location || t("open")}</span>
             </div>
-            {orderType && 
+            {orderType && (
               <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center font-bebas tracking-wide">
-                {orderType === 'dine-in' ? 
+                {orderType === 'dine-in' ? (
                   <>
                     <span className="mr-1">{t("dineIn")}</span>
                     {tableNumber && <span>- {t("table")} {tableNumber}</span>}
-                  </> : 
+                  </>
+                ) : (
                   <span>{t("takeaway")}</span>
-                }
+                )}
               </div>
-            }
+            )}
           </div>
         </div>
       </div>
     </div>
   );
-};
+});
+
+KioskHeader.displayName = 'KioskHeader';
 
 export default KioskHeader;
