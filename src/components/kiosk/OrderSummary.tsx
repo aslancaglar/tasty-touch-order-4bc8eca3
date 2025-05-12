@@ -8,7 +8,6 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings } from "@/utils/receipt-templates";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
-
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -21,11 +20,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
-
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
@@ -45,9 +42,7 @@ interface OrderSummaryProps {
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
   uiLanguage?: SupportedLanguage;
-  isConfirmation?: boolean;
 }
-
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
@@ -59,8 +54,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   restaurant = {
     name: "Restaurant"
   },
-  uiLanguage = "fr",
-  isConfirmation = false
+  uiLanguage = "fr"
 }) => {
   const {
     t
@@ -158,5 +152,4 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       </DialogContent>
     </Dialog>;
 };
-
 export default OrderSummary;

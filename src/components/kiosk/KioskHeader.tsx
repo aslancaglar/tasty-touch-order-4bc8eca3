@@ -10,7 +10,6 @@ interface KioskHeaderProps {
   tableNumber: string | null;
   t: (key: string) => string;
   onRefresh?: () => void;
-  colorPalette?: Restaurant['color_palette'];
 }
 
 const KioskHeader: React.FC<KioskHeaderProps> = ({
@@ -18,8 +17,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
   orderType,
   tableNumber,
   t,
-  onRefresh,
-  colorPalette
+  onRefresh
 }) => {
   return (
     <div className="h-full w-full bg-cover bg-center relative" style={{
@@ -36,10 +34,6 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
             className="bg-white/20 text-white hover:bg-white/30" 
             onClick={onRefresh}
             aria-label={t("refreshMenu")}
-            style={colorPalette ? {
-              color: colorPalette.text,
-              backgroundColor: `${colorPalette.primary}30` // 30 is for opacity
-            } : {}}
           >
             <RefreshCw className="h-5 w-5" />
           </Button>

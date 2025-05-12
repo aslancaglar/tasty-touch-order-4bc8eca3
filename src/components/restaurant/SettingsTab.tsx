@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Printer, Check, XCircle, Trash2, Copy, Palette } from "lucide-react";
+import { Loader2, Printer, Check, XCircle, Trash2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Restaurant } from "@/types/database-types";
 import ImageUpload from "@/components/ImageUpload";
@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { printReceipt } from "@/utils/print-utils";
 import PrintNodeIntegration from "@/components/restaurant/PrintNodeIntegration";
-import ColorPaletteTab from "@/components/restaurant/ColorPaletteTab";
 import { supabase } from "@/integrations/supabase/client";
 import { calculatePriceWithoutTax, calculateTaxAmount } from "@/utils/price-utils";
 import { updateRestaurant, deleteRestaurant } from "@/services/kiosk-service";
@@ -38,13 +37,13 @@ interface SettingsTabProps {
   onRestaurantUpdated?: (updatedRestaurant: Restaurant) => void;
 }
 
-// Fix: properly access currency codes and add error handling
 const languageOptions = [
   { value: "fr", label: "Français" },
   { value: "en", label: "English" },
   { value: "tr", label: "Türkçe" },
 ];
 
+// Fix: properly access currency codes and add error handling
 const currencyOptions = (() => {
   try {
     // Get all currency codes and ensure data exists
@@ -100,7 +99,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">(restaurant.ui_language || "fr");
+  const [uiLanguage, setUiLanguage] = useState(restaurant.ui_language || "fr");
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
@@ -433,10 +432,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         <TabsList>
           <TabsTrigger value="basic">Informations</TabsTrigger>
           <TabsTrigger value="print">Impression</TabsTrigger>
-          <TabsTrigger value="colors">
-            <Palette className="mr-2 h-4 w-4" />
-            Colors
-          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="basic" className="space-y-6">
@@ -772,13 +767,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
               <p>Merci de votre visite!</p>
             </div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="colors" className="space-y-6">
-          <ColorPaletteTab 
-            restaurant={restaurant}
-            onRestaurantUpdated={onRestaurantUpdated}
-          />
         </TabsContent>
       </Tabs>
     </div>
