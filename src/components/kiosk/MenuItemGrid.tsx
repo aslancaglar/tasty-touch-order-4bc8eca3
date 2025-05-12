@@ -121,7 +121,7 @@ const MenuItemCard = memo(({
             {hasPromotion ? <>
                 <p className="font-bebas text-lg whitespace-nowrap text-black">{formattedPromotionPrice} {currencySymbol}</p>
                 <p className="font-inter text-xs text-gray-500 line-through whitespace-nowrap">{formattedPrice} {currencySymbol}</p>
-              </> : <p className="font-bebas text-lg whitespace-nowrap">{formattedPrice} {currencySymbol}</p>}
+              </> : <p className="font-bebas whitespace-nowrap text-xl">{formattedPrice} {currencySymbol}</p>}
           </div>
         </div>
         <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
