@@ -25,7 +25,6 @@ const SheetOverlay = React.forwardRef<
     )}
     {...props}
     ref={ref}
-    onClick={(e) => e.stopPropagation()}
   />
 ))
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
@@ -63,9 +62,6 @@ const SheetContent = React.forwardRef<
       ref={ref}
       className={cn(sheetVariants({ side }), className)}
       {...props}
-      onClick={(e) => e.stopPropagation()}
-      onMouseMove={(e) => e.stopPropagation()}
-      onMouseEnter={(e) => e.stopPropagation()}
     >
       <div className="h-full overflow-y-auto pb-12">
         {children}
