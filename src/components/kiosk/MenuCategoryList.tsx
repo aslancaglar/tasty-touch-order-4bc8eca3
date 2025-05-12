@@ -1,12 +1,13 @@
 
-import React from "react";
-import { UtensilsCrossed } from "lucide-react";
-import { MenuCategory } from "@/types/database-types";
+// Add colorPalette prop to the component props interface
+import React from 'react';
+import { MenuCategory, Restaurant } from '@/types/database-types';
 
 interface MenuCategoryListProps {
   categories: MenuCategory[];
   activeCategory: string | null;
   setActiveCategory: (categoryId: string) => void;
+  colorPalette?: Restaurant['color_palette'];
 }
 
 const MenuCategoryList: React.FC<MenuCategoryListProps> = ({

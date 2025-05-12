@@ -362,7 +362,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       console.log("Saving UI language:", uiLanguage);
       
       const updatedData = {
-        ui_language: uiLanguage
+        ui_language: uiLanguage as "fr" | "en" | "tr" // Type assertion to fix the error
       };
       
       const { data, error } = await supabase

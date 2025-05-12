@@ -27,6 +27,15 @@ type SelectedToppingCategory = {
   toppingIds: string[];
 };
 
+// Default color palette
+const DEFAULT_COLOR_PALETTE = {
+  primary: "#9b87f5",
+  secondary: "#6E59A5",
+  accent: "#D6BCFA",
+  background: "#FFFFFF",
+  text: "#1A1F2C",
+};
+
 const KioskView = () => {
   const {
     restaurantSlug
@@ -219,7 +228,7 @@ const KioskView = () => {
         // Load color palette if available
         if (restaurantData.color_palette) {
           setColorPalette({
-            ...colorPalette,
+            ...DEFAULT_COLOR_PALETTE,
             ...restaurantData.color_palette
           });
         }
@@ -872,7 +881,7 @@ const KioskView = () => {
         // Load color palette if available
         if (restaurantData.color_palette) {
           setColorPalette({
-            ...colorPalette,
+            ...DEFAULT_COLOR_PALETTE,
             ...restaurantData.color_palette
           });
         }
@@ -987,7 +996,10 @@ const KioskView = () => {
       {/* Content area with fixed sidebar and scrollable menu grid */}
       <div className="flex flex-1 overflow-hidden">
         {/* Fixed width sidebar - 16vw */}
-        <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
+        <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0" style={{
+          backgroundColor: colorPalette?.background,
+          borderColor: `${colorPalette?.text}20`
+        }}>
           <MenuCategoryList 
             categories={categories} 
             activeCategory={activeCategory} 
@@ -997,7 +1009,7 @@ const KioskView = () => {
         </div>
 
         {/* Scrollable menu grid area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" style={{ backgroundColor: colorPalette?.background }}>
           <div className="p-4">
             <MenuItemGrid 
               items={categories.flatMap(c => c.items)} 
