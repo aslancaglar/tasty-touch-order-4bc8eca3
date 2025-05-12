@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -20,7 +19,7 @@ const DialogOverlay = React.forwardRef<
       className
     )}
     {...props}
-    // Enhanced event handling for both mouse and touch events
+    // Enhanced event handling for both mouse and touch events with proper type casting
     onClick={(e) => {
       e.stopPropagation();
       if (props.onClick) props.onClick(e);
@@ -30,8 +29,13 @@ const DialogOverlay = React.forwardRef<
       if (props.onTouchEnd) {
         props.onTouchEnd(e);
       } else if (props.onClick) {
-        // Simulate click for touch events if no specific touch handler
-        props.onClick(e as unknown as React.MouseEvent);
+        // We need a type assertion that respects the element type
+        const event = {
+          ...e,
+          currentTarget: e.currentTarget,
+          target: e.target,
+        } as unknown as React.MouseEvent<HTMLDivElement>;
+        props.onClick(event);
       }
     }}
   />

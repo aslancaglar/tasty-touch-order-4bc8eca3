@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
@@ -22,13 +21,18 @@ const AlertDialogOverlay = React.forwardRef<
     )}
     {...props}
     ref={ref}
-    // Add touch handlers to match mouse behavior
+    // Add touch handlers to match mouse behavior with proper type casting
     onTouchEnd={(e) => {
       if (props.onTouchEnd) {
         props.onTouchEnd(e);
       } else if (props.onClick) {
-        // Simulate click for touch events
-        props.onClick(e as unknown as React.MouseEvent);
+        // We need a type assertion that respects the element type
+        const event = {
+          ...e,
+          currentTarget: e.currentTarget,
+          target: e.target,
+        } as unknown as React.MouseEvent<HTMLDivElement>;
+        props.onClick(event);
       }
     }}
   />
