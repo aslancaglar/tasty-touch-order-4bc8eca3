@@ -66,7 +66,7 @@ const isApiRequest = (url) => {
          url.href.includes('supabase');
 };
 
-// Fetch event - Handle network requests with cache strategy
+// Fetch event - Handle network requests with appropriate cache strategy
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
@@ -81,8 +81,8 @@ self.addEventListener('fetch', (event) => {
     // Cache-first strategy for images
     event.respondWith(cacheFirstStrategy(event.request));
   } else if (isApiRequest(url)) {
-    // Network-first strategy with cache fallback for API requests
-    event.respondWith(networkFirstStrategy(event.request));
+    // Stale-while-revalidate for API requests
+    event.respondWith(staleWhileRevalidateStrategy(event.request));
   } else {
     // Cache-first for app shell (static resources)
     event.respondWith(cacheFirstStrategy(event.request));
@@ -100,6 +100,36 @@ async function cacheFirstStrategy(request) {
   
   // If not in cache, fetch from network and cache it
   return fetchAndUpdateCache(request);
+}
+
+// Stale-while-revalidate strategy: Return cached data immediately, then update
+async function staleWhileRevalidateStrategy(request) {
+  const cache = await caches.open(DATA_CACHE);
+  
+  // Try to get the response from cache
+  const cachedResponse = await cache.match(request);
+  
+  // Clone the request because it's a stream and can only be consumed once
+  const fetchPromise = fetch(request.clone())
+    .then(response => {
+      // Check if we received a valid response
+      if (response && response.status === 200) {
+        // Clone the response because it's a stream and can only be consumed once
+        cache.put(request, response.clone());
+      }
+      return response;
+    })
+    .catch(err => {
+      console.error('[Service Worker] Fetch failed:', err);
+      // If fetch fails, we still want the promise to resolve
+      return cachedResponse || new Response('Network error', { 
+        status: 408, 
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    });
+
+  // Return the cached response immediately if we have it, otherwise wait for the network
+  return cachedResponse || fetchPromise;
 }
 
 // Network-first strategy: Try network first, fallback to cache

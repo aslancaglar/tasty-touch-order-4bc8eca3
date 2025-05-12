@@ -32,14 +32,30 @@ export const getCacheItem = <T>(key: string, restaurantId: string): T | null => 
   
   const cacheData: CacheItem<T> = JSON.parse(cached);
   
-  if (Date.now() - cacheData.timestamp > CACHE_DURATION) {
-    localStorage.removeItem(cacheKey);
-    debugCache('EXPIRED', cacheKey);
+  // Allow stale data to be returned, but mark it as stale in the logs
+  const isStale = Date.now() - cacheData.timestamp > CACHE_DURATION;
+  debugCache(isStale ? 'GET (STALE)' : 'GET', cacheKey, true);
+  
+  return cacheData.data;
+};
+
+export const getCacheTimestamp = (key: string, restaurantId: string): number | null => {
+  const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
+  const cached = localStorage.getItem(cacheKey);
+  
+  if (!cached) {
     return null;
   }
   
-  debugCache('GET', cacheKey, true);
-  return cacheData.data;
+  const cacheData: CacheItem<unknown> = JSON.parse(cached);
+  return cacheData.timestamp;
+};
+
+export const isCacheStale = (key: string, restaurantId: string): boolean => {
+  const timestamp = getCacheTimestamp(key, restaurantId);
+  if (!timestamp) return true;
+  
+  return Date.now() - timestamp > CACHE_DURATION;
 };
 
 export const clearCache = (restaurantId: string, specificKey?: string) => {
