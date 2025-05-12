@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,7 @@ import {
   updateMenuItem,
   deleteMenuItem
 } from "@/services/kiosk-service";
-import { clearCache } from "@/services/cache-service";
+import { clearCache, clearMenuCache } from "@/services/cache-service";
 import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
 import { supabase } from "@/integrations/supabase/client";
@@ -223,8 +222,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
         setSelectedCategory(newCategory);
       }
       
-      // Clear the cache after adding a category
-      clearCache(restaurant.id, `categories_${restaurant.id}`);
+      // Clear the menu cache after adding a category
+      clearMenuCache(restaurant.id);
       
       toast({
         title: "Success",
@@ -262,8 +261,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       
       setCategories(updatedCategories);
       
-      // Clear the cache after updating a category
-      clearCache(restaurant.id, `categories_${restaurant.id}`);
+      // Clear the menu cache after updating a category
+      clearMenuCache(restaurant.id);
       
       toast({
         title: "Success",
@@ -295,8 +294,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       setMenuItems([]);
       setSelectedCategory(null);
       
-      // Clear the cache after deleting a category
-      clearCache(restaurant.id, `categories_${restaurant.id}`);
+      // Clear the menu cache after deleting a category
+      clearMenuCache(restaurant.id);
       
       toast({
         title: "Success",
@@ -341,8 +340,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       
       setMenuItems(updatedItems);
       
-      // Clear the cache after updating a menu item
-      clearCache(restaurant.id, `categories_${restaurant.id}`);
+      // Clear the menu cache after updating a menu item
+      clearMenuCache(restaurant.id);
       
       toast({
         title: "Success",
@@ -388,8 +387,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       );
       setMenuItems(updatedItems);
       
-      // Clear the cache after adding a menu item
-      clearCache(restaurant.id, `categories_${restaurant.id}`);
+      // Clear the menu cache after adding a menu item
+      clearMenuCache(restaurant.id);
       
       toast({
         title: "Success",
@@ -419,8 +418,8 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       
       setMenuItems(menuItems.filter(item => item.id !== selectedItem.id));
       
-      // Clear the cache after deleting a menu item
-      clearCache(restaurant.id, `categories_${restaurant.id}`);
+      // Clear the menu cache after deleting a menu item
+      clearMenuCache(restaurant.id);
       
       toast({
         title: "Success",

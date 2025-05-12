@@ -1,4 +1,3 @@
-
 const CACHE_PREFIX = 'kiosk_cache_';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -81,17 +80,23 @@ export const clearCache = (restaurantId: string, specificKey?: string) => {
   });
 };
 
-// New function to clear menu data cache for a restaurant
+// Enhanced function to clear menu data cache for a restaurant
 export const clearMenuCache = (restaurantId: string): void => {
   // Clear categories and menu items cache
   clearCache(restaurantId, `categories_${restaurantId}`);
   
-  // Clear any individual menu item caches
+  // Clear any individual menu item caches and related data
   const keysToRemove: string[] = [];
+  
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.includes(`${CACHE_PREFIX}${restaurantId}`) && key.includes('menuItem_')) {
-      keysToRemove.push(key);
+    if (key && key.includes(`${CACHE_PREFIX}${restaurantId}`)) {
+      // Clear all menu item related caches
+      if (key.includes('menuItem_') || 
+          key.includes('categories_') || 
+          key.includes('toppings_')) {
+        keysToRemove.push(key);
+      }
     }
   }
   
@@ -100,7 +105,7 @@ export const clearMenuCache = (restaurantId: string): void => {
     debugCache('CLEAR (MENU)', key);
   });
   
-  console.log(`Cleared menu cache for restaurant: ${restaurantId}`);
+  console.log(`Cleared menu cache for restaurant: ${restaurantId} (${keysToRemove.length} items)`);
 };
 
 // New function to clear all cached data for a specific cache type across all restaurants

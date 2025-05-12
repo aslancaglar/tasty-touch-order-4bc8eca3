@@ -14,7 +14,7 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
-import { setCacheItem, getCacheItem } from "@/services/cache-service";
+import { setCacheItem, getCacheItem, clearMenuCache } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
 import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
@@ -910,13 +910,18 @@ const KioskView = () => {
     }
   };
 
-  // Modify the handleRefreshMenu function to use our preloader
+  // Modify the handleRefreshMenu function to use our preloader with proper cache clearing
   const handleRefreshMenu = async () => {
     try {
       if (!restaurant) return;
       
-      // Use the preloader with forceRefresh=true
       setLoading(true);
+      
+      // First, explicitly clear the menu cache
+      console.log("Clearing menu cache before refresh");
+      clearMenuCache(restaurant.id);
+      
+      // Then use the preloader with forceRefresh=true
       await preloadAllData(true);
       setRefreshTrigger(prev => prev + 1);
       

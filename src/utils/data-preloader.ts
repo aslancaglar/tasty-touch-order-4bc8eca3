@@ -1,3 +1,4 @@
+
 import { 
   getRestaurantBySlug, 
   getMenuForRestaurant,
@@ -7,7 +8,8 @@ import {
 import { 
   setCacheItem, 
   getCacheItem,
-  isCacheStale 
+  isCacheStale,
+  clearMenuCache  // Add import for clearMenuCache
 } from "@/services/cache-service";
 import { cacheImage, precacheImages } from "@/utils/image-cache";
 import { MenuCategory, MenuItem, Restaurant } from "@/types/database-types";
@@ -62,6 +64,15 @@ export const preloadAllRestaurantData = async (
     // Step 1: Load restaurant data
     updateProgress({ stage: 'restaurant', progress: 5 });
     
+    // If forceRefresh is true, clear all menu-related cache first
+    if (options.forceRefresh) {
+      console.log("Force refresh requested, clearing existing cache...");
+      const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
+      if (cachedRestaurant) {
+        clearMenuCache(cachedRestaurant.id);
+      }
+    }
+    
     // Check if we have cached restaurant data and it's not stale
     const cachedRestaurant = options.forceRefresh 
       ? null
@@ -92,11 +103,12 @@ export const preloadAllRestaurantData = async (
       if (menuCategories.length > 0) {
         console.log("Using cached menu categories");
       } else {
-        shouldRefreshMenu; // Force refresh if cache is empty
+        console.log("Empty cached menu categories, will fetch fresh data");
       }
     }
     
-    if (shouldRefreshMenu || !menuCategories || menuCategories.length === 0) {
+    // Always fetch fresh menu data if forceRefresh is true
+    if (options.forceRefresh || !menuCategories || menuCategories.length === 0) {
       console.log("Fetching fresh menu categories");
       menuCategories = await getMenuForRestaurant(restaurant.id);
       
@@ -117,6 +129,7 @@ export const preloadAllRestaurantData = async (
       });
       
       setCacheItem(menuCacheKey, menuCategories, restaurant.id);
+      console.log("Menu categories cached:", menuCategories.length);
     }
 
     updateProgress({ progress: 30, stage: 'menuItems' });
@@ -128,6 +141,7 @@ export const preloadAllRestaurantData = async (
     const menuItemsPromises = menuCategories.flatMap(category => 
       category.items.map(async (item) => {
         const itemCacheKey = `menuItem_${item.id}`;
+        // Always fetch item details when forceRefresh is true
         const shouldFetchItem = options.forceRefresh || isCacheStale(itemCacheKey, restaurant.id);
         
         if (!shouldFetchItem) {
@@ -140,6 +154,7 @@ export const preloadAllRestaurantData = async (
           }
         }
         
+        console.log(`Fetching item details for ${item.name} (${item.id})`);
         const itemDetails = await getMenuItemWithOptions(item.id);
         if (itemDetails) {
           setCacheItem(itemCacheKey, itemDetails, restaurant.id);
@@ -162,6 +177,7 @@ export const preloadAllRestaurantData = async (
     const shouldRefreshToppings = options.forceRefresh || isCacheStale(toppingsCacheKey, restaurant.id);
     
     if (shouldRefreshToppings) {
+      console.log("Fetching fresh toppings data");
       const toppingsData = await getToppingsForRestaurant(restaurant.id);
       setCacheItem(toppingsCacheKey, toppingsData, restaurant.id);
     }
@@ -199,6 +215,7 @@ export const preloadAllRestaurantData = async (
     
     // All data loaded and cached successfully
     updateProgress({ isLoading: false, progress: 100, stage: 'complete' });
+    console.log("Preloading completed successfully");
     return restaurant;
     
   } catch (error) {
