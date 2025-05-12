@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback, useState, useEffect, useMemo } from "react";
+import React, { memo, useCallback, useState, useEffect, useMemo, useRef } from "react";
 import { Check, Plus, Minus, AlertCircle, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,7 @@ const CATEGORY_BACKGROUNDS = [
   "bg-[#FDE1D3]"  // Soft Peach
 ];
 
-// Memoize the Option component to prevent unnecessary re-renders
+// Improved memoized Option component
 const Option = memo(({
   option,
   selectedOption,
@@ -54,19 +54,24 @@ const Option = memo(({
   currencySymbol: string;
 }) => {
   // Create a stable handler function for each choice to prevent re-renders
-  const createToggleHandler = useCallback((optionId: string, choiceId: string, multiple: boolean) => {
-    return () => onToggleChoice(optionId, choiceId, multiple);
-  }, [onToggleChoice]);
+  const toggleHandlers = useRef<Record<string, () => void>>({});
+
+  // Pre-compute choices once
+  const choices = useMemo(() => option.choices || [], [option.choices]);
+  
+  // Initialize handlers if they don't exist
+  if (Object.keys(toggleHandlers.current).length === 0 && choices.length > 0) {
+    choices.forEach(choice => {
+      toggleHandlers.current[choice.id] = () => {
+        onToggleChoice(option.id, choice.id, !!option.multiple);
+      };
+    });
+  }
 
   return (
-    <div className="space-y-1">
-      {option.choices.map(choice => {
+    <div className="space-y-1 select-none">
+      {choices.map(choice => {
         const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
-        // Create a stable handler for this specific choice
-        const toggleHandler = useMemo(() => 
-          createToggleHandler(option.id, choice.id, !!option.multiple),
-          [createToggleHandler, option.id, choice.id, option.multiple]
-        );
         
         return (
           <div 
@@ -75,7 +80,7 @@ const Option = memo(({
               flex items-center justify-between p-2 border rounded-md cursor-pointer select-none
               ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
             `} 
-            onClick={toggleHandler}
+            onClick={toggleHandlers.current[choice.id]}
           >
             <div className="flex items-center">
               <div className={`
@@ -87,17 +92,35 @@ const Option = memo(({
               <span>{choice.name}</span>
             </div>
             {choice.price && choice.price > 0 && (
-              <span>+{parseFloat(choice.price.toString()).toFixed(2)} {currencySymbol}</span>
+              <span className="select-none">+{parseFloat(choice.price.toString()).toFixed(2)} {currencySymbol}</span>
             )}
           </div>
         );
       })}
     </div>
   );
+}, (prevProps, nextProps) => {
+  // Enhanced memoization with deep comparison
+  if (prevProps.option.id !== nextProps.option.id) return false;
+  
+  const prevSelectedIds = prevProps.selectedOption?.choiceIds || [];
+  const nextSelectedIds = nextProps.selectedOption?.choiceIds || [];
+  
+  if (prevSelectedIds.length !== nextSelectedIds.length) return false;
+  
+  const prevIdSet = new Set(prevSelectedIds);
+  const nextIdSet = new Set(nextSelectedIds);
+  
+  for (const id of prevIdSet) {
+    if (!nextIdSet.has(id)) return false;
+  }
+  
+  return prevProps.currencySymbol === nextProps.currencySymbol;
 });
+
 Option.displayName = 'Option';
 
-// Memoize the ToppingCategory component to prevent unnecessary re-renders
+// Improved memoized ToppingCategory component
 const ToppingCategory = memo(({
   category,
   selectedCategory,
@@ -113,22 +136,30 @@ const ToppingCategory = memo(({
   currencySymbol: string;
   bgColorClass: string;
 }) => {
-  // Create a stable handler function for each topping
-  const createToppingHandler = useCallback((categoryId: string, toppingId: string) => {
-    return (e?: React.MouseEvent) => {
-      if (e) e.stopPropagation();
-      onToggleTopping(categoryId, toppingId);
-    };
-  }, [onToggleTopping]);
-
+  // Create stable handler references for each topping
+  const toppingHandlers = useRef<Record<string, (e?: React.MouseEvent) => void>>({});
+  
   // Sort toppings by display_order - memoize this calculation
   const sortedToppings = useMemo(() => {
-    return [...category.toppings].sort((a, b) => {
+    return [...(category.toppings || [])].sort((a, b) => {
       const orderA = a.display_order ?? 1000;
       const orderB = b.display_order ?? 1000;
       return orderA - orderB;
     });
   }, [category.toppings]);
+
+  // Initialize handlers if they don't exist
+  if (Object.keys(toppingHandlers.current).length === 0 && sortedToppings.length > 0) {
+    sortedToppings.forEach(topping => {
+      toppingHandlers.current[topping.id] = (e?: React.MouseEvent) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        onToggleTopping(category.id, topping.id);
+      };
+    });
+  }
 
   // Determine the number of columns based on topping count
   const toppingCount = sortedToppings.length;
@@ -144,11 +175,11 @@ const ToppingCategory = memo(({
   const showWarning = category.required && selectedToppingsCount < minRequired;
   
   return (
-    <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}>
+    <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative select-none`}>
       <div className="font-bold text-xl flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
-        <span className="ml-2 text-red-600 font-bold text-base">
+        <span className="ml-2 text-red-600 font-bold text-base select-none">
           {category.max_selections > 0 
             ? `(${t("selectUpTo")} ${category.max_selections})` 
             : `(${t("multipleSelection")})`}
@@ -166,36 +197,37 @@ const ToppingCategory = memo(({
         {sortedToppings.map(topping => {
           const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
           const buttonSize = "h-10 w-10"; // Same size for both states
-          const toggleHandler = useMemo(() => 
-            createToppingHandler(category.id, topping.id),
-            [createToppingHandler, category.id, topping.id]
-          );
+          const handler = toppingHandlers.current[topping.id];
           
           return (
             <div 
               key={topping.id} 
-              onClick={toggleHandler} 
+              onClick={handler} 
               className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white"
             >
-              <span className={`flex-1 mr-2 ${isSelected ? 'text-green-700 font-medium' : ''}`}>
+              <span className={`flex-1 mr-2 select-none ${isSelected ? 'text-green-700 font-medium' : ''}`}>
                 {topping.name}
               </span>
-              <div className="flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
+              <div className="flex items-center gap-1 flex-shrink-0 whitespace-nowrap select-none">
                 {topping.price > 0 && (
-                  <span className="text-sm">
+                  <span className="text-sm select-none">
                     +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
                   </span>
                 )}
                 {!isSelected ? (
-                  <Plus 
-                    onClick={toggleHandler} 
-                    className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} 
-                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handler} 
+                    className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2 hover:bg-violet-600`}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 ) : (
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    onClick={toggleHandler} 
+                    onClick={handler} 
                     className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}
                   >
                     <Check className="h-4 w-4" />
@@ -208,10 +240,29 @@ const ToppingCategory = memo(({
       </div>
     </div>
   );
+}, (prevProps, nextProps) => {
+  // Enhanced memoization with deep comparison
+  if (prevProps.category.id !== nextProps.category.id) return false;
+  
+  const prevSelectedIds = prevProps.selectedCategory?.toppingIds || [];
+  const nextSelectedIds = nextProps.selectedCategory?.toppingIds || [];
+  
+  if (prevSelectedIds.length !== nextSelectedIds.length) return false;
+  
+  const prevIdSet = new Set(prevSelectedIds);
+  const nextIdSet = new Set(nextSelectedIds);
+  
+  for (const id of prevIdSet) {
+    if (!nextIdSet.has(id)) return false;
+  }
+  
+  return prevProps.currencySymbol === nextProps.currencySymbol &&
+         prevProps.bgColorClass === nextProps.bgColorClass;
 });
+
 ToppingCategory.displayName = 'ToppingCategory';
 
-// Main component with heavy use of memoization and lazy loading
+// Improved main dialog component
 const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = memo(({
   item,
   isOpen,
@@ -229,9 +280,23 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = memo(({
   t,
   currencySymbol
 }) => {
-  // Add loading state to improve perceived performance
+  // Use refs to store component state that shouldn't trigger rerenders
   const [isLoading, setIsLoading] = useState(true);
   const [visibleToppingCategories, setVisibleToppingCategories] = useState<any[]>([]);
+  const loadingTimeoutRef = useRef<number | null>(null);
+  const mountedRef = useRef(true);
+  
+  // Pre-calculate visible categories once to avoid recalculations on hover
+  const visibleCategories = useMemo(() => {
+    if (!item?.toppingCategories) return [];
+    return item.toppingCategories
+      .filter(category => shouldShowToppingCategory(category))
+      .sort((a, b) => {
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      });
+  }, [item?.toppingCategories, shouldShowToppingCategory]);
   
   // Calculate the item price once and memoize it
   const calculateItemPrice = useMemo(() => {
@@ -277,86 +342,90 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = memo(({
   const handleQuantityIncrease = useCallback(() => {
     onQuantityChange(quantity + 1);
   }, [quantity, onQuantityChange]);
+  
+  const handleAddToCart = useCallback(() => {
+    onAddToCart();
+  }, [onAddToCart]);
+  
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
 
-  // Initialize loading state whenever dialog opens with proper cleanup
+  // Setup loading and cleanup effects
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
     
     if (isOpen && item) {
       setIsLoading(true);
       
+      if (loadingTimeoutRef.current) {
+        window.clearTimeout(loadingTimeoutRef.current);
+      }
+      
       // Show the dialog immediately with a loading state
-      const timer = setTimeout(() => {
-        if (!mounted) return;
+      loadingTimeoutRef.current = window.setTimeout(() => {
+        if (!mountedRef.current) return;
         
-        // Show the item data immediately
         setIsLoading(false);
         
-        if (item.toppingCategories) {
-          // Sort topping categories by display_order
-          const filteredCategories = item.toppingCategories.filter(category => shouldShowToppingCategory(category));
-          const sortedCategories = [...filteredCategories].sort((a, b) => {
-            const orderA = a.display_order ?? 1000;
-            const orderB = b.display_order ?? 1000;
-            return orderA - orderB;
-          });
-          
+        if (visibleCategories.length > 0) {
           // Reset the visible categories when dialog opens
           setVisibleToppingCategories([]);
           
           // Load all categories at once if there are only a few
-          if (sortedCategories.length <= 3) {
-            setVisibleToppingCategories(sortedCategories);
+          if (visibleCategories.length <= 3) {
+            setVisibleToppingCategories(visibleCategories);
           } else {
             // Process in batches for smoother rendering
-            const batchSize = 2;
-            let loadedCount = 0;
-            
-            const loadNextBatch = () => {
-              if (!mounted) return;
+            const loadNextBatch = (startIndex = 0, batchSize = 2) => {
+              if (!mountedRef.current) return;
               
-              const nextBatch = sortedCategories.slice(loadedCount, loadedCount + batchSize);
+              const nextBatch = visibleCategories.slice(startIndex, startIndex + batchSize);
               setVisibleToppingCategories(prev => [...prev, ...nextBatch]);
               
-              loadedCount += batchSize;
-              if (loadedCount < sortedCategories.length) {
-                setTimeout(loadNextBatch, 50); // Load next batch after 50ms
+              if (startIndex + batchSize < visibleCategories.length) {
+                loadingTimeoutRef.current = window.setTimeout(() => {
+                  loadNextBatch(startIndex + batchSize, batchSize);
+                }, 50);
               }
             };
             
             loadNextBatch();
           }
         }
-      }, 50); // Show content after 50ms
-      
-      return () => {
-        mounted = false;
-        clearTimeout(timer);
-      };
+      }, 50);
     }
     
-    return () => { mounted = false; };
-  }, [isOpen, item, shouldShowToppingCategory]);
-
-  // Return null early if there's no item
+    return () => {
+      mountedRef.current = false;
+      if (loadingTimeoutRef.current) {
+        window.clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [isOpen, item, visibleCategories]);
+  
+  // Early return if there's no item to show
   if (!item) return null;
 
-  // Pre-filter visible categories to avoid doing it on every render
-  const visibleCategories = useMemo(() => {
-    if (!item.toppingCategories) return [];
-    return item.toppingCategories.filter(category => shouldShowToppingCategory(category));
-  }, [item.toppingCategories, shouldShowToppingCategory]);
-  
   // Improve dialog opening speed by simplifying initial render
-  const hasCustomizations = Boolean(item.options?.length > 0 || visibleCategories.length > 0);
+  const hasCustomizations = Boolean(
+    (item.options?.length || 0) > 0 || 
+    (visibleCategories.length || 0) > 0
+  );
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent 
+        className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none"
+        onPointerDownOutside={(e) => {
+          // Prevent pointer events from bubbling up
+          e.preventDefault();
+        }}
+      >
         <DialogHeader className="pb-2">
-          <DialogTitle className="font-bold text-3xl mx-0 my-0 leading-relaxed">{item.name}</DialogTitle>
+          <DialogTitle className="font-bebas text-3xl mx-0 my-0 leading-relaxed select-none">{item.name}</DialogTitle>
           {item.description && (
-            <DialogDescription className="text-xl text-gray-800">{item.description}</DialogDescription>
+            <DialogDescription className="text-xl text-gray-800 select-none">{item.description}</DialogDescription>
           )}
         </DialogHeader>
         
@@ -384,11 +453,11 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = memo(({
               {/* Options section - only show if there are options */}
               {item.options && item.options.length > 0 && item.options.map(option => (
                 <div key={option.id} className="space-y-1">
-                  <Label className="font-medium">
+                  <Label className="font-medium select-none">
                     {option.name}
                     {option.required && <span className="text-red-500 ml-1">*</span>}
                     {option.multiple && (
-                      <span className="text-sm text-gray-500 ml-2">({t("multipleSelection")})</span>
+                      <span className="text-sm text-gray-500 ml-2 select-none">({t("multipleSelection")})</span>
                     )}
                   </Label>
                   <Option 
@@ -416,28 +485,28 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = memo(({
               {/* Show loading indicator if we still have categories to load */}
               {visibleCategories.length > 0 && 
                visibleToppingCategories.length < visibleCategories.length && (
-                <div className="flex justify-center py-4">
+                <div className="flex justify-center py-4 select-none">
                   <Loader2 className="h-8 w-8 animate-spin text-violet-700" />
-                  <span className="ml-2 text-violet-700">Loading more options...</span>
+                  <span className="ml-2 text-violet-700 select-none">Loading more options...</span>
                 </div>
               )}
             </>
           )}
         </div>
         
-        <DialogFooter className="mt-3 pt-2">
-          <div className="w-full flex items-center">
+        <DialogFooter className="mt-3 pt-2 select-none">
+          <div className="w-full flex items-center select-none">
             <div className="flex items-center mr-4">
               <Button 
-                className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700 text-white" 
+                className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700 text-white select-none" 
                 onClick={handleQuantityDecrease}
                 disabled={isLoading}
               >
                 <Minus className="h-6 w-6" />
               </Button>
-              <span className="font-medium text-2xl min-w-[40px] text-center">{quantity}</span>
+              <span className="font-medium text-2xl min-w-[40px] text-center select-none">{quantity}</span>
               <Button 
-                className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700 text-white" 
+                className="h-12 w-12 text-3xl flex items-center justify-center rounded-full bg-violet-800 hover:bg-violet-700 text-white select-none" 
                 onClick={handleQuantityIncrease}
                 disabled={isLoading}
               >
@@ -445,19 +514,19 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = memo(({
               </Button>
             </div>
             <Button 
-              onClick={onAddToCart} 
-              className="flex-1 bg-kiosk-primary py-[34px] text-3xl"
+              onClick={handleAddToCart} 
+              className="flex-1 bg-kiosk-primary py-[34px] text-3xl select-none"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                  {t("loading")}
+                  <span className="select-none">{t("loading")}</span>
                 </>
               ) : (
-                <>
+                <span className="select-none">
                   {t("addToCart")} - {calculateItemPrice.toFixed(2)} {currencySymbol}
-                </>
+                </span>
               )}
             </Button>
           </div>
@@ -466,6 +535,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = memo(({
     </Dialog>
   );
 });
+
 ItemCustomizationDialog.displayName = "ItemCustomizationDialog";
 
 export default memo(ItemCustomizationDialog);
