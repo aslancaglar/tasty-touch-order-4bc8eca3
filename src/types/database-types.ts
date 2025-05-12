@@ -2,15 +2,24 @@
 
 export type Restaurant = {
   id: string;
-  name: string;
-  slug: string;
-  image_url: string | null;
-  logo_url: string | null;
-  location: string | null;
   created_at: string;
   updated_at: string;
-  ui_language?: string;
-  currency?: string; // NEW: ISO 4217 code, e.g. "EUR", "USD", ...
+  card_payment_enabled?: boolean;
+  cash_payment_enabled?: boolean;
+  name: string;
+  slug: string;
+  image_url?: string;
+  location?: string;
+  ui_language?: "fr" | "en" | "tr";
+  currency?: string;
+  logo_url?: string;
+  color_palette?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    text: string;
+  };
 };
 
 export type MenuCategory = {

@@ -215,6 +215,15 @@ const KioskView = () => {
           return;
         }
         setRestaurant(restaurantData);
+        
+        // Load color palette if available
+        if (restaurantData.color_palette) {
+          setColorPalette({
+            ...colorPalette,
+            ...restaurantData.color_palette
+          });
+        }
+        
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         const menuData = await getMenuForRestaurant(restaurantData.id);
@@ -859,6 +868,15 @@ const KioskView = () => {
           return;
         }
         setRestaurant(restaurantData);
+        
+        // Load color palette if available
+        if (restaurantData.color_palette) {
+          setColorPalette({
+            ...colorPalette,
+            ...restaurantData.color_palette
+          });
+        }
+        
         const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         await fetchCategories();
@@ -949,17 +967,33 @@ const KioskView = () => {
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-  return <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+  return <div className="h-screen flex flex-col overflow-hidden kiosk-view" style={{
+    // Apply color palette as inline styles for the main container
+    backgroundColor: colorPalette.background,
+    color: colorPalette.text
+  }}>
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
-        <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
+        <KioskHeader 
+          restaurant={restaurant} 
+          orderType={orderType} 
+          tableNumber={tableNumber} 
+          t={t} 
+          onRefresh={handleRefreshMenu}
+          colorPalette={colorPalette} 
+        />
       </div>
 
       {/* Content area with fixed sidebar and scrollable menu grid */}
       <div className="flex flex-1 overflow-hidden">
         {/* Fixed width sidebar - 16vw */}
         <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
-          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+          <MenuCategoryList 
+            categories={categories} 
+            activeCategory={activeCategory} 
+            setActiveCategory={setActiveCategory}
+            colorPalette={colorPalette}
+          />
         </div>
 
         {/* Scrollable menu grid area */}
@@ -968,18 +1002,28 @@ const KioskView = () => {
             <MenuItemGrid 
               items={categories.flatMap(c => c.items)} 
               handleSelectItem={handleSelectItem} 
-              currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")} 
+              currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} 
               t={t} 
               restaurantId={restaurant?.id} 
               refreshTrigger={refreshTrigger}
               categories={categories}
               uiLanguage={uiLanguage}
+              colorPalette={colorPalette}
             />
           </div>
         </div>
       </div>
 
-      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} uiLanguage={uiLanguage} currency={restaurant.currency} />}
+      {!isCartOpen && !cartIsEmpty && (
+        <CartButton 
+          itemCount={cartItemCount} 
+          total={calculateCartTotal()} 
+          onClick={toggleCart} 
+          uiLanguage={uiLanguage} 
+          currency={restaurant?.currency}
+          colorPalette={colorPalette} 
+        />
+      )}
 
       <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
       maxHeight: "60vh"
@@ -1003,6 +1047,7 @@ const KioskView = () => {
         uiLanguage={uiLanguage}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
+        colorPalette={colorPalette}
       />
     </div>;
 };
