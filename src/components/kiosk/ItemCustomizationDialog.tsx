@@ -1,4 +1,3 @@
-
 import React, { memo, useCallback, useEffect, useState } from "react";
 import { Check, Plus, Minus, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -286,7 +285,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           {item.description && <DialogDescription className="text-xl text-gray-800">{item.description}</DialogDescription>}
         </DialogHeader>
         
-        <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none">
+        <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
           {/* Options section - only show if there are options */}
           {item.options && item.options.length > 0 && item.options.map(option => <div key={option.id} className="space-y-1">
               <Label className="font-medium">
