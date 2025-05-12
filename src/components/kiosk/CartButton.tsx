@@ -44,7 +44,7 @@ const CartButton: React.FC<CartButtonProps> = memo(({
   const currencySymbol = getCurrencySymbol(currency);
   
   return (
-    <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center">
+    <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center select-none">
       <Button 
         onClick={onClick} 
         className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl font-bebas tracking-wide py-[50px] px-[102px]"
@@ -57,6 +57,12 @@ const CartButton: React.FC<CartButtonProps> = memo(({
       </Button>
     </div>
   );
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  return prevProps.itemCount === nextProps.itemCount &&
+    prevProps.total === nextProps.total &&
+    prevProps.uiLanguage === nextProps.uiLanguage &&
+    prevProps.currency === nextProps.currency;
 });
 
 // DisplayName helps with debugging

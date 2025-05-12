@@ -134,7 +134,7 @@ export const prefetchMenuItemDetails = async (menuItemId: string, restaurantId: 
     };
 
     // Cache the result
-    setCacheItem(cacheKey, completeMenuItem, restaurantId);
+    setCacheItem(cacheKey, completeMenuItem, restaurantId, 60 * 60); // Cache for 1 hour
     console.log(`Menu item ${menuItemId} details cached successfully`);
     
   } catch (error) {
@@ -149,15 +149,18 @@ export const prefetchMenuItemDetails = async (menuItemId: string, restaurantId: 
  */
 export const prefetchMenuItems = async (menuItemIds: string[], restaurantId: string): Promise<void> => {
   // Prefetch in small batches to avoid overwhelming the client
-  const batchSize = 2;
+  const batchSize = 3;
   
-  for (let i = 0; i < menuItemIds.length; i += batchSize) {
-    const batch = menuItemIds.slice(i, i + batchSize);
+  // Create a unique set to avoid duplicates
+  const uniqueIds = [...new Set(menuItemIds)];
+  
+  for (let i = 0; i < uniqueIds.length; i += batchSize) {
+    const batch = uniqueIds.slice(i, i + batchSize);
     await Promise.all(batch.map(id => prefetchMenuItemDetails(id, restaurantId)));
     
     // Small delay between batches to avoid performance issues
-    if (i + batchSize < menuItemIds.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+    if (i + batchSize < uniqueIds.length) {
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
   }
 };
@@ -174,6 +177,13 @@ export const prefetchCategoryItems = async (
   limit: number = 10
 ): Promise<void> => {
   try {
+    // Check if we've already prefetched this category
+    const cacheKey = `category_prefetched_${categoryId}`;
+    if (getCacheItem(cacheKey, restaurantId)) {
+      console.log(`Category ${categoryId} items already prefetched`);
+      return;
+    }
+    
     const { data: menuItems, error } = await supabase
       .from('menu_items')
       .select('id')
@@ -188,6 +198,9 @@ export const prefetchCategoryItems = async (
     if (menuItems.length > 0) {
       const menuItemIds = menuItems.map(item => item.id);
       prefetchMenuItems(menuItemIds, restaurantId);
+      
+      // Mark this category as prefetched to avoid redundant calls
+      setCacheItem(cacheKey, true, restaurantId, 60 * 15); // Cache for 15 minutes
     }
   } catch (error) {
     console.error('Error in prefetchCategoryItems:', error);

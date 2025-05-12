@@ -25,7 +25,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = memo(({
   
   return (
     <div 
-      className="h-full w-full bg-cover bg-center relative" 
+      className="h-full w-full bg-cover bg-center relative select-none" 
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
@@ -53,13 +53,15 @@ const KioskHeader: React.FC<KioskHeaderProps> = memo(({
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover bg-white p-1" 
               loading="eager"
+              fetchpriority="high"
             />
           ) : restaurant.image_url ? (
             <img 
               src={restaurant.image_url} 
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
-              loading="eager" 
+              loading="eager"
+              fetchpriority="high"
             />
           ) : (
             <img 
@@ -67,6 +69,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = memo(({
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
               loading="eager"
+              fetchpriority="high"
             />
           )}
           <div>
@@ -92,6 +95,18 @@ const KioskHeader: React.FC<KioskHeaderProps> = memo(({
       </div>
     </div>
   );
+}, (prevProps, nextProps) => {
+  // Implement deep comparison for restaurant to prevent unnecessary re-renders
+  const sameRestaurant = 
+    prevProps.restaurant.id === nextProps.restaurant.id &&
+    prevProps.restaurant.name === nextProps.restaurant.name &&
+    prevProps.restaurant.image_url === nextProps.restaurant.image_url &&
+    prevProps.restaurant.logo_url === nextProps.restaurant.logo_url &&
+    prevProps.restaurant.location === nextProps.restaurant.location;
+    
+  return sameRestaurant &&
+    prevProps.orderType === nextProps.orderType &&
+    prevProps.tableNumber === nextProps.tableNumber;
 });
 
 KioskHeader.displayName = 'KioskHeader';
