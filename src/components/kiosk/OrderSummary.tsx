@@ -84,7 +84,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       });
       setVisibleItems(initialVisibility);
       
-      // Animate items appearing one after another
+      // Animate items appearing one after another with setTimeout
+      // This approach is more compatible with Firefox
       cart.forEach((item, index) => {
         setTimeout(() => {
           setVisibleItems(prev => ({
@@ -121,7 +122,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="space-y-6 mb-6">
             {cart.map(item => <div 
                 key={item.id} 
-                className={`space-y-2 transition-all duration-300 ease-out ${visibleItems[item.id] ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}
+                style={{ 
+                  opacity: visibleItems[item.id] ? 1 : 0, 
+                  transform: visibleItems[item.id] ? 'translateY(0)' : 'translateY(10px)',
+                  transition: 'opacity 300ms ease, transform 300ms ease'
+                }}
+                className="space-y-2"
               >
                 <div className="flex justify-between">
                   <div className="flex items-center">
@@ -179,11 +185,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
           </div>
           
-          {/* Confirm button with animation */}
+          {/* Confirm button with inline style animation for Firefox compatibility */}
           <Button 
             onClick={handleConfirmOrder} 
             disabled={placingOrder} 
-            className={`w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[30px] transition-all duration-300 ${isOpen ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}`}
+            style={{
+              opacity: isOpen ? 1 : 0,
+              transform: isOpen ? 'translateY(0)' : 'translateY(20px)',
+              transition: 'opacity 300ms ease, transform 300ms ease'
+            }}
+            className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[30px]"
           >
             <Check className="mr-2 h-5 w-5" />
             {t("order.confirm")}

@@ -119,7 +119,14 @@ const ToppingCategory = memo(({
   const minRequired = category.required ? category.min_selections > 0 ? category.min_selections : 1 : 0;
   const showWarning = category.required && selectedToppingsCount < minRequired;
   
-  return <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative transition-all duration-300 ease-out ${isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}`}>
+  return <div 
+    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}
+    style={{
+      opacity: isVisible ? 1 : 0,
+      transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
+      transition: 'opacity 500ms ease, transform 500ms ease'
+    }}
+  >
       <div className="font-bold text-xl flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
@@ -196,21 +203,24 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         });
         setVisibleCategories(initialVisibility);
         
-        // Stagger the appearance of each category
+        // Stagger the appearance of each category with Firefox-compatible approach
         const sortedCategories = [...(item.toppingCategories || [])].sort((a, b) => {
           const orderA = a.display_order ?? 1000;
           const orderB = b.display_order ?? 1000;
           return orderA - orderB;
         });
         
+        // Use separate timeouts for each category to ensure Firefox compatibility
         sortedCategories.forEach((category, index) => {
-          // Show each category with a 150ms delay between them
-          setTimeout(() => {
+          const timer = setTimeout(() => {
             setVisibleCategories(prev => ({
               ...prev,
               [category.id]: true
             }));
           }, 150 * index + 100); // 100ms initial delay, then 150ms per category
+          
+          // Clear timeout on component unmount
+          return () => clearTimeout(timer);
         });
       }
     } else {
