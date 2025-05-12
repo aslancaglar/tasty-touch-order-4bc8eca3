@@ -3,6 +3,8 @@ import { setCachingEnabled, setCachingEnabledForAdmin } from "@/services/cache-s
 
 // Configure cache behavior globally
 export const initializeCacheConfig = () => {
+  console.log("[CacheConfig] Initializing cache configuration...");
+  
   // Enable caching for customer-facing kiosk views
   setCachingEnabled(true);
   

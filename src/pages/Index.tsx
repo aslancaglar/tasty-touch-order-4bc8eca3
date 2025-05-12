@@ -3,9 +3,23 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./Dashboard";
 import { Loader2 } from "lucide-react";
+import { setCachingEnabled, setCachingEnabledForAdmin } from "@/services/cache-service";
+import { useEffect } from "react";
 
 const Index = () => {
   const { user, loading } = useAuth();
+
+  // Ensure caching is properly set when the admin dashboard loads
+  useEffect(() => {
+    // Make sure admin caching is disabled
+    setCachingEnabledForAdmin(false);
+    console.log("[AdminDashboard] Disabled caching for admin routes");
+    
+    return () => {
+      // Reset when unmounting (though this likely won't matter)
+      setCachingEnabled(true);
+    };
+  }, []);
 
   if (loading) {
     return (

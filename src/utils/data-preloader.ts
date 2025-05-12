@@ -1,4 +1,3 @@
-
 import { 
   getRestaurantBySlug, 
   getMenuForRestaurant,
@@ -56,14 +55,15 @@ export const preloadAllRestaurantData = async (
   // 1. It's an admin request and admin caching is disabled
   // 2. Caching is completely disabled
   if (isAdmin && !isCachingEnabled(true)) {
-    console.log("[Preloader] Admin detected, skipping cache operations");
+    console.log("[Preloader] Admin detected and admin caching disabled, skipping cache operations");
     
     try {
       // Just fetch the restaurant directly without caching
+      console.log("[Preloader] Fetching fresh restaurant data for admin context");
       const restaurant = await getRestaurantBySlug(restaurantSlug);
       return restaurant;
     } catch (error) {
-      console.error("Error fetching restaurant data for admin:", error);
+      console.error("[Preloader] Error fetching restaurant data for admin:", error);
       throw error;
     }
   }

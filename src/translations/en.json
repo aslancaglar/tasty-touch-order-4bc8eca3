@@ -99,7 +99,11 @@
     "orders": "Orders",
     "settings": "Settings",
     "stock": "Stock",
-    "statistics": "Statistics"
+    "statistics": "Statistics",
+    "refreshData": "Refresh Data",
+    "refreshing": "Refreshing...",
+    "dataRefreshed": "Data refreshed successfully",
+    "refreshError": "Failed to refresh data"
   },
   "statistics": {
     "title": "Restaurant Statistics",
@@ -128,5 +132,11 @@
   },
   "menuItem": {
     "unavailable": "CURRENTLY UNAVAILABLE"
+  },
+  "cache": {
+    "refreshData": "Refresh Kiosk Data",
+    "refreshing": "Refreshing data...",
+    "refreshSuccess": "Kiosk data refreshed successfully",
+    "refreshError": "Failed to refresh kiosk data"
   }
 }

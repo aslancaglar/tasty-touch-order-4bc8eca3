@@ -4,9 +4,11 @@ import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store } fro
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { setCachingEnabledForAdmin } from "@/services/cache-service";
+import { getAdminQueryOptions } from "@/utils/admin-data-utils";
 
 // Define proper types for our API responses
 interface PopularItem {
@@ -69,6 +71,8 @@ const StatCard = ({
 
 // Fetch functions
 const fetchStats = async () => {
+  console.log("[Dashboard] Fetching fresh statistics data");
+  
   // Total revenue
   const { data: totalRevenueData, error: totalRevenueError } = await supabase
     .from("orders")
@@ -110,6 +114,8 @@ const fetchStats = async () => {
 };
 
 const fetchPopularItems = async (): Promise<PopularItem[]> => {
+  console.log("[Dashboard] Fetching fresh popular items data");
+  
   // Top 5 items by sales (uses db function)
   const { data, error } = await supabase.rpc("get_popular_items", { limit_count: 5 });
   if (error) throw error;
@@ -123,6 +129,8 @@ const fetchPopularItems = async (): Promise<PopularItem[]> => {
 };
 
 const fetchPopularRestaurants = async (): Promise<PopularRestaurant[]> => {
+  console.log("[Dashboard] Fetching fresh popular restaurants data");
+  
   // Top 5 restaurants by revenue (uses db function)
   const { data, error } = await supabase.rpc("get_popular_restaurants", { limit_count: 5 });
   if (error) throw error;
@@ -242,33 +250,40 @@ const Dashboard = () => {
   // Always use English for admin dashboard
   const language: SupportedLanguage = 'en';
   const { t } = useTranslation(language);
+  
+  // Ensure admin caching is disabled when admin dashboard loads
+  useEffect(() => {
+    setCachingEnabledForAdmin(false);
+    console.log("[AdminDashboard] Disabled caching for admin dashboard");
+  }, []);
 
+  // Use our admin query options for all admin dashboard queries
   const {
     data: stats,
     isLoading: isStatsLoading,
     error: statsError
-  } = useQuery({
-    queryKey: ["dashboard-stats"],
-    queryFn: fetchStats
-  });
+  } = useQuery(getAdminQueryOptions(
+    ["dashboard-stats"],
+    fetchStats
+  ));
 
   const {
     data: popularItems,
     isLoading: isItemsLoading,
     error: itemsError
-  } = useQuery({
-    queryKey: ["dashboard-popular-items"],
-    queryFn: fetchPopularItems
-  });
+  } = useQuery(getAdminQueryOptions(
+    ["dashboard-popular-items"],
+    fetchPopularItems
+  ));
 
   const {
     data: popularRestaurants,
     isLoading: isRestaurantsLoading,
     error: restaurantsError
-  } = useQuery({
-    queryKey: ["dashboard-popular-restaurants"],
-    queryFn: fetchPopularRestaurants
-  });
+  } = useQuery(getAdminQueryOptions(
+    ["dashboard-popular-restaurants"],
+    fetchPopularRestaurants
+  ));
 
   return (
     <AdminLayout useDefaultLanguage={true}>

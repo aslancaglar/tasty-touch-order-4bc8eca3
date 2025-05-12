@@ -8,14 +8,15 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NetworkStatus } from "@/components/ui/network-status";
 
-// Create the QueryClient with optimized settings
+// Create a more sophisticated QueryClient with route-aware settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false, // Prevents excessive refetching
+      // Default settings for customer-facing routes
+      refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 5, // 5 minutes
       gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
-      retry: 1, // Limit retries
+      retry: 1,
     },
   },
 });

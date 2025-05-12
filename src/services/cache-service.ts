@@ -25,8 +25,14 @@ const debugCache = (action: string, key: string, hit?: boolean) => {
 // Modified to support isAdmin flag
 export const setCacheItem = <T>(key: string, data: T, restaurantId: string, isAdmin = false) => {
   // Skip caching for admin routes if disabled
-  if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) return;
-  if (!CACHE_CONFIG.enableCaching) return;
+  if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) {
+    console.log(`[CacheService] Admin detected, skipping cache SET for: ${key}`);
+    return;
+  }
+  if (!CACHE_CONFIG.enableCaching) {
+    console.log(`[CacheService] Caching disabled, skipping cache SET for: ${key}`);
+    return;
+  }
 
   const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
   const cacheData: CacheItem<T> = {
@@ -40,8 +46,14 @@ export const setCacheItem = <T>(key: string, data: T, restaurantId: string, isAd
 // Modified to support isAdmin flag
 export const getCacheItem = <T>(key: string, restaurantId: string, isAdmin = false): T | null => {
   // Skip cache lookup for admin routes if disabled
-  if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) return null;
-  if (!CACHE_CONFIG.enableCaching) return null;
+  if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) {
+    console.log(`[CacheService] Admin detected, skipping cache GET for: ${key}`);
+    return null;
+  }
+  if (!CACHE_CONFIG.enableCaching) {
+    console.log(`[CacheService] Caching disabled, skipping cache GET for: ${key}`);
+    return null;
+  }
 
   const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
   const cached = localStorage.getItem(cacheKey);
@@ -206,5 +218,9 @@ export const setCachingEnabledForAdmin = (enabled: boolean): void => {
 
 // Add a function to check if caching is enabled
 export const isCachingEnabled = (isAdmin = false): boolean => {
-  return isAdmin ? CACHE_CONFIG.enableCachingForAdmin : CACHE_CONFIG.enableCaching;
+  const enabled = isAdmin ? CACHE_CONFIG.enableCachingForAdmin : CACHE_CONFIG.enableCaching;
+  if (isAdmin) {
+    console.log(`[CacheService] Admin caching is ${enabled ? 'ENABLED' : 'DISABLED'}`);
+  }
+  return enabled;
 };

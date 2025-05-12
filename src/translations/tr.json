@@ -99,7 +99,11 @@
     "orders": "Siparişler",
     "settings": "Ayarlar",
     "stock": "Stok",
-    "statistics": "İstatistikler"
+    "statistics": "İstatistikler",
+    "refreshData": "Verileri Yenile",
+    "refreshing": "Yenileniyor...",
+    "dataRefreshed": "Veriler başarıyla yenilendi",
+    "refreshError": "Veriler yenilenemedi"
   },
   "statistics": {
     "title": "Restoran İstatistikleri",
@@ -128,5 +132,11 @@
   },
   "menuItem": {
     "unavailable": "MEVCUT DEĞİL"
+  },
+  "cache": {
+    "refreshData": "Kiosk Verilerini Yenile",
+    "refreshing": "Veriler yenileniyor...",
+    "refreshSuccess": "Kiosk verileri başarıyla yenilendi",
+    "refreshError": "Kiosk verileri yenilenemedi"
   }
 }
