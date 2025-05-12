@@ -99,7 +99,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [browserPrintEnabled, setBrowserPrintEnabled] = useState(true);
   const [isSavingPrintSettings, setIsSavingPrintSettings] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(isDeleting);
+  const [isDeleting, setIsDeleting] = useState(false); // Fixed: initialize isDeleting before use
   const [uiLanguage, setUiLanguage] = useState(restaurant.ui_language || "fr");
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
