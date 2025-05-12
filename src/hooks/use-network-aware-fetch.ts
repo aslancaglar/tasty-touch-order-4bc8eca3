@@ -4,12 +4,25 @@ import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query
 import { addOnlineStatusListener, removeOnlineStatusListener, isOnline as checkIsOnline } from '@/utils/service-worker';
 import { getCacheItem, setCacheItem } from '@/services/cache-service';
 
-interface NetworkAwareFetchOptions<TData, TError> extends Omit<UseQueryOptions<TData, TError>, 'queryFn'> {
+// Define the options type without extending UseQueryOptions
+interface NetworkAwareFetchOptions<TData, TError> {
   fetchFn: () => Promise<TData>;
   cacheKey: string;
   restaurantId: string;
   stallTime?: number; // Time in ms to stall before showing loading state
   forceNetwork?: boolean; // Force network fetch even when offline
+  // Include query options as separate properties
+  queryKey?: unknown[];
+  enabled?: boolean;
+  retry?: boolean | number;
+  retryDelay?: number | ((attemptIndex: number) => number);
+  staleTime?: number;
+  gcTime?: number;
+  refetchOnMount?: boolean | "always";
+  refetchOnWindowFocus?: boolean | "always";
+  refetchOnReconnect?: boolean | "always";
+  refetchInterval?: number | false;
+  refetchIntervalInBackground?: boolean;
 }
 
 interface NetworkAwareFetchResult<TData, TError> extends UseQueryResult<TData, TError> {
