@@ -42,10 +42,16 @@ const CartButton: React.FC<CartButtonProps> = ({
   const { t } = useTranslation(uiLanguage);
   const currencySymbol = getCurrencySymbol(currency);
   
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClick();
+  };
+  
   return (
     <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center pointer-events-none">
       <Button 
-        onClick={onClick} 
+        onClick={handleClick} 
         className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl font-bebas tracking-wide py-[50px] px-[102px] pointer-events-auto"
       >
         <ShoppingBag className="h-12 w-12 mr-2" />

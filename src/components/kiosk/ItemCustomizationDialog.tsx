@@ -58,7 +58,7 @@ const Option = memo(({
   }, [onToggleChoice]);
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
       {option.choices.map(choice => {
         const isSelected = getIsSelected(choice.id);
         return (
@@ -69,6 +69,9 @@ const Option = memo(({
               ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
             `} 
             onClick={(e) => handleChoiceClick(e, option.id, choice.id, !!option.multiple)}
+            onMouseEnter={(e) => e.stopPropagation()}
+            onMouseOver={(e) => e.stopPropagation()}
+            onPointerMove={(e) => e.stopPropagation()}
           >
             <div className="flex items-center">
               <div className={`
@@ -143,7 +146,13 @@ const ToppingCategory = memo(({
   }, [selectedCategory]);
 
   return (
-    <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative animate-fadeIn will-change-transform`}>
+    <div 
+      className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative animate-fadeIn will-change-transform`}
+      onClick={(e) => e.stopPropagation()} 
+      onMouseEnter={(e) => e.stopPropagation()} 
+      onMouseMove={(e) => e.stopPropagation()} 
+      onMouseOver={(e) => e.stopPropagation()}
+    >
       <div className="font-bold text-xl flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
@@ -168,6 +177,8 @@ const ToppingCategory = memo(({
             <div 
               key={topping.id} 
               onClick={(e) => handleToggleTopping(e, category.id, topping.id)}
+              onMouseEnter={(e) => e.stopPropagation()}
+              onMouseOver={(e) => e.stopPropagation()}
               className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white"
             >
               <span className={`flex-1 mr-2 ${toppingSelected ? 'text-green-700 font-medium' : ''}`}>
@@ -180,13 +191,15 @@ const ToppingCategory = memo(({
                   </span>
                 )}
                 {!toppingSelected ? (
-                  <Plus 
+                  <div 
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleTopping(category.id, topping.id);
                     }} 
-                    className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} 
-                  />
+                    className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2 flex items-center justify-center`}
+                  >
+                    <Plus className="h-6 w-6" />
+                  </div>
                 ) : (
                   <Button 
                     variant="outline" 
@@ -233,6 +246,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<number | null>(null);
+  const stableVisibleCategoriesRef = useRef<any[]>([]);
   
   // Cache visible categories calculation to avoid recalculation on every render
   const visibleCategories = useMemo(() => {
@@ -245,6 +259,11 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       })
       .filter(shouldShowToppingCategory);
   }, [item?.toppingCategories, shouldShowToppingCategory]);
+
+  // Update stable ref when visibleCategories change
+  useEffect(() => {
+    stableVisibleCategoriesRef.current = visibleCategories;
+  }, [visibleCategories]);
   
   // Reset loaded categories when dialog opens/closes or item changes
   useEffect(() => {
@@ -254,18 +273,19 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       
       // Clear any existing interval
       if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
+        window.clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
       
       // Start loading categories immediately but incrementally
       const loadCategories = () => {
-        if (!visibleCategories.length) {
+        const categories = stableVisibleCategoriesRef.current;
+        if (!categories.length) {
           setIsInitialLoad(false);
           return;
         }
         
-        const totalCategories = visibleCategories.length;
+        const totalCategories = categories.length;
         const initialBatch = Math.min(2, totalCategories); // Load first 2 categories instantly
         
         // Load initial batch immediately
@@ -276,11 +296,15 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           let loaded = initialBatch;
           intervalRef.current = window.setInterval(() => {
             loaded += 1;
-            setLoadedCategories(loaded);
+            setLoadedCategories(prev => {
+              // Only update if needed to avoid unnecessary renders
+              if (prev >= loaded) return prev;
+              return loaded;
+            });
             
             if (loaded >= totalCategories) {
               if (intervalRef.current !== null) {
-                clearInterval(intervalRef.current);
+                window.clearInterval(intervalRef.current);
                 intervalRef.current = null;
               }
               setIsInitialLoad(false);
@@ -292,11 +316,11 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       };
       
       // Start loading categories after a very short delay
-      const timer = setTimeout(loadCategories, 50);
+      const timer = window.setTimeout(loadCategories, 50);
       return () => {
-        clearTimeout(timer);
+        window.clearTimeout(timer);
         if (intervalRef.current !== null) {
-          clearInterval(intervalRef.current);
+          window.clearInterval(intervalRef.current);
           intervalRef.current = null;
         }
       };
@@ -304,17 +328,17 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     
     return () => {
       if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
+        window.clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
-  }, [isOpen, visibleCategories]);
+  }, [isOpen]);
   
   // Clean up interval on unmount
   useEffect(() => {
     return () => {
       if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
+        window.clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
@@ -378,6 +402,16 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     onAddToCart();
   }, [onAddToCart]);
   
+  // Handler for dialog close
+  const handleClose = useCallback(() => {
+    // Clean up any ongoing intervals
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    onClose();
+  }, [onClose]);
+  
   // Derived state check for customizations
   const hasCustomizations = useMemo(() => {
     return (item?.options && item.options.length > 0) || 
@@ -389,7 +423,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   return (
     <Dialog 
       open={isOpen} 
-      onOpenChange={(open) => !open && onClose()}
+      onOpenChange={(open) => !open && handleClose()}
     >
       <DialogContent
         ref={dialogContentRef}
@@ -403,7 +437,15 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           )}
         </DialogHeader>
         
-        <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none">
+        <div 
+          className="space-y-4 overflow-y-auto pr-2 flex-grow select-none"
+          onClick={(e) => e.stopPropagation()}
+          onMouseEnter={(e) => e.stopPropagation()}
+          onMouseMove={(e) => e.stopPropagation()}
+          onMouseOver={(e) => e.stopPropagation()}
+          onPointerMove={(e) => e.stopPropagation()}
+          style={{ willChange: 'transform' }}
+        >
           {/* Options section - only show if there are options */}
           {item.options && item.options.length > 0 && item.options.map(option => (
             <div key={option.id} className="space-y-1">
