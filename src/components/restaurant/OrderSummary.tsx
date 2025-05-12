@@ -11,6 +11,7 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const translations = {
   fr: {
@@ -86,6 +87,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   
   const { total, subtotal, tax } = calculateCartTotals(cart);
 
+  // Helper function to translate text
   const t = (key: keyof typeof translations["en"]) =>
     translations[uiLanguage]?.[key] ?? translations.fr[key];
 
@@ -271,8 +273,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md md:max-w-lg p-0">
-        <DialogHeader className="p-4 border-b">
+      <DialogContent className="sm:max-w-md md:max-w-lg p-0 flex flex-col max-h-[85vh]">
+        {/* Fixed Header */}
+        <DialogHeader className="p-4 border-b flex-shrink-0">
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
@@ -281,7 +284,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
         </DialogHeader>
         
-        <div className="p-6">
+        {/* Scrollable Content Area */}
+        <ScrollArea className="flex-grow overflow-auto p-6">
           <h3 className="font-bold text-lg mb-4">{t("orderedItems")}</h3>
           
           <div className="space-y-6 mb-6">
@@ -344,9 +348,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <span>{total.toFixed(2)} €</span>
             </div>
           </div>
-        </div>
+        </ScrollArea>
         
-        <div className="p-4 bg-gray-50">
+        {/* Fixed Footer */}
+        <div className="p-4 bg-gray-50 border-t flex-shrink-0">
           <Button 
             className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
             onClick={handleConfirmOrder}

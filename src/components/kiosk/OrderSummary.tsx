@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings } from "@/utils/receipt-templates";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -69,15 +72,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     onPlaceOrder();
   };
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-2xl md:max-w-2xl p-0 overflow-hidden">
-        <div className="p-4 border-b flex items-center space-x-2">
+      <DialogContent className="sm:max-w-2xl md:max-w-2xl p-0 overflow-hidden flex flex-col max-h-[85vh]">
+        {/* Fixed Header */}
+        <div className="p-4 border-b flex items-center space-x-2 flex-shrink-0">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-xl font-bold">{t("order.summary")}</h2>
         </div>
         
-        <div className="p-6">
+        {/* Scrollable Content Area */}
+        <ScrollArea className="flex-grow overflow-auto p-6">
           <h3 className="font-bold text-lg mb-4">{t("order.items")}</h3>
           
           <div className="space-y-6 mb-6">
@@ -135,9 +140,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <span>{total.toFixed(2)} {currencySymbol}</span>
             </div>
           </div>
-        </div>
+        </ScrollArea>
         
-        <div className="p-4 bg-gray-50">
+        {/* Fixed Footer */}
+        <div className="p-4 bg-gray-50 border-t flex-shrink-0">
           <Button onClick={handleConfirmOrder} disabled={placingOrder} className="w-full bg-green-800 hover:bg-green-900 text-white text-4xl py-[30px]">
             <Check className="mr-2 h-5 w-5" />
             {t("order.confirm")}
