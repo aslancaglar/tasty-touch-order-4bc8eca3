@@ -1,10 +1,8 @@
 // Service Worker for Tasty Touch - Restaurant Kiosk App
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v1';
 const CACHE_NAME = `tasty-touch-cache-${CACHE_VERSION}`;
 const APP_SHELL_CACHE = 'app-shell';
 const DATA_CACHE = 'app-data';
-const IMG_CACHE = 'image-cache';
-const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
 
 // Resources that should be pre-cached (app shell)
 const APP_SHELL_FILES = [
@@ -14,7 +12,6 @@ const APP_SHELL_FILES = [
   '/placeholder.svg',
   '/src/main.tsx',
   '/src/index.css',
-  '/offline.html',
 ];
 
 // Install event - Cache app shell resources
@@ -44,7 +41,7 @@ self.addEventListener('activate', (event) => {
       .then(keyList => {
         return Promise.all(keyList.map(key => {
           // If a cache name doesn't match our current version, delete it
-          if (key !== APP_SHELL_CACHE && key !== DATA_CACHE && key !== IMG_CACHE) {
+          if (key !== APP_SHELL_CACHE && key !== DATA_CACHE) {
             console.log('[Service Worker] Removing old cache:', key);
             return caches.delete(key);
           }
@@ -59,29 +56,17 @@ self.addEventListener('activate', (event) => {
 
 // Helper function to determine if a request is for an image
 const isImageRequest = (url) => {
-  return url.pathname.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) || 
-         url.href.includes('storage/v1/object');
+  return url.pathname.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
 };
 
 // Helper function to determine if a request is for API data
 const isApiRequest = (url) => {
   // Adjust these paths based on your actual API endpoints
   return url.pathname.includes('/api/') || 
-         url.href.includes('supabase') || 
-         url.href.includes('rest/v1');
+         url.href.includes('supabase');
 };
 
-// Helper to check if cache is stale
-const isCacheStale = (response) => {
-  if (!response || !response.headers || !response.headers.get('date')) {
-    return true; // If no timestamp, consider it stale
-  }
-  
-  const cachedDate = new Date(response.headers.get('date')).getTime();
-  return Date.now() - cachedDate > CACHE_MAX_AGE;
-};
-
-// Fetch event - Use stale-while-revalidate for most requests
+// Fetch event - Handle network requests with cache strategy
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
@@ -93,11 +78,11 @@ self.addEventListener('fetch', (event) => {
 
   // Different strategies based on request type
   if (isImageRequest(url)) {
-    // Cache-first strategy for images with background refresh if stale
-    event.respondWith(staleWhileRevalidateStrategy(event.request, IMG_CACHE));
+    // Cache-first strategy for images
+    event.respondWith(cacheFirstStrategy(event.request));
   } else if (isApiRequest(url)) {
-    // Stale-while-revalidate for API data
-    event.respondWith(staleWhileRevalidateStrategy(event.request, DATA_CACHE));
+    // Network-first strategy with cache fallback for API requests
+    event.respondWith(networkFirstStrategy(event.request));
   } else {
     // Cache-first for app shell (static resources)
     event.respondWith(cacheFirstStrategy(event.request));
@@ -108,77 +93,25 @@ self.addEventListener('fetch', (event) => {
 async function cacheFirstStrategy(request) {
   const cachedResponse = await caches.match(request);
   if (cachedResponse) {
-    // Return cached response immediately
+    // Return cached response and update cache in background
+    fetchAndUpdateCache(request);
     return cachedResponse;
   }
   
   // If not in cache, fetch from network and cache it
-  try {
-    const networkResponse = await fetch(request);
-    
-    // Cache successful responses
-    if (networkResponse && networkResponse.status === 200) {
-      const cache = await caches.open(APP_SHELL_CACHE);
-      cache.put(request, networkResponse.clone());
-    }
-    
-    return networkResponse;
-  } catch (err) {
-    // If HTML request fails and we're offline, show offline page
-    if (request.headers.get('accept').includes('text/html')) {
-      return caches.match('/offline.html');
-    }
-    
-    throw err;
-  }
+  return fetchAndUpdateCache(request);
 }
 
-// Stale-while-revalidate: Return cached data immediately, then update cache in background
-async function staleWhileRevalidateStrategy(request, cacheName) {
-  // Try to get from cache first
-  const cachedResponse = await caches.match(request);
-  
-  // Start updating cache in background if we have a cached response
-  const updateCachePromise = fetch(request)
-    .then(networkResponse => {
-      if (networkResponse && networkResponse.status === 200) {
-        const cache = await caches.open(cacheName);
-        // Store with timestamp
-        const responseToCache = networkResponse.clone();
-        cache.put(request, responseToCache);
-        
-        // Notify clients that cache was updated
-        notifyClientsOfUpdate(request.url);
-      }
-      return networkResponse;
-    })
-    .catch(err => {
-      console.log('[Service Worker] Fetch failed:', err);
-      // No need to do anything, we already returned the cached response
-    });
-  
-  // If we have a cached response, return it immediately and update in background
-  if (cachedResponse) {
-    // If forced refresh header is present, wait for network
-    if (request.headers.get('x-force-refresh')) {
-      try {
-        return await updateCachePromise;
-      } catch (error) {
-        return cachedResponse; // Fallback to cache if network fails
-      }
-    }
+// Network-first strategy: Try network first, fallback to cache
+async function networkFirstStrategy(request) {
+  const cacheName = isImageRequest(new URL(request.url)) ? 
+    'image-cache' : DATA_CACHE;
     
-    // Otherwise return cached response immediately
-    // And update cache in background
-    updateCachePromise;
-    return cachedResponse;
-  }
-  
-  // If no cache, wait for network response
   try {
+    // Try network first
     const networkResponse = await fetch(request);
     
-    // Cache successful responses
+    // Cache the response (if valid)
     if (networkResponse && networkResponse.status === 200) {
       const cache = await caches.open(cacheName);
       cache.put(request, networkResponse.clone());
@@ -186,25 +119,41 @@ async function staleWhileRevalidateStrategy(request, cacheName) {
     
     return networkResponse;
   } catch (err) {
-    // If no cache and network fails, try to return appropriate fallback
+    // Network failed, try cache
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    // If no cache, show offline fallback for HTML
     if (request.headers.get('accept').includes('text/html')) {
       return caches.match('/offline.html');
     }
     
+    // Otherwise just rethrow the error
     throw err;
   }
 }
 
-// Helper function to notify clients about cache updates
-function notifyClientsOfUpdate(url) {
-  self.clients.matchAll().then(clients => {
-    clients.forEach(client => {
-      client.postMessage({
-        type: 'CACHE_UPDATED',
-        url: url
-      });
-    });
-  });
+// Helper function to fetch and update cache
+async function fetchAndUpdateCache(request) {
+  const cacheName = isImageRequest(new URL(request.url)) ? 
+    'image-cache' : DATA_CACHE;
+
+  try {
+    const response = await fetch(request);
+    
+    // Only cache successful responses
+    if (response && response.status === 200) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, response.clone());
+    }
+    
+    return response;
+  } catch (error) {
+    console.error('[Service Worker] Fetch failed:', error);
+    throw error;
+  }
 }
 
 // Background sync for offline actions (like placing an order)
@@ -230,13 +179,6 @@ self.addEventListener('message', (event) => {
   if (event.data.action === 'clearCache') {
     clearAllCaches();
   }
-  
-  if (event.data.action === 'forceRefresh') {
-    // Force refresh of specific URL(s)
-    if (event.data.urls && Array.isArray(event.data.urls)) {
-      refreshCachedUrls(event.data.urls);
-    }
-  }
 });
 
 // Function to clear all caches
@@ -247,60 +189,7 @@ async function clearAllCaches() {
       cacheNames.map(name => caches.delete(name))
     );
     console.log('[Service Worker] All caches cleared!');
-    
-    // Notify clients about the cache clear
-    self.clients.matchAll().then(clients => {
-      clients.forEach(client => {
-        client.postMessage({
-          type: 'CACHE_CLEARED'
-        });
-      });
-    });
   } catch (err) {
     console.error('[Service Worker] Failed to clear caches:', err);
-  }
-}
-
-// Function to refresh specific cached URLs
-async function refreshCachedUrls(urls) {
-  try {
-    // Try to refresh each URL
-    const refreshPromises = urls.map(async (url) => {
-      const request = new Request(url);
-      const response = await fetch(request);
-      
-      if (!response || response.status !== 200) {
-        return false;
-      }
-      
-      // Determine which cache to use
-      let cacheName = APP_SHELL_CACHE;
-      if (isImageRequest(new URL(url))) {
-        cacheName = IMG_CACHE;
-      } else if (isApiRequest(new URL(url))) {
-        cacheName = DATA_CACHE;
-      }
-      
-      // Update the cache
-      const cache = await caches.open(cacheName);
-      await cache.put(request, response.clone());
-      
-      return true;
-    });
-    
-    await Promise.all(refreshPromises);
-    console.log('[Service Worker] Forced refresh complete for URLs:', urls);
-    
-    // Notify clients
-    self.clients.matchAll().then(clients => {
-      clients.forEach(client => {
-        client.postMessage({
-          type: 'CACHE_REFRESHED',
-          urls: urls
-        });
-      });
-    });
-  } catch (err) {
-    console.error('[Service Worker] Forced refresh failed:', err);
   }
 }
