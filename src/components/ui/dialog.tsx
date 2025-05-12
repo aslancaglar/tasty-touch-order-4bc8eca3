@@ -20,10 +20,19 @@ const DialogOverlay = React.forwardRef<
       className
     )}
     {...props}
-    // Improved event handling to prevent propagation issues
+    // Enhanced event handling for both mouse and touch events
     onClick={(e) => {
       e.stopPropagation();
       if (props.onClick) props.onClick(e);
+    }}
+    onTouchEnd={(e) => {
+      e.stopPropagation();
+      if (props.onTouchEnd) {
+        props.onTouchEnd(e);
+      } else if (props.onClick) {
+        // Simulate click for touch events if no specific touch handler
+        props.onClick(e as unknown as React.MouseEvent);
+      }
     }}
   />
 ));
@@ -46,7 +55,7 @@ const DialogContent = React.forwardRef<
     contentRef.current = node;
   };
 
-  // Prevent event propagation
+  // Prevent event propagation for both mouse and touch events
   React.useEffect(() => {
     const content = contentRef.current;
     if (!content) return;
@@ -55,14 +64,26 @@ const DialogContent = React.forwardRef<
       e.stopPropagation();
     };
     
+    const handleTouchEvent = (e: TouchEvent) => {
+      e.stopPropagation();
+    };
+    
     content.addEventListener('pointerdown', handlePointerEvent);
     content.addEventListener('pointermove', handlePointerEvent);
     content.addEventListener('pointerup', handlePointerEvent);
+    
+    // Add specific touch event handlers
+    content.addEventListener('touchstart', handleTouchEvent);
+    content.addEventListener('touchmove', handleTouchEvent);
+    content.addEventListener('touchend', handleTouchEvent);
     
     return () => {
       content.removeEventListener('pointerdown', handlePointerEvent);
       content.removeEventListener('pointermove', handlePointerEvent);
       content.removeEventListener('pointerup', handlePointerEvent);
+      content.removeEventListener('touchstart', handleTouchEvent);
+      content.removeEventListener('touchmove', handleTouchEvent);
+      content.removeEventListener('touchend', handleTouchEvent);
     };
   }, []);
 
@@ -75,10 +96,16 @@ const DialogContent = React.forwardRef<
           "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg rounded-lg will-change-transform",
           className
         )}
-        // Add better event handling to prevent propagation issues
+        // Enhanced event handling for both mouse and touch events
         onClick={(e) => {
           e.stopPropagation();
           if (props.onClick) props.onClick(e);
+        }}
+        onTouchEnd={(e) => {
+          e.stopPropagation();
+          if (props.onTouchEnd) {
+            props.onTouchEnd(e);
+          }
         }}
         onPointerDown={(e) => {
           e.stopPropagation();

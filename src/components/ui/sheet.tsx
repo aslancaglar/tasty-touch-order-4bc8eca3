@@ -25,6 +25,15 @@ const SheetOverlay = React.forwardRef<
     )}
     {...props}
     ref={ref}
+    // Add touch handlers to match mouse behavior
+    onTouchEnd={(e) => {
+      if (props.onTouchEnd) {
+        props.onTouchEnd(e);
+      } else if (props.onClick) {
+        // Simulate click for touch events
+        props.onClick(e as unknown as React.MouseEvent);
+      }
+    }}
   />
 ))
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
@@ -55,13 +64,52 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(({ side = "right", className, children, ...props }, ref) => {
+  // Create a ref to manage touch events
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  
+  // Handle combined refs
+  const setRefs = (node: HTMLDivElement) => {
+    if (typeof ref === 'function') {
+      ref(node);
+    } else if (ref) {
+      ref.current = node;
+    }
+    contentRef.current = node;
+  };
+
+  // Add touch event handlers
+  React.useEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+    
+    const handleTouchEvent = (e: TouchEvent) => {
+      e.stopPropagation();
+    };
+    
+    content.addEventListener('touchstart', handleTouchEvent);
+    content.addEventListener('touchmove', handleTouchEvent);
+    content.addEventListener('touchend', handleTouchEvent);
+    
+    return () => {
+      content.removeEventListener('touchstart', handleTouchEvent);
+      content.removeEventListener('touchmove', handleTouchEvent);
+      content.removeEventListener('touchend', handleTouchEvent);
+    };
+  }, []);
+
+  return (
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content
-      ref={ref}
+      ref={setRefs}
       className={cn(sheetVariants({ side }), className)}
       {...props}
+      // Add touch handlers
+      onTouchEnd={(e) => {
+        e.stopPropagation();
+        if (props.onTouchEnd) props.onTouchEnd(e);
+      }}
     >
       <div className="h-full overflow-y-auto pb-12">
         {children}
@@ -72,7 +120,7 @@ const SheetContent = React.forwardRef<
       </SheetPrimitive.Close>
     </SheetPrimitive.Content>
   </SheetPortal>
-))
+)})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({
