@@ -353,16 +353,9 @@ const KioskView = () => {
       return [];
     }
   };
-  const [prefetchedItems, setPrefetchedItems] = useState<Set<string>>(new Set());
-  
   const handleSelectItem = async (item: MenuItem) => {
     try {
       setLoading(true);
-      
-      // Check if we've already prefetched this item
-      const isPrefetched = prefetchedItems.has(item.id);
-      
-      // Use the cache if available, otherwise fetch
       const itemWithOptions = await getMenuItemWithOptions(item.id);
       if (!itemWithOptions) {
         toast({
@@ -372,27 +365,16 @@ const KioskView = () => {
         });
         return;
       }
-      
-      // If we're fetching for the first time, get toppings
-      let toppingCategories = [];
-      if (!isPrefetched) {
-        toppingCategories = await fetchToppingCategories(item.id);
-        
-        // Mark as prefetched for future optimizations
-        setPrefetchedItems(prev => new Set(prev).add(item.id));
-      }
+      const toppingCategories = await fetchToppingCategories(item.id);
 
-      // Prepare the complete item with toppings
+      // Always show customization dialog, removing the direct add-to-cart path for items without options/toppings
       const itemWithToppings: MenuItemWithOptions = {
         ...(itemWithOptions as MenuItemWithOptions),
         toppingCategories: toppingCategories || []
       };
-      
-      // Show dialog immediately while we initialize
       setSelectedItem(itemWithToppings);
       setQuantity(1);
       setSpecialInstructions("");
-      
       if (itemWithOptions.options && itemWithOptions.options.length > 0) {
         const initialOptions = itemWithOptions.options.map(option => {
           if (option.required && !option.multiple) {
@@ -410,7 +392,6 @@ const KioskView = () => {
       } else {
         setSelectedOptions([]);
       }
-      
       if (toppingCategories && toppingCategories.length > 0) {
         const initialToppings = toppingCategories.map(category => ({
           categoryId: category.id,
@@ -420,7 +401,6 @@ const KioskView = () => {
       } else {
         setSelectedToppings([]);
       }
-      
       setLoading(false);
     } catch (error) {
       console.error("Erreur lors du chargement des détails de l'article:", error);
@@ -432,26 +412,6 @@ const KioskView = () => {
       setLoading(false);
     }
   };
-
-  // When category is changed, prefetch items in that category
-  useEffect(() => {
-    if (activeCategory && restaurant?.id) {
-      // Start prefetching first 5 items in this category
-      const activeCategoryItems = categories.find(c => c.id === activeCategory)?.items || [];
-      if (activeCategoryItems.length > 0) {
-        const topItems = activeCategoryItems.slice(0, 5);
-        
-        // Import and use prefetch utility
-        import('@/utils/prefetch-utils').then(({ prefetchMenuItems }) => {
-          prefetchMenuItems(
-            topItems.map(item => item.id),
-            restaurant.id
-          );
-        });
-      }
-    }
-  }, [activeCategory, restaurant?.id, categories]);
-
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
       const optionIndex = prev.findIndex(o => o.optionId === optionId);
