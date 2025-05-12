@@ -52,7 +52,6 @@ interface NetworkAwareFetchResult<TData, TError> {
   isStale: boolean;
   isSuccess: boolean;
   refetch: (options?: { throwOnError?: boolean; cancelRefetch?: boolean }) => Promise<any>;
-  remove: () => void;
   status: 'error' | 'loading' | 'success' | 'pending';
   fetchStatus: 'fetching' | 'paused' | 'idle';
 }
@@ -158,7 +157,6 @@ export function useNetworkAwareFetch<TData, TError = Error>({
     error: queryResult.error as TError | null,
     status: queryResult.status,
     fetchStatus: queryResult.fetchStatus,
-    remove: queryResult.remove
   };
 
   return result;
