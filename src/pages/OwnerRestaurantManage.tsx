@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import StockTab from "@/components/restaurant/StockTab";
 import StatisticsTab from "@/components/restaurant/StatisticsTab";
 import { useTranslation, SupportedLanguage, DEFAULT_LANGUAGE } from "@/utils/language-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { clearCache } from "@/services/cache-service";
+import { forceFlushMenuCache } from "@/services/cache-service";
 
 const OwnerRestaurantManage = () => {
   const {
@@ -68,12 +69,10 @@ const OwnerRestaurantManage = () => {
 
         // User has access to this restaurant
         setRestaurant(foundRestaurant);
-        
-        // Clear any cached data for this restaurant to ensure fresh data
-        if (id) {
-          console.log(`Clearing cache for restaurant: ${foundRestaurant.name} (${id})`);
-          clearCache(id);
-        }
+
+        // When loading the restaurant management page, flush any cached data
+        // to ensure we're working with fresh data on the admin side
+        forceFlushMenuCache(foundRestaurant.id);
 
         // Set language based on restaurant settings
         if (foundRestaurant.ui_language) {
@@ -96,11 +95,6 @@ const OwnerRestaurantManage = () => {
   
   const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
     setRestaurant(updatedRestaurant);
-
-    // Clear cache whenever restaurant details are updated
-    if (id) {
-      clearCache(id);
-    }
 
     // Update language when restaurant settings are changed
     if (updatedRestaurant.ui_language) {

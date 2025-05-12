@@ -1,11 +1,19 @@
 
-import { createRoot } from 'react-dom/client'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { initializeCacheConfig } from './services/cache-config.ts'
+import { registerServiceWorker } from '@/utils/service-worker'
+import initializeCacheConfig from "@/utils/cache-config"
 
-// Initialize cache configuration with default settings
-// This must be done before rendering the app to prevent cache-related errors
+// Initialize cache configuration immediately
 initializeCacheConfig();
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Register service worker
+registerServiceWorker();
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
