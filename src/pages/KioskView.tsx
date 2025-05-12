@@ -656,7 +656,7 @@ const KioskView = () => {
         quantity: item.quantity,
         price: item.itemPrice,
         special_instructions: item.specialInstructions || null
-      }));
+      })));
       const orderItemOptionsToCreate = [];
       const orderItemToppingsToCreate = [];
       for (let i = 0; i < cart.length; i++) {
@@ -817,4 +817,4 @@ const KioskView = () => {
     } catch (error) {
       console.error('Error fetching toppings:', error);
       toast({
-        title: "Error",
+        title:
