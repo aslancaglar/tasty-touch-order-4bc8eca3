@@ -1,4 +1,3 @@
-
 import { 
   getRestaurantBySlug, 
   getMenuForRestaurant,
@@ -182,8 +181,8 @@ export const preloadAllRestaurantData = async (
       // Menu item images
       menuCategories.forEach(category => {
         category.items.forEach(item => {
-          if (item.image_url) {
-            imageUrls.push(item.image_url);
+          if (item.image) {
+            imageUrls.push(item.image);
           }
         });
       });

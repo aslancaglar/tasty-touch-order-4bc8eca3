@@ -266,7 +266,7 @@ const KioskView = () => {
         toast({
           title: "Offline mode",
           description: "Using cached data. Some features may be limited.",
-          variant: "warning"
+          variant: "destructive"
         });
       } else {
         // No cached data, show error
