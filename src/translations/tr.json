@@ -1,132 +1,47 @@
 
 {
-  "orderType": {
-    "title": "Nasıl sipariş vermek istersiniz?",
-    "dineIn": "Masaya Servis",
-    "takeaway": "Paket Servis"
-  },
-  "order": {
-    "summary": "Sipariş Özeti",
-    "items": "Sipariş Edilen Ürünler",
-    "subtotal": "Ara Toplam",
-    "vatWithRate": "KDV",
-    "vat": "KDV",
-    "totalTTC": "TOPLAM",
-    "confirm": "Siparişi Onayla",
-    "printing": "Yazdırılıyor",
-    "printingPreparation": "Yazdırma hazırlanıyor...",
-    "printError": "Yazdırma Hatası",
-    "printErrorDesc": "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
-    "error": "Hata",
-    "errorPrinting": "Fiş yazdırılırken bir hata oluştu."
-  },
-  "orderConfirmation": {
-    "title": "✅ Siparişiniz Alındı!",
-    "ticketPrinted": "🧾 Fiş yazdırıldı ve mutfağa gönderildi.",
-    "preparation": "👨‍🍳 Ekip yemeğinizi hazırlamaya başlıyor.",
-    "printed": "Fiş başarıyla yazdırıldı.",
-    "printing": "Fiş yazdırılıyor...",
-    "payNow": "💳 Lütfen Şimdi Ödeme Yapın",
-    "paymentInstructions": "Siparişinizi tamamlamak için lütfen toplam tutarı restoran personeline ödeyiniz.",
-    "total": "Toplam",
-    "orderNumber": "Sipariş Numarası",
-    "preparationWarning": "⚠️ Yemeğiniz ödeme yapıldıktan sonra hazırlanacaktır.",
-    "thankYou": "Ziyaretiniz için teşekkür ederiz, afiyet olsun!",
-    "redirecting": "Yönlendiriliyor"
-  },
-  "receipt": {
-    "order": "Sipariş",
-    "table": "Masa",
-    "subtotal": "Ara Toplam",
-    "vat": "KDV",
-    "total": "TOPLAM",
-    "thanks": "Ziyaretiniz için teşekkürler!",
-    "seeYouSoon": "Tekrar görüşmek üzere!",
-    "dineIn": "Masaya Servis",
-    "takeaway": "Paket Servis"
-  },
-  "welcome": {
-    "title": "Sipariş kioskumuza hoş geldiniz",
-    "start": "SİPARİŞE BAŞLAMAK İÇİN DOKUNUN"
-  },
-  "cart": {
-    "viewCart": "Sepeti Görüntüle"
-  },
-  "dashboard": {
-    "title": "Kontrol Paneli",
-    "welcome": "TastyTouch Yönetici Kontrol Panelinize Hoş Geldiniz",
-    "totalRevenue": "Toplam Gelir",
-    "revenueDesc": "Tüm restoranlardaki tüm zamanlara ait gelir",
-    "restaurants": "Restoranlar",
-    "restaurantsDesc": "Platformdaki aktif restoranlar",
-    "totalOrders": "Toplam Siparişler",
-    "totalOrdersDesc": "Bu ay işlenen siparişler",
-    "dailyOrders": "Günlük Siparişler",
-    "dailyOrdersDesc": "Bugün işlenen siparişler",
-    "popularItems": "Popüler Ürünler",
-    "popularItemsDesc": "En çok sipariş edilen menü öğeleri",
-    "popularRestaurants": "Popüler Restoranlar",
-    "popularRestaurantsDesc": "En iyi performans gösteren restoranlar",
-    "fromLastMonth": "geçen aya göre"
-  },
-  "sidebar": {
-    "dashboard": "Kontrol Paneli",
-    "restaurants": "Restoranlar",
-    "signOut": "Çıkış Yap",
-    "admin": "Yönetici",
-    "owner": "Restoran Sahibi"
-  },
   "restaurants": {
-    "title": "Restoranlar",
-    "subtitle": "Platformunuzdaki tüm restoranları yönetin",
+    "title": "Restoranlarınız",
+    "subtitle": "Restoran menülerini ve ayarlarını yönetin",
     "add": "Restoran Ekle",
+    "needLogin": "Restoranlarınızı görmek için giriş yapmanız gerekiyor",
+    "signIn": "Giriş Yap",
+    "manage": "Yönet",
+    "viewKiosk": "Kiosku Görüntüle",
+    "backToRestaurants": "Restoranlara Dön",
     "orders": "Siparişler",
     "revenue": "Gelir",
-    "viewKiosk": "Kiosk'u Görüntüle",
-    "manage": "Yönet",
-    "noRestaurants": "Restoran bulunamadı",
+    "noRestaurants": "Henüz restoranınız yok",
     "startAdding": "İlk restoranınızı ekleyerek başlayın",
-    "needLogin": "Restoranları görüntülemek ve yönetmek için giriş yapmanız gerekiyor",
-    "signIn": "Giriş Yap",
+    "management": "Restoran Yönetimi",
     "notFound": "Restoran bulunamadı",
-    "backToRestaurants": "Restoranlara Geri Dön",
-    "noLocationDefined": "Konum tanımlanmadı",
-    "management": "Restoran Yönetimi"
+    "noLocationDefined": "Konum tanımlanmamış"
   },
   "restaurant": {
     "menu": "Menü",
-    "toppings": "İlave Malzemeler",
+    "toppings": "Malzemeler",
     "orders": "Siparişler",
-    "settings": "Ayarlar",
     "stock": "Stok",
     "statistics": "İstatistikler"
   },
-  "statistics": {
-    "title": "Restoran İstatistikleri",
-    "error": "Hata",
-    "loadError": "İstatistik verileri yüklenemedi",
-    "customPeriodError": "Özel dönem verileri yüklenemedi",
-    "customDateRange": "Özel Tarih Aralığı",
-    "pickDate": "Tarih seçin",
-    "barChart": "Çubuk",
-    "lineChart": "Çizgi",
-    "selectedPeriodOrders": "Seçilen Dönemdeki Siparişler",
-    "todaysOrders": "Bugünkü Siparişler",
-    "selectedPeriodItems": "Seçilen Dönemdeki Öğeler", 
-    "thisMonthsOrders": "Bu Ayki Siparişler",
-    "selectedPeriodRevenue": "Seçilen Dönemdeki Gelir",
-    "todaysRevenue": "Bugünkü Gelir",
-    "selectedPeriodTotal": "Seçilen Dönemin Toplamı",
-    "thisMonthsRevenue": "Bu Ayki Gelir",
-    "orders": "Siparişler",
-    "sales": "Satışlar",
-    "ordersAndSales": "Siparişler ve Satışlar",
-    "to": "ile",
-    "now": "şimdi",
-    "last7Days": "Son 7 gün",
-    "noData": "Seçilen zaman dilimi için veri bulunamadı."
+  "cart": {
+    "viewCart": "Sepeti Görüntüle",
+    "emptyCart": "Sepetiniz boş",
+    "total": "Toplam",
+    "checkout": "Ödeme",
+    "back": "Menüye Dön",
+    "placeOrder": "Sipariş Ver",
+    "removeItem": "Kaldır",
+    "customizations": "Özelleştirmeler",
+    "yourOrder": "Siparişiniz",
+    "orderType": "Sipariş Türü"
   },
-  "menuItem": {
-    "unavailable": "MEVCUT DEĞİL"
+  "cache": {
+    "refreshKiosk": "Kiosk Verilerini Yenile",
+    "refreshing": "Veriler Yenileniyor...",
+    "clearSuccess": "Önbellek Temizlendi",
+    "reloadedSuccess": "Kiosk verileri yenilendi",
+    "error": "Önbellek Hatası",
+    "errorDetails": "Önbellek temizlenemedi veya veriler yüklenemedi"
   }
 }
