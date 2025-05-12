@@ -10,7 +10,8 @@ import {
   getCacheItem,
   isCacheStale,
   clearMenuCache,
-  forceFlushMenuCache
+  forceFlushMenuCache,
+  isCachingEnabled
 } from "@/services/cache-service";
 import { cacheImage, precacheImages } from "@/utils/image-cache";
 import { MenuCategory, MenuItem, Restaurant } from "@/types/database-types";
@@ -37,6 +38,7 @@ export type PreloadStage =
 export interface PreloadOptions {
   forceRefresh?: boolean;
   skipImages?: boolean;
+  isAdmin?: boolean; // New option to indicate admin context
 }
 
 // Status callbacks
@@ -48,6 +50,24 @@ export const preloadAllRestaurantData = async (
   options: PreloadOptions = {},
   onProgress?: ProgressCallback
 ): Promise<Restaurant | null> => {
+  const isAdmin = options.isAdmin || false;
+  
+  // Skip caching completely if:
+  // 1. It's an admin request and admin caching is disabled
+  // 2. Caching is completely disabled
+  if (isAdmin && !isCachingEnabled(true)) {
+    console.log("[Preloader] Admin detected, skipping cache operations");
+    
+    try {
+      // Just fetch the restaurant directly without caching
+      const restaurant = await getRestaurantBySlug(restaurantSlug);
+      return restaurant;
+    } catch (error) {
+      console.error("Error fetching restaurant data for admin:", error);
+      throw error;
+    }
+  }
+
   const initialState: PreloaderState = {
     isLoading: true,
     progress: 0,
@@ -78,7 +98,7 @@ export const preloadAllRestaurantData = async (
     // Check if we have cached restaurant data and it's not stale or forceRefresh is true
     const cachedRestaurant = options.forceRefresh 
       ? null 
-      : getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
+      : getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global', isAdmin);
     
     let restaurant: Restaurant | null = null;
     
@@ -96,7 +116,7 @@ export const preloadAllRestaurantData = async (
     }
 
     // Cache restaurant data
-    setCacheItem(`restaurant_${restaurantSlug}`, restaurant, 'global');
+    setCacheItem(`restaurant_${restaurantSlug}`, restaurant, 'global', isAdmin);
     updateProgress({ 
       restaurantData: restaurant, 
       progress: 15, 
@@ -111,7 +131,7 @@ export const preloadAllRestaurantData = async (
     let menuCategories: (MenuCategory & { items: MenuItem[] })[];
     
     if (!shouldRefreshMenu) {
-      menuCategories = getCacheItem<(MenuCategory & { items: MenuItem[] })[]>(menuCacheKey, restaurant.id) || [];
+      menuCategories = getCacheItem<(MenuCategory & { items: MenuItem[] })[]>(menuCacheKey, restaurant.id, isAdmin) || [];
       if (menuCategories.length > 0) {
         console.log("[Preloader] Using cached menu categories");
       } else {
@@ -148,7 +168,7 @@ export const preloadAllRestaurantData = async (
       
       // Cache the new menu categories
       console.log(`[Preloader] Caching ${menuCategories.length} menu categories`);
-      setCacheItem(menuCacheKey, menuCategories, restaurant.id);
+      setCacheItem(menuCacheKey, menuCategories, restaurant.id, isAdmin);
     }
 
     updateProgress({ progress: 30, stage: 'menuItems' });
@@ -164,7 +184,7 @@ export const preloadAllRestaurantData = async (
         const shouldFetchItem = options.forceRefresh || isCacheStale(itemCacheKey, restaurant.id);
         
         if (!shouldFetchItem) {
-          const cachedItem = getCacheItem(itemCacheKey, restaurant.id);
+          const cachedItem = getCacheItem(itemCacheKey, restaurant.id, isAdmin);
           if (cachedItem) {
             processedItems++;
             const itemProgress = 30 + (processedItems / totalItems) * 20;
@@ -176,7 +196,7 @@ export const preloadAllRestaurantData = async (
         console.log(`[Preloader] Fetching item details for ${item.name} (${item.id})`);
         const itemDetails = await getMenuItemWithOptions(item.id);
         if (itemDetails) {
-          setCacheItem(itemCacheKey, itemDetails, restaurant.id);
+          setCacheItem(itemCacheKey, itemDetails, restaurant.id, isAdmin);
         }
         
         processedItems++;
@@ -198,7 +218,7 @@ export const preloadAllRestaurantData = async (
     if (shouldRefreshToppings) {
       console.log("[Preloader] Fetching fresh toppings data");
       const toppingsData = await getToppingsForRestaurant(restaurant.id);
-      setCacheItem(toppingsCacheKey, toppingsData, restaurant.id);
+      setCacheItem(toppingsCacheKey, toppingsData, restaurant.id, isAdmin);
     }
     
     updateProgress({ progress: 60, stage: 'images' });

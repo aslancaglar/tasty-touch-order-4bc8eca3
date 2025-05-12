@@ -7,11 +7,27 @@ interface CacheItem<T> {
   timestamp: number;
 }
 
+// Add flags to control caching behavior
+const CACHE_CONFIG = {
+  // Enable caching only for kiosk/customer views
+  enableCaching: true,
+  // Disable caching for admin/owner views
+  enableCachingForAdmin: false,
+  // Log cache operations
+  debugLogs: true
+};
+
 const debugCache = (action: string, key: string, hit?: boolean) => {
+  if (!CACHE_CONFIG.debugLogs) return;
   console.log(`Cache ${action}: ${key}${hit !== undefined ? ` (Cache ${hit ? 'HIT' : 'MISS'})` : ''}`);
 };
 
-export const setCacheItem = <T>(key: string, data: T, restaurantId: string) => {
+// Modified to support isAdmin flag
+export const setCacheItem = <T>(key: string, data: T, restaurantId: string, isAdmin = false) => {
+  // Skip caching for admin routes if disabled
+  if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) return;
+  if (!CACHE_CONFIG.enableCaching) return;
+
   const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
   const cacheData: CacheItem<T> = {
     data,
@@ -21,7 +37,12 @@ export const setCacheItem = <T>(key: string, data: T, restaurantId: string) => {
   debugCache('SET', cacheKey);
 };
 
-export const getCacheItem = <T>(key: string, restaurantId: string): T | null => {
+// Modified to support isAdmin flag
+export const getCacheItem = <T>(key: string, restaurantId: string, isAdmin = false): T | null => {
+  // Skip cache lookup for admin routes if disabled
+  if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) return null;
+  if (!CACHE_CONFIG.enableCaching) return null;
+
   const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
   const cached = localStorage.getItem(cacheKey);
   
@@ -40,6 +61,8 @@ export const getCacheItem = <T>(key: string, restaurantId: string): T | null => 
 };
 
 export const getCacheTimestamp = (key: string, restaurantId: string): number | null => {
+  if (!CACHE_CONFIG.enableCaching) return null;
+
   const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
   const cached = localStorage.getItem(cacheKey);
   
@@ -167,4 +190,21 @@ export const forceFlushMenuCache = (restaurantId: string): void => {
   }
   
   console.log(`[CacheService] Force flush complete for restaurant: ${restaurantId}`);
+};
+
+// Add a new function to toggle caching on/off
+export const setCachingEnabled = (enabled: boolean): void => {
+  CACHE_CONFIG.enableCaching = enabled;
+  console.log(`[CacheService] Caching is now ${enabled ? 'ENABLED' : 'DISABLED'}`);
+};
+
+// Add a new function to toggle admin caching on/off
+export const setCachingEnabledForAdmin = (enabled: boolean): void => {
+  CACHE_CONFIG.enableCachingForAdmin = enabled;
+  console.log(`[CacheService] Admin caching is now ${enabled ? 'ENABLED' : 'DISABLED'}`);
+};
+
+// Add a function to check if caching is enabled
+export const isCachingEnabled = (isAdmin = false): boolean => {
+  return isAdmin ? CACHE_CONFIG.enableCachingForAdmin : CACHE_CONFIG.enableCaching;
 };
