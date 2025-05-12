@@ -59,7 +59,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = memo(({
               src={restaurant.image_url} 
               alt={restaurant.name} 
               className="h-20 w-20 rounded-full border-2 border-white mr-4 object-cover" 
-              loading="eager"
+              loading="eager" 
             />
           ) : (
             <img 

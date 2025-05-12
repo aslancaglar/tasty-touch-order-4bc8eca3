@@ -18,31 +18,41 @@ export const prefetchMenuItemDetails = async (menuItemId: string, restaurantId: 
 
     console.log(`Prefetching menu item details for ${menuItemId}`);
 
-    // Fetch menu item
-    const { data: menuItem, error: menuItemError } = await supabase
-      .from('menu_items')
-      .select('*')
-      .eq('id', menuItemId)
-      .single();
+    // Use Promise.all to fetch data in parallel rather than sequentially
+    const [menuItemResult, optionsResult, toppingCategoryRelationsResult] = await Promise.all([
+      // Fetch menu item
+      supabase
+        .from('menu_items')
+        .select('*')
+        .eq('id', menuItemId)
+        .single(),
+      
+      // Fetch options
+      supabase
+        .from('menu_item_options')
+        .select('*')
+        .eq('menu_item_id', menuItemId),
+      
+      // Fetch topping categories relation
+      supabase
+        .from('menu_item_topping_categories')
+        .select('*')
+        .eq('menu_item_id', menuItemId)
+        .order('display_order', { ascending: true })
+    ]);
 
-    if (menuItemError) {
-      console.error('Error fetching menu item:', menuItemError);
+    // Error handling
+    if (menuItemResult.error) {
+      console.error('Error fetching menu item:', menuItemResult.error);
       return;
     }
 
-    // Fetch options
-    const { data: options, error: optionsError } = await supabase
-      .from('menu_item_options')
-      .select('*')
-      .eq('menu_item_id', menuItemId);
+    const menuItem = menuItemResult.data;
+    let options = optionsResult.error ? [] : optionsResult.data;
+    const toppingCategoryRelations = toppingCategoryRelationsResult.error ? [] : toppingCategoryRelationsResult.data;
 
-    if (optionsError) {
-      console.error('Error fetching options:', optionsError);
-      return;
-    }
-
-    // Fetch choices for each option
-    const optionsWithChoices = await Promise.all(
+    // Process options and choices in parallel
+    const optionsPromise = Promise.all(
       options.map(async (option) => {
         const { data: choices, error: choicesError } = await supabase
           .from('option_choices')
@@ -58,50 +68,63 @@ export const prefetchMenuItemDetails = async (menuItemId: string, restaurantId: 
       })
     );
 
-    // Fetch topping categories relation
-    const { data: toppingCategoryRelations, error: relationsError } = await supabase
-      .from('menu_item_topping_categories')
-      .select('*')
-      .eq('menu_item_id', menuItemId);
+    // Create a map of category ID to display order
+    const displayOrderMap = toppingCategoryRelations.reduce((map, relation) => {
+      map[relation.topping_category_id] = relation.display_order ?? 1000; // Default to high number if null
+      return map;
+    }, {} as Record<string, number>);
 
-    if (relationsError) {
-      console.error('Error fetching topping category relations:', relationsError);
-      return;
-    }
+    // Batch fetch topping categories
+    const toppingCategoryIds = toppingCategoryRelations.map(mtc => mtc.topping_category_id);
 
-    // Fetch topping categories
-    const toppingCategoriesPromises = toppingCategoryRelations.map(async (relation) => {
-      const { data: category, error: categoryError } = await supabase
+    let toppingCategories: any[] = [];
+    if (toppingCategoryIds.length > 0) {
+      const { data: categories, error: categoriesError } = await supabase
         .from('topping_categories')
         .select('*')
-        .eq('id', relation.topping_category_id)
-        .single();
+        .in('id', toppingCategoryIds);
 
-      if (categoryError) {
-        console.error(`Error fetching topping category ${relation.topping_category_id}:`, categoryError);
-        return null;
+      if (!categoriesError && categories) {
+        // Fetch all toppings for all categories at once to minimize API calls
+        const { data: allToppings, error: toppingsError } = await supabase
+          .from('toppings')
+          .select('*')
+          .in('category_id', toppingCategoryIds)
+          .eq('in_stock', true)
+          .order('display_order', { ascending: true });
+
+        if (toppingsError) {
+          console.error('Error fetching toppings:', toppingsError);
+        } else {
+          // Group toppings by category for faster assignment
+          const toppingsByCategory = allToppings.reduce((groups, topping) => {
+            const categoryId = topping.category_id;
+            if (!groups[categoryId]) groups[categoryId] = [];
+            groups[categoryId].push(topping);
+            return groups;
+          }, {} as Record<string, any[]>);
+
+          // Map categories with their toppings
+          toppingCategories = categories.map(category => ({
+            ...category,
+            display_order: displayOrderMap[category.id],
+            min_selections: category.min_selections || 0,
+            max_selections: category.max_selections || 0,
+            required: category.min_selections ? category.min_selections > 0 : false,
+            toppings: toppingsByCategory[category.id] || []
+          }));
+
+          // Sort by display_order
+          toppingCategories.sort((a, b) => {
+            const orderA = a.display_order ?? 1000;
+            const orderB = b.display_order ?? 1000;
+            return orderA - orderB;
+          });
+        }
       }
+    }
 
-      // Fetch toppings
-      const { data: toppings, error: toppingsError } = await supabase
-        .from('toppings')
-        .select('*')
-        .eq('category_id', category.id)
-        .eq('in_stock', true);
-
-      if (toppingsError) {
-        console.error(`Error fetching toppings for category ${category.id}:`, toppingsError);
-        return { ...category, toppings: [] };
-      }
-
-      return {
-        ...category,
-        toppings,
-        display_order: relation.display_order
-      };
-    });
-
-    const toppingCategories = (await Promise.all(toppingCategoriesPromises)).filter(Boolean);
+    const optionsWithChoices = await optionsPromise;
 
     // Combine all data
     const completeMenuItem = {

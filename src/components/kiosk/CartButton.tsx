@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag } from "lucide-react";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
@@ -31,7 +31,7 @@ interface CartButtonProps {
 }
 
 // Memoize the component to prevent unnecessary re-renders
-const CartButton: React.FC<CartButtonProps> = React.memo(({
+const CartButton: React.FC<CartButtonProps> = memo(({
   itemCount,
   total,
   onClick,
