@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback, useState, useEffect, useRef } from "react";
+import React, { memo, useCallback, useState, useEffect, useRef, useMemo } from "react";
 import { Check, Plus, Minus, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -32,20 +32,9 @@ interface ItemCustomizationDialogProps {
 }
 
 // Define alternating background colors for topping categories
-const CATEGORY_BACKGROUNDS = ["bg-[#F2FCE2]",
-// Soft Green
-"bg-[#E5DEFF]",
-// Soft Purple
-"bg-[#FEF7CD]",
-// Soft Yellow
-"bg-[#D3E4FD]",
-// Soft Blue
-"bg-[#FFDEE2]",
-// Soft Pink
-"bg-[#FDE1D3]" // Soft Peach
-];
+const CATEGORY_BACKGROUNDS = ["bg-[#F2FCE2]", "bg-[#E5DEFF]", "bg-[#FEF7CD]", "bg-[#D3E4FD]", "bg-[#FFDEE2]", "bg-[#FDE1D3]"];
 
-// Memoize the Option component to prevent unnecessary re-renders
+// Memoize the Option component with proper event management
 const Option = memo(({
   option,
   selectedOption,
@@ -57,17 +46,30 @@ const Option = memo(({
   onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
   currencySymbol: string;
 }) => {
-  return <div className="space-y-1">
+  // Pre-calculate selected state to avoid recalculations during render
+  const getIsSelected = useCallback((choiceId: string) => {
+    return selectedOption?.choiceIds.includes(choiceId) || false;
+  }, [selectedOption]);
+
+  const handleChoiceClick = useCallback((e: React.MouseEvent, optionId: string, choiceId: string, multiple: boolean) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleChoice(optionId, choiceId, multiple);
+  }, [onToggleChoice]);
+
+  return (
+    <div className="space-y-1">
       {option.choices.map(choice => {
-      const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
-      return <div key={choice.id} className={`
+        const isSelected = getIsSelected(choice.id);
+        return (
+          <div 
+            key={choice.id} 
+            className={`
               flex items-center justify-between p-2 border rounded-md cursor-pointer select-none
               ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
-            `} onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onToggleChoice(option.id, choice.id, !!option.multiple);
-          }}>
+            `} 
+            onClick={(e) => handleChoiceClick(e, option.id, choice.id, !!option.multiple)}
+          >
             <div className="flex items-center">
               <div className={`
                 w-5 h-5 mr-3 rounded-full flex items-center justify-center
@@ -77,14 +79,18 @@ const Option = memo(({
               </div>
               <span>{choice.name}</span>
             </div>
-            {choice.price && choice.price > 0 && <span>+{parseFloat(choice.price.toString()).toFixed(2)} {currencySymbol}</span>}
-          </div>;
-    })}
-    </div>;
+            {choice.price && choice.price > 0 && (
+              <span>+{parseFloat(choice.price.toString()).toFixed(2)} {currencySymbol}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 });
 Option.displayName = 'Option';
 
-// Memoize the ToppingCategory component to prevent unnecessary re-renders
+// Memoize the ToppingCategory component with isolated event handlers
 const ToppingCategory = memo(({
   category,
   selectedCategory,
@@ -100,28 +106,44 @@ const ToppingCategory = memo(({
   currencySymbol: string;
   bgColorClass: string;
 }) => {
-  // Sort toppings by display_order
-  const sortedToppings = [...category.toppings].sort((a, b) => {
-    const orderA = a.display_order ?? 1000;
-    const orderB = b.display_order ?? 1000;
-    return orderA - orderB;
-  });
+  // Sort toppings by display_order - do it with useMemo to avoid recalculation
+  const sortedToppings = useMemo(() => {
+    return [...category.toppings].sort((a, b) => {
+      const orderA = a.display_order ?? 1000;
+      const orderB = b.display_order ?? 1000;
+      return orderA - orderB;
+    });
+  }, [category.toppings]);
 
-  // Determine the number of columns based on topping count
-  const toppingCount = sortedToppings.length;
-  let gridCols = "grid-cols-3"; // Default 3 columns for 3+ toppings
+  // Determine grid columns with useMemo to prevent recalculation
+  const gridCols = useMemo(() => {
+    const toppingCount = sortedToppings.length;
+    if (toppingCount === 1) return "grid-cols-1";
+    if (toppingCount === 2) return "grid-cols-2";
+    return "grid-cols-3";
+  }, [sortedToppings.length]);
 
-  if (toppingCount === 1) {
-    gridCols = "grid-cols-1"; // 1 column for 1 topping
-  } else if (toppingCount === 2) {
-    gridCols = "grid-cols-2"; // 2 columns for 2 toppings
-  }
+  // Check warning state with useMemo
+  const showWarning = useMemo(() => {
+    const selectedToppingsCount = selectedCategory?.toppingIds.length || 0;
+    const minRequired = category.required ? category.min_selections > 0 ? category.min_selections : 1 : 0;
+    return category.required && selectedToppingsCount < minRequired;
+  }, [category.required, category.min_selections, selectedCategory?.toppingIds.length]);
 
-  // Check if this category needs a warning icon (required but not enough selections)
-  const selectedToppingsCount = selectedCategory?.toppingIds.length || 0;
-  const minRequired = category.required ? category.min_selections > 0 ? category.min_selections : 1 : 0;
-  const showWarning = category.required && selectedToppingsCount < minRequired;
-  return <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative animate-fadeIn`}>
+  // Create stable callback for topping toggle
+  const handleToggleTopping = useCallback((e: React.MouseEvent, categoryId: string, toppingId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleTopping(categoryId, toppingId);
+  }, [onToggleTopping]);
+
+  // Check if topping is selected - stable function
+  const isSelected = useCallback((toppingId: string) => {
+    return selectedCategory?.toppingIds.includes(toppingId) || false;
+  }, [selectedCategory]);
+
+  return (
+    <div className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative animate-fadeIn will-change-transform`}>
       <div className="font-bold text-xl flex items-center">
         {category.name}
         {category.required && <span className="text-red-500 ml-1">*</span>}
@@ -131,44 +153,64 @@ const ToppingCategory = memo(({
       </div>
       
       {/* Warning Icon */}
-      {showWarning && <div className="absolute top-0 right-4 rounded-full p-1 shadow-md py-[4px] px-[4px] bg-white">
+      {showWarning && (
+        <div className="absolute top-0 right-4 rounded-full p-1 shadow-md py-[4px] px-[4px] bg-white">
           <AlertCircle className="h-8 w-8 text-[#ea384c]" />
-        </div>}
+        </div>
+      )}
 
       <div className={`grid ${gridCols} gap-1`}>
         {sortedToppings.map(topping => {
-        const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
-        const buttonSize = "h-10 w-10"; // Same size for both states
-        return <div key={topping.id} onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onToggleTopping(category.id, topping.id);
-            }} className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white">
-              <span className={`flex-1 mr-2 ${isSelected ? 'text-green-700 font-medium' : ''}`}>
+          const toppingSelected = isSelected(topping.id);
+          const buttonSize = "h-10 w-10";
+          
+          return (
+            <div 
+              key={topping.id} 
+              onClick={(e) => handleToggleTopping(e, category.id, topping.id)}
+              className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white"
+            >
+              <span className={`flex-1 mr-2 ${toppingSelected ? 'text-green-700 font-medium' : ''}`}>
                 {topping.name}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
-                {topping.price > 0 && <span className="text-sm">
+                {topping.price > 0 && (
+                  <span className="text-sm">
                     +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
-                  </span>}
-                {!isSelected ? <Plus onClick={e => {
-              e.stopPropagation();
-              onToggleTopping(category.id, topping.id);
-            }} className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} /> : <Button variant="outline" size="icon" onClick={e => {
-              e.stopPropagation();
-              onToggleTopping(category.id, topping.id);
-            }} className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}>
+                  </span>
+                )}
+                {!toppingSelected ? (
+                  <Plus 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleTopping(category.id, topping.id);
+                    }} 
+                    className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} 
+                  />
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleTopping(category.id, topping.id);
+                    }} 
+                    className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}
+                  >
                     <Check className="h-4 w-4" />
-                  </Button>}
+                  </Button>
+                )}
               </div>
-            </div>;
-      })}
+            </div>
+          );
+        })}
       </div>
-    </div>;
+    </div>
+  );
 });
 ToppingCategory.displayName = 'ToppingCategory';
 
-// Main component with heavy use of memoization
+// Main component with improved performance
 const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   item,
   isOpen,
@@ -190,6 +232,19 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   const [loadedCategories, setLoadedCategories] = useState<number>(0);
   const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
   const dialogContentRef = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<number | null>(null);
+  
+  // Cache visible categories calculation to avoid recalculation on every render
+  const visibleCategories = useMemo(() => {
+    if (!item?.toppingCategories) return [];
+    return [...item.toppingCategories]
+      .sort((a, b) => {
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      })
+      .filter(shouldShowToppingCategory);
+  }, [item?.toppingCategories, shouldShowToppingCategory]);
   
   // Reset loaded categories when dialog opens/closes or item changes
   useEffect(() => {
@@ -197,14 +252,20 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       setIsInitialLoad(true);
       setLoadedCategories(0);
       
+      // Clear any existing interval
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
       // Start loading categories immediately but incrementally
       const loadCategories = () => {
-        if (!item?.toppingCategories?.length) {
+        if (!visibleCategories.length) {
           setIsInitialLoad(false);
           return;
         }
         
-        const totalCategories = item.toppingCategories.filter(shouldShowToppingCategory).length;
+        const totalCategories = visibleCategories.length;
         const initialBatch = Math.min(2, totalCategories); // Load first 2 categories instantly
         
         // Load initial batch immediately
@@ -213,34 +274,59 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         // Load remaining categories with delay
         if (totalCategories > initialBatch) {
           let loaded = initialBatch;
-          const interval = setInterval(() => {
+          intervalRef.current = window.setInterval(() => {
             loaded += 1;
             setLoadedCategories(loaded);
             
             if (loaded >= totalCategories) {
-              clearInterval(interval);
+              if (intervalRef.current !== null) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+              }
               setIsInitialLoad(false);
             }
           }, 120); // Load a new category every 120ms
-          
-          return () => clearInterval(interval);
         } else {
           setIsInitialLoad(false);
         }
       };
       
-      // Start loading categories after a very short delay to ensure dialog is rendered first
+      // Start loading categories after a very short delay
       const timer = setTimeout(loadCategories, 50);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (intervalRef.current !== null) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
     }
-  }, [isOpen, item, shouldShowToppingCategory]);
+    
+    return () => {
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isOpen, visibleCategories]);
+  
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
 
-  if (!item) return null;
-
-  // Memoized price calculation to prevent recalculation on every render
-  const calculateItemPrice = useCallback(() => {
+  // Memoized price calculation
+  const calculateItemPrice = useMemo(() => {
     if (!item) return 0;
+    
     let price = parseFloat(item.price.toString());
+    
+    // Add option prices
     if (item.options) {
       item.options.forEach(option => {
         const selected = selectedOptions.find(o => o.optionId === option.id);
@@ -254,6 +340,8 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         }
       });
     }
+    
+    // Add topping prices
     if (item.toppingCategories) {
       item.toppingCategories.forEach(category => {
         const selected = selectedToppings.find(t => t.categoryId === category.id);
@@ -267,9 +355,11 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         }
       });
     }
+    
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
   
+  // Stable event handlers
   const handleQuantityDecrease = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -287,21 +377,20 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     e.stopPropagation();
     onAddToCart();
   }, [onAddToCart]);
-
-  // Sort topping categories by display_order if they exist
-  const sortedToppingCategories = item.toppingCategories ? [...item.toppingCategories].sort((a, b) => {
-    const orderA = a.display_order ?? 1000; // Default to a high number if undefined
-    const orderB = b.display_order ?? 1000;
-    return orderA - orderB;
-  }) : [];
   
-  // Filter categories that should be shown
-  const visibleCategories = sortedToppingCategories.filter(shouldShowToppingCategory);
-  
-  const hasCustomizations = (item.options && item.options.length > 0) || 
-                           (item.toppingCategories && item.toppingCategories.length > 0);
+  // Derived state check for customizations
+  const hasCustomizations = useMemo(() => {
+    return (item?.options && item.options.length > 0) || 
+           (item?.toppingCategories && item.toppingCategories.length > 0);
+  }, [item?.options, item?.toppingCategories]);
 
-  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+  if (!item) return null;
+
+  return (
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => !open && onClose()}
+    >
       <DialogContent
         ref={dialogContentRef}
         className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none"
@@ -309,38 +398,51 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       >
         <DialogHeader className="pb-2">
           <DialogTitle className="font-bold text-3xl mx-0 my-0 leading-relaxed">{item.name}</DialogTitle>
-          {item.description && <DialogDescription className="text-xl text-gray-800">{item.description}</DialogDescription>}
+          {item.description && (
+            <DialogDescription className="text-xl text-gray-800">{item.description}</DialogDescription>
+          )}
         </DialogHeader>
         
         <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none">
           {/* Options section - only show if there are options */}
-          {item.options && item.options.length > 0 && item.options.map(option => <div key={option.id} className="space-y-1">
+          {item.options && item.options.length > 0 && item.options.map(option => (
+            <div key={option.id} className="space-y-1">
               <Label className="font-medium">
                 {option.name}
                 {option.required && <span className="text-red-500 ml-1">*</span>}
                 {option.multiple && <span className="text-sm text-gray-500 ml-2">({t("multipleSelection")})</span>}
               </Label>
-              <Option option={option} selectedOption={selectedOptions.find(o => o.optionId === option.id)} onToggleChoice={onToggleChoice} currencySymbol={currencySymbol} />
-            </div>)}
+              <Option 
+                option={option} 
+                selectedOption={selectedOptions.find(o => o.optionId === option.id)} 
+                onToggleChoice={onToggleChoice} 
+                currencySymbol={currencySymbol} 
+              />
+            </div>
+          ))}
 
           {/* Toppings section - only show loaded categories with animation */}
           {visibleCategories.map((category, index) => {
             // Only render categories that have been "loaded" based on the loadedCategories count
             if (index < loadedCategories) {
-              return <ToppingCategory 
-                key={category.id} 
-                category={category} 
-                selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
-                onToggleTopping={onToggleTopping} 
-                t={t} 
-                currencySymbol={currencySymbol} 
-                bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]} 
-              />;
+              return (
+                <ToppingCategory 
+                  key={category.id} 
+                  category={category} 
+                  selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
+                  onToggleTopping={onToggleTopping} 
+                  t={t} 
+                  currencySymbol={currencySymbol} 
+                  bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]} 
+                />
+              );
             } else if (isInitialLoad) {
               // Show skeleton for categories that will be loaded
-              return <div key={`skeleton-${index}`} className="animate-pulse mb-4">
-                <Skeleton className="h-[120px] w-full rounded-xl" />
-              </div>;
+              return (
+                <div key={`skeleton-${index}`} className="animate-pulse mb-4">
+                  <Skeleton className="h-[120px] w-full rounded-xl" />
+                </div>
+              );
             }
             return null;
           })}
@@ -372,7 +474,8 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           </div>
         </DialogFooter>
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 };
 
 export default memo(ItemCustomizationDialog);

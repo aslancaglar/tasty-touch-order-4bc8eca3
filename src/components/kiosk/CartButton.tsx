@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag } from "lucide-react";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
@@ -43,10 +43,10 @@ const CartButton: React.FC<CartButtonProps> = ({
   const currencySymbol = getCurrencySymbol(currency);
   
   return (
-    <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center">
+    <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center pointer-events-none">
       <Button 
         onClick={onClick} 
-        className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl font-bebas tracking-wide py-[50px] px-[102px]"
+        className="text-white rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-500 text-justify text-3xl font-bebas tracking-wide py-[50px] px-[102px] pointer-events-auto"
       >
         <ShoppingBag className="h-12 w-12 mr-2" />
         <span className="font-bebas text-5xl">{itemCount}</span>
@@ -58,4 +58,4 @@ const CartButton: React.FC<CartButtonProps> = ({
   );
 };
 
-export default CartButton;
+export default memo(CartButton);
