@@ -1,3 +1,4 @@
+
 const CACHE_PREFIX = 'kiosk_cache_';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -106,8 +107,9 @@ export const clearMenuCache = (restaurantId: string): void => {
     }
   }
   
-  // Remove all identified cache keys
+  // Force remove all cached items immediately to ensure clean slate
   keysToRemove.forEach(key => {
+    console.log(`[CacheService] Clearing cache key: ${key}`);
     localStorage.removeItem(key);
     debugCache('CLEAR (MENU)', key);
   });
@@ -149,4 +151,20 @@ export const getLastUpdateTime = (restaurantId: string): Date | null => {
   }
   
   return latestTimestamp > 0 ? new Date(latestTimestamp) : null;
+};
+
+// New function to force flush all restaurant-related cache immediately
+export const forceFlushMenuCache = (restaurantId: string): void => {
+  console.log(`[CacheService] FORCE FLUSHING all menu cache for restaurant: ${restaurantId}`);
+  
+  // Directly delete all cache items for this restaurant
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key && key.includes(`${CACHE_PREFIX}${restaurantId}`)) {
+      console.log(`[CacheService] Force removing: ${key}`);
+      localStorage.removeItem(key);
+    }
+  }
+  
+  console.log(`[CacheService] Force flush complete for restaurant: ${restaurantId}`);
 };

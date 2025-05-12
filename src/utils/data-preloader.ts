@@ -9,7 +9,8 @@ import {
   setCacheItem, 
   getCacheItem,
   isCacheStale,
-  clearMenuCache
+  clearMenuCache,
+  forceFlushMenuCache
 } from "@/services/cache-service";
 import { cacheImage, precacheImages } from "@/utils/image-cache";
 import { MenuCategory, MenuItem, Restaurant } from "@/types/database-types";
@@ -69,8 +70,8 @@ export const preloadAllRestaurantData = async (
       console.log("[Preloader] Force refresh requested, clearing existing cache...");
       const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
       if (cachedRestaurant) {
-        console.log(`[Preloader] Clearing menu cache for restaurant ${cachedRestaurant.id}`);
-        clearMenuCache(cachedRestaurant.id);
+        console.log(`[Preloader] Force flushing menu cache for restaurant ${cachedRestaurant.id}`);
+        forceFlushMenuCache(cachedRestaurant.id);
       }
     }
     

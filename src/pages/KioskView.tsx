@@ -14,7 +14,7 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
-import { setCacheItem, getCacheItem, clearMenuCache } from "@/services/cache-service";
+import { setCacheItem, getCacheItem, clearMenuCache, forceFlushMenuCache } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
 import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
@@ -915,15 +915,13 @@ const KioskView = () => {
     try {
       if (!restaurant) return;
       
+      // Step 1: Set loading state to true for user feedback and disable button
       setLoading(true);
       console.log("[MenuRefresh] Starting menu refresh operation");
       
-      // Step 1: Explicitly clear the menu cache first
-      console.log("[MenuRefresh] Clearing menu cache");
-      clearMenuCache(restaurant.id);
-      
-      // Step 2: Set loading state to true for user feedback
-      setLoading(true);
+      // Step 2: Explicitly clear the menu cache first to ensure a clean slate
+      console.log("[MenuRefresh] Force flushing all menu cache");
+      forceFlushMenuCache(restaurant.id);
       
       // Step 3: Preload all data with forceRefresh=true
       console.log("[MenuRefresh] Preloading fresh data with forceRefresh=true");
@@ -946,6 +944,8 @@ const KioskView = () => {
         
         if (freshCategories && freshCategories.length > 0) {
           console.log("[MenuRefresh] New categories received, updating state:", freshCategories.length);
+          
+          // IMPORTANT: Explicitly update the categories state with fresh data
           setCategories(freshCategories);
           
           // Make sure we set the active category if it doesn't exist or has changed
