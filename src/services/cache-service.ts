@@ -80,3 +80,39 @@ export const clearCache = (restaurantId: string, specificKey?: string) => {
     debugCache('CLEAR', key);
   });
 };
+
+// New function to clear all cached data for a specific cache type across all restaurants
+export const clearCacheByType = (cacheType: string): void => {
+  const keysToRemove: string[] = [];
+  
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.includes(cacheType)) {
+      keysToRemove.push(key);
+    }
+  }
+  
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key);
+    debugCache('CLEAR (TYPE)', key);
+  });
+  
+  console.log(`Cleared ${keysToRemove.length} cache items of type: ${cacheType}`);
+};
+
+// New function to get last update time for restaurant data
+export const getLastUpdateTime = (restaurantId: string): Date | null => {
+  let latestTimestamp = 0;
+  
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(`${CACHE_PREFIX}${restaurantId}`)) {
+      const timestamp = getCacheTimestamp(key.replace(`${CACHE_PREFIX}${restaurantId}_`, ''), restaurantId);
+      if (timestamp && timestamp > latestTimestamp) {
+        latestTimestamp = timestamp;
+      }
+    }
+  }
+  
+  return latestTimestamp > 0 ? new Date(latestTimestamp) : null;
+};

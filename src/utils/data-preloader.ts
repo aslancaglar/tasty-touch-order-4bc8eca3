@@ -1,0 +1,230 @@
+
+import { 
+  getRestaurantBySlug, 
+  getMenuForRestaurant,
+  getMenuItemWithOptions,
+  getToppingsForRestaurant
+} from "@/services/kiosk-service";
+import { 
+  setCacheItem, 
+  getCacheItem,
+  isCacheStale 
+} from "@/services/cache-service";
+import { cacheImage, precacheImages } from "@/utils/image-cache";
+import { MenuCategory, MenuItem, Restaurant } from "@/types/database-types";
+
+// Types for preloader state
+export interface PreloaderState {
+  isLoading: boolean;
+  progress: number;
+  stage: PreloadStage;
+  error: Error | null;
+  restaurantData?: Restaurant | null;
+}
+
+export type PreloadStage = 
+  | 'idle'
+  | 'restaurant'
+  | 'menu'
+  | 'menuItems'
+  | 'toppings'
+  | 'images'
+  | 'complete'
+  | 'error';
+
+export interface PreloadOptions {
+  forceRefresh?: boolean;
+  skipImages?: boolean;
+}
+
+// Status callbacks
+export type ProgressCallback = (state: PreloaderState) => void;
+
+// Main preloader function
+export const preloadAllRestaurantData = async (
+  restaurantSlug: string,
+  options: PreloadOptions = {},
+  onProgress?: ProgressCallback
+): Promise<Restaurant | null> => {
+  const initialState: PreloaderState = {
+    isLoading: true,
+    progress: 0,
+    stage: 'idle',
+    error: null
+  };
+  
+  let currentState = { ...initialState };
+  const updateProgress = (updates: Partial<PreloaderState>) => {
+    currentState = { ...currentState, ...updates };
+    onProgress?.(currentState);
+  };
+
+  try {
+    // Step 1: Load restaurant data
+    updateProgress({ stage: 'restaurant', progress: 5 });
+    
+    // Check if we have cached restaurant data and it's not stale
+    const cachedRestaurant = options.forceRefresh 
+      ? null
+      : getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
+    
+    const restaurant = cachedRestaurant || await getRestaurantBySlug(restaurantSlug);
+    
+    if (!restaurant) {
+      throw new Error(`Restaurant not found: ${restaurantSlug}`);
+    }
+
+    // Cache restaurant data
+    setCacheItem(`restaurant_${restaurantSlug}`, restaurant, 'global');
+    updateProgress({ 
+      restaurantData: restaurant, 
+      progress: 15, 
+      stage: 'menu' 
+    });
+
+    // Step 2: Load all menu categories and items
+    const menuCacheKey = `categories_${restaurant.id}`;
+    const shouldRefreshMenu = options.forceRefresh || isCacheStale(menuCacheKey, restaurant.id);
+    
+    let menuCategories: (MenuCategory & { items: MenuItem[] })[];
+    
+    if (!shouldRefreshMenu) {
+      menuCategories = getCacheItem<(MenuCategory & { items: MenuItem[] })[]>(menuCacheKey, restaurant.id) || [];
+      if (menuCategories.length > 0) {
+        console.log("Using cached menu categories");
+      } else {
+        shouldRefreshMenu; // Force refresh if cache is empty
+      }
+    }
+    
+    if (shouldRefreshMenu || !menuCategories || menuCategories.length === 0) {
+      console.log("Fetching fresh menu categories");
+      menuCategories = await getMenuForRestaurant(restaurant.id);
+      
+      // Sort by display order
+      menuCategories.sort((a, b) => {
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      });
+      
+      // Also sort items within each category
+      menuCategories.forEach(category => {
+        category.items = [...category.items].sort((a, b) => {
+          const orderA = a.display_order ?? 1000;
+          const orderB = b.display_order ?? 1000;
+          return orderA - orderB;
+        });
+      });
+      
+      setCacheItem(menuCacheKey, menuCategories, restaurant.id);
+    }
+
+    updateProgress({ progress: 30, stage: 'menuItems' });
+
+    // Step 3: Preload all menu item details (options, choices)
+    const totalItems = menuCategories.reduce((sum, category) => sum + category.items.length, 0);
+    let processedItems = 0;
+    
+    const menuItemsPromises = menuCategories.flatMap(category => 
+      category.items.map(async (item) => {
+        const itemCacheKey = `menuItem_${item.id}`;
+        const shouldFetchItem = options.forceRefresh || isCacheStale(itemCacheKey, restaurant.id);
+        
+        if (!shouldFetchItem) {
+          const cachedItem = getCacheItem(itemCacheKey, restaurant.id);
+          if (cachedItem) {
+            processedItems++;
+            const itemProgress = 30 + (processedItems / totalItems) * 20;
+            updateProgress({ progress: Math.min(50, itemProgress) });
+            return cachedItem;
+          }
+        }
+        
+        const itemDetails = await getMenuItemWithOptions(item.id);
+        if (itemDetails) {
+          setCacheItem(itemCacheKey, itemDetails, restaurant.id);
+        }
+        
+        processedItems++;
+        const itemProgress = 30 + (processedItems / totalItems) * 20;
+        updateProgress({ progress: Math.min(50, itemProgress) });
+        
+        return itemDetails;
+      })
+    );
+    
+    // Wait for all item details to be fetched and cached
+    await Promise.all(menuItemsPromises);
+    updateProgress({ progress: 50, stage: 'toppings' });
+
+    // Step 4: Cache topping categories and toppings
+    const toppingsCacheKey = `toppings_${restaurant.id}`;
+    const shouldRefreshToppings = options.forceRefresh || isCacheStale(toppingsCacheKey, restaurant.id);
+    
+    if (shouldRefreshToppings) {
+      const toppingsData = await getToppingsForRestaurant(restaurant.id);
+      setCacheItem(toppingsCacheKey, toppingsData, restaurant.id);
+    }
+    
+    updateProgress({ progress: 60, stage: 'images' });
+
+    // Step 5: Preload images if not skipped
+    if (!options.skipImages) {
+      // Collect all image URLs that need to be cached
+      const imageUrls: string[] = [];
+      
+      // Restaurant image
+      if (restaurant.image_url) {
+        imageUrls.push(restaurant.image_url);
+      }
+      
+      // Menu item images
+      menuCategories.forEach(category => {
+        category.items.forEach(item => {
+          if (item.image_url) {
+            imageUrls.push(item.image_url);
+          }
+        });
+      });
+      
+      // Filter out empty or invalid URLs
+      const validImageUrls = imageUrls.filter(url => url && typeof url === 'string' && url.length > 0);
+      
+      // Preload images in batches to avoid overwhelming the browser
+      if (validImageUrls.length > 0) {
+        updateProgress({ progress: 65 });
+        await precacheImages(validImageUrls);
+      }
+    }
+    
+    // All data loaded and cached successfully
+    updateProgress({ isLoading: false, progress: 100, stage: 'complete' });
+    return restaurant;
+    
+  } catch (error) {
+    console.error("Error preloading data:", error);
+    updateProgress({ 
+      isLoading: false, 
+      progress: 0, 
+      stage: 'error', 
+      error: error instanceof Error ? error : new Error('Unknown error during preloading') 
+    });
+    throw error;
+  }
+};
+
+// Helper function to clear all cached data for a restaurant
+export const clearRestaurantCache = (restaurantId: string): void => {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes(restaurantId)) {
+        localStorage.removeItem(key);
+      }
+    }
+    console.log(`Cleared all cached data for restaurant: ${restaurantId}`);
+  } catch (error) {
+    console.error("Error clearing restaurant cache:", error);
+  }
+};

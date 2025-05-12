@@ -18,6 +18,9 @@ import { setCacheItem, getCacheItem } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
 import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
+import { preloadAllRestaurantData, PreloaderState } from "@/utils/data-preloader";
+import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
+import { useConnectionStatus } from "@/hooks/use-network-aware-fetch";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -64,6 +67,19 @@ const KioskView = () => {
   const {
     toast
   } = useToast();
+
+  // Add new states for preloading
+  const [isPreloading, setIsPreloading] = useState(false);
+  const [preloadState, setPreloadState] = useState<PreloaderState>({
+    isLoading: false,
+    progress: 0,
+    stage: 'idle',
+    error: null
+  });
+
+  // Get connection status for offline awareness
+  const connectionStatus = useConnectionStatus();
+
   const CURRENCY_SYMBOLS: Record<string, string> = {
     EUR: "€",
     USD: "$",
@@ -166,6 +182,8 @@ const KioskView = () => {
   const t = (key: keyof typeof translations.en) => {
     return translations[uiLanguage][key];
   };
+
+  // Modify resetToWelcome to keep preloaded data
   const resetToWelcome = () => {
     console.log("Resetting to welcome page - cleaning up all state");
     setShowWelcome(true);
@@ -179,12 +197,13 @@ const KioskView = () => {
     setSpecialInstructions("");
     setOrderType(null);
     setTableNumber(null);
-    setOrderPlaced(false); // Reset the orderPlaced state so new orders can be placed
-    setPlacingOrder(false); // Also reset the placingOrder state just to be safe
+    setOrderPlaced(false); 
+    setPlacingOrder(false);
     if (categories.length > 0) {
       setActiveCategory(categories[0].id);
     }
   };
+
   const {
     showDialog,
     handleContinue,
@@ -196,71 +215,139 @@ const KioskView = () => {
     setShowConfirmationDialog(false);
     resetToWelcome();
   };
+
+  // New function to preload all restaurant data
+  const preloadAllData = async (forceRefresh = false) => {
+    if (!restaurantSlug) return;
+    
+    try {
+      setIsPreloading(true);
+      setPreloadState({
+        isLoading: true,
+        progress: 0,
+        stage: 'idle',
+        error: null
+      });
+
+      const restaurant = await preloadAllRestaurantData(
+        restaurantSlug,
+        { forceRefresh },
+        (state) => setPreloadState(state)
+      );
+
+      if (restaurant) {
+        setRestaurant(restaurant);
+        const lang = restaurant.ui_language === "en" ? "en" : restaurant.ui_language === "tr" ? "tr" : "fr";
+        setUiLanguage(lang);
+        
+        // Get cached categories
+        const menuCacheKey = `categories_${restaurant.id}`;
+        const cachedCategories = getCacheItem<CategoryWithItems[]>(menuCacheKey, restaurant.id);
+        
+        if (cachedCategories && cachedCategories.length > 0) {
+          setCategories(cachedCategories);
+          if (cachedCategories.length > 0) {
+            setActiveCategory(cachedCategories[0].id);
+          }
+        }
+      }
+      
+      setLoading(false);
+      setIsPreloading(false);
+    } catch (error) {
+      console.error("Error during preloading:", error);
+      setLoading(false);
+      setIsPreloading(false);
+      
+      // If preloading fails but we have a cached restaurant, still show the app
+      const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
+      if (cachedRestaurant) {
+        setRestaurant(cachedRestaurant);
+        toast({
+          title: "Offline mode",
+          description: "Using cached data. Some features may be limited.",
+          variant: "warning"
+        });
+      } else {
+        // No cached data, show error
+        toast({
+          title: t("restaurantNotFound"),
+          description: t("sorryNotFound"),
+          variant: "destructive"
+        });
+        navigate('/');
+      }
+    }
+  };
+
+  // Modify the initial useEffect to use our preloader
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
         navigate('/');
         return;
       }
-      try {
-        setLoading(true);
-        const restaurantData = await getRestaurantBySlug(restaurantSlug);
-        if (!restaurantData) {
-          toast({
-            title: t("restaurantNotFound"),
-            description: t("sorryNotFound"),
-            variant: "destructive"
-          });
-          navigate('/');
-          return;
-        }
-        setRestaurant(restaurantData);
-        const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
+      
+      setLoading(true);
+      
+      // First check if we have a cached restaurant
+      const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
+      
+      if (cachedRestaurant) {
+        // We have a cached restaurant, show it immediately
+        setRestaurant(cachedRestaurant);
+        const lang = cachedRestaurant.ui_language === "en" ? "en" : cachedRestaurant.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
-        const menuData = await getMenuForRestaurant(restaurantData.id);
-
-        // Sort categories by display_order before setting state
-        const sortedCategories = [...menuData].sort((a, b) => {
-          const orderA = a.display_order ?? 1000;
-          const orderB = b.display_order ?? 1000;
-          return orderA - orderB;
-        });
-
-        // Also sort the items within each category
-        sortedCategories.forEach(category => {
-          category.items = [...category.items].sort((a, b) => {
-            const orderA = a.display_order ?? 1000;
-            const orderB = b.display_order ?? 1000;
-            return orderA - orderB;
-          });
-        });
-        setCategories(sortedCategories);
-        if (sortedCategories.length > 0) {
-          setActiveCategory(sortedCategories[0].id);
+        
+        // Get cached categories
+        const menuCacheKey = `categories_${cachedRestaurant.id}`;
+        const cachedCategories = getCacheItem<CategoryWithItems[]>(menuCacheKey, cachedRestaurant.id);
+        
+        if (cachedCategories && cachedCategories.length > 0) {
+          setCategories(cachedCategories);
+          if (cachedCategories.length > 0) {
+            setActiveCategory(cachedCategories[0].id);
+          }
+          setLoading(false);
+        } else {
+          // No cached categories, need to load them
+          await preloadAllData(false);
         }
-        setLoading(false);
-      } catch (error) {
-        console.error("Erreur lors du chargement du restaurant et du menu:", error);
-        toast({
-          title: t("restaurantNotFound"),
-          description: t("sorryNotFound"),
-          variant: "destructive"
-        });
-        setLoading(false);
+      } else {
+        // No cached restaurant, need to fetch everything
+        await preloadAllData(true);
       }
     };
+    
     fetchRestaurantAndMenu();
   }, [restaurantSlug, navigate, toast]);
+
   useEffect(() => {
     if (showWelcome) {
       fullReset();
     }
   }, [showWelcome, fullReset]);
+
+  // Modify handleStartOrder to initiate preloading if needed
   const handleStartOrder = () => {
     fullReset();
+    
+    // If we have stale data, refresh it in the background
+    if (restaurant && connectionStatus === 'online') {
+      const menuCacheKey = `categories_${restaurant.id}`;
+      if (isCacheStale(menuCacheKey, restaurant.id)) {
+        toast({
+          title: t("refreshMenu"),
+          description: "Refreshing menu data in the background...",
+        });
+        preloadAllData(true);
+      }
+    }
+    
     setShowWelcome(false);
     setShowOrderTypeSelection(true);
   };
+
   const handleOrderTypeSelected = (type: OrderType, table?: string) => {
     setOrderType(type);
     if (table) {
@@ -268,6 +355,30 @@ const KioskView = () => {
     }
     setShowOrderTypeSelection(false);
   };
+
+  // Add isCacheStale function
+  const isCacheStale = (key: string, restaurantId: string): boolean => {
+    const timestamp = getCacheTimestamp(key, restaurantId);
+    if (!timestamp) return true;
+    
+    return Date.now() - timestamp > 24 * 60 * 60 * 1000; // 24 hours
+  };
+
+  // Add getCacheTimestamp function
+  const getCacheTimestamp = (key: string, restaurantId: string): number | null => {
+    const cacheKey = `kiosk_cache_${restaurantId}_${key}`;
+    const cached = localStorage.getItem(cacheKey);
+    
+    if (!cached) return null;
+    
+    try {
+      const cacheData = JSON.parse(cached);
+      return cacheData.timestamp;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const fetchToppingCategories = async (menuItemId: string) => {
     try {
       const {
@@ -798,38 +909,21 @@ const KioskView = () => {
       });
     }
   };
+
+  // Modify the handleRefreshMenu function to use our preloader
   const handleRefreshMenu = async () => {
     try {
-      setLoading(true);
-      setRefreshTrigger(prev => prev + 1);
       if (!restaurant) return;
-      const menuData = await getMenuForRestaurant(restaurant.id);
-
-      // Sort the menuData before setting state or caching
-      const sortedMenuData = [...menuData].sort((a, b) => {
-        const orderA = a.display_order ?? 1000;
-        const orderB = b.display_order ?? 1000;
-        return orderA - orderB;
-      });
-
-      // Also sort items within each category
-      sortedMenuData.forEach(category => {
-        category.items = [...category.items].sort((a, b) => {
-          const orderA = a.display_order ?? 1000;
-          const orderB = b.display_order ?? 1000;
-          return orderA - orderB;
-        });
-      });
-      setCategories(sortedMenuData);
-      if (sortedMenuData.length > 0) {
-        setActiveCategory(sortedMenuData[0].id);
-      }
-      setCacheItem('categories', sortedMenuData, restaurant.id);
+      
+      // Use the preloader with forceRefresh=true
+      setLoading(true);
+      await preloadAllData(true);
+      setRefreshTrigger(prev => prev + 1);
+      
       toast({
         title: t("menuRefreshed"),
         description: t("menuRefreshSuccess")
       });
-      setLoading(false);
     } catch (error) {
       console.error("Error refreshing menu:", error);
       toast({
@@ -837,44 +931,11 @@ const KioskView = () => {
         description: "Failed to refresh menu",
         variant: "destructive"
       });
+    } finally {
       setLoading(false);
     }
   };
-  useEffect(() => {
-    const fetchRestaurantAndMenu = async () => {
-      if (!restaurantSlug) {
-        navigate('/');
-        return;
-      }
-      try {
-        setLoading(true);
-        const restaurantData = await getRestaurantBySlug(restaurantSlug);
-        if (!restaurantData) {
-          toast({
-            title: t("restaurantNotFound"),
-            description: t("sorryNotFound"),
-            variant: "destructive"
-          });
-          navigate('/');
-          return;
-        }
-        setRestaurant(restaurantData);
-        const lang = restaurantData.ui_language === "en" ? "en" : restaurantData.ui_language === "tr" ? "tr" : "fr";
-        setUiLanguage(lang);
-        await fetchCategories();
-        setLoading(false);
-      } catch (error) {
-        console.error("Erreur lors du chargement du restaurant et du menu:", error);
-        toast({
-          title: t("restaurantNotFound"),
-          description: t("sorryNotFound"),
-          variant: "destructive"
-        });
-        setLoading(false);
-      }
-    };
-    fetchRestaurantAndMenu();
-  }, [restaurantSlug, navigate, toast]);
+  
   useEffect(() => {
     // Add a style tag to prevent selection throughout the kiosk view
     const styleTag = document.createElement('style');
@@ -908,6 +969,16 @@ const KioskView = () => {
       document.head.removeChild(styleTag);
     };
   }, []);
+
+  // Show preloading screen if preloading
+  if (isPreloading) {
+    return <PreloadingScreen 
+      state={preloadState}
+      onRetry={() => preloadAllData(true)} 
+      uiLanguage={uiLanguage} 
+    />;
+  }
+
   if (loading && !restaurant) {
     return <div className="flex items-center justify-center h-screen kiosk-view">
         <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
