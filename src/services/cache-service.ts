@@ -82,30 +82,37 @@ export const clearCache = (restaurantId: string, specificKey?: string) => {
 
 // Enhanced function to clear menu data cache for a restaurant
 export const clearMenuCache = (restaurantId: string): void => {
+  console.log(`[CacheService] Clearing complete menu cache for restaurant: ${restaurantId}`);
+  
   // Clear categories and menu items cache
   clearCache(restaurantId, `categories_${restaurantId}`);
   
-  // Clear any individual menu item caches and related data
+  // Track all cleared items for debugging
   const keysToRemove: string[] = [];
   
+  // Search through all localStorage items
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key && key.includes(`${CACHE_PREFIX}${restaurantId}`)) {
-      // Clear all menu item related caches
+      // Clear ALL menu-related caches (expanded patterns)
       if (key.includes('menuItem_') || 
           key.includes('categories_') || 
-          key.includes('toppings_')) {
+          key.includes('toppings_') ||
+          key.includes('options_') ||
+          key.includes('choices_') ||
+          key.includes('menu_')) {
         keysToRemove.push(key);
       }
     }
   }
   
+  // Remove all identified cache keys
   keysToRemove.forEach(key => {
     localStorage.removeItem(key);
     debugCache('CLEAR (MENU)', key);
   });
   
-  console.log(`Cleared menu cache for restaurant: ${restaurantId} (${keysToRemove.length} items)`);
+  console.log(`[CacheService] Cleared menu cache for restaurant: ${restaurantId} (${keysToRemove.length} items)`);
 };
 
 // New function to clear all cached data for a specific cache type across all restaurants

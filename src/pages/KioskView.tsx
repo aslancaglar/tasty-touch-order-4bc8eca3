@@ -916,21 +916,64 @@ const KioskView = () => {
       if (!restaurant) return;
       
       setLoading(true);
+      console.log("[MenuRefresh] Starting menu refresh operation");
       
-      // First, explicitly clear the menu cache
-      console.log("Clearing menu cache before refresh");
+      // Step 1: Explicitly clear the menu cache first
+      console.log("[MenuRefresh] Clearing menu cache");
       clearMenuCache(restaurant.id);
       
-      // Then use the preloader with forceRefresh=true
-      await preloadAllData(true);
+      // Step 2: Set loading state to true for user feedback
+      setLoading(true);
+      
+      // Step 3: Preload all data with forceRefresh=true
+      console.log("[MenuRefresh] Preloading fresh data with forceRefresh=true");
+      const freshRestaurant = await preloadAllRestaurantData(
+        restaurantSlug || "",
+        { forceRefresh: true },
+        (state) => {
+          console.log(`[MenuRefresh] Preload progress: ${state.stage} - ${state.progress}%`);
+          setPreloadState(state);
+        }
+      );
+      
+      if (freshRestaurant) {
+        console.log("[MenuRefresh] New restaurant data received, updating state");
+        setRestaurant(freshRestaurant);
+        
+        // Step 4: EXPLICITLY fetch new categories from cache after preloading
+        const menuCacheKey = `categories_${freshRestaurant.id}`;
+        const freshCategories = getCacheItem<CategoryWithItems[]>(menuCacheKey, freshRestaurant.id);
+        
+        if (freshCategories && freshCategories.length > 0) {
+          console.log("[MenuRefresh] New categories received, updating state:", freshCategories.length);
+          setCategories(freshCategories);
+          
+          // Make sure we set the active category if it doesn't exist or has changed
+          const currentActiveCategory = activeCategory;
+          const categoryExists = freshCategories.some(c => c.id === currentActiveCategory);
+          
+          if (!categoryExists && freshCategories.length > 0) {
+            console.log("[MenuRefresh] Setting new active category to:", freshCategories[0].id);
+            setActiveCategory(freshCategories[0].id);
+          }
+        } else {
+          console.warn("[MenuRefresh] No categories found after refresh!");
+        }
+      }
+      
+      // Step 5: Increment refreshTrigger to force MenuItemGrid to update
+      console.log("[MenuRefresh] Incrementing refreshTrigger to force component updates");
       setRefreshTrigger(prev => prev + 1);
       
+      // Step 6: Show success message
       toast({
         title: t("menuRefreshed"),
         description: t("menuRefreshSuccess")
       });
+      
+      console.log("[MenuRefresh] Refresh operation completed successfully");
     } catch (error) {
-      console.error("Error refreshing menu:", error);
+      console.error("[MenuRefresh] Error refreshing menu:", error);
       toast({
         title: "Error",
         description: "Failed to refresh menu",
