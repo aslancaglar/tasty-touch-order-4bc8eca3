@@ -77,6 +77,9 @@ const KioskView = () => {
     stage: 'idle',
     error: null
   });
+  
+  // Add the missing dataPreloaded state that we're using in our code
+  const [dataPreloaded, setDataPreloaded] = useState(false);
 
   // Get connection status for offline awareness
   const connectionStatus = useConnectionStatus();
