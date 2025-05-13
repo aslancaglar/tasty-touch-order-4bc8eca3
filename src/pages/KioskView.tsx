@@ -169,7 +169,7 @@ const KioskView = () => {
       multipleSelection: "Çoklu seçim",
       selectUpTo: "En fazla seçin",
       maxSelectionsReached: "Maksimum seçimlere ulaşıldı",
-      maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz.",
+      maxSelectionsMessage: "Bu kategoride sadece {max} ��ğe seçebilirsiniz.",
       inactivityTitle: "Hala orada mısınız?",
       inactivityMessage: "Siparişinize devam etmek istiyor musunuz?",
       yes: "Evet",
@@ -910,7 +910,7 @@ const KioskView = () => {
     }
   };
 
-  // Modify the handleRefreshMenu function to use our preloader with proper cache clearing
+  // Modified handleRefreshMenu function to implement a full reload
   const handleRefreshMenu = async () => {
     try {
       if (!restaurant) return;
@@ -919,13 +919,20 @@ const KioskView = () => {
       setLoading(true);
       console.log("[MenuRefresh] Starting menu refresh operation");
       
+      // Show "refreshing and reloading" toast message
+      toast({
+        title: t("restaurant.refreshData"),
+        description: t("restaurant.refreshingAndReloading"),
+        duration: 3000,
+      });
+      
       // Step 2: Explicitly clear the menu cache first to ensure a clean slate
       console.log("[MenuRefresh] Force flushing all menu cache");
       forceFlushMenuCache(restaurant.id);
       
       // Step 3: Preload all data with forceRefresh=true
       console.log("[MenuRefresh] Preloading fresh data with forceRefresh=true");
-      const freshRestaurant = await preloadAllRestaurantData(
+      await preloadAllRestaurantData(
         restaurantSlug || "",
         { forceRefresh: true },
         (state) => {
@@ -934,44 +941,13 @@ const KioskView = () => {
         }
       );
       
-      if (freshRestaurant) {
-        console.log("[MenuRefresh] New restaurant data received, updating state");
-        setRestaurant(freshRestaurant);
-        
-        // Step 4: EXPLICITLY fetch new categories from cache after preloading
-        const menuCacheKey = `categories_${freshRestaurant.id}`;
-        const freshCategories = getCacheItem<CategoryWithItems[]>(menuCacheKey, freshRestaurant.id);
-        
-        if (freshCategories && freshCategories.length > 0) {
-          console.log("[MenuRefresh] New categories received, updating state:", freshCategories.length);
-          
-          // IMPORTANT: Explicitly update the categories state with fresh data
-          setCategories(freshCategories);
-          
-          // Make sure we set the active category if it doesn't exist or has changed
-          const currentActiveCategory = activeCategory;
-          const categoryExists = freshCategories.some(c => c.id === currentActiveCategory);
-          
-          if (!categoryExists && freshCategories.length > 0) {
-            console.log("[MenuRefresh] Setting new active category to:", freshCategories[0].id);
-            setActiveCategory(freshCategories[0].id);
-          }
-        } else {
-          console.warn("[MenuRefresh] No categories found after refresh!");
-        }
-      }
+      console.log("[MenuRefresh] Refresh operation completed successfully, reloading the application");
       
-      // Step 5: Increment refreshTrigger to force MenuItemGrid to update
-      console.log("[MenuRefresh] Incrementing refreshTrigger to force component updates");
-      setRefreshTrigger(prev => prev + 1);
+      // Step 4: Wait a short moment and then reload the entire page to get a fresh start
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       
-      // Step 6: Show success message
-      toast({
-        title: t("menuRefreshed"),
-        description: t("menuRefreshSuccess")
-      });
-      
-      console.log("[MenuRefresh] Refresh operation completed successfully");
     } catch (error) {
       console.error("[MenuRefresh] Error refreshing menu:", error);
       toast({
@@ -979,11 +955,10 @@ const KioskView = () => {
         description: "Failed to refresh menu",
         variant: "destructive"
       });
-    } finally {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     // Add a style tag to prevent selection throughout the kiosk view
     const styleTag = document.createElement('style');

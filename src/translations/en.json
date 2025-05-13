@@ -103,7 +103,8 @@
     "refreshData": "Refresh Data",
     "refreshing": "Refreshing...",
     "dataRefreshed": "Data refreshed successfully",
-    "refreshError": "Failed to refresh data"
+    "refreshError": "Failed to refresh data",
+    "refreshingAndReloading": "Refreshing menu data and reloading..."
   },
   "statistics": {
     "title": "Restaurant Statistics",
