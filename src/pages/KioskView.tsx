@@ -162,7 +162,7 @@ const KioskView = () => {
       menu: "Menü",
       addToCart: "Sepete ekle",
       selectionsRequired: "Gerekli seçimler",
-      pleaseSelectRequired: "Sepete eklemeden önce lütfen tüm gerekli seçimleri yapın",
+      pleaseSelectRequired: "Siparişinize devam etmek için tüm gerekli seçimleri yapın",
       addedToCart: "Sepete eklendi",
       added: "siparişinize eklendi",
       quantity: "Miktar",
@@ -921,8 +921,8 @@ const KioskView = () => {
       
       // Show "refreshing and reloading" toast message
       toast({
-        title: t("restaurant.refreshData"),
-        description: t("restaurant.refreshingAndReloading"),
+        title: t("cache.refreshData"),
+        description: t("cache.refreshing"),
         duration: 3000,
       });
       
