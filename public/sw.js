@@ -87,8 +87,8 @@ self.addEventListener('fetch', (event) => {
     // Cache-first strategy for images
     event.respondWith(cacheFirstStrategy(event.request));
   } else if (isApiRequest(url)) {
-    // Stale-while-revalidate for API requests
-    event.respondWith(staleWhileRevalidateStrategy(event.request));
+    // Network-first for API requests with graceful fallback
+    event.respondWith(networkFirstWithFallback(event.request));
   } else if (isHtmlRequest(event.request)) {
     // Network-first for HTML pages with offline fallback
     event.respondWith(networkFirstWithOfflineFallback(event.request));
@@ -111,34 +111,54 @@ async function cacheFirstStrategy(request) {
   return fetchAndUpdateCache(request);
 }
 
-// Stale-while-revalidate strategy: Return cached data immediately, then update
-async function staleWhileRevalidateStrategy(request) {
-  const cache = await caches.open(DATA_CACHE);
-  
-  // Try to get the response from cache
-  const cachedResponse = await cache.match(request);
-  
-  // Clone the request because it's a stream and can only be consumed once
-  const fetchPromise = fetch(request.clone())
-    .then(response => {
-      // Check if we received a valid response
-      if (response && response.status === 200) {
-        // Clone the response because it's a stream and can only be consumed once
-        cache.put(request, response.clone());
-      }
-      return response;
-    })
-    .catch(err => {
-      console.error('[Service Worker] Fetch failed:', err);
-      // If fetch fails, we still want the promise to resolve
-      return cachedResponse || new Response('Network error', { 
-        status: 408, 
-        headers: { 'Content-Type': 'text/plain' }
+// Network-first with fallback: Try network first, fall back to cache with proper error handling
+async function networkFirstWithFallback(request) {
+  try {
+    // Try network first for fresh data
+    const networkResponse = await fetch(request.clone());
+    
+    // If successful, update cache and return response
+    if (networkResponse && networkResponse.status === 200) {
+      const cache = await caches.open(DATA_CACHE);
+      cache.put(request, networkResponse.clone());
+      return networkResponse;
+    }
+    
+    // If network request was not successful, try cache
+    throw new Error('Network response was not ok');
+  } catch (err) {
+    console.log('[Service Worker] Network request failed, falling back to cache for:', request.url);
+    
+    // Look for a cached version
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      // Return cached version but inform the client it's stale
+      const clonedResponse = cachedResponse.clone();
+      const body = await clonedResponse.json();
+      
+      // Add a flag to indicate this is cached data
+      body._fromCache = true;
+      body._cacheTimestamp = Date.now();
+      
+      return new Response(JSON.stringify(body), {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Cache-Hit': 'true',
+          'X-Cache-Date': new Date().toISOString(),
+        }
       });
+    }
+    
+    // If nothing in cache, return a friendly error
+    return new Response(JSON.stringify({
+      error: 'Failed to refresh data. Network request failed and no cached data available.',
+      status: 503,
+      _isOffline: true
+    }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' }
     });
-
-  // Return the cached response immediately if we have it, otherwise wait for the network
-  return cachedResponse || fetchPromise;
+  }
 }
 
 // Network-first with offline fallback: Try network, fall back to cache or offline page

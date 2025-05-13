@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, UtensilsCrossed, Cherry, Receipt, Package, ChartBar, RefreshCw } from "lucide-react";
+import { Loader2, ArrowLeft, UtensilsCrossed, Cherry, Receipt, Package, ChartBar, RefreshCw, WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Restaurant } from "@/types/database-types";
 import MenuTab from "@/components/restaurant/MenuTab";
@@ -18,6 +18,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { forceFlushMenuCache } from "@/services/cache-service";
 import { preloadAdminRestaurantData, ensureFreshRestaurantData } from "@/utils/admin-data-utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { isOnline, retryNetworkRequest } from "@/utils/service-worker";
+import { handleCacheError } from "@/utils/cache-config";
 
 const OwnerRestaurantManage = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,38 +27,83 @@ const OwnerRestaurantManage = () => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshingData, setRefreshingData] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(!isOnline());
   const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const { t } = useTranslation(language);
   const queryClient = useQueryClient();
   
+  // Check online status
+  useEffect(() => {
+    const handleOnlineStatusChange = (online: boolean) => {
+      setIsOffline(!online);
+      if (online && refreshError) {
+        // Clear refresh error when we come back online
+        setRefreshError(null);
+      }
+    };
+    
+    // Setup listener
+    window.addEventListener('online', () => handleOnlineStatusChange(true));
+    window.addEventListener('offline', () => handleOnlineStatusChange(false));
+    
+    // Initial check
+    handleOnlineStatusChange(isOnline());
+    
+    return () => {
+      window.removeEventListener('online', () => handleOnlineStatusChange(true));
+      window.removeEventListener('offline', () => handleOnlineStatusChange(false));
+    };
+  }, [refreshError]);
+  
   // Function to refresh kiosk data
   const handleRefreshKioskData = useCallback(async () => {
     if (!restaurant) return;
     
     setRefreshingData(true);
+    setRefreshError(null);
+    
     try {
+      // Check if we're online first
+      if (!isOnline()) {
+        throw new Error("You're currently offline. Cannot refresh kiosk data without an internet connection.");
+      }
+      
       // 1. Clear all cache for this restaurant
+      console.log(`[RestaurantManage] Flushing menu cache for restaurant: ${restaurant.id}`);
       forceFlushMenuCache(restaurant.id);
       
       // 2. Invalidate all React Query cache for this restaurant
+      console.log(`[RestaurantManage] Invalidating React Query cache for restaurant: ${restaurant.id}`);
       ensureFreshRestaurantData(restaurant.id, queryClient);
       
-      // 3. Preload fresh data for kiosk
+      // 3. Preload fresh data for kiosk with retry logic
       if (restaurant.slug) {
-        await preloadAdminRestaurantData(restaurant.slug);
+        console.log(`[RestaurantManage] Preloading fresh data for restaurant: ${restaurant.slug}`);
+        await retryNetworkRequest(
+          () => preloadAdminRestaurantData(restaurant.slug || ''),
+          3,  // max retries
+          500 // initial delay in ms
+        );
       }
       
+      console.log(`[RestaurantManage] Successfully refreshed kiosk data for: ${restaurant.name}`);
       toast({
         title: t("cache.refreshSuccess"),
         description: `${restaurant.name} - ${new Date().toLocaleTimeString()}`,
       });
     } catch (error) {
-      console.error("Error refreshing kiosk data:", error);
+      console.error("[RestaurantManage] Error refreshing kiosk data:", error);
+      
+      // Generate a user-friendly error message
+      const errorMessage = handleCacheError("refresh menu", error);
+      setRefreshError(errorMessage);
+      
       toast({
         title: t("cache.refreshError"),
-        description: String(error),
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -164,11 +211,19 @@ const OwnerRestaurantManage = () => {
           <p className="text-muted-foreground">{restaurant?.location || t("restaurants.noLocationDefined")}</p>
         </div>
         <div className="ml-0 sm:ml-auto mt-2 sm:mt-0 flex flex-wrap gap-2">
+          {isOffline && (
+            <div className="bg-destructive text-white px-4 py-2 rounded-md flex items-center mr-2">
+              <WifiOff className="h-4 w-4 mr-2" />
+              {t("general.offline")}
+            </div>
+          )}
+          
           <Button 
             variant="outline" 
             size={isMobile ? "sm" : "default"}
             onClick={handleRefreshKioskData}
-            disabled={refreshingData}
+            disabled={refreshingData || isOffline}
+            className={refreshError ? "border-red-500 hover:border-red-600" : ""}
           >
             {refreshingData ? (
               <>
@@ -177,11 +232,12 @@ const OwnerRestaurantManage = () => {
               </>
             ) : (
               <>
-                <RefreshCw className="mr-2 h-4 w-4" />
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshError ? "text-red-500" : ""}`} />
                 {t("cache.refreshData")}
               </>
             )}
           </Button>
+          
           <Button variant="outline" asChild size={isMobile ? "sm" : "default"}>
             <Link to={`/r/${restaurant?.slug}`} target="_blank">
               {t("restaurants.viewKiosk")}
@@ -189,6 +245,28 @@ const OwnerRestaurantManage = () => {
           </Button>
         </div>
       </div>
+      
+      {refreshError && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-md">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <WifiOff className="h-5 w-5 text-red-500" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">
+                {refreshError}
+              </p>
+              <button 
+                onClick={handleRefreshKioskData}
+                disabled={refreshingData || isOffline}
+                className="mt-2 text-sm text-red-700 underline"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <Card className="mb-8">
         <CardHeader className="pb-3">

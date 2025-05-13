@@ -60,8 +60,10 @@ export const clearServiceWorkerCache = async () => {
     if (registration && registration.active) {
       registration.active.postMessage({ action: 'clearCache' });
       console.log('Sent cache clear command to Service Worker');
+      return true;
     }
   }
+  return false;
 };
 
 // Function to check if the app is online
@@ -75,6 +77,8 @@ let onlineStatusListeners: Array<(status: boolean) => void> = [];
 // Function to add online status listener
 export const addOnlineStatusListener = (callback: (status: boolean) => void) => {
   onlineStatusListeners.push(callback);
+  // Immediately call with current status
+  callback(isOnline());
 };
 
 // Function to remove online status listener
@@ -82,13 +86,53 @@ export const removeOnlineStatusListener = (callback: (status: boolean) => void) 
   onlineStatusListeners = onlineStatusListeners.filter(listener => listener !== callback);
 };
 
+// Function to manually refresh network status
+export const checkNetworkStatus = (): boolean => {
+  const status = isOnline();
+  onlineStatusListeners.forEach(listener => listener(status));
+  return status;
+};
+
+// Enhanced function to retry a network request
+export const retryNetworkRequest = async <T>(
+  requestFn: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 1000
+): Promise<T> => {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Check if we're online
+      if (!isOnline()) {
+        throw new Error('Device is offline');
+      }
+      
+      // Try the request
+      return await requestFn();
+    } catch (error) {
+      console.log(`Attempt ${attempt + 1}/${maxRetries} failed:`, error);
+      lastError = error;
+      
+      // Wait before trying again (exponential backoff)
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(2, attempt)));
+      }
+    }
+  }
+  
+  throw lastError || new Error('Request failed after multiple attempts');
+};
+
 // Set up online/offline event listeners
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
+    console.log('[Network] Device is now ONLINE');
     onlineStatusListeners.forEach(listener => listener(true));
   });
   
   window.addEventListener('offline', () => {
+    console.log('[Network] Device is now OFFLINE');
     onlineStatusListeners.forEach(listener => listener(false));
   });
 }
