@@ -1,5 +1,5 @@
 // Service Worker for Tasty Touch - Restaurant Kiosk App
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `tasty-touch-cache-${CACHE_VERSION}`;
 const APP_SHELL_CACHE = 'app-shell';
 const DATA_CACHE = 'app-data';
@@ -12,6 +12,7 @@ const APP_SHELL_FILES = [
   '/placeholder.svg',
   '/src/main.tsx',
   '/src/index.css',
+  '/offline.html',  // Add offline.html to the app shell
 ];
 
 // Install event - Cache app shell resources
@@ -66,6 +67,11 @@ const isApiRequest = (url) => {
          url.href.includes('supabase');
 };
 
+// Helper function to determine if a request is for an HTML page
+const isHtmlRequest = (request) => {
+  return request.headers.get('accept')?.includes('text/html');
+};
+
 // Fetch event - Handle network requests with appropriate cache strategy
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
@@ -83,6 +89,9 @@ self.addEventListener('fetch', (event) => {
   } else if (isApiRequest(url)) {
     // Stale-while-revalidate for API requests
     event.respondWith(staleWhileRevalidateStrategy(event.request));
+  } else if (isHtmlRequest(event.request)) {
+    // Network-first for HTML pages with offline fallback
+    event.respondWith(networkFirstWithOfflineFallback(event.request));
   } else {
     // Cache-first for app shell (static resources)
     event.respondWith(cacheFirstStrategy(event.request));
@@ -132,18 +141,15 @@ async function staleWhileRevalidateStrategy(request) {
   return cachedResponse || fetchPromise;
 }
 
-// Network-first strategy: Try network first, fallback to cache
-async function networkFirstStrategy(request) {
-  const cacheName = isImageRequest(new URL(request.url)) ? 
-    'image-cache' : DATA_CACHE;
-    
+// Network-first with offline fallback: Try network, fall back to cache or offline page
+async function networkFirstWithOfflineFallback(request) {
   try {
     // Try network first
     const networkResponse = await fetch(request);
     
-    // Cache the response (if valid)
+    // Cache the response if valid
     if (networkResponse && networkResponse.status === 200) {
-      const cache = await caches.open(cacheName);
+      const cache = await caches.open(APP_SHELL_CACHE);
       cache.put(request, networkResponse.clone());
     }
     
@@ -155,13 +161,16 @@ async function networkFirstStrategy(request) {
       return cachedResponse;
     }
     
-    // If no cache, show offline fallback for HTML
-    if (request.headers.get('accept').includes('text/html')) {
+    // If no cache for this HTML request, show offline fallback
+    if (isHtmlRequest(request)) {
       return caches.match('/offline.html');
     }
     
-    // Otherwise just rethrow the error
-    throw err;
+    // Otherwise just return an error response
+    return new Response('Network error: Unable to fetch required resource', {
+      status: 408,
+      headers: { 'Content-Type': 'text/plain' }
+    });
   }
 }
 
@@ -223,3 +232,28 @@ async function clearAllCaches() {
     console.error('[Service Worker] Failed to clear caches:', err);
   }
 }
+
+// New function to respond to connectivity changes
+self.addEventListener('online', () => {
+  console.log('[Service Worker] Browser is online, syncing data');
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'ONLINE_STATUS_CHANGE',
+        online: true
+      });
+    });
+  });
+});
+
+self.addEventListener('offline', () => {
+  console.log('[Service Worker] Browser is offline, using cached data');
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'ONLINE_STATUS_CHANGE',
+        online: false
+      });
+    });
+  });
+});

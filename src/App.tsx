@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NetworkStatus } from "@/components/ui/network-status";
+import { useEffect } from "react";
+import { initializeCacheConfig } from "@/utils/cache-config";
 
 // Create a more sophisticated QueryClient with route-aware settings
 const queryClient = new QueryClient({
@@ -32,60 +34,67 @@ import OwnerDashboard from "./pages/OwnerDashboard";
 import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
 import OwnerLogin from "./pages/OwnerLogin";
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <div className="fixed bottom-4 right-4 z-50">
-          <NetworkStatus showLabel={true} />
-        </div>
-        <BrowserRouter>
-          <Routes>
-            {/* Auth Routes */}
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/owner/login" element={<OwnerLogin />} />
-            
-            {/* Admin Routes - Protected and require admin role */}
-            <Route path="/" element={
-              <ProtectedRoute requireAdmin={true}>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/restaurants" element={
-              <ProtectedRoute requireAdmin={true}>
-                <Restaurants />
-              </ProtectedRoute>
-            } />
-            <Route path="/restaurant/:id" element={
-              <ProtectedRoute requireAdmin={true}>
-                <RestaurantManage />
-              </ProtectedRoute>
-            } />
-            
-            {/* Restaurant Owner Routes - Protected but don't require admin role */}
-            <Route path="/owner" element={
-              <ProtectedRoute>
-                <OwnerDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/owner/restaurant/:id" element={
-              <ProtectedRoute>
-                <OwnerRestaurantManage />
-              </ProtectedRoute>
-            } />
-            
-            {/* Public Kiosk Routes */}
-            <Route path="/r/:restaurantSlug" element={<KioskView />} />
-            
-            {/* Catch-all Route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  // Initialize cache config when the app starts
+  useEffect(() => {
+    initializeCacheConfig();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <div className="fixed bottom-4 right-4 z-50">
+            <NetworkStatus showLabel={true} />
+          </div>
+          <BrowserRouter>
+            <Routes>
+              {/* Auth Routes */}
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/owner/login" element={<OwnerLogin />} />
+              
+              {/* Admin Routes - Protected and require admin role */}
+              <Route path="/" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/restaurants" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <Restaurants />
+                </ProtectedRoute>
+              } />
+              <Route path="/restaurant/:id" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <RestaurantManage />
+                </ProtectedRoute>
+              } />
+              
+              {/* Restaurant Owner Routes - Protected but don't require admin role */}
+              <Route path="/owner" element={
+                <ProtectedRoute>
+                  <OwnerDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/restaurant/:id" element={
+                <ProtectedRoute>
+                  <OwnerRestaurantManage />
+                </ProtectedRoute>
+              } />
+              
+              {/* Public Kiosk Routes */}
+              <Route path="/r/:restaurantSlug" element={<KioskView />} />
+              
+              {/* Catch-all Route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  )
+};
 
 export default App;

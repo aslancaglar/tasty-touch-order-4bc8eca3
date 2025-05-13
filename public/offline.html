@@ -53,10 +53,17 @@
     button:hover {
       background-color: #4338ca;
     }
+
+    .offline-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: #ef4444;
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="offline-icon">📶</div>
     <h1>You're Offline</h1>
     <p>It looks like you're currently offline. Please check your internet connection to continue using the Tasty Touch ordering system.</p>
     <p>If you were in the middle of an order, don't worry - your selections have been saved and will be available when you're back online.</p>
@@ -68,6 +75,13 @@
     window.addEventListener('online', function() {
       window.location.reload();
     });
+    
+    // Check connection status every minute
+    setInterval(function() {
+      if (navigator.onLine) {
+        window.location.reload();
+      }
+    }, 60000);
   </script>
 </body>
 </html>
