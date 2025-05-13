@@ -8,12 +8,14 @@ interface WelcomePageProps {
   restaurant: Restaurant;
   onStart: () => void;
   uiLanguage?: SupportedLanguage;
+  isDataLoading?: boolean;
 }
 
 const WelcomePage = ({
   restaurant,
   onStart,
-  uiLanguage = "fr"
+  uiLanguage = "fr",
+  isDataLoading = false
 }: WelcomePageProps) => {
   const { t } = useTranslation(uiLanguage);
   const [isStarting, setIsStarting] = useState(false);
@@ -46,10 +48,10 @@ const WelcomePage = ({
       <div>
         <Button 
           onClick={handleStart}
-          disabled={isStarting}
+          disabled={isStarting || isDataLoading}
           className={`shadow-lg ${!isStarting ? 'animate-pulse' : ''} bg-violet-700 hover:bg-violet-600 text-slate-50 md:text-6xl lg:text-7xl px-12 md:px-[40px] md:py-[70px] lg:px-[60px] lg:py-[90px] font-bebas tracking-wide py-[91px] rounded-full text-xl text-center mt-25`}
         >
-          {isStarting ? (
+          {isStarting || isDataLoading ? (
             <span className="flex items-center">
               <svg className="animate-spin -ml-1 mr-3 h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

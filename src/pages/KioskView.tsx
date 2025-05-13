@@ -169,6 +169,12 @@ const KioskView = () => {
           if (cachedCategories.length > 0) {
             setActiveCategory(cachedCategories[0].id);
           }
+          setLoading(false);
+          setDataPreloaded(true); // Mark data as preloaded once it's loaded
+        } else {
+          // No cached categories, need to load them
+          await preloadAllData(false);
+          setDataPreloaded(true); // Mark data as preloaded once it's loaded
         }
       }
       
@@ -229,13 +235,16 @@ const KioskView = () => {
             setActiveCategory(cachedCategories[0].id);
           }
           setLoading(false);
+          setDataPreloaded(true); // Mark data as preloaded once it's loaded
         } else {
           // No cached categories, need to load them
           await preloadAllData(false);
+          setDataPreloaded(true); // Mark data as preloaded once it's loaded
         }
       } else {
         // No cached restaurant, need to fetch everything
         await preloadAllData(true);
+        setDataPreloaded(true); // Mark data as preloaded once it's loaded
       }
     };
     
@@ -252,8 +261,8 @@ const KioskView = () => {
   const handleStartOrder = () => {
     fullReset();
     
-    // Only refresh data if we have stale data AND it needs a refresh (older than 5 minutes)
-    if (restaurant && connectionStatus === 'online') {
+    // Only refresh data if not already preloaded, we have stale data that's older than 5 minutes, and we're online
+    if (!dataPreloaded && restaurant && connectionStatus === 'online') {
       const menuCacheKey = `categories_${restaurant.id}`;
       if (isCacheNeedsRefresh(menuCacheKey, restaurant.id)) {
         console.log("[KioskView] Cache needs refresh, loading fresh data in background");
@@ -265,6 +274,8 @@ const KioskView = () => {
       } else {
         console.log("[KioskView] Cache is recent enough, using existing data");
       }
+    } else {
+      console.log("[KioskView] Data already preloaded, skipping refresh");
     }
     
     setShowWelcome(false);
@@ -944,10 +955,15 @@ const KioskView = () => {
   }
   if (showWelcome) {
     return <div className="kiosk-view">
-        <WelcomePage restaurant={restaurant} onStart={() => {
-        fullReset();
-        handleStartOrder();
-      }} uiLanguage={uiLanguage} />
+        <WelcomePage 
+          restaurant={restaurant} 
+          onStart={() => {
+            fullReset();
+            handleStartOrder();
+          }} 
+          uiLanguage={uiLanguage}
+          isDataLoading={isPreloading || loading} 
+        />
       </div>;
   }
   if (showOrderTypeSelection) {
