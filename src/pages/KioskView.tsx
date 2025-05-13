@@ -248,19 +248,22 @@ const KioskView = () => {
     }
   }, [showWelcome, fullReset]);
 
-  // Modify handleStartOrder to initiate preloading if needed
+  // Modified handleStartOrder to avoid unnecessary data refresh
   const handleStartOrder = () => {
     fullReset();
     
-    // If we have stale data, refresh it in the background
+    // Only refresh data if we have stale data AND it needs a refresh (older than 5 minutes)
     if (restaurant && connectionStatus === 'online') {
       const menuCacheKey = `categories_${restaurant.id}`;
-      if (isCacheStale(menuCacheKey, restaurant.id)) {
+      if (isCacheNeedsRefresh(menuCacheKey, restaurant.id)) {
+        console.log("[KioskView] Cache needs refresh, loading fresh data in background");
         toast({
           title: t("refreshMenu"),
           description: "Refreshing menu data in the background...",
         });
         preloadAllData(true);
+      } else {
+        console.log("[KioskView] Cache is recent enough, using existing data");
       }
     }
     

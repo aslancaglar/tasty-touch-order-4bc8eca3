@@ -1,6 +1,6 @@
-
 const CACHE_PREFIX = 'kiosk_cache_';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes - new threshold for refresh
 
 interface CacheItem<T> {
   data: T;
@@ -91,6 +91,15 @@ export const isCacheStale = (key: string, restaurantId: string): boolean => {
   if (!timestamp) return true;
   
   return Date.now() - timestamp > CACHE_DURATION;
+};
+
+// New function to check if cache needs refresh (using shorter threshold)
+export const isCacheNeedsRefresh = (key: string, restaurantId: string): boolean => {
+  const timestamp = getCacheTimestamp(key, restaurantId);
+  if (!timestamp) return true;
+  
+  // Use shorter threshold for refresh checks
+  return Date.now() - timestamp > CACHE_REFRESH_THRESHOLD;
 };
 
 export const clearCache = (restaurantId: string, specificKey?: string) => {
