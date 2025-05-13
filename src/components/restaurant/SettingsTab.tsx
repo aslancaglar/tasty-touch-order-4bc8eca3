@@ -38,6 +38,13 @@ interface SettingsTabProps {
   onRestaurantUpdated?: (updatedRestaurant: Restaurant) => void;
 }
 
+// Re-add the language options that were previously removed
+const languageOptions = [
+  { value: "fr", label: "Français" },
+  { value: "en", label: "English" },
+  { value: "tr", label: "Türkçe" },
+];
+
 // Fix: properly access currency codes and add error handling
 const currencyOptions = (() => {
   try {
