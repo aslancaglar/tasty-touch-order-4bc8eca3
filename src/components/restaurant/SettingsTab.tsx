@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,6 +107,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -121,11 +123,31 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     setSlug(restaurant.slug || "");
     setUiLanguage(restaurant.ui_language || "fr");
     setCurrency(restaurant.currency || "EUR");
+    
+    // Check network status
+    setIsOffline(!navigator.onLine);
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, [restaurant]);
 
   useEffect(() => {
     const fetchPrintSettings = async () => {
+      if (isOffline) {
+        console.log("Currently offline - using default print settings");
+        setBrowserPrintEnabled(true);
+        return;
+      }
+      
       try {
+        console.log("Fetching print settings for restaurant:", restaurant.id);
         const { data, error } = await supabase
           .from('restaurant_print_config')
           .select('browser_printing_enabled')
@@ -133,6 +155,10 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
           .single();
           
         if (error) {
+          if (error.message?.includes("Failed to fetch") || error.code === "PGRST116") {
+            console.log("No print settings found or network error, using defaults");
+            return;
+          }
           console.error("Error fetching print settings:", error);
           return;
         }
@@ -146,8 +172,10 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
       }
     };
     
-    fetchPrintSettings();
-  }, [restaurant.id]);
+    if (restaurant.id) {
+      fetchPrintSettings();
+    }
+  }, [restaurant.id, isOffline]);
 
   const handleSaveRestaurantInfo = async () => {
     if (!name.trim()) {
@@ -261,18 +289,32 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   };
 
   const handleSavePrintSettings = async () => {
+    if (isOffline) {
+      toast({
+        title: "Mode hors ligne",
+        description: "Les paramètres d'impression seront enregistrés quand vous serez à nouveau en ligne",
+        variant: "default"
+      });
+      return;
+    }
+    
     setIsSavingPrintSettings(true);
     console.log("Saving print settings for restaurant:", restaurant.id);
     console.log("Browser print enabled:", browserPrintEnabled);
     
     try {
+      if (!restaurant.id) {
+        throw new Error("Restaurant ID is missing");
+      }
+      
+      // First check if config exists
       const { data: existingConfig, error: checkError } = await supabase
         .from('restaurant_print_config')
         .select('id')
         .eq('restaurant_id', restaurant.id)
-        .single();
+        .maybeSingle();
       
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (checkError && !checkError.message.includes("No rows found")) {
         console.error("Error checking existing print config:", checkError);
         throw checkError;
       }
@@ -443,6 +485,15 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   return (
     <div className="space-y-6">
+      {isOffline && (
+        <Alert variant="warning" className="mb-4">
+          <AlertTitle className="text-amber-700">Mode hors ligne</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            Vous êtes actuellement hors ligne. Certaines fonctionnalités peuvent être limitées jusqu'à ce que la connexion soit rétablie.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="basic">Informations</TabsTrigger>
