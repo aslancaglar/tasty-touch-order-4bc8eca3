@@ -188,20 +188,27 @@ export const getLastUpdateTime = (restaurantId: string): Date | null => {
   return latestTimestamp > 0 ? new Date(latestTimestamp) : null;
 };
 
-// New function to force flush all restaurant-related cache immediately
+// Improved function to force flush all restaurant-related cache immediately
+// Modified to be safer by making a copy before deleting
 export const forceFlushMenuCache = (restaurantId: string): void => {
   console.log(`[CacheService] FORCE FLUSHING all menu cache for restaurant: ${restaurantId}`);
   
-  // Directly delete all cache items for this restaurant
-  for (let i = localStorage.length - 1; i >= 0; i--) {
+  // First collect all keys to delete (to avoid issues with changing localStorage during iteration)
+  const keysToDelete = [];
+  for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key && key.includes(`${CACHE_PREFIX}${restaurantId}`)) {
-      console.log(`[CacheService] Force removing: ${key}`);
-      localStorage.removeItem(key);
+      keysToDelete.push(key);
     }
   }
   
-  console.log(`[CacheService] Force flush complete for restaurant: ${restaurantId}`);
+  // Now delete them one by one
+  keysToDelete.forEach(key => {
+    console.log(`[CacheService] Force removing: ${key}`);
+    localStorage.removeItem(key);
+  });
+  
+  console.log(`[CacheService] Force flush complete for restaurant: ${restaurantId} (${keysToDelete.length} items)`);
 };
 
 // Add a new function to toggle caching on/off

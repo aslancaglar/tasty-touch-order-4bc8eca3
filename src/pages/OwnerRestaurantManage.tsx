@@ -71,15 +71,14 @@ const OwnerRestaurantManage = () => {
         throw new Error("You're currently offline. Cannot refresh kiosk data without an internet connection.");
       }
       
-      // 1. Clear all cache for this restaurant
-      console.log(`[RestaurantManage] Flushing menu cache for restaurant: ${restaurant.id}`);
-      forceFlushMenuCache(restaurant.id);
+      // IMPROVED: First try to preload data, then only if successful, flush the cache
+      console.log(`[RestaurantManage] Refreshing data for restaurant: ${restaurant.id}`);
       
-      // 2. Invalidate all React Query cache for this restaurant
+      // 1. Invalidate all React Query cache for this restaurant
       console.log(`[RestaurantManage] Invalidating React Query cache for restaurant: ${restaurant.id}`);
       ensureFreshRestaurantData(restaurant.id, queryClient);
       
-      // 3. Preload fresh data for kiosk with retry logic
+      // 2. Preload fresh data for kiosk with retry logic
       if (restaurant.slug) {
         console.log(`[RestaurantManage] Preloading fresh data for restaurant: ${restaurant.slug}`);
         await retryNetworkRequest(
@@ -88,6 +87,10 @@ const OwnerRestaurantManage = () => {
           500 // initial delay in ms
         );
       }
+      
+      // 3. Only clear cache AFTER successful data fetch
+      console.log(`[RestaurantManage] Successfully refreshed data, now flushing menu cache for restaurant: ${restaurant.id}`);
+      forceFlushMenuCache(restaurant.id);
       
       console.log(`[RestaurantManage] Successfully refreshed kiosk data for: ${restaurant.name}`);
       toast({
