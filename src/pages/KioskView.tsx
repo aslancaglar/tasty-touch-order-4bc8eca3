@@ -122,7 +122,13 @@ const KioskView = () => {
       no: "Non",
       refreshMenu: "Rafraîchir le menu",
       menuRefreshed: "Menu rafraîchi",
-      menuRefreshSuccess: "Le menu a été rafraîchi avec succès"
+      menuRefreshSuccess: "Le menu a été rafraîchi avec succès",
+      cache: {
+        refreshData: "Rafraîchir le menu",
+        refreshing: "Rafraîchissement en cours...",
+        refreshSuccess: "Menu rafraîchi avec succès",
+        refreshError: "Erreur lors du rafraîchissement du menu"
+      }
     },
     en: {
       restaurantNotFound: "Restaurant not found",
@@ -149,7 +155,13 @@ const KioskView = () => {
       no: "No",
       refreshMenu: "Refresh menu",
       menuRefreshed: "Menu refreshed",
-      menuRefreshSuccess: "Menu has been refreshed successfully"
+      menuRefreshSuccess: "Menu has been refreshed successfully",
+      cache: {
+        refreshData: "Refresh Menu Data",
+        refreshing: "Refreshing and reloading...",
+        refreshSuccess: "Menu refreshed successfully",
+        refreshError: "Failed to refresh menu"
+      }
     },
     tr: {
       restaurantNotFound: "Restoran bulunamadı",
@@ -169,18 +181,38 @@ const KioskView = () => {
       multipleSelection: "Çoklu seçim",
       selectUpTo: "En fazla seçin",
       maxSelectionsReached: "Maksimum seçimlere ulaşıldı",
-      maxSelectionsMessage: "Bu kategoride sadece {max} ��ğe seçebilirsiniz.",
+      maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz.",
       inactivityTitle: "Hala orada mısınız?",
       inactivityMessage: "Siparişinize devam etmek istiyor musunuz?",
       yes: "Evet",
       no: "Hayır",
       refreshMenu: "Menüyü yenile",
       menuRefreshed: "Menü yenilendi",
-      menuRefreshSuccess: "Menü başarıyla yenilendi"
+      menuRefreshSuccess: "Menü başarıyla yenilendi",
+      cache: {
+        refreshData: "Menü Verilerini Yenile",
+        refreshing: "Yenileniyor ve yükleniyor...",
+        refreshSuccess: "Menü başarıyla yenilendi",
+        refreshError: "Menü yenilenirken hata oluştu"
+      }
     }
   };
-  const t = (key: keyof typeof translations.en) => {
-    return translations[uiLanguage][key];
+  const t = (key: string) => {
+    // Split the key by dots to handle nested properties
+    const keys = key.split('.');
+    let result = translations[uiLanguage];
+    
+    // Navigate through the nested structure
+    for (const k of keys) {
+      if (result && typeof result === 'object' && k in result) {
+        result = result[k];
+      } else {
+        console.warn(`Translation missing for key: ${key} in language: ${uiLanguage}`);
+        return key; // Return the key itself as fallback
+      }
+    }
+    
+    return result;
   };
 
   // Modify resetToWelcome to keep preloaded data
@@ -921,7 +953,7 @@ const KioskView = () => {
       
       // Show "refreshing and reloading" toast message
       toast({
-        title: t("cache.refreshData"),
+        title: t("refreshMenu"),
         description: t("cache.refreshing"),
         duration: 3000,
       });
@@ -951,7 +983,7 @@ const KioskView = () => {
     } catch (error) {
       console.error("[MenuRefresh] Error refreshing menu:", error);
       toast({
-        title: "Error",
+        title: t("cache.refreshError"),
         description: "Failed to refresh menu",
         variant: "destructive"
       });
