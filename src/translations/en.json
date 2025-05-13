@@ -137,7 +137,6 @@
     "refreshData": "Refresh Kiosk Data",
     "refreshing": "Refreshing data...",
     "refreshSuccess": "Kiosk data refreshed successfully",
-    "refreshError": "Failed to refresh kiosk data",
-    "redirectingToWelcome": "Redirecting to welcome page..."
+    "refreshError": "Failed to refresh kiosk data"
   }
 }

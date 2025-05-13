@@ -169,7 +169,7 @@ const KioskView = () => {
       multipleSelection: "Çoklu seçim",
       selectUpTo: "En fazla seçin",
       maxSelectionsReached: "Maksimum seçimlere ulaşıldı",
-      maxSelectionsMessage: "Bu kategoride sadece {max} ��ğe seçebilirsiniz.",
+      maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz.",
       inactivityTitle: "Hala orada mısınız?",
       inactivityMessage: "Siparişinize devam etmek istiyor musunuz?",
       yes: "Evet",
@@ -910,7 +910,7 @@ const KioskView = () => {
     }
   };
 
-  // Modified handleRefreshMenu function to redirect to welcome page after refresh
+  // Modify the handleRefreshMenu function to use our preloader with proper cache clearing
   const handleRefreshMenu = async () => {
     try {
       if (!restaurant) return;
@@ -968,18 +968,10 @@ const KioskView = () => {
       // Step 6: Show success message
       toast({
         title: t("menuRefreshed"),
-        description: t("menuRefreshSuccess") + " - " + t("redirectingToWelcome")
+        description: t("menuRefreshSuccess")
       });
       
       console.log("[MenuRefresh] Refresh operation completed successfully");
-      
-      // NEW STEP: Reset to welcome page after successful refresh
-      // Add a small delay so the user can see the success message
-      setTimeout(() => {
-        console.log("[MenuRefresh] Redirecting to welcome page");
-        resetToWelcome();
-      }, 1500);
-      
     } catch (error) {
       console.error("[MenuRefresh] Error refreshing menu:", error);
       toast({
