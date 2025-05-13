@@ -16,22 +16,22 @@
     "printing": "Yazdırılıyor",
     "printingPreparation": "Yazdırma hazırlanıyor...",
     "printError": "Yazdırma Hatası",
-    "printErrorDesc": "Fiş yazdırılamadı. Lütfen tekrar deneyin.",
+    "printErrorDesc": "Makbuz yazdırılamadı. Lütfen tekrar deneyin.",
     "error": "Hata",
-    "errorPrinting": "Fiş yazdırılırken bir hata oluştu."
+    "errorPrinting": "Makbuz yazdırılırken bir hata oluştu."
   },
   "orderConfirmation": {
     "title": "✅ Siparişiniz Alındı!",
-    "ticketPrinted": "🧾 Fiş yazdırıldı ve mutfağa gönderildi.",
+    "ticketPrinted": "🧾 Bir fiş yazdırıldı ve mutfağa gönderildi.",
     "preparation": "👨‍🍳 Ekip yemeğinizi hazırlamaya başlıyor.",
     "printed": "Fiş başarıyla yazdırıldı.",
     "printing": "Fiş yazdırılıyor...",
-    "payNow": "💳 Lütfen Şimdi Ödeme Yapın",
-    "paymentInstructions": "Siparişinizi tamamlamak için lütfen toplam tutarı restoran personeline ödeyiniz.",
+    "payNow": "💳 Lütfen Şimdi Ödeyin",
+    "paymentInstructions": "Siparişinizi tamamlamak için lütfen toplam tutarı kasada restoran personeline ödeyin.",
     "total": "Toplam",
     "orderNumber": "Sipariş Numarası",
-    "preparationWarning": "⚠️ Yemeğiniz ödeme yapıldıktan sonra hazırlanacaktır.",
-    "thankYou": "Ziyaretiniz için teşekkür ederiz, afiyet olsun!",
+    "preparationWarning": "⚠️ Yemeğiniz ödeme tamamlandıktan sonra hazırlanacaktır.",
+    "thankYou": "Ziyaretiniz için teşekkürler, afiyet olsun!",
     "redirecting": "Yönlendiriliyor"
   },
   "receipt": {
@@ -46,8 +46,8 @@
     "takeaway": "Paket Servis"
   },
   "welcome": {
-    "title": "Sipariş kioskumuza hoş geldiniz",
-    "start": "SİPARİŞE BAŞLAMAK İÇİN DOKUNUN"
+    "title": "Sipariş kiosk'umuza hoş geldiniz",
+    "start": "SİPARİŞ VERMEYE BAŞLAMAK İÇİN DOKUNUN"
   },
   "cart": {
     "viewCart": "Sepeti Görüntüle"
@@ -56,7 +56,7 @@
     "title": "Kontrol Paneli",
     "welcome": "TastyTouch Yönetici Kontrol Panelinize Hoş Geldiniz",
     "totalRevenue": "Toplam Gelir",
-    "revenueDesc": "Tüm restoranlardaki tüm zamanlara ait gelir",
+    "revenueDesc": "Tüm restoranlar genelinde toplam gelir",
     "restaurants": "Restoranlar",
     "restaurantsDesc": "Platformdaki aktif restoranlar",
     "totalOrders": "Toplam Siparişler",
@@ -67,7 +67,7 @@
     "popularItemsDesc": "En çok sipariş edilen menü öğeleri",
     "popularRestaurants": "Popüler Restoranlar",
     "popularRestaurantsDesc": "En iyi performans gösteren restoranlar",
-    "fromLastMonth": "geçen aya göre"
+    "fromLastMonth": "geçen aydan"
   },
   "sidebar": {
     "dashboard": "Kontrol Paneli",
@@ -89,13 +89,13 @@
     "needLogin": "Restoranları görüntülemek ve yönetmek için giriş yapmanız gerekiyor",
     "signIn": "Giriş Yap",
     "notFound": "Restoran bulunamadı",
-    "backToRestaurants": "Restoranlara Geri Dön",
-    "noLocationDefined": "Konum tanımlanmadı",
+    "backToRestaurants": "Restoranlara Dön",
+    "noLocationDefined": "Konum tanımlanmamış",
     "management": "Restoran Yönetimi"
   },
   "restaurant": {
     "menu": "Menü",
-    "toppings": "İlave Malzemeler",
+    "toppings": "Ekstralar",
     "orders": "Siparişler",
     "settings": "Ayarlar",
     "stock": "Stok",
@@ -103,7 +103,8 @@
     "refreshData": "Verileri Yenile",
     "refreshing": "Yenileniyor...",
     "dataRefreshed": "Veriler başarıyla yenilendi",
-    "refreshError": "Veriler yenilenemedi"
+    "refreshError": "Verileri yenileme başarısız oldu",
+    "refreshingAndReloading": "Menü verileri yenileniyor ve yükleniyor..."
   },
   "statistics": {
     "title": "Restoran İstatistikleri",
@@ -114,29 +115,54 @@
     "pickDate": "Tarih seçin",
     "barChart": "Çubuk",
     "lineChart": "Çizgi",
-    "selectedPeriodOrders": "Seçilen Dönemdeki Siparişler",
-    "todaysOrders": "Bugünkü Siparişler",
-    "selectedPeriodItems": "Seçilen Dönemdeki Öğeler", 
-    "thisMonthsOrders": "Bu Ayki Siparişler",
-    "selectedPeriodRevenue": "Seçilen Dönemdeki Gelir",
-    "todaysRevenue": "Bugünkü Gelir",
-    "selectedPeriodTotal": "Seçilen Dönemin Toplamı",
-    "thisMonthsRevenue": "Bu Ayki Gelir",
+    "selectedPeriodOrders": "Seçilen Dönem Siparişleri",
+    "todaysOrders": "Bugünün Siparişleri",
+    "selectedPeriodItems": "Seçilen Dönem Ürünleri",
+    "thisMonthsOrders": "Bu Ayın Siparişleri",
+    "selectedPeriodRevenue": "Seçilen Dönem Geliri",
+    "todaysRevenue": "Bugünün Geliri",
+    "selectedPeriodTotal": "Seçilen Dönem Toplamı",
+    "thisMonthsRevenue": "Bu Ayın Geliri",
     "orders": "Siparişler",
     "sales": "Satışlar",
     "ordersAndSales": "Siparişler ve Satışlar",
     "to": "ile",
     "now": "şimdi",
     "last7Days": "Son 7 gün",
-    "noData": "Seçilen zaman dilimi için veri bulunamadı."
+    "noData": "Seçilen zaman dilimi için veri mevcut değil."
   },
   "menuItem": {
-    "unavailable": "MEVCUT DEĞİL"
+    "unavailable": "ŞU ANDA MEVCUT DEĞİL"
   },
   "cache": {
-    "refreshData": "Kiosk Verilerini Yenile",
-    "refreshing": "Veriler yenileniyor...",
-    "refreshSuccess": "Kiosk verileri başarıyla yenilendi",
-    "refreshError": "Kiosk verileri yenilenemedi"
-  }
+    "refreshData": "Menü Verilerini Yenile",
+    "refreshing": "Yenileniyor ve yükleniyor...",
+    "refreshSuccess": "Menü başarıyla yenilendi",
+    "refreshError": "Menü yenilenirken hata oluştu"
+  },
+  "takeaway": "Paket Servis",
+  "quantity": "Miktar",
+  "open": "Şimdi açık",
+  "menu": "Menü",
+  "table": "Masa",
+  "dineIn": "Masaya Servis",
+  "restaurantNotFound": "Restoran bulunamadı",
+  "sorryNotFound": "Üzgünüz, bu restoranı bulamadık.",
+  "backToHome": "Ana sayfaya dön",
+  "addToCart": "Sepete ekle",
+  "selectionsRequired": "Gerekli seçimler", 
+  "pleaseSelectRequired": "Siparişinize devam etmek için tüm gerekli seçimleri yapın",
+  "addedToCart": "Sepete eklendi",
+  "added": "siparişinize eklendi",
+  "multipleSelection": "Çoklu seçim",
+  "selectUpTo": "En fazla seçin",
+  "maxSelectionsReached": "Maksimum seçimlere ulaşıldı",
+  "maxSelectionsMessage": "Bu kategoride sadece {max} öğe seçebilirsiniz.",
+  "inactivityTitle": "Hala orada mısınız?",
+  "inactivityMessage": "Siparişinize devam etmek istiyor musunuz?",
+  "yes": "Evet",
+  "no": "Hayır",
+  "refreshMenu": "Menüyü yenile",
+  "menuRefreshed": "Menü yenilendi",
+  "menuRefreshSuccess": "Menü başarıyla yenilendi"
 }

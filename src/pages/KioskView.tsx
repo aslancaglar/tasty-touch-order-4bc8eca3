@@ -21,6 +21,7 @@ import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog"
 import { preloadAllRestaurantData, PreloaderState } from "@/utils/data-preloader";
 import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
 import { useConnectionStatus } from "@/hooks/use-network-aware-fetch";
+import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -96,123 +97,10 @@ const KioskView = () => {
     const code = currency?.toUpperCase() || "EUR";
     return CURRENCY_SYMBOLS[code] || code;
   };
-  const translations = {
-    fr: {
-      restaurantNotFound: "Restaurant introuvable",
-      sorryNotFound: "Désolé, nous n'avons pas pu trouver ce restaurant.",
-      backToHome: "Retour à l'accueil",
-      open: "Ouvert maintenant",
-      dineIn: "Sur Place",
-      table: "Table",
-      takeaway: "À Emporter",
-      menu: "Menu",
-      addToCart: "Ajouter au panier",
-      selectionsRequired: "Sélections requises",
-      pleaseSelectRequired: "Veuillez faire toutes les sélections requises avant d'ajouter au panier",
-      addedToCart: "Ajouté au panier",
-      added: "ajouté à votre commande",
-      quantity: "Quantité",
-      multipleSelection: "Sélection multiple",
-      selectUpTo: "Sélectionnez jusqu'à",
-      maxSelectionsReached: "Nombre maximum de sélections atteint",
-      maxSelectionsMessage: "Vous ne pouvez sélectionner que {max} éléments dans cette catégorie.",
-      inactivityTitle: "Êtes-vous toujours là ?",
-      inactivityMessage: "Voulez-vous continuer votre commande ?",
-      yes: "Oui",
-      no: "Non",
-      refreshMenu: "Rafraîchir le menu",
-      menuRefreshed: "Menu rafraîchi",
-      menuRefreshSuccess: "Le menu a été rafraîchi avec succès",
-      cache: {
-        refreshData: "Rafraîchir le menu",
-        refreshing: "Rafraîchissement en cours...",
-        refreshSuccess: "Menu rafraîchi avec succès",
-        refreshError: "Erreur lors du rafraîchissement du menu"
-      }
-    },
-    en: {
-      restaurantNotFound: "Restaurant not found",
-      sorryNotFound: "Sorry, we couldn't find this restaurant.",
-      backToHome: "Back to home",
-      open: "Now open",
-      dineIn: "Dine In",
-      table: "Table",
-      takeaway: "Takeaway",
-      menu: "Menu",
-      addToCart: "Add to cart",
-      selectionsRequired: "Selections required",
-      pleaseSelectRequired: "Please make all required selections before adding to cart",
-      addedToCart: "Added to cart",
-      added: "added to your order",
-      quantity: "Quantity",
-      multipleSelection: "Multiple selection",
-      selectUpTo: "Select up to",
-      maxSelectionsReached: "Maximum selections reached",
-      maxSelectionsMessage: "You can only select {max} items in this category.",
-      inactivityTitle: "Are you still there?",
-      inactivityMessage: "Do you want to continue your order?",
-      yes: "Yes",
-      no: "No",
-      refreshMenu: "Refresh menu",
-      menuRefreshed: "Menu refreshed",
-      menuRefreshSuccess: "Menu has been refreshed successfully",
-      cache: {
-        refreshData: "Refresh Menu Data",
-        refreshing: "Refreshing and reloading...",
-        refreshSuccess: "Menu refreshed successfully",
-        refreshError: "Failed to refresh menu"
-      }
-    },
-    tr: {
-      restaurantNotFound: "Restoran bulunamadı",
-      sorryNotFound: "Üzgünüz, bu restoranı bulamadık.",
-      backToHome: "Ana sayfaya dön",
-      open: "Şimdi açık",
-      dineIn: "Masaya Servis",
-      table: "Masa",
-      takeaway: "Paket Servis",
-      menu: "Menü",
-      addToCart: "Sepete ekle",
-      selectionsRequired: "Gerekli seçimler",
-      pleaseSelectRequired: "Siparişinize devam etmek için tüm gerekli seçimleri yapın",
-      addedToCart: "Sepete eklendi",
-      added: "siparişinize eklendi",
-      quantity: "Miktar",
-      multipleSelection: "Çoklu seçim",
-      selectUpTo: "En fazla seçin",
-      maxSelectionsReached: "Maksimum seçimlere ulaşıldı",
-      maxSelectionsMessage: "Bu kategoride sadece {max} öğe seçebilirsiniz.",
-      inactivityTitle: "Hala orada mısınız?",
-      inactivityMessage: "Siparişinize devam etmek istiyor musunuz?",
-      yes: "Evet",
-      no: "Hayır",
-      refreshMenu: "Menüyü yenile",
-      menuRefreshed: "Menü yenilendi",
-      menuRefreshSuccess: "Menü başarıyla yenilendi",
-      cache: {
-        refreshData: "Menü Verilerini Yenile",
-        refreshing: "Yenileniyor ve yükleniyor...",
-        refreshSuccess: "Menü başarıyla yenilendi",
-        refreshError: "Menü yenilenirken hata oluştu"
-      }
-    }
-  };
-  const t = (key: string) => {
-    // Split the key by dots to handle nested properties
-    const keys = key.split('.');
-    let result = translations[uiLanguage];
-    
-    // Navigate through the nested structure
-    for (const k of keys) {
-      if (result && typeof result === 'object' && k in result) {
-        result = result[k];
-      } else {
-        console.warn(`Translation missing for key: ${key} in language: ${uiLanguage}`);
-        return key; // Return the key itself as fallback
-      }
-    }
-    
-    return result;
+
+  // Use a simple t function that always returns a string, leveraging our language-utils
+  const t = (key: string): string => {
+    return getTranslation(key, uiLanguage as SupportedLanguage);
   };
 
   // Modify resetToWelcome to keep preloaded data
