@@ -14,7 +14,7 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
-import { setCacheItem, getCacheItem, clearMenuCache, forceFlushMenuCache } from "@/services/cache-service";
+import { setCacheItem, getCacheItem, clearMenuCache, forceFlushMenuCache, isCacheNeedsRefresh } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
 import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
