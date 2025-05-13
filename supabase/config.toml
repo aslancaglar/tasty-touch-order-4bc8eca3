@@ -1,1 +1,6 @@
+
 project_id = "yifimiqeybttmbhuplaq"
+
+# Enable better console logging and debugging
+[functions]
+debug = true

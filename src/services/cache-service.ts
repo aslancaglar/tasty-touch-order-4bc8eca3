@@ -145,7 +145,8 @@ export const clearMenuCache = (restaurantId: string): void => {
           key.includes('toppings_') ||
           key.includes('options_') ||
           key.includes('choices_') ||
-          key.includes('menu_')) {
+          key.includes('menu_') ||
+          key.includes('print_config_')) { // Add print_config_ to clear print-related cache
         keysToRemove.push(key);
       }
     }

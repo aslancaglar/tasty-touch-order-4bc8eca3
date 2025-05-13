@@ -31,17 +31,12 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import currencyCodes from "currency-codes";
 import { duplicateRestaurant } from "@/services/kiosk-service";
+import { clearMenuCache } from "@/services/cache-service";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
   onRestaurantUpdated?: (updatedRestaurant: Restaurant) => void;
 }
-
-const languageOptions = [
-  { value: "fr", label: "Français" },
-  { value: "en", label: "English" },
-  { value: "tr", label: "Türkçe" },
-];
 
 // Fix: properly access currency codes and add error handling
 const currencyOptions = (() => {
@@ -260,6 +255,8 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
 
   const handleSavePrintSettings = async () => {
     setIsSavingPrintSettings(true);
+    console.log("Saving print settings for restaurant:", restaurant.id);
+    console.log("Browser print enabled:", browserPrintEnabled);
     
     try {
       const { data: existingConfig, error: checkError } = await supabase
@@ -269,19 +266,22 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         .single();
       
       if (checkError && checkError.code !== 'PGRST116') {
+        console.error("Error checking existing print config:", checkError);
         throw checkError;
       }
       
       let result;
       
       if (existingConfig) {
+        console.log("Updating existing print config:", existingConfig.id);
         result = await supabase
           .from('restaurant_print_config')
           .update({ browser_printing_enabled: browserPrintEnabled })
           .eq('restaurant_id', restaurant.id);
           
-        console.log("Updated browser printing setting:", browserPrintEnabled);
+        console.log("Update response:", result);
       } else {
+        console.log("Creating new print config for restaurant:", restaurant.id);
         result = await supabase
           .from('restaurant_print_config')
           .insert({ 
@@ -289,10 +289,11 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
             browser_printing_enabled: browserPrintEnabled 
           });
           
-        console.log("Created new print config with browser printing:", browserPrintEnabled);
+        console.log("Insert response:", result);
       }
       
       if (result.error) {
+        console.error("Error saving print settings:", result.error);
         throw result.error;
       }
       
@@ -300,11 +301,18 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         title: "Paramètres sauvegardés",
         description: "Les paramètres d'impression ont été mis à jour"
       });
+      
+      // Clear any cached data that might depend on print settings
+      if (restaurant.id) {
+        clearMenuCache(restaurant.id);
+      }
+      
     } catch (error) {
       console.error("Error saving print settings:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       toast({
         title: "Erreur",
-        description: "Erreur lors de la sauvegarde des paramètres d'impression",
+        description: `Erreur lors de la sauvegarde des paramètres d'impression: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
