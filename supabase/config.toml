@@ -12,3 +12,4 @@ timeout = 15
 # Improve network resilience for offline scenarios
 [api]
 request_timeout = 30
+
