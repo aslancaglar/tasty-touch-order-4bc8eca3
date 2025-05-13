@@ -47,7 +47,7 @@
   },
   "welcome": {
     "title": "Bienvenue sur notre borne de commande",
-    "start": "TOUCHEZ POUR COMMENCER À COMMANDER"
+    "start": "TOUCHEZ POUR COMMANDER"
   },
   "cart": {
     "viewCart": "Voir le panier"
