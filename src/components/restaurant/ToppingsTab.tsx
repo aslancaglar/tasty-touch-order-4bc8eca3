@@ -10,6 +10,7 @@ import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
 import { setCacheItem, getCacheItem, clearCache } from "@/services/cache-service";
+
 interface ToppingCategoryWithToppings extends ToppingCategory {
   toppings?: Topping[];
 }

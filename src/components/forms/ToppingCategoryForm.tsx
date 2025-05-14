@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import ImageUpload from "@/components/ImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { Topping } from "@/types/database-types";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 
 const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -19,7 +20,7 @@ const toppingCategorySchema = z.object({
   icon: z.string().optional(),
   min_selections: z.coerce.number().min(0, "Must be 0 or greater"),
   max_selections: z.coerce.number().min(0, "Must be 0 or greater"),
-  allow_multiple_same_topping: z.boolean().optional(),
+  allow_multiple_same_topping: z.boolean().default(false),
 });
 
 type ToppingCategoryFormValues = z.infer<typeof toppingCategorySchema>;
