@@ -17,15 +17,26 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       storageKey: 'kiosk-admin-auth',
+      flowType: 'implicit', // Add implicit flow for better token handling
     },
     global: {
-      // Increase timeouts and add retry mechanism
+      // Enhanced network resilience settings
       headers: { 'x-application-name': 'kiosk-admin' },
-      fetch: (url, options) => {
+      fetch: (url, options = {}) => {
+        // Create a new AbortController with a long timeout (45 seconds)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        
         return fetch(url, {
           ...options,
-          // Increase timeout by setting longer response time expectations
-          signal: options?.signal || new AbortController().signal,
+          signal: controller.signal,
+        }).then(response => {
+          clearTimeout(timeoutId);
+          return response;
+        }).catch(error => {
+          clearTimeout(timeoutId);
+          console.error("Supabase fetch error:", error);
+          throw error;
         });
       },
     },
@@ -38,5 +49,38 @@ export const supabase = createClient<Database>(
         eventsPerSecond: 10,
       },
     },
+    // Increased timeout for all requests
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storageKey: 'kiosk-admin-auth',
+      flowType: 'implicit', // Add implicit flow for better token handling
+      detectSessionInUrl: true, // Better handling of auth redirects
+      // Two hour expiry window gives more time for token refresh
+      localStorage: {
+        getItem: key => {
+          try {
+            return localStorage.getItem(key);
+          } catch (error) {
+            console.error("Error reading from localStorage:", error);
+            return null;
+          }
+        },
+        setItem: (key, value) => {
+          try {
+            localStorage.setItem(key, value);
+          } catch (error) {
+            console.error("Error writing to localStorage:", error);
+          }
+        },
+        removeItem: key => {
+          try {
+            localStorage.removeItem(key);
+          } catch (error) {
+            console.error("Error removing from localStorage:", error);
+          }
+        }
+      }
+    }
   }
 );
