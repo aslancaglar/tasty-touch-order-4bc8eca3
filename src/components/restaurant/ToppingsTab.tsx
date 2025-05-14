@@ -273,7 +273,8 @@ const ToppingsTab = ({
         description,
         min_selections,
         max_selections,
-        conditionToppingIds
+        conditionToppingIds,
+        allow_multiple_same_topping
       } = values;
       console.log("Creating category with values:", values);
       const {
@@ -285,7 +286,8 @@ const ToppingsTab = ({
         restaurant_id: restaurant.id,
         min_selections,
         max_selections,
-        show_if_selection_id: conditionToppingIds && conditionToppingIds.length > 0 ? conditionToppingIds : null
+        show_if_selection_id: conditionToppingIds && conditionToppingIds.length > 0 ? conditionToppingIds : null,
+        allow_multiple_same_topping
       }]).select().single();
       if (error) throw error;
       toast({
@@ -317,10 +319,11 @@ const ToppingsTab = ({
         description,
         min_selections,
         max_selections,
-        conditionToppingIds
+        conditionToppingIds,
+        allow_multiple_same_topping
       } = values;
       console.log("Updating category with values:", values);
-      console.log("Selected condition toppings:", conditionToppingIds);
+      console.log("allow_multiple_same_topping value:", allow_multiple_same_topping);
       const {
         error
       } = await supabase.from('topping_categories').update({
@@ -328,7 +331,8 @@ const ToppingsTab = ({
         description,
         min_selections,
         max_selections,
-        show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null
+        show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null,
+        allow_multiple_same_topping
       }).eq('id', selectedCategory.id);
       if (error) throw error;
       toast({
@@ -454,13 +458,19 @@ const ToppingsTab = ({
               <DialogTitle>Modifier la catégorie</DialogTitle>
               <DialogDescription>Modifiez les détails de cette catégorie</DialogDescription>
             </DialogHeader>
-            {selectedCategory && <ToppingCategoryForm restaurantId={restaurant.id} initialValues={{
-            name: selectedCategory.name,
-            description: selectedCategory.description || "",
-            min_selections: selectedCategory.min_selections || 0,
-            max_selections: selectedCategory.max_selections || 0,
-            show_if_selection_id: selectedCategory.show_if_selection_id || []
-          }} onSubmit={handleUpdateCategory} isLoading={isUpdatingCategory} />}
+            {selectedCategory && <ToppingCategoryForm 
+              restaurantId={restaurant.id} 
+              initialValues={{
+                name: selectedCategory.name,
+                description: selectedCategory.description || "",
+                min_selections: selectedCategory.min_selections || 0,
+                max_selections: selectedCategory.max_selections || 0,
+                show_if_selection_id: selectedCategory.show_if_selection_id || [],
+                allow_multiple_same_topping: selectedCategory.allow_multiple_same_topping || false
+              }} 
+              onSubmit={handleUpdateCategory} 
+              isLoading={isUpdatingCategory} 
+            />}
           </ScrollArea>
         </DialogContent>
       </Dialog>

@@ -50,6 +50,7 @@ const ToppingCategoryForm = ({
   // Debug logs
   console.log("ToppingCategoryForm initialValues:", initialValues);
   console.log("Initial selectedToppings:", selectedToppings);
+  console.log("Initial allow_multiple_same_topping:", initialValues?.allow_multiple_same_topping);
   
   const form = useForm<ToppingCategoryFormValues>({
     resolver: zodResolver(toppingCategorySchema),
@@ -126,6 +127,8 @@ const ToppingCategoryForm = ({
   const handleSubmit = (values: ToppingCategoryFormValues) => {
     console.log("Submitting form with values:", values);
     console.log("Selected toppings:", selectedToppings);
+    console.log("allow_multiple_same_topping value:", values.allow_multiple_same_topping);
+    
     onSubmit({
       ...values,
       conditionToppingIds: selectedToppings
