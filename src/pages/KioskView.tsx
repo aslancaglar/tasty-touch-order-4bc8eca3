@@ -26,9 +26,15 @@ import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
+
+// Updated type definition for SelectedToppingCategory to include toppingQuantities
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
+  toppingQuantities?: {
+    id: string;
+    quantity: number;
+  }[];
 };
 
 const KioskView = () => {
