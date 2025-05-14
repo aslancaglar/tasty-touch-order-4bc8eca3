@@ -7,7 +7,6 @@ import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { calculateCartTotals } from "@/utils/price-utils";
-
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
@@ -33,7 +32,6 @@ interface CartProps {
   uiLanguage?: "fr" | "en" | "tr";
   t: (key: string) => string;
 }
-
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
@@ -46,11 +44,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RUB: "₽"
 };
-
 function getCurrencySymbol(currency: string) {
   return CURRENCY_SYMBOLS[(currency || "EUR").toUpperCase()] || (currency || "EUR").toUpperCase();
 }
-
 const cartTranslations = {
   fr: {
     yourOrder: "VOTRE COMMANDE",
@@ -86,7 +82,6 @@ const cartTranslations = {
     empty: "Ürün yok"
   }
 };
-
 const Cart: React.FC<CartProps> = ({
   cart,
   isOpen,
@@ -122,7 +117,6 @@ const Cart: React.FC<CartProps> = ({
       return t(key);
     }
   };
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && !showOrderSummary && cartRef.current && !cartRef.current.contains(event.target as Node)) {
@@ -134,33 +128,26 @@ const Cart: React.FC<CartProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onToggleOpen, showOrderSummary]);
-
   const handleShowOrderSummary = () => {
     setShowOrderSummary(true);
   };
-  
   const handleCloseOrderSummary = () => {
     setShowOrderSummary(false);
   };
-  
   const handlePlaceOrder = () => {
     onPlaceOrder();
     setShowOrderSummary(false);
   };
-  
   if (!isOpen || showOrderSummaryOnly) {
     return null;
   }
-  
   const {
     total,
     subtotal,
     tax
   } = calculateCartTotals(cart);
-  
   const reversedCart = [...cart].reverse();
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
-  
   return <>
       <div ref={cartRef} style={{
       maxHeight: "60vh"
@@ -190,7 +177,7 @@ const Cart: React.FC<CartProps> = ({
                       </Button>
                       
                       <div className="flex items-start space-x-3">
-                        <img src={item.menuItem.image || item.menuItem.image_url || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
+                        <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
                         <div className="flex flex-col">
                           <h3 className="text-responsive-body font-bold font-bebas text-lg">{item.menuItem.name}</h3>
                           <p className="text-responsive-price text-gray-700">
@@ -249,5 +236,4 @@ const Cart: React.FC<CartProps> = ({
       <OrderSummary isOpen={showOrderSummary} onClose={handleCloseOrderSummary} cart={cart} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} />
     </>;
 };
-
 export default Cart;

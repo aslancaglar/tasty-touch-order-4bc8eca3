@@ -17,13 +17,9 @@ interface ItemCustomizationDialogProps {
   selectedToppings: {
     categoryId: string;
     toppingIds: string[];
-    toppingQuantities?: {
-      id: string;
-      quantity: number;
-    }[];
   }[];
   onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
-  onToggleTopping: (categoryId: string, toppingId: string, quantity?: number) => void;
+  onToggleTopping: (categoryId: string, toppingId: string) => void;
   quantity: number;
   onQuantityChange: (quantity: number) => void;
   specialInstructions: string;
@@ -34,7 +30,18 @@ interface ItemCustomizationDialogProps {
 }
 
 // Define alternating background colors for topping categories
-const CATEGORY_BACKGROUNDS = ["bg-[#F2FCE2]", "bg-[#E5DEFF]", "bg-[#FEF7CD]", "bg-[#D3E4FD]", "bg-[#FFDEE2]", "bg-[#FDE1D3]"];
+const CATEGORY_BACKGROUNDS = ["bg-[#F2FCE2]",
+// Soft Green
+"bg-[#E5DEFF]",
+// Soft Purple
+"bg-[#FEF7CD]",
+// Soft Yellow
+"bg-[#D3E4FD]",
+// Soft Blue
+"bg-[#FFDEE2]",
+// Soft Pink
+"bg-[#FDE1D3]" // Soft Peach
+];
 
 // Memoize the Option component to prevent unnecessary re-renders
 const Option = memo(({
@@ -83,7 +90,7 @@ const ToppingCategory = memo(({
 }: {
   category: any;
   selectedCategory: any;
-  onToggleTopping: (categoryId: string, toppingId: string, quantity?: number) => void;
+  onToggleTopping: (categoryId: string, toppingId: string) => void;
   t: (key: string) => string;
   currencySymbol: string;
   bgColorClass: string;
@@ -110,13 +117,6 @@ const ToppingCategory = memo(({
   const selectedToppingsCount = selectedCategory?.toppingIds.length || 0;
   const minRequired = category.required ? category.min_selections > 0 ? category.min_selections : 1 : 0;
   const showWarning = category.required && selectedToppingsCount < minRequired;
-
-  // Helper function to get the current quantity of a topping
-  const getToppingQuantity = (toppingId: string) => {
-    if (!selectedCategory?.toppingQuantities) return 0;
-    const toppingQuantity = selectedCategory.toppingQuantities.find(tq => tq.id === toppingId);
-    return toppingQuantity ? toppingQuantity.quantity : 0;
-  };
   
   return <div 
     className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}
@@ -142,13 +142,8 @@ const ToppingCategory = memo(({
       <div className={`grid ${gridCols} gap-1`}>
         {sortedToppings.map(topping => {
         const isSelected = selectedCategory?.toppingIds.includes(topping.id) || false;
-        const toppingQuantity = getToppingQuantity(topping.id);
         const buttonSize = "h-10 w-10"; // Same size for both states
-        
-        return <div 
-            key={topping.id} 
-            className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white"
-          >
+        return <div key={topping.id} onClick={() => onToggleTopping(category.id, topping.id)} className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white">
               <span className={`flex-1 mr-2 ${isSelected ? 'text-green-700 font-medium' : ''}`}>
                 {topping.name}
               </span>
@@ -156,66 +151,15 @@ const ToppingCategory = memo(({
                 {topping.price > 0 && <span className="text-sm">
                     +{parseFloat(topping.price.toString()).toFixed(2)} {currencySymbol}
                   </span>}
-                
-                {/* Different UI based on whether multiple same topping is allowed */}
-                {category.allow_multiple_same_topping ? (
-                  <div className="flex items-center gap-1">
-                    {/* Only show minus button if quantity > 0 */}
-                    {toppingQuantity > 0 && (
-                      <Button 
-                        size="icon" 
-                        variant="outline"
-                        className="h-8 w-8 rounded-full"
-                        onClick={e => {
-                          e.stopPropagation();
-                          onToggleTopping(category.id, topping.id, Math.max(0, toppingQuantity - 1));
-                        }}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                    )}
-                    
-                    {/* Show quantity if > 0 */}
-                    {toppingQuantity > 0 && (
-                      <span className="w-6 text-center font-medium">{toppingQuantity}</span>
-                    )}
-                    
-                    {/* Plus button for adding more */}
-                    <Button 
-                      size="icon"
-                      className={`h-8 w-8 rounded-full ${toppingQuantity > 0 ? 'bg-green-700 text-white hover:bg-green-600' : 'bg-violet-700 text-white hover:bg-violet-600'}`}
-                      onClick={e => {
-                        e.stopPropagation();
-                        onToggleTopping(category.id, topping.id, toppingQuantity + 1);
-                      }}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  // Original toggle UI
-                  !isSelected ? (
-                    <Plus 
-                      onClick={e => {
-                        e.stopPropagation();
-                        onToggleTopping(category.id, topping.id);
-                      }} 
-                      className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} 
-                    />
-                  ) : (
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={e => {
-                        e.stopPropagation();
-                        onToggleTopping(category.id, topping.id);
-                      }} 
-                      className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                  )
-                )}
+                {!isSelected ? <Plus onClick={e => {
+              e.stopPropagation();
+              onToggleTopping(category.id, topping.id);
+            }} className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} /> : <Button variant="outline" size="icon" onClick={e => {
+              e.stopPropagation();
+              onToggleTopping(category.id, topping.id);
+            }} className={`${buttonSize} rounded-full text-white bg-green-700 hover:bg-green-600`}>
+                    <Check className="h-4 w-4" />
+                  </Button>}
               </div>
             </div>;
       })}
@@ -288,7 +232,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   const calculateItemPrice = useCallback(() => {
     if (!item) return 0;
     let price = parseFloat(item.price.toString());
-    
     if (item.options) {
       item.options.forEach(option => {
         const selected = selectedOptions.find(o => o.optionId === option.id);
@@ -302,38 +245,19 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         }
       });
     }
-    
     if (item.toppingCategories) {
       item.toppingCategories.forEach(category => {
         const selected = selectedToppings.find(t => t.categoryId === category.id);
-        
         if (selected) {
-          // Handle regular toppings selection
-          if (selected.toppingIds) {
-            selected.toppingIds.forEach(toppingId => {
-              const topping = category.toppings.find(t => t.id === toppingId);
-              if (topping && topping.price) {
-                price += parseFloat(topping.price.toString());
-              }
-            });
-          }
-          
-          // Handle quantity-based topping selection (multiple same topping)
-          if (selected.toppingQuantities) {
-            selected.toppingQuantities.forEach(tq => {
-              if (tq.quantity > 0) {
-                const topping = category.toppings.find(t => t.id === tq.id);
-                if (topping && topping.price) {
-                  // Multiply price by quantity
-                  price += parseFloat(topping.price.toString()) * tq.quantity;
-                }
-              }
-            });
-          }
+          selected.toppingIds.forEach(toppingId => {
+            const topping = category.toppings.find(t => t.id === toppingId);
+            if (topping && topping.price) {
+              price += parseFloat(topping.price.toString());
+            }
+          });
         }
       });
     }
-    
     return price * quantity;
   }, [item, selectedOptions, selectedToppings, quantity]);
   

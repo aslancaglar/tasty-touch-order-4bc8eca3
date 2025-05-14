@@ -1,123 +1,175 @@
+// Types representing our Supabase database entities
 
-export interface Restaurant {
+export type Restaurant = {
   id: string;
   name: string;
   slug: string;
-  description?: string;
-  address?: string;
-  phone_number?: string;
-  website?: string;
-  created_at: Date;
-  updated_at: Date;
-  image_url?: string;
-  logo_url?: string; // Added missing property
-  location?: string; // Added missing property
-  currency: string;
-  ui_language: string;
-}
+  image_url: string | null;
+  logo_url: string | null;
+  location: string | null;
+  created_at: string;
+  updated_at: string;
+  ui_language?: string;
+  currency?: string; // NEW: ISO 4217 code, e.g. "EUR", "USD", ...
+};
 
-export interface MenuCategory {
+export type MenuCategory = {
   id: string;
   name: string;
-  description?: string;
   restaurant_id: string;
-  created_at: Date;
-  updated_at: Date;
-  display_order?: number;
-  items: MenuItem[];
-  icon?: string; // Added missing property
-  image_url?: string; // Added missing property
-}
+  description: string | null;
+  icon: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+  display_order?: number | null; // Added display_order property
+};
 
-export interface MenuItem {
+export type MenuItem = {
   id: string;
   name: string;
-  description?: string;
-  image?: string; // Added missing property
-  image_url?: string; // Added missing for backward compatibility
+  description: string | null;
   price: number;
-  promotion_price?: number; // Added missing property
+  promotion_price: number | null;
+  image: string | null;
   category_id: string;
-  created_at: Date;
-  updated_at: Date;
-  options?: MenuOption[];
-  tax_percentage?: number;
-  display_order?: number;
-  available_from?: string; // Added missing property
-  available_until?: string; // Added missing property
-  in_stock?: boolean; // Added missing property
-  topping_categories?: ToppingCategory[]; // Added missing property
-}
+  created_at: string;
+  updated_at: string;
+  topping_categories?: string[];
+  tax_percentage?: number | null;
+  in_stock: boolean;
+  display_order?: number | null; // Added display_order property
+  available_from?: string | null; // Added time availability property
+  available_until?: string | null; // Added time availability property
+};
 
-export interface MenuOption {
+export type MenuItemToppingCategory = {
   id: string;
-  name: string;
-  description?: string;
   menu_item_id: string;
-  required: boolean;
-  multiple: boolean;
-  created_at: Date;
-  updated_at: Date;
-  choices: MenuChoice[];
-}
+  topping_category_id: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+};
 
-export interface MenuChoice {
+export type MenuItemOption = {
+  id: string;
+  menu_item_id: string;
+  name: string;
+  required: boolean | null;
+  multiple: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type OptionChoice = {
+  id: string;
+  option_id: string;
+  name: string;
+  price: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ToppingCategory = {
   id: string;
   name: string;
-  description?: string;
-  price?: number;
-  option_id: string;
-  created_at: Date;
-  updated_at: Date;
-}
+  restaurant_id: string;
+  description: string | null;
+  icon: string | null;
+  min_selections: number | null;
+  max_selections: number | null;
+  created_at: string;
+  updated_at: string;
+  show_if_selection_type?: string[] | null;
+  show_if_selection_id?: string[] | null;
+  display_order?: number | null; // Added display_order property
+};
+
+export type Topping = {
+  id: string;
+  name: string;
+  price: number;
+  category_id: string;
+  tax_percentage: number | null;
+  created_at: string;
+  updated_at: string;
+  in_stock: boolean; // Added this property to match the database schema
+  display_order?: number | null; // Added display_order property
+};
+
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+
+// Add the missing OrderType type
+export type OrderType = 'dine-in' | 'takeaway' | null;
 
 export interface Order {
   id: string;
   restaurant_id: string;
+  customer_id?: string;
   customer_name?: string;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+  created_at: string;
   total: number;
-  created_at: Date;
-  updated_at: Date;
+  order_type?: OrderType;
+  table_number?: string;
 }
 
-// Define OrderStatus type for use in OrdersTab
-export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
-
-export interface OrderItem {
+export type OrderItem = {
   id: string;
   order_id: string;
   menu_item_id: string;
   quantity: number;
   price: number;
-  special_instructions?: string;
-  created_at: Date;
-  updated_at: Date;
-}
+  special_instructions: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
-export interface OrderItemOption {
+export type OrderItemOption = {
   id: string;
   order_item_id: string;
   option_id: string;
   choice_id: string;
-  created_at: Date;
-  updated_at: Date;
-}
+  created_at: string;
+  updated_at: string;
+};
 
-export interface OrderItemTopping {
-  id: string;
-  order_item_id: string;
-  topping_id: string;
-  created_at: Date;
-  updated_at: Date;
+export interface MenuItemWithOptions extends MenuItem {
+  options?: {
+    id: string;
+    name: string;
+    required: boolean | null;
+    multiple: boolean | null;
+    choices: {
+      id: string;
+      name: string;
+      price: number | null;
+    }[];
+  }[];
+  toppingCategories?: {
+    id: string;
+    name: string;
+    min_selections: number;
+    max_selections: number;
+    required: boolean;
+    display_order?: number | null; // Added display_order here
+    toppings: {
+      id: string;
+      name: string;
+      price: number;
+      tax_percentage: number;
+      display_order?: number | null; // Added display_order property
+    }[];
+    show_if_selection_id?: string[] | null;
+    show_if_selection_type?: string[] | null;
+  }[];
 }
 
 export interface CartItem {
   id: string;
   menuItem: MenuItemWithOptions;
   quantity: number;
-  itemPrice: number;
-  specialInstructions?: string;
   selectedOptions: {
     optionId: string;
     choiceIds: string[];
@@ -125,47 +177,7 @@ export interface CartItem {
   selectedToppings: {
     categoryId: string;
     toppingIds: string[];
-    toppingQuantities?: {
-      id: string;
-      quantity: number;
-    }[];
   }[];
-}
-
-export interface MenuItemWithOptions extends MenuItem {
-  options?: MenuOption[];
-  toppingCategories?: ToppingCategory[];
-}
-
-export type OrderType = 'take_out' | 'delivery' | 'dine_in';
-
-export interface Topping {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  category_id: string;
-  created_at: Date;
-  updated_at: Date;
-  tax_percentage?: number;
-  display_order?: number;
-  in_stock?: boolean; // Added missing property
-}
-
-// Add allow_multiple_same_topping to ToppingCategory
-export interface ToppingCategory {
-  id: string;
-  name: string;
-  description?: string;
-  min_selections: number;
-  max_selections: number;
-  restaurant_id: string;
-  created_at: Date;
-  updated_at: Date;
-  toppings?: Topping[];
-  required?: boolean;
-  show_if_selection_id?: string[];
-  show_if_selection_type?: string;
-  display_order?: number;
-  allow_multiple_same_topping?: boolean;
+  specialInstructions?: string;
+  itemPrice: number;
 }

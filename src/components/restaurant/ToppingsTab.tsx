@@ -10,7 +10,6 @@ import ToppingForm, { ToppingFormValues } from "@/components/forms/ToppingForm";
 import ToppingCategoryForm from "@/components/forms/ToppingCategoryForm";
 import { Topping, ToppingCategory } from "@/types/database-types";
 import { setCacheItem, getCacheItem, clearCache } from "@/services/cache-service";
-
 interface ToppingCategoryWithToppings extends ToppingCategory {
   toppings?: Topping[];
 }
@@ -274,8 +273,7 @@ const ToppingsTab = ({
         description,
         min_selections,
         max_selections,
-        conditionToppingIds,
-        allow_multiple_same_topping
+        conditionToppingIds
       } = values;
       console.log("Creating category with values:", values);
       const {
@@ -287,8 +285,7 @@ const ToppingsTab = ({
         restaurant_id: restaurant.id,
         min_selections,
         max_selections,
-        show_if_selection_id: conditionToppingIds && conditionToppingIds.length > 0 ? conditionToppingIds : null,
-        allow_multiple_same_topping
+        show_if_selection_id: conditionToppingIds && conditionToppingIds.length > 0 ? conditionToppingIds : null
       }]).select().single();
       if (error) throw error;
       toast({
@@ -320,8 +317,7 @@ const ToppingsTab = ({
         description,
         min_selections,
         max_selections,
-        conditionToppingIds,
-        allow_multiple_same_topping
+        conditionToppingIds
       } = values;
       console.log("Updating category with values:", values);
       console.log("Selected condition toppings:", conditionToppingIds);
@@ -332,8 +328,7 @@ const ToppingsTab = ({
         description,
         min_selections,
         max_selections,
-        show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null,
-        allow_multiple_same_topping
+        show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null
       }).eq('id', selectedCategory.id);
       if (error) throw error;
       toast({
@@ -460,13 +455,12 @@ const ToppingsTab = ({
               <DialogDescription>Modifiez les détails de cette catégorie</DialogDescription>
             </DialogHeader>
             {selectedCategory && <ToppingCategoryForm restaurantId={restaurant.id} initialValues={{
-              name: selectedCategory.name,
-              description: selectedCategory.description || "",
-              min_selections: selectedCategory.min_selections || 0,
-              max_selections: selectedCategory.max_selections || 0,
-              show_if_selection_id: selectedCategory.show_if_selection_id || [],
-              allow_multiple_same_topping: selectedCategory.allow_multiple_same_topping || false
-            }} onSubmit={handleUpdateCategory} isLoading={isUpdatingCategory} />}
+            name: selectedCategory.name,
+            description: selectedCategory.description || "",
+            min_selections: selectedCategory.min_selections || 0,
+            max_selections: selectedCategory.max_selections || 0,
+            show_if_selection_id: selectedCategory.show_if_selection_id || []
+          }} onSubmit={handleUpdateCategory} isLoading={isUpdatingCategory} />}
           </ScrollArea>
         </DialogContent>
       </Dialog>

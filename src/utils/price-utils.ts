@@ -1,4 +1,3 @@
-
 import { CartItem } from "@/types/database-types";
 
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
@@ -57,35 +56,17 @@ export const calculateCartTotals = (cart: CartItem[]) => {
       item.selectedToppings.forEach(toppingCategory => {
         const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingCategory.categoryId);
         if (category) {
-          // Handle toppings with quantity
-          if (category.allow_multiple_same_topping && toppingCategory.toppingQuantities) {
-            toppingCategory.toppingQuantities.forEach(tq => {
-              if (tq.quantity > 0) {
-                const topping = category.toppings.find(t => t.id === tq.id);
-                if (topping) {
-                  const toppingPrice = topping.price ? parseFloat(topping.price.toString()) * tq.quantity * item.quantity : 0;
-                  itemToppingsTotal += toppingPrice;
-                  
-                  // Use topping specific tax rate if available
-                  const toppingVatPercentage = topping.tax_percentage ?? vatPercentage; 
-                  itemToppingsTax += calculateTaxAmount(toppingPrice, toppingVatPercentage);
-                }
-              }
-            });
-          } else {
-            // Handle regular toppings
-            toppingCategory.toppingIds.forEach(toppingId => {
-              const topping = category.toppings.find(t => t.id === toppingId);
-              if (topping) {
-                const toppingPrice = topping.price ? parseFloat(topping.price.toString()) * item.quantity : 0;
-                itemToppingsTotal += toppingPrice;
-                
-                // Use topping specific tax rate if available
-                const toppingVatPercentage = topping.tax_percentage ?? vatPercentage; 
-                itemToppingsTax += calculateTaxAmount(toppingPrice, toppingVatPercentage);
-              }
-            });
-          }
+          toppingCategory.toppingIds.forEach(toppingId => {
+            const topping = category.toppings.find(t => t.id === toppingId);
+            if (topping) {
+              const toppingPrice = topping.price ? parseFloat(topping.price.toString()) * item.quantity : 0;
+              itemToppingsTotal += toppingPrice;
+              
+              // Use topping specific tax rate if available
+              const toppingVatPercentage = topping.tax_percentage ?? vatPercentage; 
+              itemToppingsTax += calculateTaxAmount(toppingPrice, toppingVatPercentage);
+            }
+          });
         }
       });
     }

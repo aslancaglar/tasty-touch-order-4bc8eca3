@@ -69,7 +69,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
             </div>
             {orderType && 
               <div className="mt-1 px-3 py-1 bg-white/20 rounded-full text-white text-sm inline-flex items-center font-bebas tracking-wide">
-                {orderType === 'dine_in' ? 
+                {orderType === 'dine-in' ? 
                   <>
                     <span className="mr-1">{t("dineIn")}</span>
                     {tableNumber && <span>- {t("table")} {tableNumber}</span>}
