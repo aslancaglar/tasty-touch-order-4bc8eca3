@@ -1,3 +1,4 @@
+
 // Types representing our Supabase database entities
 
 export type Restaurant = {
@@ -84,6 +85,7 @@ export type ToppingCategory = {
   show_if_selection_type?: string[] | null;
   show_if_selection_id?: string[] | null;
   display_order?: number | null; // Added display_order property
+  allow_multiple_same_topping?: boolean; // Added property to allow multiple quantities
 };
 
 export type Topping = {
@@ -163,9 +165,11 @@ export interface MenuItemWithOptions extends MenuItem {
     }[];
     show_if_selection_id?: string[] | null;
     show_if_selection_type?: string[] | null;
+    allow_multiple_same_topping?: boolean; // Added property for multiple quantities
   }[];
 }
 
+// Extended CartItem type to support topping quantities
 export interface CartItem {
   id: string;
   menuItem: MenuItemWithOptions;
@@ -177,6 +181,7 @@ export interface CartItem {
   selectedToppings: {
     categoryId: string;
     toppingIds: string[];
+    toppingQuantities?: { [toppingId: string]: number }; // Added map for topping quantities
   }[];
   specialInstructions?: string;
   itemPrice: number;

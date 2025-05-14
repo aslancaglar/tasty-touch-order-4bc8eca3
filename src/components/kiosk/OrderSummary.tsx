@@ -151,13 +151,21 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
                   const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                  const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                  const toppingRef = category?.toppings.find(t => t.name === toppingObj.name || t.name === toppingObj);
                   const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                  
+                  // Get quantity from the toppingObj if it's an object with quantity property
+                  const quantity = typeof toppingObj === 'object' && toppingObj.quantity ? toppingObj.quantity : 1;
+                  const displayName = typeof toppingObj === 'object' ? toppingObj.name : toppingObj;
+                  
+                  // Calculate total price for this topping (price * quantity)
+                  const totalToppingPrice = price * quantity;
+                  
                   return <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                              <span style={{
-                      paddingLeft: 6
-                    }}>+ {toppingObj}</span>
-                              <span>{price > 0 ? price.toFixed(2) + " " + currencySymbol : ""}</span>
+                              <span style={{ paddingLeft: 6 }}>
+                                {quantity > 1 ? `+ ${quantity}x ${displayName}` : `+ ${displayName}`}
+                              </span>
+                              <span>{totalToppingPrice > 0 ? totalToppingPrice.toFixed(2) + " " + currencySymbol : ""}</span>
                             </div>;
                 })}
                       </div>)}

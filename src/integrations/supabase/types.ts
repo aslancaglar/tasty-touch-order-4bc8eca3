@@ -710,6 +710,7 @@ export type Database = {
       }
       topping_categories: {
         Row: {
+          allow_multiple_same_topping: boolean
           created_at: string
           description: string | null
           display_order: number | null
@@ -724,6 +725,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_multiple_same_topping?: boolean
           created_at?: string
           description?: string | null
           display_order?: number | null
@@ -738,6 +740,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_multiple_same_topping?: boolean
           created_at?: string
           description?: string | null
           display_order?: number | null

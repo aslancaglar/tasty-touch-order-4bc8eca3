@@ -1,318 +1,316 @@
 
-import { ESCPOS, formatText, centerText, rightAlignText, formatLine, createDivider, addLineFeed } from './print-utils';
+// src/utils/receipt-templates.ts
 import { CartItem } from '@/types/database-types';
-import currencyCodes from "currency-codes";
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  EUR: "€",
-  USD: "$",
-  GBP: "£",
-  TRY: "₺",
-  JPY: "¥",
-  CAD: "$",
-  AUD: "$",
-  CHF: "Fr.",
-  CNY: "¥",
-  RUB: "₽"
-};
-
-const translations = {
-  fr: {
-    order: "COMMANDE",
-    takeaway: "A EMPORTER",
-    table: "Sur Place",
-    dineIn: "SUR PLACE",
-    subtotal: "Sous-total",
-    vat: "TVA",
-    total: "TOTAL",
-    thanks: "Merci de votre visite!",
-    seeYouSoon: "A bientot!",
-  },
-  en: {
-    order: "ORDER",
-    takeaway: "TAKEAWAY",
-    table: "Dine In",
-    dineIn: "DINE IN",
-    subtotal: "Subtotal",
-    vat: "VAT",
-    total: "TOTAL",
-    thanks: "Thank you for your visit!",
-    seeYouSoon: "See you soon!",
-  },
-  tr: {
-    order: "SİPARİŞ",
-    takeaway: "PAKET SERVİSİ",
-    table: "Yemek İçin",
-    dineIn: "YERİNDE TÜKETİM",
-    subtotal: "Ara Toplam",
-    vat: "KDV",
-    total: "TOPLAM",
-    thanks: "Ziyaretiniz için teşekkürler!",
-    seeYouSoon: "Tekrar görüşmek üzere!",
-  }
-};
-
-interface ReceiptData {
-  restaurant: {
-    id?: string;
-    name: string;
-    location?: string;
-    currency?: string;
-  } | null;
-  cart: CartItem[];
-  orderNumber: string;
-  tableNumber?: string | null;
-  orderType: "dine-in" | "takeaway" | null;
-  subtotal: number;
-  tax: number;
-  total: number;
-  getFormattedOptions?: (item: CartItem) => string;
-  getFormattedToppings?: (item: CartItem) => string;
-  uiLanguage?: "fr" | "en" | "tr";
-  useCurrencyCode?: boolean;
+// Define topping object type with name and quantity
+interface ToppingWithQuantity {
+  name: string;
+  quantity: number;
 }
 
-type GroupedToppings = Array<{
+// Define grouped toppings interface
+interface GroupedToppings {
   category: string;
-  toppings: string[];
-}>;
+  toppings: (string | ToppingWithQuantity)[];
+}
 
-/**
- * Sanitizes text for thermal printers by:
- * 1. Removing emojis and other non-ANSI characters
- * 2. Converting accented characters to their non-accented equivalents
- * 
- * @param text Text to sanitize
- * @returns Sanitized text safe for printing
- */
-const sanitizeForPrinter = (text: string): string => {
-  // First remove emojis and other non-printable characters
-  text = text.replace(/[\u{1F600}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '');
-  
-  // Map for accented characters to replace
-  const charMap: Record<string, string> = {
-    'ç': 'c', 'Ç': 'C', 'ğ': 'g', 'Ğ': 'G', 'ı': 'i', 'İ': 'I',
-    'ö': 'o', 'Ö': 'O', 'ş': 's', 'Ş': 'S', 'ü': 'u', 'Ü': 'U',
-    'é': 'e', 'É': 'E', 'è': 'e', 'È': 'E', 'ê': 'e', 'Ê': 'E',
-    'ë': 'e', 'Ë': 'E', 'à': 'a', 'À': 'A', 'â': 'a', 'Â': 'A',
-    'î': 'i', 'Î': 'I', 'ï': 'i', 'Ï': 'I', 'ô': 'o', 'Ô': 'O',
-    'ù': 'u', 'Ù': 'U', 'û': 'u', 'Û': 'U',
-    'ÿ': 'y', 'Ÿ': 'Y'
-  };
-
-  // Replace accented characters
-  let result = '';
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    result += charMap[char] || char;
-  }
-  
-  // Handle any remaining non-ASCII characters by replacing them
-  return result.replace(/[^\x00-\x7F]/g, '');
-};
-
-const getGroupedToppings = (item: CartItem): GroupedToppings => {
-  if (!item.selectedToppings) return [];
-  const groups: GroupedToppings = [];
-
-  item.selectedToppings.forEach(toppingGroup => {
-    const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingGroup.categoryId);
-    if (!category) return;
-
-    const selectedToppingNames = category.toppings
-      .filter(topping => toppingGroup.toppingIds.includes(topping.id))
-      .map(topping => topping.name);
-
-    if (selectedToppingNames.length) {
-      groups.push({
-        category: category.name,
-        toppings: selectedToppingNames,
-      });
-    }
-  });
-
-  return groups;
-};
-
-const getToppingPrice = (item: CartItem, groupCategory: string, toppingName: string): number => {
-  const cat = item.menuItem.toppingCategories?.find(c => c.name === groupCategory);
-  const toppingObj = cat?.toppings.find(t => t.name === toppingName);
-  return toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
-};
-
-const getToppingTaxPercentage = (item: CartItem, groupCategory: string, toppingName: string): number => {
-  const cat = item.menuItem.toppingCategories?.find(c => c.name === groupCategory);
-  const toppingObj = cat?.toppings.find(t => t.name === toppingName);
-  return toppingObj?.tax_percentage ?? (item.menuItem.tax_percentage ?? 10);
-};
-
-const getCurrencyAbbreviation = (currencyCode: string) => {
-  const code = (currencyCode || "EUR").toUpperCase();
-  return code;
-};
-
-const getCurrencySymbol = (currencyCode: string) => {
-  const code = (currencyCode || "EUR").toUpperCase();
-  return CURRENCY_SYMBOLS[code] || code;
-};
-
-export const generateStandardReceipt = (data: ReceiptData): string => {
-  const {
-    restaurant,
-    cart,
-    orderNumber,
-    tableNumber,
-    orderType,
-    subtotal,
-    tax,
-    total,
-    getFormattedOptions = () => '',
-    uiLanguage = "fr",
-    useCurrencyCode = false,
-  } = data;
-
-  const t = (k: keyof typeof translations["en"]) => {
-    const translation = translations[uiLanguage]?.[k] ?? translations.fr[k];
-    return sanitizeForPrinter(translation);
-  };
-
-  const firstItem = cart[0];
-  const defaultVat = firstItem?.menuItem?.tax_percentage ?? 10;
-  
-  const currencyCode = restaurant?.currency || "EUR";
-  const currencyDisplay = useCurrencyCode
-    ? getCurrencyAbbreviation(currencyCode)
-    : getCurrencySymbol(currencyCode);
-
-  const now = new Date();
-  const date = now.toLocaleDateString(uiLanguage === "en" ? "en-GB" : (uiLanguage === "tr" ? "tr-TR" : "fr-FR"), { 
-    day: '2-digit', 
-    month: '2-digit', 
-    year: 'numeric' 
-  });
-  const time = now.toLocaleTimeString(uiLanguage === "en" ? "en-GB" : (uiLanguage === "tr" ? "tr-TR" : "fr-FR"), {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-
-  let receipt = '';
-
-  receipt += ESCPOS.ALIGN_CENTER;
-  receipt += formatText(sanitizeForPrinter(restaurant?.name || 'Restaurant'), ESCPOS.FONT_LARGE_BOLD) + addLineFeed();
-
-  if (restaurant?.location) {
-    receipt += formatText(sanitizeForPrinter(restaurant.location), ESCPOS.FONT_NORMAL) + addLineFeed();
+// Helper function to group toppings by category for receipt display
+export function getGroupedToppings(item: CartItem): GroupedToppings[] {
+  if (!item.menuItem.toppingCategories || item.menuItem.toppingCategories.length === 0 || !item.selectedToppings) {
+    return [];
   }
 
-  receipt += formatText(`${date} ${time}`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(`${t("order")} #${orderNumber}`, ESCPOS.FONT_LARGE) + addLineFeed(2);
-
-  if (orderType === 'takeaway') {
-    receipt += formatText(t("takeaway"), ESCPOS.FONT_BOLD) + addLineFeed();
-  } else if (orderType === 'dine-in') {
-    receipt += formatText(t("dineIn"), ESCPOS.FONT_BOLD) + addLineFeed();
-  }
-  receipt += ESCPOS.ALIGN_LEFT;
-
-  receipt += createDivider(48) + addLineFeed();
-
-  cart.forEach(item => {
-    const itemPrice = parseFloat(item.itemPrice.toString()).toFixed(2);
-    const itemText = `${item.quantity}x ${sanitizeForPrinter(item.menuItem.name)}`;
-    const formattedPrice = `${itemPrice} ${currencyDisplay}`;
-    const spaces = 48 - itemText.length - formattedPrice.length;
-
-    receipt += formatText(itemText + ' '.repeat(Math.max(0, spaces)) + formattedPrice, ESCPOS.FONT_BOLD) + addLineFeed();
-
-    const options = getFormattedOptions(item).split(', ').filter(Boolean);
-    options.forEach(option => {
-      receipt += formatText(`  + ${sanitizeForPrinter(option)}`, ESCPOS.FONT_NORMAL) + addLineFeed();
-    });
-
-    // Modified code: Removing the category headers and just listing toppings directly
-    const groupedToppings = getGroupedToppings(item);
-    groupedToppings.forEach(group => {
-      // No longer print the category name
-      group.toppings.forEach(topping => {
-        const price = getToppingPrice(item, group.category, topping);
-        const toppingTaxPercentage = getToppingTaxPercentage(item, group.category, topping);
-        let line = `  + ${sanitizeForPrinter(topping)}`;
-        if (price > 0) {
-          const formattedToppingPrice = `${price.toFixed(2)} ${currencyDisplay}`;
-          // Include tax percentage if different from default
-          if (toppingTaxPercentage !== defaultVat) {
-            line += ` (${formattedToppingPrice}, TVA ${toppingTaxPercentage}%)`;
-          } else {
-            line += ` (${formattedToppingPrice})`;
+  return item.menuItem.toppingCategories
+    .filter(category => {
+      const selectedCategory = item.selectedToppings.find(t => t.categoryId === category.id);
+      return selectedCategory && selectedCategory.toppingIds.length > 0;
+    })
+    .map(category => {
+      const selectedCategory = item.selectedToppings.find(t => t.categoryId === category.id);
+      const toppings = selectedCategory?.toppingIds.map(toppingId => {
+        const topping = category.toppings.find(t => t.id === toppingId);
+        
+        if (topping) {
+          // Check if we have quantities for this topping
+          if (category.allow_multiple_same_topping && 
+              selectedCategory.toppingQuantities && 
+              selectedCategory.toppingQuantities[toppingId]) {
+            // Return topping with quantity
+            return {
+              name: topping.name,
+              quantity: selectedCategory.toppingQuantities[toppingId]
+            };
           }
+          // Return just the name for simple display
+          return topping.name;
         }
-        receipt += formatText(line, ESCPOS.FONT_NORMAL) + addLineFeed();
+        return '';
+      }).filter(Boolean) as (string | ToppingWithQuantity)[];
+
+      return {
+        category: category.name,
+        toppings
+      };
+    });
+}
+
+// Generate a receipt HTML for browser printing
+export function generateReceiptHTML(
+  cart: CartItem[],
+  restaurant: { name: string; location?: string | null } | null,
+  orderType: string | null,
+  tableNumber: string | null,
+  orderNumber: string,
+  currencySymbol: string,
+  total: number,
+  subtotal: number,
+  tax: number,
+  taxRate: number = 10,
+  t: (key: string) => string
+): string {
+  const date = new Date();
+  const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  
+  // Function to format each item in the cart
+  const formatCartItem = (item: CartItem) => {
+    const itemToppings = getGroupedToppings(item);
+    const selectedOptions = item.selectedOptions.flatMap(option => {
+      const optionDef = item.menuItem.options?.find(o => o.id === option.optionId);
+      if (!optionDef) return [];
+      
+      return option.choiceIds.map(choiceId => {
+        const choice = optionDef.choices.find(c => c.id === choiceId);
+        return choice ? choice.name : '';
+      });
+    }).filter(Boolean);
+    
+    const toppingsHtml = itemToppings.map(group => `
+      <div class="topping-group">
+        <div class="topping-category">${group.category}:</div>
+        ${group.toppings.map(topping => {
+          if (typeof topping === 'object') {
+            // Handle topping with quantity
+            return `<div class="topping-item">${topping.quantity > 1 ? `${topping.quantity}x ` : ''}${topping.name}</div>`;
+          }
+          return `<div class="topping-item">${topping}</div>`;
+        }).join('')}
+      </div>
+    `).join('');
+    
+    const optionsHtml = selectedOptions.length 
+      ? `<div class="options">${selectedOptions.join(', ')}</div>` 
+      : '';
+    
+    return `
+      <div class="receipt-item">
+        <div class="item-header">
+          <span>${item.quantity}x ${item.menuItem.name}</span>
+          <span>${(item.itemPrice * item.quantity).toFixed(2)}${currencySymbol}</span>
+        </div>
+        ${optionsHtml}
+        ${toppingsHtml}
+        ${item.specialInstructions ? `<div class="special-instructions">${t('receipt.specialInstructions')}: ${item.specialInstructions}</div>` : ''}
+      </div>
+    `;
+  };
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>${t('receipt.title')}</title>
+      <style>
+        body {
+          font-family: 'Courier New', Courier, monospace;
+          margin: 0;
+          padding: 0;
+          width: 80mm;
+          max-width: 80mm;
+          font-size: 12px;
+        }
+        .receipt-container {
+          padding: 10px 5px;
+        }
+        .receipt-header {
+          text-align: center;
+          margin-bottom: 10px;
+        }
+        .restaurant-name {
+          font-size: 18px;
+          font-weight: bold;
+        }
+        .receipt-subtitle {
+          margin: 5px 0;
+        }
+        .receipt-info {
+          margin-bottom: 10px;
+          border-bottom: 1px dashed #000;
+          padding-bottom: 10px;
+        }
+        .receipt-items {
+          margin-bottom: 10px;
+        }
+        .receipt-item {
+          margin-bottom: 10px;
+        }
+        .item-header {
+          display: flex;
+          justify-content: space-between;
+          font-weight: bold;
+        }
+        .topping-group {
+          margin-left: 15px;
+        }
+        .topping-category {
+          font-style: italic;
+        }
+        .topping-item, .options, .special-instructions {
+          margin-left: 20px;
+          font-size: 10px;
+        }
+        .receipt-totals {
+          border-top: 1px dashed #000;
+          padding-top: 10px;
+        }
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          margin: 2px 0;
+        }
+        .grand-total {
+          font-weight: bold;
+          font-size: 14px;
+          margin-top: 5px;
+        }
+        .receipt-footer {
+          text-align: center;
+          margin-top: 10px;
+          font-size: 10px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="receipt-container">
+        <div class="receipt-header">
+          <div class="restaurant-name">${restaurant?.name || 'Restaurant'}</div>
+          ${restaurant?.location ? `<div class="receipt-subtitle">${restaurant.location}</div>` : ''}
+          <div class="receipt-subtitle">${formattedDate}</div>
+          <div class="receipt-subtitle">${t('receipt.orderNumber')}: ${orderNumber}</div>
+        </div>
+        
+        <div class="receipt-info">
+          <div>${t('receipt.orderType')}: ${orderType || t('receipt.takeaway')}</div>
+          ${tableNumber ? `<div>${t('receipt.tableNumber')}: ${tableNumber}</div>` : ''}
+        </div>
+        
+        <div class="receipt-items">
+          ${cart.map(formatCartItem).join('')}
+        </div>
+        
+        <div class="receipt-totals">
+          <div class="total-row">
+            <span>${t('receipt.subtotal')}:</span>
+            <span>${subtotal.toFixed(2)}${currencySymbol}</span>
+          </div>
+          <div class="total-row">
+            <span>TVA (${taxRate}%):</span>
+            <span>${tax.toFixed(2)}${currencySymbol}</span>
+          </div>
+          <div class="total-row grand-total">
+            <span>${t('receipt.total')}:</span>
+            <span>${total.toFixed(2)}${currencySymbol}</span>
+          </div>
+        </div>
+        
+        <div class="receipt-footer">
+          <p>${t('receipt.thankYou')}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+// Function to generate plain text receipt for PrintNode
+export function generatePlainTextReceipt(
+  cart: CartItem[],
+  restaurant: { name: string; location?: string | null } | null,
+  orderType: string | null,
+  tableNumber: string | null,
+  orderNumber: string,
+  currencySymbol: string,
+  total: number,
+  subtotal: number,
+  tax: number,
+  taxRate: number = 10,
+  t: (key: string) => string
+): string {
+  const date = new Date();
+  const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  
+  let receipt = `
+${restaurant?.name || 'Restaurant'}
+${restaurant?.location || ''}
+${formattedDate}
+${t('receipt.orderNumber')}: ${orderNumber}
+
+${t('receipt.orderType')}: ${orderType || t('receipt.takeaway')}
+${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
+
+----------------------------------------
+`;
+
+  // Add each item
+  cart.forEach(item => {
+    receipt += `${item.quantity}x ${item.menuItem.name} - ${(item.itemPrice * item.quantity).toFixed(2)}${currencySymbol}\n`;
+    
+    // Add selected options
+    const selectedOptions = item.selectedOptions.flatMap(option => {
+      const optionDef = item.menuItem.options?.find(o => o.id === option.optionId);
+      if (!optionDef) return [];
+      
+      return option.choiceIds.map(choiceId => {
+        const choice = optionDef.choices.find(c => c.id === choiceId);
+        return choice ? choice.name : '';
+      });
+    }).filter(Boolean);
+    
+    if (selectedOptions.length) {
+      receipt += `   ${selectedOptions.join(', ')}\n`;
+    }
+    
+    // Add toppings with quantities
+    const itemToppings = getGroupedToppings(item);
+    itemToppings.forEach(group => {
+      receipt += `   ${group.category}:\n`;
+      group.toppings.forEach(topping => {
+        if (typeof topping === 'object') {
+          // Handle topping with quantity
+          receipt += `      ${topping.quantity > 1 ? `${topping.quantity}x ` : ''}${topping.name}\n`;
+        } else {
+          receipt += `      ${topping}\n`;
+        }
       });
     });
+    
+    // Add special instructions
+    if (item.specialInstructions) {
+      receipt += `   ${t('receipt.specialInstructions')}: ${item.specialInstructions}\n`;
+    }
+    
+    receipt += '\n';
   });
 
-  receipt += createDivider(48) + addLineFeed();
+  // Add totals
+  receipt += `
+----------------------------------------
+${t('receipt.subtotal')}: ${subtotal.toFixed(2)}${currencySymbol}
+TVA (${taxRate}%): ${tax.toFixed(2)}${currencySymbol}
+${t('receipt.total')}: ${total.toFixed(2)}${currencySymbol}
 
-  receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText(`${t("subtotal")}: ${subtotal.toFixed(2)} ${currencyDisplay}`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(`${t("vat")}: ${tax.toFixed(2)} ${currencyDisplay}`, ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += createDivider(48) + addLineFeed();
-
-  receipt += ESCPOS.ALIGN_RIGHT;
-  receipt += formatText(`${t("total")}: ${total.toFixed(2)} ${currencyDisplay}`, ESCPOS.FONT_LARGE_BOLD) + addLineFeed(2);
-
-  receipt += ESCPOS.ALIGN_CENTER;
-  receipt += formatText(t("thanks"), ESCPOS.FONT_NORMAL) + addLineFeed();
-  receipt += formatText(t("seeYouSoon"), ESCPOS.FONT_NORMAL) + addLineFeed(3);
-  receipt += ESCPOS.ALIGN_LEFT;
-
-  receipt += addLineFeed(5);
-
-  receipt += ESCPOS.CUT_PAPER;
+${t('receipt.thankYou')}
+`;
 
   return receipt;
-};
-
-const getFormattedOptions = (item: CartItem): string => {
-  if (!item.selectedOptions) return '';
-  
-  return item.selectedOptions
-    .map(option => {
-      const menuOption = item.menuItem.options?.find(opt => opt.id === option.optionId);
-      if (!menuOption) return null;
-      
-      const selectedChoices = menuOption.choices
-        .filter(choice => option.choiceIds.includes(choice.id))
-        .map(choice => choice.name);
-      
-      if (selectedChoices.length > 0) {
-        return `${menuOption.name}: ${selectedChoices.join(', ')}`;
-      }
-      
-      return null;
-    })
-    .filter(Boolean)
-    .join(', ');
-};
-
-const getFormattedToppings = (item: CartItem): string => {
-  if (!item.selectedToppings) return '';
-  
-  const allToppings: string[] = [];
-  
-  item.selectedToppings.forEach(toppingGroup => {
-    const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingGroup.categoryId);
-    if (!category) return;
-    
-    const selectedToppingNames = category.toppings
-      .filter(topping => toppingGroup.toppingIds.includes(topping.id))
-      .map(topping => topping.name);
-    
-    allToppings.push(...selectedToppingNames);
-  });
-  
-  return allToppings.join(', ');
-};
-
-export { getGroupedToppings };
+}
