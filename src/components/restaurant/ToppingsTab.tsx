@@ -460,12 +460,13 @@ const ToppingsTab = ({
               <DialogDescription>Modifiez les détails de cette catégorie</DialogDescription>
             </DialogHeader>
             {selectedCategory && <ToppingCategoryForm restaurantId={restaurant.id} initialValues={{
-            name: selectedCategory.name,
-            description: selectedCategory.description || "",
-            min_selections: selectedCategory.min_selections || 0,
-            max_selections: selectedCategory.max_selections || 0,
-            show_if_selection_id: selectedCategory.show_if_selection_id || []
-          }} onSubmit={handleUpdateCategory} isLoading={isUpdatingCategory} />}
+              name: selectedCategory.name,
+              description: selectedCategory.description || "",
+              min_selections: selectedCategory.min_selections || 0,
+              max_selections: selectedCategory.max_selections || 0,
+              show_if_selection_id: selectedCategory.show_if_selection_id || [],
+              allow_multiple_same_topping: selectedCategory.allow_multiple_same_topping || false
+            }} onSubmit={handleUpdateCategory} isLoading={isUpdatingCategory} />}
           </ScrollArea>
         </DialogContent>
       </Dialog>
