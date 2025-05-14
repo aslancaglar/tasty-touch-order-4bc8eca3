@@ -17,6 +17,7 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       storageKey: 'kiosk-admin-auth',
+      detectSessionInUrl: true, // Better handling of auth redirects
       flowType: 'implicit', // Add implicit flow for better token handling
     },
     global: {
@@ -49,38 +50,5 @@ export const supabase = createClient<Database>(
         eventsPerSecond: 10,
       },
     },
-    // Increased timeout for all requests
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      storageKey: 'kiosk-admin-auth',
-      flowType: 'implicit', // Add implicit flow for better token handling
-      detectSessionInUrl: true, // Better handling of auth redirects
-      // Two hour expiry window gives more time for token refresh
-      localStorage: {
-        getItem: key => {
-          try {
-            return localStorage.getItem(key);
-          } catch (error) {
-            console.error("Error reading from localStorage:", error);
-            return null;
-          }
-        },
-        setItem: (key, value) => {
-          try {
-            localStorage.setItem(key, value);
-          } catch (error) {
-            console.error("Error writing to localStorage:", error);
-          }
-        },
-        removeItem: key => {
-          try {
-            localStorage.removeItem(key);
-          } catch (error) {
-            console.error("Error removing from localStorage:", error);
-          }
-        }
-      }
-    }
   }
 );

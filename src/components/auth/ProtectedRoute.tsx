@@ -94,7 +94,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
         const { data, error } = await supabase
           .from('profiles')
           .select('is_admin')
-          .eq('id', user.id)
+          .eq('id', user.id as string)
           .single();
 
         if (error) {
