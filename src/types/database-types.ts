@@ -1,3 +1,4 @@
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -9,6 +10,8 @@ export interface Restaurant {
   created_at: Date;
   updated_at: Date;
   image_url?: string;
+  logo_url?: string; // Added missing property
+  location?: string; // Added missing property
   currency: string;
   ui_language: string;
 }
@@ -22,20 +25,28 @@ export interface MenuCategory {
   updated_at: Date;
   display_order?: number;
   items: MenuItem[];
+  icon?: string; // Added missing property
+  image_url?: string; // Added missing property
 }
 
 export interface MenuItem {
   id: string;
   name: string;
   description?: string;
-  image_url?: string;
+  image?: string; // Added missing property
+  image_url?: string; // Added missing for backward compatibility
   price: number;
+  promotion_price?: number; // Added missing property
   category_id: string;
   created_at: Date;
   updated_at: Date;
   options?: MenuOption[];
   tax_percentage?: number;
   display_order?: number;
+  available_from?: string; // Added missing property
+  available_until?: string; // Added missing property
+  in_stock?: boolean; // Added missing property
+  topping_categories?: ToppingCategory[]; // Added missing property
 }
 
 export interface MenuOption {
@@ -69,6 +80,9 @@ export interface Order {
   created_at: Date;
   updated_at: Date;
 }
+
+// Define OrderStatus type for use in OrdersTab
+export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
 
 export interface OrderItem {
   id: string;
@@ -135,6 +149,7 @@ export interface Topping {
   updated_at: Date;
   tax_percentage?: number;
   display_order?: number;
+  in_stock?: boolean; // Added missing property
 }
 
 // Add allow_multiple_same_topping to ToppingCategory
@@ -152,5 +167,5 @@ export interface ToppingCategory {
   show_if_selection_id?: string[];
   show_if_selection_type?: string;
   display_order?: number;
-  allow_multiple_same_topping?: boolean; // Add this line
+  allow_multiple_same_topping?: boolean;
 }

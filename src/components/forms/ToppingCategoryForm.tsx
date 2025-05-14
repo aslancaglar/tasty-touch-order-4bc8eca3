@@ -98,7 +98,13 @@ const ToppingCategoryForm = ({
           });
         } else {
           console.log("Fetched toppings:", data);
-          setToppings(data || []);
+          // Convert string dates to Date objects before setting state
+          const formattedToppings = data?.map(topping => ({
+            ...topping,
+            created_at: new Date(topping.created_at),
+            updated_at: new Date(topping.updated_at)
+          })) || [];
+          setToppings(formattedToppings);
         }
       } catch (error) {
         console.error('Error in fetchToppings:', error);
