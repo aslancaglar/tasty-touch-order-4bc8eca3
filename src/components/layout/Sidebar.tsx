@@ -1,4 +1,3 @@
-
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -117,14 +116,14 @@ export function Sidebar({ forceDefaultLanguage = false }: SidebarProps) {
         const { data, error } = await supabase
           .from('profiles')
           .select('is_admin')
-          .eq('id', user.id as string)
+          .eq('id', user.id)
           .single();
         
         if (error) {
           console.error("Error checking user profile:", error);
           setIsAdmin(false);
         } else {
-          setIsAdmin(Boolean(data?.is_admin) || false);
+          setIsAdmin(data?.is_admin || false);
         }
       } catch (error) {
         console.error("Exception checking user profile:", error);

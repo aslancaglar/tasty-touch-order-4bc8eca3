@@ -41,15 +41,15 @@ const App = () => {
   }, []);
 
   return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <div className="fixed bottom-4 right-4 z-50">
-              <NetworkStatus showLabel={true} />
-            </div>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <div className="fixed bottom-4 right-4 z-50">
+            <NetworkStatus showLabel={true} />
+          </div>
+          <BrowserRouter>
             <Routes>
               {/* Auth Routes */}
               <Route path="/auth" element={<Auth />} />
@@ -90,10 +90,10 @@ const App = () => {
               {/* Catch-all Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   )
 };
 
