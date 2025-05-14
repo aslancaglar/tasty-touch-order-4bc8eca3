@@ -7,9 +7,10 @@ debug = true
 
 # Set database timeouts for better offline handling
 [database]
-timeout = 15
+timeout = 30  # Increased from 15
 
 # Improve network resilience for offline scenarios
 [api]
-request_timeout = 30
+request_timeout = 45  # Increased from 30
+max_retries = 3  # Add retry mechanism
 
