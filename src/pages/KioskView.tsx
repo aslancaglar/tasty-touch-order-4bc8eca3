@@ -29,6 +29,7 @@ type CategoryWithItems = MenuCategory & {
 type SelectedToppingCategory = {
   categoryId: string;
   toppingIds: string[];
+  toppingQuantities?: { [toppingId: string]: number }; // Added toppingQuantities map
 };
 
 const KioskView = () => {
@@ -366,7 +367,8 @@ const KioskView = () => {
             // Use display_order from relation
             toppings: [],
             show_if_selection_id: category.show_if_selection_id,
-            show_if_selection_type: category.show_if_selection_type
+            show_if_selection_type: category.show_if_selection_type,
+            allow_multiple_same_topping: category.allow_multiple_same_topping || false // Include allow_multiple_same_topping property
           };
         }
         return {
@@ -385,7 +387,8 @@ const KioskView = () => {
             display_order: topping.display_order
           })),
           show_if_selection_id: category.show_if_selection_id,
-          show_if_selection_type: category.show_if_selection_type
+          show_if_selection_type: category.show_if_selection_type,
+          allow_multiple_same_topping: category.allow_multiple_same_topping || false // Include allow_multiple_same_topping property
         };
       }));
 
@@ -488,46 +491,91 @@ const KioskView = () => {
       return newOptions;
     });
   };
-  const handleToggleTopping = (categoryId: string, toppingId: string) => {
+  const handleToggleTopping = (categoryId: string, toppingId: string, quantity?: number) => {
+    console.log(`Toggle topping: ${toppingId} in category ${categoryId} with quantity: ${quantity}`);
     setSelectedToppings(prev => {
       const categoryIndex = prev.findIndex(t => t.categoryId === categoryId);
       if (categoryIndex === -1) {
-        return [...prev, {
-          categoryId,
-          toppingIds: [toppingId]
-        }];
+        // If category doesn't exist yet in selection
+        if (quantity && quantity > 0) {
+          // If quantity is provided and positive, add with quantity
+          return [...prev, {
+            categoryId,
+            toppingIds: [toppingId],
+            toppingQuantities: { [toppingId]: quantity }
+          }];
+        } else if (quantity === 0) {
+          // If quantity is 0, don't add
+          return prev;
+        } else {
+          // If no quantity provided (toggle), add without quantity
+          return [...prev, {
+            categoryId,
+            toppingIds: [toppingId]
+          }];
+        }
       }
+
+      // Category already exists
       const category = prev[categoryIndex];
       let newToppingIds: string[];
-      if (category.toppingIds.includes(toppingId)) {
-        newToppingIds = category.toppingIds.filter(id => id !== toppingId);
+      let newToppingQuantities = { ...(category.toppingQuantities || {}) };
+
+      // Handle quantity if provided
+      if (quantity !== undefined) {
+        if (quantity > 0) {
+          // Add or update quantity
+          newToppingIds = [...new Set([...category.toppingIds, toppingId])]; // Ensure unique IDs
+          newToppingQuantities[toppingId] = quantity;
+        } else {
+          // Remove if quantity is 0
+          newToppingIds = category.toppingIds.filter(id => id !== toppingId);
+          delete newToppingQuantities[toppingId];
+        }
       } else {
-        if (selectedItem?.toppingCategories) {
-          const toppingCategory = selectedItem.toppingCategories.find(c => c.id === categoryId);
-          if (toppingCategory && toppingCategory.max_selections > 0) {
-            if (toppingCategory.max_selections === 1) {
-              newToppingIds = [toppingId];
-            } else if (category.toppingIds.length >= toppingCategory.max_selections) {
-              toast({
-                title: t("maxSelectionsReached"),
-                description: t("maxSelectionsMessage").replace("{max}", String(toppingCategory.max_selections))
-              });
-              return prev;
+        // Toggle behavior (no quantity provided)
+        if (category.toppingIds.includes(toppingId)) {
+          newToppingIds = category.toppingIds.filter(id => id !== toppingId);
+          delete newToppingQuantities[toppingId];
+        } else {
+          // Check max selections for the category
+          if (selectedItem?.toppingCategories) {
+            const toppingCategory = selectedItem.toppingCategories.find(c => c.id === categoryId);
+            if (toppingCategory && toppingCategory.max_selections > 0) {
+              if (toppingCategory.max_selections === 1) {
+                newToppingIds = [toppingId];
+                newToppingQuantities = { [toppingId]: 1 };  
+              } else if (category.toppingIds.length >= toppingCategory.max_selections) {
+                toast({
+                  title: t("maxSelectionsReached"),
+                  description: t("maxSelectionsMessage").replace("{max}", String(toppingCategory.max_selections))
+                });
+                return prev;
+              } else {
+                newToppingIds = [...category.toppingIds, toppingId];
+                newToppingQuantities[toppingId] = 1; // Default to 1 for toggle
+              }
             } else {
               newToppingIds = [...category.toppingIds, toppingId];
+              newToppingQuantities[toppingId] = 1; // Default to 1 for toggle
             }
           } else {
             newToppingIds = [...category.toppingIds, toppingId];
+            newToppingQuantities[toppingId] = 1; // Default to 1 for toggle
           }
-        } else {
-          newToppingIds = [...category.toppingIds, toppingId];
         }
       }
+
       const newToppings = [...prev];
       newToppings[categoryIndex] = {
         ...category,
-        toppingIds: newToppingIds
+        toppingIds: newToppingIds,
+        toppingQuantities: newToppingQuantities
       };
+
+      console.log("Updated topping selection:", newToppingIds);
+      console.log("Updated topping quantities:", newToppingQuantities);
+
       return newToppings;
     });
   };
@@ -556,7 +604,9 @@ const KioskView = () => {
           selectedToppingCategory.toppingIds.forEach(toppingId => {
             const topping = category.toppings.find(t => t.id === toppingId);
             if (topping && topping.price) {
-              price += parseFloat(topping.price.toString());
+              // Get quantity from toppingQuantities map or default to 1
+              const quantity = selectedToppingCategory.toppingQuantities?.[toppingId] || 1;
+              price += parseFloat(topping.price.toString()) * quantity;
             }
           });
         }
