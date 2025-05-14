@@ -4,7 +4,7 @@ import { PostgrestSingleResponse, PostgrestError } from "@supabase/supabase-js";
 /**
  * A type guard function to determine if the response contains an error
  */
-export function hasError<T>(response: PostgrestSingleResponse<T>): response is { error: PostgrestError } {
+export function hasError<T>(response: PostgrestSingleResponse<T>): response is PostgrestSingleResponse<T> & { error: PostgrestError } {
   return response.error !== null;
 }
 
@@ -57,7 +57,7 @@ export function ensureUUID(id: string | unknown): string {
 /**
  * Type-safe helper for checking if a property exists and has a specific type
  */
-export function getPropertyIfExists<T, K extends keyof T>(
+export function getPropertyIfExists<T extends object, K extends keyof T>(
   obj: T | null | undefined,
   key: K,
   fallback: T[K]
