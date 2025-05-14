@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -5,12 +6,13 @@ import { Check, Clock, Receipt, Printer } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { printReceipt } from "@/utils/print-utils";
-import { generateStandardReceipt } from "@/utils/receipt-templates";
+import { generatePlainTextReceipt } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import OrderReceipt from "./OrderReceipt";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+
 interface OrderConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,6 +30,7 @@ interface OrderConfirmationDialogProps {
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
 }
+
 const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   isOpen,
   onClose,
@@ -103,6 +106,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       handlePrintReceipt();
     }
   }, [isOpen, restaurant?.id]);
+  
   const handlePrintReceipt = async () => {
     if (!restaurant?.id || hasPrinted || isPrinting) return;
     try {
@@ -177,6 +181,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       setIsPrinting(false);
     }
   };
+  
   const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
     restaurant: typeof restaurant;
     cart: CartItem[];
@@ -190,11 +195,20 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     getFormattedToppings: (item: CartItem) => string;
   }) => {
     try {
-      const receiptContent = generateStandardReceipt({
-        ...orderData,
-        uiLanguage,
-        useCurrencyCode: true
-      });
+      // Use generatePlainTextReceipt instead of generateStandardReceipt
+      const receiptContent = generatePlainTextReceipt(
+        orderData.cart,
+        orderData.restaurant,
+        orderData.orderType,
+        orderData.tableNumber,
+        orderData.orderNumber,
+        getCurrencySymbol(orderData.restaurant?.currency),
+        orderData.total,
+        orderData.subtotal,
+        orderData.tax,
+        10, // Tax rate (default)
+        (key) => t(key) // Translation function
+      );
 
       // Encode special characters for UTF-8
       const textEncoder = new TextEncoder();
@@ -229,6 +243,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       console.error("Error sending receipt to PrintNode:", error);
     }
   };
+  
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-md md:max-w-2xl rounded-lg overflow-hidden">
         <div className="flex flex-col items-center text-center p-4 space-y-6">
@@ -295,4 +310,5 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
     </Dialog>;
 };
+
 export default OrderConfirmationDialog;

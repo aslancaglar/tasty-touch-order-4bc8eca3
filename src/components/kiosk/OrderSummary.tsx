@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
-import { getGroupedToppings } from "@/utils/receipt-templates";
+import { getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -105,6 +105,22 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     onPlaceOrder();
   };
 
+  // Helper to get topping name whether it's a string or ToppingWithQuantity
+  const getToppingDisplayName = (topping: string | ToppingWithQuantity): string => {
+    if (typeof topping === 'object') {
+      return topping.name;
+    }
+    return topping;
+  };
+
+  // Helper to get topping quantity
+  const getToppingQuantity = (topping: string | ToppingWithQuantity): number => {
+    if (typeof topping === 'object') {
+      return topping.quantity;
+    }
+    return 1;
+  };
+
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-2xl md:max-w-2xl p-0 overflow-hidden flex flex-col max-h-[85vh]">
         {/* Fixed Header */}
@@ -151,12 +167,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
                   const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                  const toppingRef = category?.toppings.find(t => t.name === toppingObj.name || t.name === toppingObj);
-                  const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
                   
-                  // Get quantity from the toppingObj if it's an object with quantity property
-                  const quantity = typeof toppingObj === 'object' && toppingObj.quantity ? toppingObj.quantity : 1;
-                  const displayName = typeof toppingObj === 'object' ? toppingObj.name : toppingObj;
+                  // Get display name and quantity whether it's a string or object
+                  const displayName = getToppingDisplayName(toppingObj);
+                  const quantity = getToppingQuantity(toppingObj);
+                  
+                  const toppingRef = category?.toppings.find(t => t.name === displayName);
+                  const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
                   
                   // Calculate total price for this topping (price * quantity)
                   const totalToppingPrice = price * quantity;

@@ -3,7 +3,7 @@ import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
 import { calculateCartTotals } from "@/utils/price-utils";
-import { getGroupedToppings } from "@/utils/receipt-templates";
+import { getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -107,13 +107,23 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                 {getGroupedToppings(item).flatMap((group) => 
                   group.toppings.map((topping, toppingIdx) => {
                     const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                    const toppingObj = category?.toppings.find(t => t.name === topping);
+                    
+                    // Handle either string or ToppingWithQuantity
+                    const toppingName = typeof topping === 'string' ? topping : topping.name;
+                    const quantity = typeof topping === 'object' ? topping.quantity : 1;
+                    
+                    const toppingObj = category?.toppings.find(t => t.name === toppingName);
                     const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
+                    
+                    // Calculate total price based on quantity
+                    const totalPrice = price * quantity;
                     
                     return (
                       <div key={`${item.id}-topping-${toppingIdx}`} className="item">
-                        <span>+ {sanitizeText(topping)}</span>
-                        {price > 0 && <span>{price.toFixed(2)} {currencySymbol}</span>}
+                        <span>
+                          {quantity > 1 ? `+ ${quantity}x ${sanitizeText(toppingName)}` : `+ ${sanitizeText(toppingName)}`}
+                        </span>
+                        {totalPrice > 0 && <span>{totalPrice.toFixed(2)} {currencySymbol}</span>}
                       </div>
                     );
                   })

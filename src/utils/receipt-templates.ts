@@ -1,15 +1,15 @@
-
 // src/utils/receipt-templates.ts
 import { CartItem } from '@/types/database-types';
+import { SupportedLanguage } from '@/utils/language-utils';
 
 // Define topping object type with name and quantity
-interface ToppingWithQuantity {
+export interface ToppingWithQuantity {
   name: string;
   quantity: number;
 }
 
 // Define grouped toppings interface
-interface GroupedToppings {
+export interface GroupedToppings {
   category: string;
   toppings: (string | ToppingWithQuantity)[];
 }
@@ -307,6 +307,165 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
 ----------------------------------------
 ${t('receipt.subtotal')}: ${subtotal.toFixed(2)}${currencySymbol}
 TVA (${taxRate}%): ${tax.toFixed(2)}${currencySymbol}
+${t('receipt.total')}: ${total.toFixed(2)}${currencySymbol}
+
+${t('receipt.thankYou')}
+`;
+
+  return receipt;
+}
+
+// Add the missing generateStandardReceipt function
+export function generateStandardReceipt(options: {
+  restaurant: { name: string; location?: string | null } | null;
+  cart: CartItem[];
+  orderNumber: string;
+  tableNumber?: string | null;
+  orderType: "dine-in" | "takeaway" | null;
+  subtotal: number;
+  tax: number;
+  total: number;
+  getFormattedOptions: (item: CartItem) => string;
+  getFormattedToppings: (item: CartItem) => string;
+  uiLanguage?: SupportedLanguage;
+  useCurrencyCode?: boolean;
+}): string {
+  const {
+    restaurant,
+    cart,
+    orderNumber,
+    tableNumber,
+    orderType,
+    subtotal,
+    tax,
+    total,
+    uiLanguage = "fr"
+  } = options;
+  
+  // Translation function - simplified for plain text receipt
+  const t = (key: string): string => {
+    // Basic translations for receipt
+    const translations: Record<string, Record<string, string>> = {
+      fr: {
+        "receipt.orderNumber": "Commande No",
+        "receipt.orderType": "Type de commande",
+        "receipt.dineIn": "Sur place",
+        "receipt.takeaway": "À emporter",
+        "receipt.tableNumber": "Table No",
+        "receipt.subtotal": "Sous-total",
+        "receipt.vat": "TVA",
+        "receipt.total": "Total",
+        "receipt.thankYou": "Merci pour votre visite!",
+        "receipt.specialInstructions": "Instructions spéciales"
+      },
+      en: {
+        "receipt.orderNumber": "Order No",
+        "receipt.orderType": "Order Type",
+        "receipt.dineIn": "Dine In",
+        "receipt.takeaway": "Takeaway",
+        "receipt.tableNumber": "Table No",
+        "receipt.subtotal": "Subtotal",
+        "receipt.vat": "VAT",
+        "receipt.total": "Total",
+        "receipt.thankYou": "Thank you for your visit!",
+        "receipt.specialInstructions": "Special Instructions"
+      },
+      tr: {
+        "receipt.orderNumber": "Sipariş No",
+        "receipt.orderType": "Sipariş Tipi",
+        "receipt.dineIn": "Masa Servisi",
+        "receipt.takeaway": "Paket Servisi",
+        "receipt.tableNumber": "Masa No",
+        "receipt.subtotal": "Ara Toplam",
+        "receipt.vat": "KDV",
+        "receipt.total": "Toplam",
+        "receipt.thankYou": "Ziyaretiniz için teşekkürler!",
+        "receipt.specialInstructions": "Özel Talimatlar"
+      }
+    };
+    
+    return translations[uiLanguage]?.[key] || key;
+  };
+  
+  // Currency helper
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    TRY: "₺",
+    JPY: "¥",
+    CAD: "$",
+    AUD: "$",
+    CHF: "Fr.",
+    CNY: "¥",
+    RUB: "₽"
+  };
+  
+  // Use ISO code for PrintNode and symbol for browser
+  const currencyCode = restaurant?.currency || "EUR";
+  const currencySymbol = options.useCurrencyCode ? currencyCode : (CURRENCY_SYMBOLS[currencyCode.toUpperCase()] || currencyCode);
+  
+  const date = new Date();
+  const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  
+  let receipt = `
+${restaurant?.name || 'Restaurant'}
+${restaurant?.location || ''}
+${formattedDate}
+${t('receipt.orderNumber')}: ${orderNumber}
+
+${t('receipt.orderType')}: ${orderType === 'dine-in' ? t('receipt.dineIn') : t('receipt.takeaway')}
+${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
+
+----------------------------------------
+`;
+
+  // Add each item
+  cart.forEach(item => {
+    receipt += `${item.quantity}x ${item.menuItem.name} - ${(parseFloat(item.itemPrice.toString()) * item.quantity).toFixed(2)}${currencySymbol}\n`;
+    
+    // Add selected options
+    const selectedOptions = item.selectedOptions.flatMap(option => {
+      const optionDef = item.menuItem.options?.find(o => o.id === option.optionId);
+      if (!optionDef) return [];
+      
+      return option.choiceIds.map(choiceId => {
+        const choice = optionDef.choices.find(c => c.id === choiceId);
+        return choice ? choice.name : '';
+      });
+    }).filter(Boolean);
+    
+    if (selectedOptions.length) {
+      receipt += `   ${selectedOptions.join(', ')}\n`;
+    }
+    
+    // Add toppings with quantities
+    const itemToppings = getGroupedToppings(item);
+    itemToppings.forEach(group => {
+      receipt += `   ${group.category}:\n`;
+      group.toppings.forEach(topping => {
+        if (typeof topping === 'object') {
+          // Handle topping with quantity
+          receipt += `      ${topping.quantity > 1 ? `${topping.quantity}x ` : ''}${topping.name}\n`;
+        } else {
+          receipt += `      ${topping}\n`;
+        }
+      });
+    });
+    
+    // Add special instructions
+    if (item.specialInstructions) {
+      receipt += `   ${t('receipt.specialInstructions')}: ${item.specialInstructions}\n`;
+    }
+    
+    receipt += '\n';
+  });
+
+  // Add totals
+  receipt += `
+----------------------------------------
+${t('receipt.subtotal')}: ${subtotal.toFixed(2)}${currencySymbol}
+${t('receipt.vat')}: ${tax.toFixed(2)}${currencySymbol}
 ${t('receipt.total')}: ${total.toFixed(2)}${currencySymbol}
 
 ${t('receipt.thankYou')}

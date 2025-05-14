@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { generateStandardReceipt, getGroupedToppings } from "@/utils/receipt-templates";
+import { generatePlainTextReceipt, getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -105,6 +106,22 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     fetchOrderCount();
   }, [restaurant?.id, isMobile]);
 
+  // Helper to get topping name whether it's a string or ToppingWithQuantity
+  const getToppingDisplayName = (topping: string | ToppingWithQuantity): string => {
+    if (typeof topping === 'object') {
+      return topping.name;
+    }
+    return topping;
+  };
+
+  // Helper to get topping quantity
+  const getToppingQuantity = (topping: string | ToppingWithQuantity): number => {
+    if (typeof topping === 'object') {
+      return topping.quantity;
+    }
+    return 1;
+  };
+  
   const handleConfirmOrder = async () => {
     onPlaceOrder();
     if (restaurant?.id) {
@@ -254,21 +271,35 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     getFormattedOptions: (item: CartItem) => string;
     getFormattedToppings: (item: CartItem) => string;
   }): string => {
-    // Pass uiLanguage and useCurrencyCode: true so PrintNode template is formatted accordingly
-    return generateStandardReceipt({
-      restaurant: orderData.restaurant,
-      cart: orderData.cart,
-      orderNumber: orderData.orderNumber,
-      tableNumber: orderData.tableNumber,
-      orderType: orderData.orderType,
-      subtotal: orderData.subtotal,
-      tax: orderData.tax,
-      total: orderData.total,
-      getFormattedOptions: orderData.getFormattedOptions,
-      getFormattedToppings: orderData.getFormattedToppings,
-      uiLanguage,
-      useCurrencyCode: true // <-- show ISO code for PrintNode
-    });
+    // Use the plain text receipt generator
+    return generatePlainTextReceipt(
+      orderData.cart,
+      orderData.restaurant,
+      orderData.orderType,
+      orderData.tableNumber,
+      orderData.orderNumber,
+      "EUR", // Currency symbol
+      orderData.total,
+      orderData.subtotal,
+      orderData.tax,
+      10, // Tax rate
+      (key) => {
+        // Simple translation function for the receipt
+        const translations: Record<string, string> = {
+          'receipt.orderNumber': uiLanguage === 'fr' ? 'Commande No' : uiLanguage === 'tr' ? 'Sipariş No' : 'Order No',
+          'receipt.orderType': uiLanguage === 'fr' ? 'Type de commande' : uiLanguage === 'tr' ? 'Sipariş Tipi' : 'Order Type',
+          'receipt.dineIn': uiLanguage === 'fr' ? 'Sur place' : uiLanguage === 'tr' ? 'Masa Servisi' : 'Dine In',
+          'receipt.takeaway': uiLanguage === 'fr' ? 'À emporter' : uiLanguage === 'tr' ? 'Paket Servisi' : 'Takeaway',
+          'receipt.tableNumber': uiLanguage === 'fr' ? 'Table No' : uiLanguage === 'tr' ? 'Masa No' : 'Table No',
+          'receipt.subtotal': uiLanguage === 'fr' ? 'Sous-total' : uiLanguage === 'tr' ? 'Ara Toplam' : 'Subtotal',
+          'receipt.vat': uiLanguage === 'fr' ? 'TVA' : uiLanguage === 'tr' ? 'KDV' : 'VAT',
+          'receipt.total': uiLanguage === 'fr' ? 'Total' : uiLanguage === 'tr' ? 'Toplam' : 'Total',
+          'receipt.thankYou': uiLanguage === 'fr' ? 'Merci pour votre visite!' : uiLanguage === 'tr' ? 'Ziyaretiniz için teşekkürler!' : 'Thank you for your visit!',
+          'receipt.specialInstructions': uiLanguage === 'fr' ? 'Instructions spéciales' : uiLanguage === 'tr' ? 'Özel Talimatlar' : 'Special Instructions'
+        };
+        return translations[key] || key;
+      }
+    );
   };
 
   return (
@@ -314,12 +345,23 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                         <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
                           const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                          const toppingRef = category?.toppings.find(t => t.name === toppingObj);
+                          
+                          // Get display name and quantity
+                          const displayName = getToppingDisplayName(toppingObj);
+                          const quantity = getToppingQuantity(toppingObj);
+                          
+                          const toppingRef = category?.toppings.find(t => t.name === displayName);
                           const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                          
+                          // Calculate total price based on quantity
+                          const totalPrice = price * quantity;
+                          
                           return (
                             <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                              <span style={{ paddingLeft: 6 }}>+ {toppingObj}</span>
-                              <span>{price > 0 ? price.toFixed(2) + " €" : ""}</span>
+                              <span style={{ paddingLeft: 6 }}>
+                                {quantity > 1 ? `+ ${quantity}x ${displayName}` : `+ ${displayName}`}
+                              </span>
+                              <span>{totalPrice > 0 ? totalPrice.toFixed(2) + " €" : ""}</span>
                             </div>
                           )
                         })}
