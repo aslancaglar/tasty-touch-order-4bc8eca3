@@ -172,6 +172,7 @@ export interface CartItem {
   id: string;
   menuItem: MenuItemWithOptions;
   quantity: number;
+  itemPrice: number;
   selectedOptions: {
     optionId: string;
     choiceIds: string[];
@@ -185,5 +186,4 @@ export interface CartItem {
     }[];
   }[];
   specialInstructions?: string;
-  itemPrice: number;
-}
+};
