@@ -1,3 +1,4 @@
+
 // src/utils/receipt-templates.ts
 import { CartItem } from '@/types/database-types';
 import { SupportedLanguage } from '@/utils/language-utils';
@@ -57,7 +58,7 @@ export function getGroupedToppings(item: CartItem): GroupedToppings[] {
 // Generate a receipt HTML for browser printing
 export function generateReceiptHTML(
   cart: CartItem[],
-  restaurant: { name: string; location?: string | null } | null,
+  restaurant: { name: string; location?: string | null; currency?: string; } | null,
   orderType: string | null,
   tableNumber: string | null,
   orderNumber: string,
@@ -235,7 +236,7 @@ export function generateReceiptHTML(
 // Function to generate plain text receipt for PrintNode
 export function generatePlainTextReceipt(
   cart: CartItem[],
-  restaurant: { name: string; location?: string | null } | null,
+  restaurant: { name: string; location?: string | null; currency?: string; } | null,
   orderType: string | null,
   tableNumber: string | null,
   orderNumber: string,
@@ -317,7 +318,7 @@ ${t('receipt.thankYou')}
 
 // Add the missing generateStandardReceipt function
 export function generateStandardReceipt(options: {
-  restaurant: { name: string; location?: string | null } | null;
+  restaurant: { name: string; location?: string | null; currency?: string; } | null;
   cart: CartItem[];
   orderNumber: string;
   tableNumber?: string | null;

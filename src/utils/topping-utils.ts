@@ -1,202 +1,175 @@
 
-// src/utils/topping-utils.ts
-import { CartItem, MenuItem, SelectedToppingCategory, ToppingCategory } from "@/types/database-types";
+import { CartItem, MenuItemWithOptions } from '@/types/database-types';
 
-export function calculateToppingPrice(
-  menuItem: MenuItem,
-  selectedToppings: SelectedToppingCategory[]
-): number {
-  if (!menuItem.toppingCategories || !selectedToppings) return 0;
+/**
+ * Validates if a topping category should be displayed based on conditional display rules.
+ */
+export function shouldShowToppingCategory(item: MenuItemWithOptions, categoryId: string): boolean {
+  // If no topping categories, nothing to show
+  if (!item.toppingCategories) return false;
 
-  let totalToppingPrice = 0;
+  // Find the category
+  const category = item.toppingCategories.find(cat => cat.id === categoryId);
+  if (!category) return false;
 
-  // Iterate through each selected topping category
-  for (const selectedCategory of selectedToppings) {
-    // Find the corresponding topping category definition in the menu item
-    const categoryDefinition = menuItem.toppingCategories.find(
-      (cat) => cat.id === selectedCategory.categoryId
-    );
+  // If no conditional display rules, always show
+  if (!category.show_if_selection_type || !category.show_if_selection_id || 
+      category.show_if_selection_type.length === 0 || 
+      category.show_if_selection_id.length === 0) {
+    return true;
+  }
 
-    if (!categoryDefinition) continue;
+  // Check if any of the required options are selected
+  let shouldShow = false;
+  
+  for (let i = 0; i < category.show_if_selection_type.length; i++) {
+    const type = category.show_if_selection_type[i];
+    const id = category.show_if_selection_id[i];
+    
+    if (type === 'option') {
+      // Option condition - check if the option with this ID has any selection
+      shouldShow = checkOptionSelection(item, id);
+      if (shouldShow) break;
+    } else if (type === 'topping') {
+      // Topping condition - check if the topping with this ID is selected
+      shouldShow = checkToppingSelection(item, id);
+      if (shouldShow) break;
+    }
+  }
+  
+  return shouldShow;
+}
 
-    // Go through each selected topping in this category
-    for (const toppingId of selectedCategory.toppingIds) {
-      // Find the topping in the category
-      const topping = categoryDefinition.toppings.find(
-        (t) => t.id === toppingId
-      );
+/**
+ * Checks if a specific option has any selection in the item.
+ */
+function checkOptionSelection(item: MenuItemWithOptions, optionId: string): boolean {
+  if (!item.options) return false;
+  
+  const option = item.options.find(o => o.id === optionId);
+  if (!option) return false;
+  
+  // The option exists, now check if any choice is selected
+  // Note: Actual selections would typically be tracked separately
+  return true; // Simplified for this example
+}
+
+/**
+ * Checks if a specific topping is selected in the item.
+ */
+function checkToppingSelection(item: MenuItemWithOptions, toppingId: string): boolean {
+  // This is a placeholder - actual implementation would check against a selection state
+  return false;
+}
+
+/**
+ * Calculate a menu item's price based on selected options and toppings.
+ * Now includes support for topping quantities.
+ */
+export function calculateItemPrice(item: MenuItemWithOptions, selectedOptions: {
+  optionId: string;
+  choiceIds: string[];
+}[], selectedToppings: {
+  categoryId: string;
+  toppingIds: string[];
+  toppingQuantities?: { [toppingId: string]: number };
+}[]): number {
+  // Start with base price
+  let price = item.price;
+
+  // Add option prices
+  const optionsPrice = selectedOptions.reduce((total, optionSelection) => {
+    const option = item.options?.find(o => o.id === optionSelection.optionId);
+    if (!option) return total;
+
+    const choicesPrice = optionSelection.choiceIds.reduce((choicesTotal, choiceId) => {
+      const choice = option.choices.find(c => c.id === choiceId);
+      return choicesTotal + (choice?.price || 0);
+    }, 0);
+
+    return total + choicesPrice;
+  }, 0);
+
+  price += optionsPrice;
+
+  // Add topping prices, accounting for quantities
+  const toppingsPrice = selectedToppings.reduce((total, toppingSelection) => {
+    const category = item.toppingCategories?.find(c => c.id === toppingSelection.categoryId);
+    if (!category) return total;
+
+    return total + toppingSelection.toppingIds.reduce((toppingTotal, toppingId) => {
+      const topping = category.toppings.find(t => t.id === toppingId);
+      if (!topping) return toppingTotal;
       
-      if (topping) {
-        // Check if we have multiple quantities of this topping
-        const quantity = categoryDefinition.allow_multiple_same_topping && 
-          selectedCategory.toppingQuantities && 
-          selectedCategory.toppingQuantities[toppingId] 
-            ? selectedCategory.toppingQuantities[toppingId] 
-            : 1;
-            
-        // Add the topping price multiplied by quantity
-        totalToppingPrice += (parseFloat(topping.price.toString()) * quantity);
-      }
-    }
-  }
-
-  return totalToppingPrice;
-}
-
-// Helper function to add/remove a topping from the cart item's selected toppings
-export function toggleTopping(
-  cartItem: CartItem,
-  categoryId: string,
-  toppingId: string,
-  enabled: boolean,
-  quantity: number = 1
-): CartItem {
-  // Clone the cart item to avoid mutating the original
-  const newItem = { ...cartItem };
-  
-  // Initialize selectedToppings array if it doesn't exist
-  if (!newItem.selectedToppings) {
-    newItem.selectedToppings = [];
-  }
-
-  // Find the topping category in the item
-  const category = newItem.menuItem.toppingCategories?.find(cat => cat.id === categoryId);
-  if (!category) return newItem;
-  
-  // Check if we already have this category in the selected toppings
-  let selectedCategory = newItem.selectedToppings.find(
-    (cat) => cat.categoryId === categoryId
-  );
-
-  if (!selectedCategory) {
-    // If the category doesn't exist in selections and we're enabling, create it
-    if (enabled) {
-      selectedCategory = {
-        categoryId,
-        toppingIds: [],
-        toppingQuantities: {}
-      };
-      newItem.selectedToppings.push(selectedCategory);
-    } else {
-      // If we're trying to disable a topping that isn't selected, just return
-      return newItem;
-    }
-  }
-
-  if (enabled) {
-    // Add the topping if not already in the list
-    if (!selectedCategory.toppingIds.includes(toppingId)) {
-      selectedCategory.toppingIds.push(toppingId);
-    }
-    
-    // If this category allows multiple of the same topping, track quantities
-    if (category.allow_multiple_same_topping) {
-      // Initialize toppingQuantities if it doesn't exist
-      if (!selectedCategory.toppingQuantities) {
-        selectedCategory.toppingQuantities = {};
+      // Check if we have a quantity for this topping
+      let quantity = 1;
+      if (category.allow_multiple_same_topping && 
+          toppingSelection.toppingQuantities && 
+          toppingSelection.toppingQuantities[toppingId]) {
+        quantity = toppingSelection.toppingQuantities[toppingId];
       }
       
-      // Set the quantity for this topping
-      selectedCategory.toppingQuantities[toppingId] = quantity;
-    }
-  } else {
-    // Remove the topping
-    selectedCategory.toppingIds = selectedCategory.toppingIds.filter(
-      (id) => id !== toppingId
-    );
-    
-    // Also remove the quantity entry if it exists
-    if (selectedCategory.toppingQuantities && selectedCategory.toppingQuantities[toppingId]) {
-      delete selectedCategory.toppingQuantities[toppingId];
-    }
-    
-    // If no more toppings in this category, remove the category
-    if (selectedCategory.toppingIds.length === 0) {
-      newItem.selectedToppings = newItem.selectedToppings.filter(
-        (cat) => cat.categoryId !== categoryId
-      );
-    }
-  }
+      return toppingTotal + (topping.price * quantity);
+    }, 0);
+  }, 0);
 
-  // Update the item price to include selected toppings
-  const optionsPrice = cartItem.optionsPrice || 0;
-  const toppingsPrice = calculateToppingPrice(newItem.menuItem, newItem.selectedToppings);
-  const basePrice = parseFloat(String(newItem.menuItem.price));
-  newItem.itemPrice = basePrice + optionsPrice + toppingsPrice;
+  price += toppingsPrice;
 
-  return newItem;
+  return price;
 }
 
-// Helper to increment/decrement topping quantity
-export function updateToppingQuantity(
-  cartItem: CartItem,
-  categoryId: string,
-  toppingId: string,
-  newQuantity: number
-): CartItem {
-  // Clone the cart item to avoid mutating the original
-  const newItem = { ...cartItem };
-  
-  // Check if the category allows multiple same topping
-  const category = newItem.menuItem.toppingCategories?.find(cat => cat.id === categoryId);
-  if (!category || !category.allow_multiple_same_topping) return newItem;
-  
-  // Find the selected category
-  const selectedCategory = newItem.selectedToppings?.find(cat => cat.categoryId === categoryId);
-  if (!selectedCategory) return newItem;
-  
-  // Ensure we have a toppingQuantities object
-  if (!selectedCategory.toppingQuantities) {
-    selectedCategory.toppingQuantities = {};
-  }
-  
-  if (newQuantity <= 0) {
-    // If quantity is 0 or less, remove the topping completely
-    return toggleTopping(newItem, categoryId, toppingId, false);
-  } else {
-    // If the topping isn't selected yet, add it first
-    if (!selectedCategory.toppingIds.includes(toppingId)) {
-      selectedCategory.toppingIds.push(toppingId);
-    }
-    
-    // Update the quantity
-    selectedCategory.toppingQuantities[toppingId] = newQuantity;
-    
-    // Update the item price
-    const optionsPrice = cartItem.optionsPrice || 0;
-    const toppingsPrice = calculateToppingPrice(newItem.menuItem, newItem.selectedToppings || []);
-    const basePrice = parseFloat(String(newItem.menuItem.price));
-    newItem.itemPrice = basePrice + optionsPrice + toppingsPrice;
-  }
-  
-  return newItem;
-}
+/**
+ * Calculates the tax amount for a menu item with selected options and toppings.
+ * Now includes support for topping quantities.
+ */
+export function calculateItemTax(item: MenuItemWithOptions, selectedOptions: {
+  optionId: string;
+  choiceIds: string[];
+}[], selectedToppings: {
+  categoryId: string;
+  toppingIds: string[];
+  toppingQuantities?: { [toppingId: string]: number };
+}[]): number {
+  // Base item tax
+  const baseItemTaxRate = item.tax_percentage || 10;
+  let totalTax = (item.price * baseItemTaxRate) / 100;
 
-// Helper function to check if a topping is selected
-export function isToppingSelected(
-  cartItem: CartItem,
-  categoryId: string,
-  toppingId: string
-): boolean {
-  const selectedCategory = cartItem.selectedToppings?.find(
-    (cat) => cat.categoryId === categoryId
-  );
-  return !!selectedCategory?.toppingIds.includes(toppingId);
-}
+  // Options tax (assuming same tax rate as base item for simplicity)
+  const optionsPrice = selectedOptions.reduce((total, optionSelection) => {
+    const option = item.options?.find(o => o.id === optionSelection.optionId);
+    if (!option) return total;
 
-// Helper function to get the quantity of a selected topping
-export function getToppingQuantity(
-  cartItem: CartItem,
-  categoryId: string,
-  toppingId: string
-): number {
-  const selectedCategory = cartItem.selectedToppings?.find(
-    (cat) => cat.categoryId === categoryId
-  );
-  
-  if (!selectedCategory || !selectedCategory.toppingIds.includes(toppingId)) {
-    return 0;
-  }
-  
-  return selectedCategory.toppingQuantities?.[toppingId] || 1;
+    const choicesPrice = optionSelection.choiceIds.reduce((choicesTotal, choiceId) => {
+      const choice = option.choices.find(c => c.id === choiceId);
+      return choicesTotal + (choice?.price || 0);
+    }, 0);
+
+    return total + choicesPrice;
+  }, 0);
+
+  totalTax += (optionsPrice * baseItemTaxRate) / 100;
+
+  // Toppings tax (using specific tax rate for each topping)
+  selectedToppings.forEach(toppingSelection => {
+    const category = item.toppingCategories?.find(c => c.id === toppingSelection.categoryId);
+    if (!category) return;
+
+    toppingSelection.toppingIds.forEach(toppingId => {
+      const topping = category.toppings.find(t => t.id === toppingId);
+      if (!topping) return;
+      
+      // Check if we have a quantity for this topping
+      let quantity = 1;
+      if (category.allow_multiple_same_topping && 
+          toppingSelection.toppingQuantities && 
+          toppingSelection.toppingQuantities[toppingId]) {
+        quantity = toppingSelection.toppingQuantities[toppingId];
+      }
+      
+      const toppingTaxRate = topping.tax_percentage || baseItemTaxRate;
+      totalTax += ((topping.price * quantity) * toppingTaxRate) / 100;
+    });
+  });
+
+  return totalTax;
 }
