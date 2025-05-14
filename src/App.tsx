@@ -42,14 +42,14 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <div className="fixed bottom-4 right-4 z-50">
-              <NetworkStatus showLabel={true} />
-            </div>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <div className="fixed bottom-4 right-4 z-50">
+            <NetworkStatus showLabel={true} />
+          </div>
+          <BrowserRouter>
             <Routes>
               {/* Auth Routes */}
               <Route path="/auth" element={<Auth />} />
@@ -90,9 +90,9 @@ const App = () => {
               {/* Catch-all Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </TooltipProvider>
-        </AuthProvider>
-      </BrowserRouter>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   )
 };
