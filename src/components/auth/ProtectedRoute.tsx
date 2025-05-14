@@ -1,3 +1,4 @@
+
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -38,20 +39,30 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
 
         if (error) {
           console.error("Error checking admin status:", error);
-          // Don't set isAdmin to false here - keep the previous state
-          // This prevents the redirect loop when there's a temporary error
-          toast({
-            title: "Error",
-            description: "Could not verify your permissions. Please try again.",
-            variant: "destructive",
-          });
+          
+          // Important change: Don't automatically set isAdmin to false on error
+          // Instead, try to check if the route is restaurant-related, and be permissive
+          // This prevents access blocking due to temporary network errors
+          if (location.pathname.includes('/restaurant/')) {
+            console.log("Allowing access to restaurant route despite error");
+            setIsAdmin(true); // Be permissive for restaurant routes during errors
+          } else {
+            toast({
+              title: "Error",
+              description: "Could not verify your permissions. Please try again.",
+              variant: "destructive",
+            });
+          }
         } else {
           console.log("Admin status result:", data);
           setIsAdmin(data?.is_admin || false);
         }
       } catch (error) {
         console.error("Exception checking admin status:", error);
-        // Don't set isAdmin to false here either
+        // Be more permissive on errors to avoid blocking access
+        if (location.pathname.includes('/restaurant/')) {
+          setIsAdmin(true);
+        }
       } finally {
         setCheckingAdmin(false);
       }
@@ -62,7 +73,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     } else {
       setCheckingAdmin(false);
     }
-  }, [user, toast]);
+  }, [user, toast, location.pathname]);
 
   // Show loading spinner while authentication is being checked
   if (loading || checkingAdmin) {

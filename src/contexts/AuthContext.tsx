@@ -29,13 +29,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      console.log("Initial session check:", currentSession ? "Session found" : "No session");
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
-    });
+    // Then check for existing session with retry mechanism
+    const checkSession = async (retries = 3, delay = 1000) => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting session:", error);
+          
+          if (retries > 0) {
+            console.log(`Retrying session check... (${retries} attempts left)`);
+            setTimeout(() => checkSession(retries - 1, delay * 1.5), delay);
+            return;
+          }
+        }
+        
+        console.log("Initial session check:", data.session ? "Session found" : "No session");
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        setLoading(false);
+      } catch (err) {
+        console.error("Exception during session check:", err);
+        
+        if (retries > 0) {
+          setTimeout(() => checkSession(retries - 1, delay * 1.5), delay);
+          return;
+        }
+        
+        setLoading(false);
+      }
+    };
+
+    checkSession();
 
     return () => {
       subscription.unsubscribe();
