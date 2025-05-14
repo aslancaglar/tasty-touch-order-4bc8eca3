@@ -1,64 +1,63 @@
 
-import { MenuItemWithOptions, CartItem } from "@/types/database-types";
+import { MenuItemWithOptions, CartItem } from '@/types/database-types';
 
-export function prepareInitialToppings(menuItem: MenuItemWithOptions): CartItem['selectedToppings'] {
+export const prepareInitialToppings = (menuItem: MenuItemWithOptions): CartItem['selectedToppings'] => {
   if (!menuItem.toppingCategories || menuItem.toppingCategories.length === 0) {
     return [];
   }
-  
+
   return menuItem.toppingCategories.map(category => {
-    // Default basic structure with empty toppingIds array
-    const toppingCategory = {
-      categoryId: category.id,
-      toppingIds: []
-    };
-    
-    // If this category allows multiple same toppings, add the toppingQuantities array
+    // If this category allows multiple same topping, initialize with toppingQuantities array
     if (category.allow_multiple_same_topping) {
       return {
-        ...toppingCategory,
-        toppingQuantities: []
+        categoryId: category.id,
+        toppingIds: [],
+        toppingQuantities: [] // Initialize empty quantities array
       };
     }
     
-    return toppingCategory;
+    // Regular category without multiple same topping
+    return {
+      categoryId: category.id,
+      toppingIds: []
+    };
   });
-}
+};
 
-export function handleToppingToggle(
-  prevToppings: CartItem['selectedToppings'], 
-  categoryId: string, 
-  toppingId: string, 
+export const handleToppingToggle = (
+  prevToppings: CartItem['selectedToppings'],
+  categoryId: string,
+  toppingId: string,
   quantity?: number,
-  category?: MenuItemWithOptions['toppingCategories'][0]
-): CartItem['selectedToppings'] {
+  category?: any
+): CartItem['selectedToppings'] => {
   const categoryIndex = prevToppings.findIndex(t => t.categoryId === categoryId);
   
-  // If category not found, create a new entry
+  // If category not found in selected toppings
   if (categoryIndex === -1) {
-    const newCategory = {
-      categoryId,
-      toppingIds: [toppingId]
-    };
-    
-    // If this is a multiple same topping category and quantity is provided
+    // Handle new category with multiple same topping support
     if (category?.allow_multiple_same_topping && quantity !== undefined) {
       return [
         ...prevToppings,
         {
-          ...newCategory,
-          toppingQuantities: [{
+          categoryId,
+          toppingIds: quantity > 0 ? [toppingId] : [],
+          toppingQuantities: quantity > 0 ? [{
             id: toppingId,
             quantity
-          }]
+          }] : []
         }
       ];
     }
     
-    return [...prevToppings, newCategory];
+    // Regular new category
+    return [...prevToppings, {
+      categoryId,
+      toppingIds: [toppingId]
+    }];
   }
   
-  // Get the current category
+  // Get the current category from previous toppings
   const currentCategory = prevToppings[categoryIndex];
   
   // Handle multiple same topping categories
@@ -121,7 +120,8 @@ export function handleToppingToggle(
         };
         return newToppings;
       } else if (currentCategory.toppingIds.length >= category.max_selections) {
-        // Max selections reached - we'll handle the toast notification outside this function
+        // Max selections reached - we'll return the original state
+        // This should ideally be handled with a toast message in the component 
         return prevToppings;
       }
     }
@@ -134,4 +134,4 @@ export function handleToppingToggle(
     };
     return newToppings;
   }
-}
+};
