@@ -46,9 +46,11 @@ const Index = () => {
   }
 
   if (!user) {
+    console.log("No user detected in Index.tsx, redirecting to auth");
     return <Navigate to="/auth" />;
   }
 
+  console.log("User authenticated in Index.tsx, rendering Dashboard");
   // Pass useDefaultLanguage={true} to Dashboard to force English for admin
   return <Dashboard />;
 };
