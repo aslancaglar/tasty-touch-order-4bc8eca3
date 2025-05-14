@@ -273,7 +273,8 @@ const ToppingsTab = ({
         description,
         min_selections,
         max_selections,
-        conditionToppingIds
+        conditionToppingIds,
+        allow_multiple_same_topping
       } = values;
       console.log("Creating category with values:", values);
       const {
@@ -285,7 +286,8 @@ const ToppingsTab = ({
         restaurant_id: restaurant.id,
         min_selections,
         max_selections,
-        show_if_selection_id: conditionToppingIds && conditionToppingIds.length > 0 ? conditionToppingIds : null
+        show_if_selection_id: conditionToppingIds && conditionToppingIds.length > 0 ? conditionToppingIds : null,
+        allow_multiple_same_topping
       }]).select().single();
       if (error) throw error;
       toast({
@@ -317,7 +319,8 @@ const ToppingsTab = ({
         description,
         min_selections,
         max_selections,
-        conditionToppingIds
+        conditionToppingIds,
+        allow_multiple_same_topping
       } = values;
       console.log("Updating category with values:", values);
       console.log("Selected condition toppings:", conditionToppingIds);
@@ -328,7 +331,8 @@ const ToppingsTab = ({
         description,
         min_selections,
         max_selections,
-        show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null
+        show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null,
+        allow_multiple_same_topping
       }).eq('id', selectedCategory.id);
       if (error) throw error;
       toast({

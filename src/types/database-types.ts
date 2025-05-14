@@ -84,6 +84,7 @@ export type ToppingCategory = {
   show_if_selection_type?: string[] | null;
   show_if_selection_id?: string[] | null;
   display_order?: number | null; // Added display_order property
+  allow_multiple_same_topping?: boolean | null; // Added new field
 };
 
 export type Topping = {
@@ -163,6 +164,7 @@ export interface MenuItemWithOptions extends MenuItem {
     }[];
     show_if_selection_id?: string[] | null;
     show_if_selection_type?: string[] | null;
+    allow_multiple_same_topping?: boolean | null; // Added new field
   }[];
 }
 
@@ -177,6 +179,10 @@ export interface CartItem {
   selectedToppings: {
     categoryId: string;
     toppingIds: string[];
+    toppingQuantities?: {
+      id: string;
+      quantity: number;
+    }[];
   }[];
   specialInstructions?: string;
   itemPrice: number;

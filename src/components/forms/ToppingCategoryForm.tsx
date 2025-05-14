@@ -12,14 +12,18 @@ import ImageUpload from "@/components/ImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { Topping } from "@/types/database-types";
 import { toast } from "@/hooks/use-toast";
+
 const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
   description: z.string().optional(),
   icon: z.string().optional(),
   min_selections: z.coerce.number().min(0, "Must be 0 or greater"),
-  max_selections: z.coerce.number().min(0, "Must be 0 or greater")
+  max_selections: z.coerce.number().min(0, "Must be 0 or greater"),
+  allow_multiple_same_topping: z.boolean().optional(),
 });
+
 type ToppingCategoryFormValues = z.infer<typeof toppingCategorySchema>;
+
 interface ToppingCategoryFormProps {
   onSubmit: (values: ToppingCategoryFormValues & {
     conditionToppingIds: string[];
@@ -30,6 +34,7 @@ interface ToppingCategoryFormProps {
   isLoading?: boolean;
   restaurantId?: string;
 }
+
 const ToppingCategoryForm = ({
   onSubmit,
   initialValues,
@@ -43,6 +48,7 @@ const ToppingCategoryForm = ({
   // Debug logs
   console.log("ToppingCategoryForm initialValues:", initialValues);
   console.log("Initial selectedToppings:", selectedToppings);
+  
   const form = useForm<ToppingCategoryFormValues>({
     resolver: zodResolver(toppingCategorySchema),
     defaultValues: {
@@ -50,9 +56,11 @@ const ToppingCategoryForm = ({
       description: initialValues?.description || "",
       icon: initialValues?.icon || "",
       min_selections: initialValues?.min_selections ?? 0,
-      max_selections: initialValues?.max_selections ?? 0
+      max_selections: initialValues?.max_selections ?? 0,
+      allow_multiple_same_topping: initialValues?.allow_multiple_same_topping ?? false,
     }
   });
+
   useEffect(() => {
     const fetchToppings = async () => {
       if (!restaurantId) return;
@@ -112,6 +120,7 @@ const ToppingCategoryForm = ({
       setSelectedToppings(Array.isArray(initialValues.show_if_selection_id) ? initialValues.show_if_selection_id : []);
     }
   }, [initialValues?.show_if_selection_id]);
+
   const handleSubmit = (values: ToppingCategoryFormValues) => {
     console.log("Submitting form with values:", values);
     console.log("Selected toppings:", selectedToppings);
@@ -120,6 +129,7 @@ const ToppingCategoryForm = ({
       conditionToppingIds: selectedToppings
     });
   };
+
   const handleToppingToggle = (toppingId: string) => {
     setSelectedToppings(prev => {
       if (prev.includes(toppingId)) {
@@ -129,6 +139,7 @@ const ToppingCategoryForm = ({
       }
     });
   };
+
   return <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 px-0">
         <FormField control={form.control} name="name" render={({
@@ -177,6 +188,29 @@ const ToppingCategoryForm = ({
               </FormItem>} />
         </div>
         
+        <FormField
+          control={form.control}
+          name="allow_multiple_same_topping"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>
+                  Allow multiple quantities of the same topping
+                </FormLabel>
+                <p className="text-sm text-gray-500">
+                  When enabled, customers can add multiple quantities of the same topping
+                </p>
+              </div>
+            </FormItem>
+          )}
+        />
+        
         <div className="border rounded-lg p-4">
           <h3 className="text-lg font-medium mb-2">Conditions</h3>
           <p className="text-sm text-gray-500 mb-4">
@@ -207,4 +241,5 @@ const ToppingCategoryForm = ({
       </form>
     </Form>;
 };
+
 export default ToppingCategoryForm;
