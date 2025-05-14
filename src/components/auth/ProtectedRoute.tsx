@@ -57,140 +57,149 @@ const setCachedAdminStatus = (userId: string, isAdmin: boolean): void => {
 };
 
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
-  const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [checkingAdmin, setCheckingAdmin] = useState(true);
-  const { toast } = useToast();
-  
-  // Clear admin cache on path change if needed
-  useEffect(() => {
-    if (location.pathname === "/auth") {
-      localStorage.removeItem(ADMIN_CACHE_KEY);
-    }
-  }, [location.pathname]);
-
-  // Check if the user is an admin with retries and caching
-  useEffect(() => {
-    const checkAdminStatus = async (retryCount = 3, delay = 1000) => {
-      if (!user) {
-        setIsAdmin(false);
-        setCheckingAdmin(false);
-        return;
+  // Use a try-catch around useAuth to prevent app crashes
+  try {
+    const { user, loading } = useAuth();
+    const location = useLocation();
+    const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+    const [checkingAdmin, setCheckingAdmin] = useState(true);
+    const { toast } = useToast();
+    
+    // Clear admin cache on path change if needed
+    useEffect(() => {
+      if (location.pathname === "/auth") {
+        localStorage.removeItem(ADMIN_CACHE_KEY);
       }
+    }, [location.pathname]);
 
-      // Check cache first
-      const cachedStatus = getCachedAdminStatus(user.id);
-      if (cachedStatus !== null) {
-        setIsAdmin(cachedStatus);
-        setCheckingAdmin(false);
-        return;
-      }
+    // Check if the user is an admin with retries and caching
+    useEffect(() => {
+      const checkAdminStatus = async (retryCount = 3, delay = 1000) => {
+        if (!user) {
+          setIsAdmin(false);
+          setCheckingAdmin(false);
+          return;
+        }
 
-      try {
-        console.log(`Checking admin status for user: ${user.id} (Attempt: ${4-retryCount})`);
-        
-        // Directly query the profiles table for the admin flag
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id as string)
-          .single();
+        // Check cache first
+        const cachedStatus = getCachedAdminStatus(user.id);
+        if (cachedStatus !== null) {
+          setIsAdmin(cachedStatus);
+          setCheckingAdmin(false);
+          return;
+        }
 
-        if (error) {
-          console.error("Error checking admin status:", error);
+        try {
+          console.log(`Checking admin status for user: ${user.id} (Attempt: ${4-retryCount})`);
           
+          // Directly query the profiles table for the admin flag
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', user.id as string)
+            .single();
+
+          if (error) {
+            console.error("Error checking admin status:", error);
+            
+            if (retryCount > 0) {
+              console.log(`Retrying admin check in ${delay}ms...`);
+              setTimeout(() => checkAdminStatus(retryCount - 1, delay * 1.5), delay);
+              return;
+            }
+            
+            // Be permissive after all retries fail
+            const isAdminRoute = 
+              location.pathname === "/" || 
+              location.pathname === "/restaurants" ||
+              location.pathname.includes('/restaurant/');
+              
+            if (isAdminRoute) {
+              console.log("Allowing access to admin route despite error after retries");
+              setIsAdmin(true); // Be permissive for admin routes
+              setCachedAdminStatus(user.id, true); // Cache this decision temporarily
+            } else {
+              toast({
+                title: "Verification Issue",
+                description: "Could not verify your permissions after multiple attempts.",
+                variant: "destructive",
+              });
+            }
+          } else {
+            console.log("Admin status result:", data);
+            const userIsAdmin = Boolean(data?.is_admin);
+            setIsAdmin(userIsAdmin);
+            
+            // Cache the result to prevent future checks
+            setCachedAdminStatus(user.id, userIsAdmin);
+          }
+        } catch (error) {
+          console.error("Exception checking admin status:", error);
+          
+          // Retry on exception
           if (retryCount > 0) {
-            console.log(`Retrying admin check in ${delay}ms...`);
             setTimeout(() => checkAdminStatus(retryCount - 1, delay * 1.5), delay);
             return;
           }
           
-          // Be permissive after all retries fail
+          // Be permissive on exceptions for admin routes
           const isAdminRoute = 
             location.pathname === "/" || 
             location.pathname === "/restaurants" ||
             location.pathname.includes('/restaurant/');
             
           if (isAdminRoute) {
-            console.log("Allowing access to admin route despite error after retries");
-            setIsAdmin(true); // Be permissive for admin routes
+            setIsAdmin(true);
             setCachedAdminStatus(user.id, true); // Cache this decision temporarily
-          } else {
-            toast({
-              title: "Verification Issue",
-              description: "Could not verify your permissions after multiple attempts.",
-              variant: "destructive",
-            });
           }
-        } else {
-          console.log("Admin status result:", data);
-          const userIsAdmin = Boolean(data?.is_admin);
-          setIsAdmin(userIsAdmin);
-          
-          // Cache the result to prevent future checks
-          setCachedAdminStatus(user.id, userIsAdmin);
+        } finally {
+          if (retryCount === 0) {
+            setCheckingAdmin(false);
+          }
         }
-      } catch (error) {
-        console.error("Exception checking admin status:", error);
-        
-        // Retry on exception
-        if (retryCount > 0) {
-          setTimeout(() => checkAdminStatus(retryCount - 1, delay * 1.5), delay);
-          return;
-        }
-        
-        // Be permissive on exceptions for admin routes
-        const isAdminRoute = 
-          location.pathname === "/" || 
-          location.pathname === "/restaurants" ||
-          location.pathname.includes('/restaurant/');
-          
-        if (isAdminRoute) {
-          setIsAdmin(true);
-          setCachedAdminStatus(user.id, true); // Cache this decision temporarily
-        }
-      } finally {
-        if (retryCount === 0) {
-          setCheckingAdmin(false);
-        }
+      };
+
+      if (user) {
+        checkAdminStatus();
+      } else {
+        setCheckingAdmin(false);
       }
-    };
+    }, [user, toast, location.pathname]);
 
-    if (user) {
-      checkAdminStatus();
-    } else {
-      setCheckingAdmin(false);
+    // Show loading spinner while authentication is being checked
+    if (loading || checkingAdmin) {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
     }
-  }, [user, toast, location.pathname]);
 
-  // Show loading spinner while authentication is being checked
-  if (loading || checkingAdmin) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    // Redirect to login if not authenticated
+    if (!user) {
+      // Decide which auth page to redirect to based on the current path
+      const authPath = location.pathname.startsWith("/owner") ? "/owner/login" : "/auth";
+      return <Navigate to={authPath} state={{ from: location }} replace />;
+    }
+
+    // Handle admin-required routes for non-admin users
+    if (requireAdmin && !isAdmin) {
+      console.log("Access denied: User is not an admin");
+      return <Navigate to="/owner" replace />;
+    }
+
+    // Only redirect admin users from the root /owner path, not from child routes
+    if (isAdmin && location.pathname === '/owner') {
+      console.log("Admin user detected on owner route, redirecting to admin dashboard");
+      return <Navigate to="/" replace />;
+    }
+
+    return <>{children}</>;
+  } catch (error) {
+    console.error("Error in ProtectedRoute:", error);
+    // Fallback to auth page if something goes wrong with the auth context
+    return <Navigate to="/auth" replace />;
   }
-
-  // Redirect to login if not authenticated
-  if (!user) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
-  }
-
-  // Handle admin-required routes for non-admin users
-  if (requireAdmin && !isAdmin) {
-    console.log("Access denied: User is not an admin");
-    return <Navigate to="/owner" replace />;
-  }
-
-  // Only redirect admin users from the root /owner path, not from child routes
-  if (isAdmin && location.pathname === '/owner') {
-    console.log("Admin user detected on owner route, redirecting to admin dashboard");
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
 };
 
 export default ProtectedRoute;
