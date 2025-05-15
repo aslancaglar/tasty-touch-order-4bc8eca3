@@ -351,11 +351,11 @@ export function generateStandardReceipt(options: {
     // Basic translations for receipt
     const translations: Record<string, Record<string, string>> = {
       fr: {
-        "receipt.orderNumber": "Commande No",
+        "receipt.orderNumber": "Commande",
         "receipt.orderType": "Type de commande",
         "receipt.dineIn": "Sur place",
         "receipt.takeaway": "À emporter",
-        "receipt.tableNumber": "Table No",
+        "receipt.tableNumber": "Table",
         "receipt.subtotal": "Sous-total",
         "receipt.vat": "TVA",
         "receipt.total": "Total",
@@ -364,11 +364,11 @@ export function generateStandardReceipt(options: {
         "receipt.specialInstructions": "Instructions spéciales"
       },
       en: {
-        "receipt.orderNumber": "Order No",
+        "receipt.orderNumber": "Order",
         "receipt.orderType": "Order Type",
         "receipt.dineIn": "Dine In",
         "receipt.takeaway": "Takeaway",
-        "receipt.tableNumber": "Table No",
+        "receipt.tableNumber": "Table",
         "receipt.subtotal": "Subtotal",
         "receipt.vat": "VAT",
         "receipt.total": "Total",
@@ -377,11 +377,11 @@ export function generateStandardReceipt(options: {
         "receipt.specialInstructions": "Special Instructions"
       },
       tr: {
-        "receipt.orderNumber": "Sipariş No",
+        "receipt.orderNumber": "Sipariş",
         "receipt.orderType": "Sipariş Tipi",
         "receipt.dineIn": "Masa Servisi",
         "receipt.takeaway": "Paket Servisi",
-        "receipt.tableNumber": "Masa No",
+        "receipt.tableNumber": "Masa",
         "receipt.subtotal": "Ara Toplam",
         "receipt.vat": "KDV",
         "receipt.total": "Toplam",
@@ -415,13 +415,14 @@ export function generateStandardReceipt(options: {
   const date = new Date();
   const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   
+  // Create header with simplified format
   let receipt = `
 ${restaurant?.name || 'Restaurant'}
 ${restaurant?.location || ''}
 ${formattedDate}
 ${t('receipt.orderNumber')}: ${orderNumber}
 
-${t('receipt.orderType')}: ${orderType === 'dine-in' ? t('receipt.dineIn') : t('receipt.takeaway')}
+${orderType === 'dine-in' ? t('receipt.dineIn') : t('receipt.takeaway')}
 ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
 
 ----------------------------------------
@@ -446,16 +447,39 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
       receipt += `   ${selectedOptions.join(', ')}\n`;
     }
     
-    // Add toppings with quantities
+    // Add toppings without category headers, with "+ " prefix and only show price if > 0
     const itemToppings = getGroupedToppings(item);
     itemToppings.forEach(group => {
-      receipt += `   ${group.category}:\n`;
       group.toppings.forEach(topping => {
+        // Find the topping definition to get the price
+        const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+        let toppingName = '';
+        let quantity = 1;
+        let price = 0;
+        
         if (typeof topping === 'object') {
-          // Handle topping with quantity
-          receipt += `      ${topping.quantity > 1 ? `${topping.quantity}x ` : ''}${topping.name}\n`;
+          toppingName = topping.name;
+          quantity = topping.quantity;
+          
+          const toppingDef = category?.toppings.find(t => t.name === toppingName);
+          if (toppingDef && toppingDef.price) {
+            price = parseFloat(toppingDef.price.toString()) * quantity;
+          }
         } else {
-          receipt += `      ${topping}\n`;
+          toppingName = topping;
+          const toppingDef = category?.toppings.find(t => t.name === toppingName);
+          if (toppingDef && toppingDef.price) {
+            price = parseFloat(toppingDef.price.toString());
+          }
+        }
+        
+        // Only show price if it's greater than 0
+        const priceDisplay = price > 0 ? ` - ${price.toFixed(2)}${currencySymbol}` : '';
+        
+        if (typeof topping === 'object' && topping.quantity > 1) {
+          receipt += `   + ${topping.quantity}x ${toppingName}${priceDisplay}\n`;
+        } else {
+          receipt += `   + ${toppingName}${priceDisplay}\n`;
         }
       });
     });
@@ -468,11 +492,12 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
     receipt += '\n';
   });
 
-  // Add totals
+  // Add totals with divider before total
   receipt += `
 ----------------------------------------
 ${t('receipt.subtotal')}: ${subtotal.toFixed(2)}${currencySymbol}
 ${t('receipt.vat')}: ${tax.toFixed(2)}${currencySymbol}
+----------------------------------------
 ${t('receipt.total')}: ${total.toFixed(2)}${currencySymbol}
 
 ${t('receipt.thankYou')}

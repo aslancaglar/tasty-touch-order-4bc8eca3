@@ -104,7 +104,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
             )}
             {/* Add toppings with minimized spacing */}
             {item.selectedToppings && item.selectedToppings.length > 0 && (
-              <div className="item-details text-xs" style={{ marginTop: "0", lineHeight: "1.2" }}>
+              <div className="item-details text-xs" style={{ marginTop: "0", lineHeight: "1.0" }}>
                 {getGroupedToppings(item).flatMap((group) => 
                   group.toppings.map((topping, toppingIdx) => {
                     const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
