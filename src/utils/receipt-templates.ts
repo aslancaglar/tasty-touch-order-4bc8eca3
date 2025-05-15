@@ -405,13 +405,19 @@ export function generatePlainTextReceipt(
   // Divider before grand total
   receipt += createDivider(48) + ESCPOS.LINE_FEED;
   
-  // Grand total with larger font - right aligned on same line
-  const totalText = removeAccents(`${t('receipt.total')}:`);
+  // Modified Grand total with larger font - putting the TOTAL text right-aligned before the value
+  // The totalValue includes the formatted amount with currency
   const totalValue = `${total.toFixed(2)} ${currencyCode}`;
+  
+  // Calculate space needed to right-align both the text and value
+  const totalText = removeAccents(`${t('receipt.total')}:`);
+  
+  // Calculate the padding to push the entire "Total: X.XX EUR" to the right edge
+  // We subtract both the text length and value length from 48 to get the right padding
   const totalPadding = ' '.repeat(Math.max(1, 48 - totalText.length - totalValue.length));
   
   receipt += ESCPOS.FONT_LARGE + 
-    totalText + totalPadding + totalValue + 
+    totalPadding + totalText + " " + totalValue + 
     ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
   
   // Remove thank you message but keep space for cutting
@@ -524,8 +530,6 @@ ${t('receipt.orderNumber')}: ${orderNumber}
 
 ${t('receipt.orderType')}: ${orderType === 'dine-in' ? t('receipt.dineIn') : t('receipt.takeaway')}
 ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
-
-----------------------------------------
 `;
 
   // Add each item
