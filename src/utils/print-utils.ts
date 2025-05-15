@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 /**
@@ -17,6 +18,9 @@ export const ESCPOS = {
   ALIGN_LEFT: '\x1B\x61\x00',  // Left align
   ALIGN_CENTER: '\x1B\x61\x01', // Center align
   ALIGN_RIGHT: '\x1B\x61\x02', // Right align
+  
+  // Character code table for proper accented characters
+  CHAR_TABLE_LATIN: '\x1B\x74\x02', // Code page 850 for Latin characters support
 
   // Paper cutting - changed to full cut with feed
   CUT_PAPER: '\x1D\x56\x00',   // Full cut without feed
@@ -39,7 +43,7 @@ export const formatLine = (label: string, value: string, command: string = ESCPO
   return command + label + ESCPOS.ALIGN_RIGHT + value + ESCPOS.FONT_NORMAL + ESCPOS.ALIGN_LEFT;
 };
 
-export const createDivider = (length: number = 32): string => {
+export const createDivider = (length: number = 48): string => {
   return ESCPOS.ALIGN_CENTER + '-'.repeat(length) + ESCPOS.ALIGN_LEFT;
 };
 
