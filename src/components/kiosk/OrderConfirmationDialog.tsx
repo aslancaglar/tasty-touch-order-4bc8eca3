@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -196,9 +197,6 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     uiLanguage?: SupportedLanguage;
   }) => {
     try {
-      // Use the currency code for PrintNode receipts
-      const currencyCode = orderData.restaurant?.currency || "EUR";
-      
       // Use the updated generatePlainTextReceipt function
       const receiptContent = generatePlainTextReceipt(
         orderData.cart,
@@ -206,7 +204,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         orderData.orderType,
         orderData.tableNumber,
         orderData.orderNumber,
-        currencyCode, // Use currency code instead of symbol
+        getCurrencySymbol(orderData.restaurant?.currency),
         orderData.total,
         orderData.subtotal,
         orderData.tax,
