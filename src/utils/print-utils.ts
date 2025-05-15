@@ -39,7 +39,8 @@ export const formatLine = (label: string, value: string, command: string = ESCPO
   return command + label + ESCPOS.ALIGN_RIGHT + value + ESCPOS.FONT_NORMAL + ESCPOS.ALIGN_LEFT;
 };
 
-export const createDivider = (length: number = 32): string => {
+// Updated divider length from 32 to 48
+export const createDivider = (length: number = 48): string => {
   return ESCPOS.ALIGN_CENTER + '-'.repeat(length) + ESCPOS.ALIGN_LEFT;
 };
 

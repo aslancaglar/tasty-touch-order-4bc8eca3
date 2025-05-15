@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -211,7 +212,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         (key) => t(key) // Translation function
       );
 
-      // Encode special characters for UTF-8 
+      // Improved encoding for French characters - use TextEncoder for proper UTF-8 handling
       const textEncoder = new TextEncoder();
       const encodedBytes = textEncoder.encode(receiptContent);
       const encodedContent = btoa(Array.from(encodedBytes).map(byte => String.fromCharCode(byte)).join(''));
