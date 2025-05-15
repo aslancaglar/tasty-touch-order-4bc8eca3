@@ -1,4 +1,3 @@
-
 import { CartItem } from "@/types/database-types";
 
 export const calculatePriceWithoutTax = (totalPrice: number, percentage: number = 10): number => {
@@ -39,7 +38,7 @@ export const isItemAvailable = (item: any): boolean => {
   }
 };
 
-// Updated utility function to calculate cart totals with proper topping VAT and quantity
+// Updated utility function to calculate cart totals with proper topping VAT
 export const calculateCartTotals = (cart: CartItem[]) => {
   let total = 0;
   let totalTax = 0;
@@ -60,18 +59,7 @@ export const calculateCartTotals = (cart: CartItem[]) => {
           toppingCategory.toppingIds.forEach(toppingId => {
             const topping = category.toppings.find(t => t.id === toppingId);
             if (topping) {
-              // Get the topping quantity from toppingQuantities or default to 1
-              const toppingQuantity = 
-                toppingCategory.toppingQuantities && 
-                toppingCategory.toppingQuantities[toppingId] 
-                  ? toppingCategory.toppingQuantities[toppingId] 
-                  : 1;
-              
-              // Calculate the total price for this topping considering BOTH item quantity and topping quantity
-              const toppingPrice = topping.price 
-                ? parseFloat(topping.price.toString()) * item.quantity * toppingQuantity 
-                : 0;
-              
+              const toppingPrice = topping.price ? parseFloat(topping.price.toString()) * item.quantity : 0;
               itemToppingsTotal += toppingPrice;
               
               // Use topping specific tax rate if available
