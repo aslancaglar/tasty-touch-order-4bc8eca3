@@ -1,4 +1,3 @@
-
 // src/utils/receipt-templates.ts
 import { CartItem } from '@/types/database-types';
 import { SupportedLanguage } from '@/utils/language-utils';
@@ -267,7 +266,7 @@ export function generatePlainTextReceipt(
   
   // Order number with larger font - uppercase ORDER text
   receipt += ESCPOS.FONT_LARGE_BOLD + 
-    `ORDER : ${orderNumber}` + 
+    `COMMANDE : ${orderNumber}` + 
     ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
   
   // Add order type in uppercase with proper translation
@@ -277,24 +276,25 @@ export function generatePlainTextReceipt(
     receipt += t('receipt.takeaway').toUpperCase() + ESCPOS.LINE_FEED;
   }
   
-  // Return to left alignment - reduce spacing before divider (removed line break)
+  // Add table number if available
+  if (tableNumber) {
+    receipt += t('receipt.tableNumber') + ': ' + tableNumber + ESCPOS.LINE_FEED;
+  }
+  
+  // Return to left alignment - reduce spacing before divider
   receipt += ESCPOS.ALIGN_LEFT;
-  // Changed width from 32 to 48 for the divider
-  receipt += createDivider(48) + ESCPOS.LINE_FEED;
+  receipt += createDivider(32) + ESCPOS.LINE_FEED;
   
   // Add each item with proper formatting
   cart.forEach(item => {
-    // Format: "2x Item Name       10.50 EUR"
+    // Format: "2x Item Name       10.50€"
     const itemPrice = (parseFloat(item.itemPrice.toString()) * item.quantity).toFixed(2);
-    // Make item text slightly smaller
     const itemText = `${item.quantity}x ${item.menuItem.name}`;
     // Use currency code instead of symbol
     const currencyCode = restaurant?.currency?.toUpperCase() || 'EUR';
-    // Updated padding for 48 dots width
-    const paddedSpaces = ' '.repeat(Math.max(1, 48 - itemText.length - (itemPrice + ' ' + currencyCode).length));
+    const paddedSpaces = ' '.repeat(Math.max(1, 32 - itemText.length - (itemPrice + ' ' + currencyCode).length));
     
-    // Slightly smaller font for item name
-    receipt += ESCPOS.FONT_SMALL + 
+    receipt += ESCPOS.FONT_0_5X_BIGGER + 
       `${itemText}${paddedSpaces}${itemPrice} ${currencyCode}` + 
       ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
     
@@ -336,8 +336,8 @@ export function generatePlainTextReceipt(
             // Only show price if it's greater than 0
             if (price > 0) {
               const toppingPrice = (price * topping.quantity).toFixed(2);
-              // Use currency code, adjusted for 48 width
-              const paddedSpaces = ' '.repeat(Math.max(1, 48 - toppingText.length - (toppingPrice + ' ' + currencyCode).length));
+              // Use currency code instead of symbol
+              const paddedSpaces = ' '.repeat(Math.max(1, 32 - toppingText.length - (toppingPrice + ' ' + currencyCode).length));
               receipt += `${toppingText}${paddedSpaces}${toppingPrice} ${currencyCode}` + ESCPOS.LINE_FEED;
             } else {
               receipt += toppingText + ESCPOS.LINE_FEED;
@@ -352,8 +352,8 @@ export function generatePlainTextReceipt(
             if (price > 0) {
               const toppingPrice = price.toFixed(2);
               const toppingText = `  + ${topping}`;
-              // Use currency code, adjusted for 48 width
-              const paddedSpaces = ' '.repeat(Math.max(1, 48 - toppingText.length - (toppingPrice + ' ' + currencyCode).length));
+              // Use currency code instead of symbol
+              const paddedSpaces = ' '.repeat(Math.max(1, 32 - toppingText.length - (toppingPrice + ' ' + currencyCode).length));
               receipt += `${toppingText}${paddedSpaces}${toppingPrice} ${currencyCode}` + ESCPOS.LINE_FEED;
             } else {
               receipt += `  + ${topping}` + ESCPOS.LINE_FEED;
@@ -373,41 +373,37 @@ export function generatePlainTextReceipt(
   });
 
   // Add totals section
-  // Changed width from 32 to 48 for the divider
-  receipt += createDivider(48) + ESCPOS.LINE_FEED;
+  receipt += createDivider(32) + ESCPOS.LINE_FEED;
   
   // Use currency code instead of symbol
   const currencyCode = restaurant?.currency?.toUpperCase() || 'EUR';
   
-  // Subtotal, VAT with right alignment for values
+  // Subtotal, VAT, and Total with right alignment for values
   const subtotalText = `${t('receipt.subtotal')}:`;
   const subtotalValue = `${subtotal.toFixed(2)} ${currencyCode}`;
-  // Updated padding for 48 dots width
-  const subtotalPadding = ' '.repeat(Math.max(1, 48 - subtotalText.length - subtotalValue.length));
+  const subtotalPadding = ' '.repeat(Math.max(1, 32 - subtotalText.length - subtotalValue.length));
   receipt += subtotalText + subtotalPadding + subtotalValue + ESCPOS.LINE_FEED;
   
   const vatText = `${t('receipt.vat')}:`;
   const vatValue = `${tax.toFixed(2)} ${currencyCode}`;
-  // Updated padding for 48 dots width
-  const vatPadding = ' '.repeat(Math.max(1, 48 - vatText.length - vatValue.length));
+  const vatPadding = ' '.repeat(Math.max(1, 32 - vatText.length - vatValue.length));
   receipt += vatText + vatPadding + vatValue + ESCPOS.LINE_FEED;
   
   // Divider before grand total
-  // Changed width from 32 to 48 for the divider
-  receipt += createDivider(48) + ESCPOS.LINE_FEED;
+  receipt += createDivider(32) + ESCPOS.LINE_FEED;
   
-  // Grand total with DOUBLE size font (X2 bigger)
+  // Grand total with larger font
   const totalText = `${t('receipt.total')}:`;
   const totalValue = `${total.toFixed(2)} ${currencyCode}`;
-  // Updated padding for 48 dots width with larger font consideration
-  const totalPadding = ' '.repeat(Math.max(1, 48 - totalText.length - totalValue.length));
-  
-  // Use FONT_LARGE (double size) for both the total text and value
-  receipt += ESCPOS.FONT_LARGE + 
+  const totalPadding = ' '.repeat(Math.max(1, 32 - totalText.length - totalValue.length));
+  receipt += ESCPOS.FONT_BOLD + 
     totalText + totalPadding + totalValue + 
     ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
   
-  // Thank you text removed as requested
+  // Add thank you message centered with proper translation
+  receipt += ESCPOS.LINE_FEED + ESCPOS.ALIGN_CENTER + 
+    t('receipt.thankYou') + 
+    ESCPOS.ALIGN_LEFT + ESCPOS.LINE_FEED;
   
   // Add extra line feeds at the end for cutting
   receipt += ESCPOS.LINE_FEED.repeat(3);
