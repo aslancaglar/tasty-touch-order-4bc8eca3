@@ -1,4 +1,3 @@
-
 import React from "react";
 import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
@@ -25,12 +24,12 @@ const getCurrencySymbol = (currencyCode: string): string => {
 };
 
 /**
- * Sanitizes text to remove emojis for display in receipts
- * This is a browser-side only sanitization for preview purposes
+ * Processes text for display in receipts
+ * Modified to preserve emojis for display
  */
 const sanitizeText = (text: string): string => {
-  // Remove emojis and other extended Unicode characters that might not display correctly
-  return text.replace(/[\u{1F600}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '');
+  // Preserve emojis - just return original text
+  return text;
 };
 
 interface OrderReceiptProps {

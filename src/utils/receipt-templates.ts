@@ -1,3 +1,4 @@
+
 // src/utils/receipt-templates.ts
 import { CartItem } from '@/types/database-types';
 import { SupportedLanguage } from '@/utils/language-utils';
@@ -385,7 +386,7 @@ export function generatePlainTextReceipt(
     receipt += ESCPOS.LINE_FEED;
   });
 
-  // Add totals section
+  // Add totals section with reduced margin before divider
   receipt += createDivider(48) + ESCPOS.LINE_FEED;
   
   // Use currency code instead of symbol
@@ -402,10 +403,10 @@ export function generatePlainTextReceipt(
   const vatPadding = ' '.repeat(Math.max(1, 48 - vatText.length - vatValue.length));
   receipt += vatText + vatPadding + vatValue + ESCPOS.LINE_FEED;
   
-  // Divider before grand total
-  receipt += createDivider(48) + ESCPOS.LINE_FEED;
+  // Divider before grand total (reduced margin)
+  receipt += createDivider(48);
   
-  // Modified Grand total with larger font - putting the TOTAL text right-aligned before the value
+  // Modified Grand total with larger font - moving 2 characters left to prevent wrapping
   // The totalValue includes the formatted amount with currency
   const totalValue = `${total.toFixed(2)} ${currencyCode}`;
   
@@ -413,10 +414,10 @@ export function generatePlainTextReceipt(
   const totalText = removeAccents(`${t('receipt.total')}:`);
   
   // Calculate the padding to push the entire "Total: X.XX EUR" to the right edge
-  // We subtract both the text length and value length from 48 to get the right padding
-  const totalPadding = ' '.repeat(Math.max(1, 48 - totalText.length - totalValue.length));
+  // We subtract both the text length and value length from 46 (instead of 48) to move 2 characters left
+  const totalPadding = ' '.repeat(Math.max(1, 46 - totalText.length - totalValue.length));
   
-  receipt += ESCPOS.FONT_LARGE + 
+  receipt += ESCPOS.LINE_FEED + ESCPOS.FONT_LARGE + 
     totalPadding + totalText + " " + totalValue + 
     ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
   
