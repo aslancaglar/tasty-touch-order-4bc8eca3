@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 /**
@@ -20,6 +21,9 @@ export const ESCPOS = {
 
   // Paper cutting - changed to full cut with feed
   CUT_PAPER: '\x1D\x56\x00',   // Full cut without feed
+  
+  // Character encoding for European languages including French
+  CODEPAGE_LATIN1: '\x1B\x74\x03', // Code page 3 for Latin-1 (ISO 8859-1)
 };
 
 // Text formatting functions
@@ -39,13 +43,56 @@ export const formatLine = (label: string, value: string, command: string = ESCPO
   return command + label + ESCPOS.ALIGN_RIGHT + value + ESCPOS.FONT_NORMAL + ESCPOS.ALIGN_LEFT;
 };
 
-export const createDivider = (length: number = 32): string => {
+export const createDivider = (length: number = 48): string => {
   return ESCPOS.ALIGN_CENTER + '-'.repeat(length) + ESCPOS.ALIGN_LEFT;
 };
 
 export const addLineFeed = (count: number = 1): string => {
   return ESCPOS.LINE_FEED.repeat(count);
 };
+
+// Function to properly encode special characters for printers
+export const encodeSpecialCharacters = (text: string): string => {
+  // Map of special characters to their ESC/POS representations (Latin-1)
+  const specialChars: Record<string, string> = {
+    'é': '\xE9',
+    'è': '\xE8',
+    'ê': '\xEA',
+    'ë': '\xEB',
+    'à': '\xE0',
+    'â': '\xE2',
+    'ù': '\xF9',
+    'û': '\xFB',
+    'ü': '\xFC',
+    'ç': '\xE7',
+    'î': '\xEE',
+    'ï': '\xEF',
+    'ô': '\xF4',
+    'œ': 'oe', // Fallback for œ
+    'É': '\xC9',
+    'È': '\xC8',
+    'Ê': '\xCA',
+    'Ë': '\xCB',
+    'À': '\xC0',
+    'Â': '\xC2',
+    'Ù': '\xD9',
+    'Û': '\xDB',
+    'Ü': '\xDC',
+    'Ç': '\xC7',
+    'Î': '\xCE',
+    'Ï': '\xCF',
+    'Ô': '\xD4',
+    'Œ': 'OE'  // Fallback for Œ
+  };
+
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    result += specialChars[char] || char;
+  }
+  
+  return result;
+}
 
 // Track the last print time to prevent double-printing
 let lastPrintTime = 0;

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Clock, Receipt, Printer } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
-import { printReceipt } from "@/utils/print-utils";
+import { printReceipt, encodeSpecialCharacters } from "@/utils/print-utils";
 import { generatePlainTextReceipt } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -196,8 +196,8 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     uiLanguage?: SupportedLanguage;
   }) => {
     try {
-      // Use the updated generatePlainTextReceipt function with currency code
-      const receiptContent = generatePlainTextReceipt(
+      // Generate the receipt content with proper character encoding
+      let receiptContent = ESCPOS.CODEPAGE_LATIN1 + generatePlainTextReceipt(
         orderData.cart,
         orderData.restaurant,
         orderData.orderType,
