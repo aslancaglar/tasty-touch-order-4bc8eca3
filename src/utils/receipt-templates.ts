@@ -55,6 +55,23 @@ export function getGroupedToppings(item: CartItem): GroupedToppings[] {
     });
 }
 
+// Function to replace French characters with ASCII equivalents
+function removeAccents(str: string): string {
+  return str
+    .replace(/[éèêë]/g, 'e')
+    .replace(/[àâä]/g, 'a')
+    .replace(/[ïî]/g, 'i')
+    .replace(/[ôö]/g, 'o')
+    .replace(/[ùûü]/g, 'u')
+    .replace(/[ç]/g, 'c')
+    .replace(/[ÉÈÊË]/g, 'E')
+    .replace(/[ÀÂÄÃ]/g, 'A')
+    .replace(/[ÏÎ]/g, 'I')
+    .replace(/[ÔÖ]/g, 'O')
+    .replace(/[ÙÛÜ]/g, 'U')
+    .replace(/[Ç]/g, 'C');
+}
+
 // Generate a receipt HTML for browser printing
 export function generateReceiptHTML(
   cart: CartItem[],
@@ -253,32 +270,32 @@ export function generatePlainTextReceipt(
   // Start building the receipt with header elements
   let receipt = ESCPOS.ALIGN_CENTER;
   
-  // Restaurant name with larger font
-  receipt += ESCPOS.FONT_LARGE + (restaurant?.name || 'Restaurant') + ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
+  // Restaurant name with larger font - remove accents
+  receipt += ESCPOS.FONT_LARGE + removeAccents(restaurant?.name || 'Restaurant') + ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
   
-  // Restaurant location if available
+  // Restaurant location if available - remove accents
   if (restaurant?.location) {
-    receipt += restaurant.location + ESCPOS.LINE_FEED;
+    receipt += removeAccents(restaurant.location) + ESCPOS.LINE_FEED;
   }
   
   // Add date - no extra line break before ORDER
   receipt += formattedDate + ESCPOS.LINE_FEED;
   
-  // Order number with larger font - uppercase ORDER text
+  // Order number with larger font - uppercase ORDER text - remove accents
   receipt += ESCPOS.FONT_LARGE_BOLD + 
-    `COMMANDE : ${orderNumber}` + 
+    removeAccents(`COMMANDE : ${orderNumber}`) + 
     ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
   
-  // Add order type in uppercase with proper translation
+  // Add order type in uppercase with proper translation - remove accents
   if (orderType === 'dine-in') {
-    receipt += t('receipt.dineIn').toUpperCase() + ESCPOS.LINE_FEED;
+    receipt += removeAccents(t('receipt.dineIn').toUpperCase()) + ESCPOS.LINE_FEED;
   } else if (orderType === 'takeaway') {
-    receipt += t('receipt.takeaway').toUpperCase() + ESCPOS.LINE_FEED;
+    receipt += removeAccents(t('receipt.takeaway').toUpperCase()) + ESCPOS.LINE_FEED;
   }
   
-  // Add table number if available
+  // Add table number if available - remove accents
   if (tableNumber) {
-    receipt += t('receipt.tableNumber') + ': ' + tableNumber + ESCPOS.LINE_FEED;
+    receipt += removeAccents(t('receipt.tableNumber') + ': ' + tableNumber) + ESCPOS.LINE_FEED;
   }
   
   // Return to left alignment - reduce spacing before divider
@@ -287,9 +304,9 @@ export function generatePlainTextReceipt(
   
   // Add each item with proper formatting
   cart.forEach(item => {
-    // Format: "2x Item Name       10.50€"
+    // Format: "2x Item Name       10.50€" - remove accents
     const itemPrice = (parseFloat(item.itemPrice.toString()) * item.quantity).toFixed(2);
-    const itemText = `${item.quantity}x ${item.menuItem.name}`;
+    const itemText = removeAccents(`${item.quantity}x ${item.menuItem.name}`);
     // Use currency code instead of symbol
     const currencyCode = restaurant?.currency?.toUpperCase() || 'EUR';
     const paddedSpaces = ' '.repeat(Math.max(1, 48 - itemText.length - (itemPrice + ' ' + currencyCode).length));
@@ -298,7 +315,7 @@ export function generatePlainTextReceipt(
       `${itemText}${paddedSpaces}${itemPrice} ${currencyCode}` + 
       ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
     
-    // Add selected options
+    // Add selected options - remove accents
     const selectedOptions = item.selectedOptions.flatMap(option => {
       const optionDef = item.menuItem.options?.find(o => o.id === option.optionId);
       if (!optionDef) return [];
@@ -311,11 +328,11 @@ export function generatePlainTextReceipt(
     
     if (selectedOptions.length) {
       selectedOptions.forEach(option => {
-        receipt += `  + ${option}` + ESCPOS.LINE_FEED;
+        receipt += `  + ${removeAccents(option)}` + ESCPOS.LINE_FEED;
       });
     }
     
-    // Add toppings with simplified format (no categories)
+    // Add toppings with toppings price in parentheses next to topping name (not right-aligned)
     if (item.selectedToppings && item.selectedToppings.length > 0) {
       const itemToppings = getGroupedToppings(item);
       
@@ -328,44 +345,40 @@ export function generatePlainTextReceipt(
             const toppingObj = category?.toppings.find(t => t.name === topping.name);
             const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
             
-            // Format topping with optional quantity and price
-            const toppingText = topping.quantity > 1 
-              ? `  + ${topping.quantity}x ${topping.name}`
-              : `  + ${topping.name}`;
+            let toppingText = topping.quantity > 1 
+              ? `  + ${topping.quantity}x ${removeAccents(topping.name)}`
+              : `  + ${removeAccents(topping.name)}`;
               
-            // Only show price if it's greater than 0
+            // Add price in parentheses next to topping name if > 0
             if (price > 0) {
               const toppingPrice = (price * topping.quantity).toFixed(2);
-              // Use currency code instead of symbol
-              const paddedSpaces = ' '.repeat(Math.max(1, 48 - toppingText.length - (toppingPrice + ' ' + currencyCode).length));
-              receipt += `${toppingText}${paddedSpaces}${toppingPrice} ${currencyCode}` + ESCPOS.LINE_FEED;
-            } else {
-              receipt += toppingText + ESCPOS.LINE_FEED;
+              toppingText += ` (${toppingPrice} ${currencyCode})`;
             }
+            
+            receipt += toppingText + ESCPOS.LINE_FEED;
           } else {
             // Simple string topping
             const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
             const toppingObj = category?.toppings.find(t => t.name === topping);
             const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
             
-            // Only show price if it's greater than 0
+            let toppingText = `  + ${removeAccents(topping)}`;
+            
+            // Add price in parentheses next to topping name if > 0
             if (price > 0) {
               const toppingPrice = price.toFixed(2);
-              const toppingText = `  + ${topping}`;
-              // Use currency code instead of symbol
-              const paddedSpaces = ' '.repeat(Math.max(1, 48 - toppingText.length - (toppingPrice + ' ' + currencyCode).length));
-              receipt += `${toppingText}${paddedSpaces}${toppingPrice} ${currencyCode}` + ESCPOS.LINE_FEED;
-            } else {
-              receipt += `  + ${topping}` + ESCPOS.LINE_FEED;
+              toppingText += ` (${toppingPrice} ${currencyCode})`;
             }
+            
+            receipt += toppingText + ESCPOS.LINE_FEED;
           }
         });
       });
     }
     
-    // Add special instructions
+    // Add special instructions - remove accents
     if (item.specialInstructions) {
-      receipt += `  ${t('receipt.specialInstructions')}: ${item.specialInstructions}` + ESCPOS.LINE_FEED;
+      receipt += `  ${removeAccents(t('receipt.specialInstructions'))}: ${removeAccents(item.specialInstructions)}` + ESCPOS.LINE_FEED;
     }
     
     // Add line space between items
@@ -378,13 +391,13 @@ export function generatePlainTextReceipt(
   // Use currency code instead of symbol
   const currencyCode = restaurant?.currency?.toUpperCase() || 'EUR';
   
-  // Subtotal, VAT, and Total with right alignment for values
-  const subtotalText = `${t('receipt.subtotal')}:`;
+  // Subtotal and VAT with right alignment for values
+  const subtotalText = removeAccents(`${t('receipt.subtotal')}:`);
   const subtotalValue = `${subtotal.toFixed(2)} ${currencyCode}`;
   const subtotalPadding = ' '.repeat(Math.max(1, 48 - subtotalText.length - subtotalValue.length));
   receipt += subtotalText + subtotalPadding + subtotalValue + ESCPOS.LINE_FEED;
   
-  const vatText = `${t('receipt.vat')}:`;
+  const vatText = removeAccents(`${t('receipt.vat')}:`);
   const vatValue = `${tax.toFixed(2)} ${currencyCode}`;
   const vatPadding = ' '.repeat(Math.max(1, 48 - vatText.length - vatValue.length));
   receipt += vatText + vatPadding + vatValue + ESCPOS.LINE_FEED;
@@ -392,15 +405,16 @@ export function generatePlainTextReceipt(
   // Divider before grand total
   receipt += createDivider(48) + ESCPOS.LINE_FEED;
   
-  // Grand total with larger font - THIS IS THE MAIN CHANGE: MAKING TOTAL TEXT BIGGER
-  const totalText = `${t('receipt.total')}:`;
+  // Grand total with larger font - right aligned on same line
+  const totalText = removeAccents(`${t('receipt.total')}:`);
   const totalValue = `${total.toFixed(2)} ${currencyCode}`;
   const totalPadding = ' '.repeat(Math.max(1, 48 - totalText.length - totalValue.length));
+  
   receipt += ESCPOS.FONT_LARGE + 
     totalText + totalPadding + totalValue + 
     ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
   
-  // Remove thank you message but keep enough space for cutting
+  // Remove thank you message but keep space for cutting
   receipt += ESCPOS.LINE_FEED.repeat(4); // Add extra line feeds for spacing before cut
   
   // Add cut command
