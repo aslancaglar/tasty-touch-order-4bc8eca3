@@ -250,23 +250,21 @@ export function generatePlainTextReceipt(
   const date = new Date();
   const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   
-  // Create header
   let receipt = `
 ${restaurant?.name || 'Restaurant'}
 ${restaurant?.location || ''}
 ${formattedDate}
 ${t('receipt.orderNumber')}: ${orderNumber}
 
-${t('receipt.orderType')}: ${orderType === 'dine-in' ? t('receipt.dineIn') : t('receipt.takeaway')}
+${t('receipt.orderType')}: ${orderType || t('receipt.takeaway')}
 ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
 
 ----------------------------------------
 `;
 
-  // Process each item in the cart
+  // Add each item
   cart.forEach(item => {
-    // Item name and price
-    receipt += `${item.quantity}x ${item.menuItem.name} - ${(parseFloat(item.itemPrice.toString()) * item.quantity).toFixed(2)}${currencySymbol}\n`;
+    receipt += `${item.quantity}x ${item.menuItem.name} - ${(item.itemPrice * item.quantity).toFixed(2)}${currencySymbol}\n`;
     
     // Add selected options
     const selectedOptions = item.selectedOptions.flatMap(option => {
@@ -283,7 +281,7 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
       receipt += `   ${selectedOptions.join(', ')}\n`;
     }
     
-    // Add toppings by category with quantities
+    // Add toppings with quantities
     const itemToppings = getGroupedToppings(item);
     itemToppings.forEach(group => {
       receipt += `   ${group.category}:\n`;
@@ -309,17 +307,16 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
   receipt += `
 ----------------------------------------
 ${t('receipt.subtotal')}: ${subtotal.toFixed(2)}${currencySymbol}
-${t('receipt.vat')}: ${tax.toFixed(2)}${currencySymbol}
+TVA (${taxRate}%): ${tax.toFixed(2)}${currencySymbol}
 ${t('receipt.total')}: ${total.toFixed(2)}${currencySymbol}
 
 ${t('receipt.thankYou')}
-${t('receipt.seeYouSoon')}
 `;
 
   return receipt;
 }
 
-// Standard receipt generator that's used for both browser and PrintNode
+// Add the missing generateStandardReceipt function
 export function generateStandardReceipt(options: {
   restaurant: { name: string; location?: string | null; currency?: string; } | null;
   cart: CartItem[];
@@ -351,42 +348,39 @@ export function generateStandardReceipt(options: {
     // Basic translations for receipt
     const translations: Record<string, Record<string, string>> = {
       fr: {
-        "receipt.orderNumber": "Commande",
+        "receipt.orderNumber": "Commande No",
         "receipt.orderType": "Type de commande",
         "receipt.dineIn": "Sur place",
         "receipt.takeaway": "À emporter",
-        "receipt.tableNumber": "Table",
+        "receipt.tableNumber": "Table No",
         "receipt.subtotal": "Sous-total",
         "receipt.vat": "TVA",
         "receipt.total": "Total",
         "receipt.thankYou": "Merci pour votre visite!",
-        "receipt.seeYouSoon": "À bientôt!",
         "receipt.specialInstructions": "Instructions spéciales"
       },
       en: {
-        "receipt.orderNumber": "Order",
+        "receipt.orderNumber": "Order No",
         "receipt.orderType": "Order Type",
         "receipt.dineIn": "Dine In",
         "receipt.takeaway": "Takeaway",
-        "receipt.tableNumber": "Table",
+        "receipt.tableNumber": "Table No",
         "receipt.subtotal": "Subtotal",
         "receipt.vat": "VAT",
         "receipt.total": "Total",
         "receipt.thankYou": "Thank you for your visit!",
-        "receipt.seeYouSoon": "See you soon!",
         "receipt.specialInstructions": "Special Instructions"
       },
       tr: {
-        "receipt.orderNumber": "Sipariş",
+        "receipt.orderNumber": "Sipariş No",
         "receipt.orderType": "Sipariş Tipi",
         "receipt.dineIn": "Masa Servisi",
         "receipt.takeaway": "Paket Servisi",
-        "receipt.tableNumber": "Masa",
+        "receipt.tableNumber": "Masa No",
         "receipt.subtotal": "Ara Toplam",
         "receipt.vat": "KDV",
         "receipt.total": "Toplam",
         "receipt.thankYou": "Ziyaretiniz için teşekkürler!",
-        "receipt.seeYouSoon": "Tekrar görüşmek üzere!",
         "receipt.specialInstructions": "Özel Talimatlar"
       }
     };
@@ -415,14 +409,13 @@ export function generateStandardReceipt(options: {
   const date = new Date();
   const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   
-  // Create header with simplified format
   let receipt = `
 ${restaurant?.name || 'Restaurant'}
 ${restaurant?.location || ''}
 ${formattedDate}
 ${t('receipt.orderNumber')}: ${orderNumber}
 
-${orderType === 'dine-in' ? t('receipt.dineIn') : t('receipt.takeaway')}
+${t('receipt.orderType')}: ${orderType === 'dine-in' ? t('receipt.dineIn') : t('receipt.takeaway')}
 ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
 
 ----------------------------------------
@@ -447,39 +440,16 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
       receipt += `   ${selectedOptions.join(', ')}\n`;
     }
     
-    // Add toppings without category headers, with "+ " prefix and only show price if > 0
+    // Add toppings with quantities
     const itemToppings = getGroupedToppings(item);
     itemToppings.forEach(group => {
+      receipt += `   ${group.category}:\n`;
       group.toppings.forEach(topping => {
-        // Find the topping definition to get the price
-        const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-        let toppingName = '';
-        let quantity = 1;
-        let price = 0;
-        
         if (typeof topping === 'object') {
-          toppingName = topping.name;
-          quantity = topping.quantity;
-          
-          const toppingDef = category?.toppings.find(t => t.name === toppingName);
-          if (toppingDef && toppingDef.price) {
-            price = parseFloat(toppingDef.price.toString()) * quantity;
-          }
+          // Handle topping with quantity
+          receipt += `      ${topping.quantity > 1 ? `${topping.quantity}x ` : ''}${topping.name}\n`;
         } else {
-          toppingName = topping;
-          const toppingDef = category?.toppings.find(t => t.name === toppingName);
-          if (toppingDef && toppingDef.price) {
-            price = parseFloat(toppingDef.price.toString());
-          }
-        }
-        
-        // Only show price if it's greater than 0
-        const priceDisplay = price > 0 ? ` - ${price.toFixed(2)}${currencySymbol}` : '';
-        
-        if (typeof topping === 'object' && topping.quantity > 1) {
-          receipt += `   + ${topping.quantity}x ${toppingName}${priceDisplay}\n`;
-        } else {
-          receipt += `   + ${toppingName}${priceDisplay}\n`;
+          receipt += `      ${topping}\n`;
         }
       });
     });
@@ -492,16 +462,14 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
     receipt += '\n';
   });
 
-  // Add totals with divider before total
+  // Add totals
   receipt += `
 ----------------------------------------
 ${t('receipt.subtotal')}: ${subtotal.toFixed(2)}${currencySymbol}
 ${t('receipt.vat')}: ${tax.toFixed(2)}${currencySymbol}
-----------------------------------------
 ${t('receipt.total')}: ${total.toFixed(2)}${currencySymbol}
 
 ${t('receipt.thankYou')}
-${t('receipt.seeYouSoon')}
 `;
 
   return receipt;
