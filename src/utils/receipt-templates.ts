@@ -2,6 +2,7 @@
 // src/utils/receipt-templates.ts
 import { CartItem } from '@/types/database-types';
 import { SupportedLanguage } from '@/utils/language-utils';
+import { ESCPOS, formatText, centerText, addLineFeed, createDivider } from '@/utils/print-utils';
 
 // Define topping object type with name and quantity
 export interface ToppingWithQuantity {
@@ -250,21 +251,52 @@ export function generatePlainTextReceipt(
   const date = new Date();
   const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   
-  let receipt = `
-${restaurant?.name || 'Restaurant'}
-${restaurant?.location || ''}
-${formattedDate}
-${t('receipt.orderNumber')}: ${orderNumber}
-
-${t('receipt.orderType')}: ${orderType || t('receipt.takeaway')}
-${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
-
-----------------------------------------
-`;
-
-  // Add each item
+  // Start building the receipt with header elements
+  // Use ESC/POS commands to format text sizes
+  let receipt = ESCPOS.ALIGN_CENTER;
+  
+  // Restaurant name with larger font
+  receipt += ESCPOS.FONT_LARGE + (restaurant?.name || 'Restaurant') + ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
+  
+  // Restaurant location if available
+  if (restaurant?.location) {
+    receipt += restaurant.location + ESCPOS.LINE_FEED;
+  }
+  
+  // Add date
+  receipt += formattedDate + ESCPOS.LINE_FEED;
+  
+  // Order number with larger font
+  receipt += ESCPOS.LINE_FEED + ESCPOS.FONT_LARGE_BOLD + 
+    `Commande : ${orderNumber}` + 
+    ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
+  
+  // Add order type
+  if (orderType === 'dine-in') {
+    receipt += t('receipt.dineIn') + ESCPOS.LINE_FEED;
+  } else if (orderType === 'takeaway') {
+    receipt += t('receipt.takeaway') + ESCPOS.LINE_FEED;
+  }
+  
+  // Add table number if available
+  if (tableNumber) {
+    receipt += t('receipt.tableNumber') + ': ' + tableNumber + ESCPOS.LINE_FEED;
+  }
+  
+  // Return to left alignment and add divider
+  receipt += ESCPOS.ALIGN_LEFT + ESCPOS.LINE_FEED;
+  receipt += createDivider(32) + ESCPOS.LINE_FEED;
+  
+  // Add each item with proper formatting
   cart.forEach(item => {
-    receipt += `${item.quantity}x ${item.menuItem.name} - ${(item.itemPrice * item.quantity).toFixed(2)}${currencySymbol}\n`;
+    // Format: "2x Item Name       10.50€"
+    const itemPrice = (parseFloat(item.itemPrice.toString()) * item.quantity).toFixed(2);
+    const itemText = `${item.quantity}x ${item.menuItem.name}`;
+    const paddedSpaces = ' '.repeat(Math.max(1, 32 - itemText.length - (itemPrice + currencySymbol).length));
+    
+    receipt += ESCPOS.FONT_0_5X_BIGGER + 
+      `${itemText}${paddedSpaces}${itemPrice}${currencySymbol}` + 
+      ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
     
     // Add selected options
     const selectedOptions = item.selectedOptions.flatMap(option => {
@@ -278,40 +310,101 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
     }).filter(Boolean);
     
     if (selectedOptions.length) {
-      receipt += `   ${selectedOptions.join(', ')}\n`;
+      selectedOptions.forEach(option => {
+        receipt += `  + ${option}` + ESCPOS.LINE_FEED;
+      });
     }
     
-    // Add toppings with quantities
-    const itemToppings = getGroupedToppings(item);
-    itemToppings.forEach(group => {
-      receipt += `   ${group.category}:\n`;
-      group.toppings.forEach(topping => {
-        if (typeof topping === 'object') {
-          // Handle topping with quantity
-          receipt += `      ${topping.quantity > 1 ? `${topping.quantity}x ` : ''}${topping.name}\n`;
-        } else {
-          receipt += `      ${topping}\n`;
-        }
+    // Add toppings with simplified format (no categories)
+    if (item.selectedToppings && item.selectedToppings.length > 0) {
+      const itemToppings = getGroupedToppings(item);
+      
+      // Process all toppings, flattening the structure
+      itemToppings.forEach(group => {
+        group.toppings.forEach(topping => {
+          // For each topping, determine if it has a quantity > 1
+          if (typeof topping === 'object') {
+            const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+            const toppingObj = category?.toppings.find(t => t.name === topping.name);
+            const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
+            
+            // Format topping with optional quantity and price
+            const toppingText = topping.quantity > 1 
+              ? `  + ${topping.quantity}x ${topping.name}`
+              : `  + ${topping.name}`;
+              
+            // Only show price if it's greater than 0
+            if (price > 0) {
+              const toppingPrice = (price * topping.quantity).toFixed(2);
+              const paddedSpaces = ' '.repeat(Math.max(1, 32 - toppingText.length - (toppingPrice + currencySymbol).length));
+              receipt += `${toppingText}${paddedSpaces}${toppingPrice}${currencySymbol}` + ESCPOS.LINE_FEED;
+            } else {
+              receipt += toppingText + ESCPOS.LINE_FEED;
+            }
+          } else {
+            // Simple string topping
+            const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+            const toppingObj = category?.toppings.find(t => t.name === topping);
+            const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
+            
+            // Only show price if it's greater than 0
+            if (price > 0) {
+              const toppingPrice = price.toFixed(2);
+              const toppingText = `  + ${topping}`;
+              const paddedSpaces = ' '.repeat(Math.max(1, 32 - toppingText.length - (toppingPrice + currencySymbol).length));
+              receipt += `${toppingText}${paddedSpaces}${toppingPrice}${currencySymbol}` + ESCPOS.LINE_FEED;
+            } else {
+              receipt += `  + ${topping}` + ESCPOS.LINE_FEED;
+            }
+          }
+        });
       });
-    });
+    }
     
     // Add special instructions
     if (item.specialInstructions) {
-      receipt += `   ${t('receipt.specialInstructions')}: ${item.specialInstructions}\n`;
+      receipt += `  ${t('receipt.specialInstructions')}: ${item.specialInstructions}` + ESCPOS.LINE_FEED;
     }
     
-    receipt += '\n';
+    // Add line space between items
+    receipt += ESCPOS.LINE_FEED;
   });
 
-  // Add totals
-  receipt += `
-----------------------------------------
-${t('receipt.subtotal')}: ${subtotal.toFixed(2)}${currencySymbol}
-TVA (${taxRate}%): ${tax.toFixed(2)}${currencySymbol}
-${t('receipt.total')}: ${total.toFixed(2)}${currencySymbol}
-
-${t('receipt.thankYou')}
-`;
+  // Add totals section
+  receipt += createDivider(32) + ESCPOS.LINE_FEED;
+  
+  // Subtotal, VAT, and Total with right alignment for values
+  const subtotalText = `${t('receipt.subtotal')}:`;
+  const subtotalValue = `${subtotal.toFixed(2)}${currencySymbol}`;
+  const subtotalPadding = ' '.repeat(Math.max(1, 32 - subtotalText.length - subtotalValue.length));
+  receipt += subtotalText + subtotalPadding + subtotalValue + ESCPOS.LINE_FEED;
+  
+  const vatText = `${t('receipt.vat')}:`;
+  const vatValue = `${tax.toFixed(2)}${currencySymbol}`;
+  const vatPadding = ' '.repeat(Math.max(1, 32 - vatText.length - vatValue.length));
+  receipt += vatText + vatPadding + vatValue + ESCPOS.LINE_FEED;
+  
+  // Divider before grand total
+  receipt += createDivider(32) + ESCPOS.LINE_FEED;
+  
+  // Grand total with larger font
+  const totalText = `${t('receipt.total')}:`;
+  const totalValue = `${total.toFixed(2)}${currencySymbol}`;
+  const totalPadding = ' '.repeat(Math.max(1, 32 - totalText.length - totalValue.length));
+  receipt += ESCPOS.FONT_BOLD + 
+    totalText + totalPadding + totalValue + 
+    ESCPOS.FONT_NORMAL + ESCPOS.LINE_FEED;
+  
+  // Add thank you message centered
+  receipt += ESCPOS.LINE_FEED + ESCPOS.ALIGN_CENTER + 
+    t('receipt.thankYou') + 
+    ESCPOS.ALIGN_LEFT + ESCPOS.LINE_FEED;
+  
+  // Add extra line feeds at the end for cutting
+  receipt += ESCPOS.LINE_FEED.repeat(3);
+  
+  // Add cut command
+  receipt += ESCPOS.CUT_PAPER;
 
   return receipt;
 }

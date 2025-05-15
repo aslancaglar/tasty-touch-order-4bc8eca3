@@ -165,7 +165,8 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             tax,
             total,
             getFormattedOptions,
-            getFormattedToppings
+            getFormattedToppings,
+            uiLanguage
           });
         }
         setIsPrinting(false);
@@ -193,9 +194,10 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     total: number;
     getFormattedOptions: (item: CartItem) => string;
     getFormattedToppings: (item: CartItem) => string;
+    uiLanguage?: SupportedLanguage;
   }) => {
     try {
-      // Use generatePlainTextReceipt instead of generateStandardReceipt
+      // Use the updated generatePlainTextReceipt function
       const receiptContent = generatePlainTextReceipt(
         orderData.cart,
         orderData.restaurant,
@@ -210,10 +212,11 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         (key) => t(key) // Translation function
       );
 
-      // Encode special characters for UTF-8
+      // Encode special characters for UTF-8 
       const textEncoder = new TextEncoder();
       const encodedBytes = textEncoder.encode(receiptContent);
       const encodedContent = btoa(Array.from(encodedBytes).map(byte => String.fromCharCode(byte)).join(''));
+      
       console.log("Sending receipt to PrintNode printers:", printerIds);
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
