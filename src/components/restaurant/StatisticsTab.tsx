@@ -99,7 +99,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
     try {
       setLoading(true);
       
-      // Fetch daily order count and sales
+      // Fetch daily order count and sales - EXCLUDE CANCELLED ORDERS
       const todayStart = startOfDay(new Date()).toISOString();
       const todayEnd = endOfDay(new Date()).toISOString();
       
@@ -107,12 +107,13 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
         .from('orders')
         .select('id, total')
         .eq('restaurant_id', restaurant.id)
+        .neq('status', 'cancelled')  // Exclude cancelled orders
         .gte('created_at', todayStart)
         .lte('created_at', todayEnd);
       
       if (dailyError) throw dailyError;
       
-      // Fetch monthly order count and sales
+      // Fetch monthly order count and sales - EXCLUDE CANCELLED ORDERS
       const monthStart = startOfMonth(new Date()).toISOString();
       const monthEnd = endOfMonth(new Date()).toISOString();
       
@@ -120,6 +121,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
         .from('orders')
         .select('id, total')
         .eq('restaurant_id', restaurant.id)
+        .neq('status', 'cancelled')  // Exclude cancelled orders
         .gte('created_at', monthStart)
         .lte('created_at', monthEnd);
       
@@ -136,13 +138,14 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
         monthlySales
       });
       
-      // Fetch data for the last 7 days for the chart
+      // Fetch data for the last 7 days for the chart - EXCLUDE CANCELLED ORDERS
       const last7Days = subDays(new Date(), 6).toISOString();
       
       const { data: chartOrdersData, error: chartError } = await supabase
         .from('orders')
         .select('id, total, created_at')
         .eq('restaurant_id', restaurant.id)
+        .neq('status', 'cancelled')  // Exclude cancelled orders
         .gte('created_at', last7Days)
         .order('created_at', { ascending: true });
       
@@ -191,10 +194,12 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
       const fromDate = startOfDay(dateRange.from).toISOString();
       const toDate = endOfDay(dateRange.to).toISOString();
       
+      // EXCLUDE CANCELLED ORDERS from custom period data
       const { data: periodOrders, error: periodError } = await supabase
         .from('orders')
         .select('id, total, created_at')
         .eq('restaurant_id', restaurant.id)
+        .neq('status', 'cancelled')  // Exclude cancelled orders
         .gte('created_at', fromDate)
         .lte('created_at', toDate)
         .order('created_at', { ascending: true });

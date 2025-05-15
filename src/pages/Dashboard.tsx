@@ -73,21 +73,21 @@ const StatCard = ({
 const fetchStats = async () => {
   console.log("[Dashboard] Fetching fresh statistics data");
   
-  // Total revenue
+  // Total revenue - EXCLUDE CANCELLED ORDERS
   const { data: totalRevenueData, error: totalRevenueError } = await supabase
     .from("orders")
     .select("total")
-    .neq("status", "cancelled");
+    .neq("status", "cancelled");  // Exclude cancelled orders
 
   // Total restaurants
   const { count: restaurantCount, error: restaurantsError } = await supabase
     .from("restaurants")
     .select("*", { count: "exact", head: true });
 
-  // Monthly order count
+  // Monthly order count - Using updated function that excludes cancelled orders
   const { data: monthlyOrderData, error: monthlyError } = await supabase.rpc("get_monthly_order_count");
 
-  // Daily order count
+  // Daily order count - Using updated function that excludes cancelled orders
   const { data: dailyOrderData, error: dailyError } = await supabase.rpc("get_daily_order_count");
 
   if (
@@ -113,10 +113,11 @@ const fetchStats = async () => {
   };
 };
 
-const fetchPopularItems = async (): Promise<PopularItem[]> => {
+// Using updated functions that exclude cancelled orders
+const fetchPopularItems = async () => {
   console.log("[Dashboard] Fetching fresh popular items data");
   
-  // Top 5 items by sales (uses db function)
+  // Top 5 items by sales (uses updated db function)
   const { data, error } = await supabase.rpc("get_popular_items", { limit_count: 5 });
   if (error) throw error;
   
@@ -124,14 +125,14 @@ const fetchPopularItems = async (): Promise<PopularItem[]> => {
   if (!data) return [];
   
   // Properly cast the JSON data to our type
-  const typedData = (typeof data === 'string' ? JSON.parse(data) : data) as PopularItem[];
+  const typedData = (typeof data === 'string' ? JSON.parse(data) : data);
   return Array.isArray(typedData) ? typedData : [];
 };
 
-const fetchPopularRestaurants = async (): Promise<PopularRestaurant[]> => {
+const fetchPopularRestaurants = async () => {
   console.log("[Dashboard] Fetching fresh popular restaurants data");
   
-  // Top 5 restaurants by revenue (uses db function)
+  // Top 5 restaurants by revenue (uses updated db function)
   const { data, error } = await supabase.rpc("get_popular_restaurants", { limit_count: 5 });
   if (error) throw error;
   
@@ -139,7 +140,7 @@ const fetchPopularRestaurants = async (): Promise<PopularRestaurant[]> => {
   if (!data) return [];
   
   // Properly cast the JSON data to our type
-  const typedData = (typeof data === 'string' ? JSON.parse(data) : data) as PopularRestaurant[];
+  const typedData = (typeof data === 'string' ? JSON.parse(data) : data);
   return Array.isArray(typedData) ? typedData : [];
 };
 
