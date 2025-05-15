@@ -153,7 +153,20 @@ const ToppingCategory = memo(({
           // Decide what to render based on whether multiple quantities are allowed
           const allowMultiple = category.allow_multiple_same_topping;
           
-          return <div key={topping.id} className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white">
+          return <div 
+            key={topping.id} 
+            className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white"
+            onClick={(e) => {
+              // Handle click on the entire topping item (except when clicking on the +/- buttons)
+              // This makes the entire row clickable, not just the + icon
+              if (!(e.target as HTMLElement).closest('button')) {
+                if (!isSelected) {
+                  // If not selected, add it with quantity 1
+                  onToggleTopping(category.id, topping.id, allowMultiple ? 1 : undefined);
+                }
+              }
+            }}
+          >
               <span className={`flex-1 mr-2 ${isSelected ? 'text-green-700 font-medium' : ''}`}>
                 {topping.name}
               </span>
