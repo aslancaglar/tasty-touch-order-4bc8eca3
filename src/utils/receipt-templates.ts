@@ -250,21 +250,23 @@ export function generatePlainTextReceipt(
   const date = new Date();
   const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   
+  // Create header
   let receipt = `
 ${restaurant?.name || 'Restaurant'}
 ${restaurant?.location || ''}
 ${formattedDate}
 ${t('receipt.orderNumber')}: ${orderNumber}
 
-${t('receipt.orderType')}: ${orderType || t('receipt.takeaway')}
+${t('receipt.orderType')}: ${orderType === 'dine-in' ? t('receipt.dineIn') : t('receipt.takeaway')}
 ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
 
 ----------------------------------------
 `;
 
-  // Add each item
+  // Process each item in the cart
   cart.forEach(item => {
-    receipt += `${item.quantity}x ${item.menuItem.name} - ${(item.itemPrice * item.quantity).toFixed(2)}${currencySymbol}\n`;
+    // Item name and price
+    receipt += `${item.quantity}x ${item.menuItem.name} - ${(parseFloat(item.itemPrice.toString()) * item.quantity).toFixed(2)}${currencySymbol}\n`;
     
     // Add selected options
     const selectedOptions = item.selectedOptions.flatMap(option => {
@@ -281,7 +283,7 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
       receipt += `   ${selectedOptions.join(', ')}\n`;
     }
     
-    // Add toppings with quantities
+    // Add toppings by category with quantities
     const itemToppings = getGroupedToppings(item);
     itemToppings.forEach(group => {
       receipt += `   ${group.category}:\n`;
@@ -307,16 +309,17 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
   receipt += `
 ----------------------------------------
 ${t('receipt.subtotal')}: ${subtotal.toFixed(2)}${currencySymbol}
-TVA (${taxRate}%): ${tax.toFixed(2)}${currencySymbol}
+${t('receipt.vat')}: ${tax.toFixed(2)}${currencySymbol}
 ${t('receipt.total')}: ${total.toFixed(2)}${currencySymbol}
 
 ${t('receipt.thankYou')}
+${t('receipt.seeYouSoon')}
 `;
 
   return receipt;
 }
 
-// Add the missing generateStandardReceipt function
+// Standard receipt generator that's used for both browser and PrintNode
 export function generateStandardReceipt(options: {
   restaurant: { name: string; location?: string | null; currency?: string; } | null;
   cart: CartItem[];
@@ -357,6 +360,7 @@ export function generateStandardReceipt(options: {
         "receipt.vat": "TVA",
         "receipt.total": "Total",
         "receipt.thankYou": "Merci pour votre visite!",
+        "receipt.seeYouSoon": "À bientôt!",
         "receipt.specialInstructions": "Instructions spéciales"
       },
       en: {
@@ -369,6 +373,7 @@ export function generateStandardReceipt(options: {
         "receipt.vat": "VAT",
         "receipt.total": "Total",
         "receipt.thankYou": "Thank you for your visit!",
+        "receipt.seeYouSoon": "See you soon!",
         "receipt.specialInstructions": "Special Instructions"
       },
       tr: {
@@ -381,6 +386,7 @@ export function generateStandardReceipt(options: {
         "receipt.vat": "KDV",
         "receipt.total": "Toplam",
         "receipt.thankYou": "Ziyaretiniz için teşekkürler!",
+        "receipt.seeYouSoon": "Tekrar görüşmek üzere!",
         "receipt.specialInstructions": "Özel Talimatlar"
       }
     };
@@ -470,6 +476,7 @@ ${t('receipt.vat')}: ${tax.toFixed(2)}${currencySymbol}
 ${t('receipt.total')}: ${total.toFixed(2)}${currencySymbol}
 
 ${t('receipt.thankYou')}
+${t('receipt.seeYouSoon')}
 `;
 
   return receipt;

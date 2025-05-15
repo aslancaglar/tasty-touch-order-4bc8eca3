@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { printReceipt } from "@/utils/print-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { generatePlainTextReceipt, getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
+import { generateStandardReceipt, getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -218,7 +217,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     }
   ) => {
     try {
-      const receiptContent = generatePrintNodeReceipt(orderData);
+      // Use the standardized receipt generator with useCurrencyCode=true for PrintNode
+      const receiptContent = generateStandardReceipt({
+        ...orderData,
+        uiLanguage,
+        useCurrencyCode: true
+      });
       
       // Fix: Properly encode special characters for UTF-8
       const textEncoder = new TextEncoder();
@@ -257,49 +261,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     } catch (error) {
       console.error("Error sending receipt to PrintNode:", error);
     }
-  };
-  
-  const generatePrintNodeReceipt = (orderData: {
-    restaurant: typeof restaurant;
-    cart: CartItem[];
-    orderNumber: string;
-    tableNumber?: string | null;
-    orderType: "dine-in" | "takeaway" | null;
-    subtotal: number;
-    tax: number;
-    total: number;
-    getFormattedOptions: (item: CartItem) => string;
-    getFormattedToppings: (item: CartItem) => string;
-  }): string => {
-    // Use the plain text receipt generator
-    return generatePlainTextReceipt(
-      orderData.cart,
-      orderData.restaurant,
-      orderData.orderType,
-      orderData.tableNumber,
-      orderData.orderNumber,
-      "EUR", // Currency symbol
-      orderData.total,
-      orderData.subtotal,
-      orderData.tax,
-      10, // Tax rate
-      (key) => {
-        // Simple translation function for the receipt
-        const translations: Record<string, string> = {
-          'receipt.orderNumber': uiLanguage === 'fr' ? 'Commande No' : uiLanguage === 'tr' ? 'Sipariş No' : 'Order No',
-          'receipt.orderType': uiLanguage === 'fr' ? 'Type de commande' : uiLanguage === 'tr' ? 'Sipariş Tipi' : 'Order Type',
-          'receipt.dineIn': uiLanguage === 'fr' ? 'Sur place' : uiLanguage === 'tr' ? 'Masa Servisi' : 'Dine In',
-          'receipt.takeaway': uiLanguage === 'fr' ? 'À emporter' : uiLanguage === 'tr' ? 'Paket Servisi' : 'Takeaway',
-          'receipt.tableNumber': uiLanguage === 'fr' ? 'Table No' : uiLanguage === 'tr' ? 'Masa No' : 'Table No',
-          'receipt.subtotal': uiLanguage === 'fr' ? 'Sous-total' : uiLanguage === 'tr' ? 'Ara Toplam' : 'Subtotal',
-          'receipt.vat': uiLanguage === 'fr' ? 'TVA' : uiLanguage === 'tr' ? 'KDV' : 'VAT',
-          'receipt.total': uiLanguage === 'fr' ? 'Total' : uiLanguage === 'tr' ? 'Toplam' : 'Total',
-          'receipt.thankYou': uiLanguage === 'fr' ? 'Merci pour votre visite!' : uiLanguage === 'tr' ? 'Ziyaretiniz için teşekkürler!' : 'Thank you for your visit!',
-          'receipt.specialInstructions': uiLanguage === 'fr' ? 'Instructions spéciales' : uiLanguage === 'tr' ? 'Özel Talimatlar' : 'Special Instructions'
-        };
-        return translations[key] || key;
-      }
-    );
   };
 
   return (

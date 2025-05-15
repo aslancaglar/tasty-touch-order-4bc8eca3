@@ -79,6 +79,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         </div>
         {orderType === "dine-in" && <div>{t("receipt.dineIn")}</div>}
         {orderType === "takeaway" && <div>{t("receipt.takeaway")}</div>}
+        {tableNumber && <div>{t("receipt.table")} #{tableNumber}</div>}
       </div>
 
       <div className="divider"></div>
@@ -101,9 +102,9 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                 ))}
               </div>
             )}
-            {/* Add toppings without category headers and tax info */}
+            {/* Add toppings with minimized spacing */}
             {item.selectedToppings && item.selectedToppings.length > 0 && (
-              <div className="item-details text-xs">
+              <div className="item-details text-xs" style={{ marginTop: "0", lineHeight: "1.2" }}>
                 {getGroupedToppings(item).flatMap((group) => 
                   group.toppings.map((topping, toppingIdx) => {
                     const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
@@ -119,7 +120,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                     const totalPrice = price * quantity;
                     
                     return (
-                      <div key={`${item.id}-topping-${toppingIdx}`} className="item">
+                      <div key={`${item.id}-topping-${toppingIdx}`} className="item" style={{ marginBottom: "0", paddingTop: "0" }}>
                         <span>
                           {quantity > 1 ? `+ ${quantity}x ${sanitizeText(toppingName)}` : `+ ${sanitizeText(toppingName)}`}
                         </span>
@@ -128,6 +129,11 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                     );
                   })
                 )}
+              </div>
+            )}
+            {item.specialInstructions && (
+              <div className="item-details text-xs">
+                <div>{t('receipt.specialInstructions')}: {sanitizeText(item.specialInstructions)}</div>
               </div>
             )}
           </div>

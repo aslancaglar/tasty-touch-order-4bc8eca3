@@ -6,7 +6,7 @@ import { Check, Clock, Receipt, Printer } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { printReceipt } from "@/utils/print-utils";
-import { generatePlainTextReceipt } from "@/utils/receipt-templates";
+import { generateStandardReceipt } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
@@ -195,20 +195,12 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     getFormattedToppings: (item: CartItem) => string;
   }) => {
     try {
-      // Use generatePlainTextReceipt instead of generateStandardReceipt
-      const receiptContent = generatePlainTextReceipt(
-        orderData.cart,
-        orderData.restaurant,
-        orderData.orderType,
-        orderData.tableNumber,
-        orderData.orderNumber,
-        getCurrencySymbol(orderData.restaurant?.currency),
-        orderData.total,
-        orderData.subtotal,
-        orderData.tax,
-        10, // Tax rate (default)
-        (key) => t(key) // Translation function
-      );
+      // Use generateStandardReceipt for consistent formatting across print methods
+      const receiptContent = generateStandardReceipt({
+        ...orderData,
+        uiLanguage,
+        useCurrencyCode: true // Use currency code instead of symbol for PrintNode
+      });
 
       // Encode special characters for UTF-8
       const textEncoder = new TextEncoder();
