@@ -1,12 +1,23 @@
+
 import { useState, useEffect } from "react";
 import { Restaurant, OrderStatus } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, ChefHat, CheckCircle, XCircle } from "lucide-react";
+import { Clock, ChefHat, CheckCircle, XCircle, Trash2, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { updateOrderStatus } from "@/services/kiosk-service";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -59,6 +70,8 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const ordersPerPage = 10;
   const { toast } = useToast();
 
@@ -211,8 +224,90 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
     }
   };
 
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    
+    try {
+      // First, delete related order_items
+      const { data: orderItems, error: itemsError } = await supabase
+        .from("order_items")
+        .select("id")
+        .eq("order_id", orderToDelete);
+        
+      if (itemsError) {
+        throw itemsError;
+      }
+      
+      // Delete order_item_toppings and order_item_options for each item
+      if (orderItems && orderItems.length > 0) {
+        const itemIds = orderItems.map(item => item.id);
+        
+        // Delete order_item_toppings
+        await supabase
+          .from("order_item_toppings")
+          .delete()
+          .in("order_item_id", itemIds);
+          
+        // Delete order_item_options
+        await supabase
+          .from("order_item_options")
+          .delete()
+          .in("order_item_id", itemIds);
+      }
+      
+      // Delete order_items
+      await supabase
+        .from("order_items")
+        .delete()
+        .eq("order_id", orderToDelete);
+      
+      // Finally delete the order
+      const { error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderToDelete);
+        
+      if (error) throw error;
+      
+      // Remove the deleted order from the state
+      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderToDelete));
+      
+      // Decrement total orders count
+      setTotalOrders(prev => prev - 1);
+      
+      toast({
+        title: "Order Deleted",
+        description: "The order has been deleted successfully",
+      });
+      
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete order",
+        variant: "destructive"
+      });
+    } finally {
+      setOrderToDelete(null);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
+  const openDeleteDialog = (orderId: string) => {
+    setOrderToDelete(orderId);
+    setIsDeleteDialogOpen(true);
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+  
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString([], { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
   };
 
   // Function to get visible page numbers based on current page
@@ -270,6 +365,10 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                         <p className="text-sm text-muted-foreground">
                           {order.customerName || "Guest Customer"}
                         </p>
+                        <div className="flex items-center space-x-1 mt-1 text-xs text-gray-500">
+                          <Calendar className="h-3 w-3" />
+                          <span>{formatDate(order.date)}</span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-4 mt-4 md:mt-0">
@@ -353,6 +452,15 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
                           Mark Completed
                         </Button>
                       )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-red-600"
+                        onClick={() => openDeleteDialog(order.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -405,6 +513,23 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
           </div>
         )}
       </div>
+      
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this order? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteOrder} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
