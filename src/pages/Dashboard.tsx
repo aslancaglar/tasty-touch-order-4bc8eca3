@@ -1,10 +1,11 @@
+
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { setCachingEnabledForAdmin } from "@/services/cache-service";
@@ -87,20 +88,34 @@ const fetchStats = async () => {
   // Monthly order count - Using updated function that excludes cancelled orders
   const { data: monthlyOrderData, error: monthlyError } = await supabase.rpc("get_monthly_order_count");
 
-  // Daily order count - Using updated function that excludes cancelled orders
-  const { data: dailyOrderData, error: dailyError } = await supabase.rpc("get_daily_order_count");
+  // Fixed daily order count calculation to ensure accurate counting
+  const today = new Date();
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  
+  const { data: dailyOrdersData, error: dailyOrdersError } = await supabase
+    .from("orders")
+    .select("id", { count: "exact" })
+    .gte("created_at", startOfDay.toISOString())
+    .lte("created_at", endOfDay.toISOString())
+    .neq("status", "cancelled");
+
+  const dailyOrderCount = dailyOrdersData?.length || 0;
+
+  console.log("[Dashboard] Today's orders count:", dailyOrderCount);
+  console.log("[Dashboard] Date range:", startOfDay.toISOString(), "to", endOfDay.toISOString());
 
   if (
     totalRevenueError ||
     restaurantsError ||
     monthlyError ||
-    dailyError
+    dailyOrdersError
   )
     throw (
       totalRevenueError ||
       restaurantsError ||
       monthlyError ||
-      dailyError
+      dailyOrdersError
     );
 
   const revenue = totalRevenueData ? totalRevenueData.reduce((acc, cur) => acc + Number(cur.total), 0) : 0;
@@ -109,7 +124,7 @@ const fetchStats = async () => {
     revenue,
     restaurants: restaurantCount ?? 0,
     monthlyOrders: monthlyOrderData ?? 0,
-    dailyOrders: dailyOrderData ?? 0
+    dailyOrders: dailyOrderCount
   };
 };
 
@@ -251,6 +266,7 @@ const Dashboard = () => {
   // Always use English for admin dashboard
   const language: SupportedLanguage = 'en';
   const { t } = useTranslation(language);
+  const [orderCount, setOrderCount] = useState<number>(0);
   
   // Ensure admin caching is disabled when admin dashboard loads
   useEffect(() => {
