@@ -164,5 +164,6 @@
   "no": "Hayır",
   "refreshMenu": "Menüyü yenile",
   "menuRefreshed": "Menü yenilendi",
-  "menuRefreshSuccess": "Menü başarıyla yenilendi"
+  "menuRefreshSuccess": "Menü başarıyla yenilendi",
+  "featured": "Öne Çıkanlar"
 }
