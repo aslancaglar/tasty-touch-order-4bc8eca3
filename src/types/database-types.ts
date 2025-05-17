@@ -42,6 +42,7 @@ export type MenuItem = {
   display_order?: number | null; // Added display_order property
   available_from?: string | null; // Added time availability property
   available_until?: string | null; // Added time availability property
+  is_featured?: boolean; // Added is_featured property
 };
 
 export type MenuItemToppingCategory = {
