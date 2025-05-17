@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
@@ -238,8 +237,11 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       // Set time fields to null if always available
       available_from: values.availability_type === "always" ? "" : values.available_from,
       available_until: values.availability_type === "always" ? "" : values.available_until,
+      // Make sure is_featured is explicitly included
+      is_featured: values.is_featured
     };
     
+    console.log("Submitting with values:", finalValues);
     onSubmit(finalValues);
   };
 

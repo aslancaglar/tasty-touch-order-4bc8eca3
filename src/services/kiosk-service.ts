@@ -224,100 +224,64 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
   };
 };
 
-export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
-  console.log("Creating menu item with data:", item);
-
-  const { topping_categories, tax_percentage, ...menuItemData } = item as any;
-
-  const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
-    ? (Number(tax_percentage) || 10)
-    : 10;
-
-  const { data, error } = await supabase
-    .from("menu_items")
-    .insert({ ...menuItemData, tax_percentage: taxValue })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error creating menu item:", error);
+export const createMenuItem = async (menuItem: Partial<MenuItem>): Promise<MenuItem> => {
+  try {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .insert({
+        name: menuItem.name,
+        description: menuItem.description,
+        price: menuItem.price,
+        promotion_price: menuItem.promotion_price,
+        image: menuItem.image,
+        category_id: menuItem.category_id,
+        tax_percentage: menuItem.tax_percentage,
+        topping_categories: menuItem.topping_categories,
+        display_order: menuItem.display_order,
+        available_from: menuItem.available_from,
+        available_until: menuItem.available_until,
+        is_featured: menuItem.is_featured || false // Make sure is_featured is included
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error('Error creating menu item:', error);
     throw error;
   }
-
-  if (topping_categories && topping_categories.length > 0) {
-    const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
-      menu_item_id: data.id,
-      topping_category_id: categoryId,
-      display_order: index // Save the order based on array index
-    }));
-
-    const { error: relationError } = await supabase
-      .from("menu_item_topping_categories")
-      .insert(toppingCategoryRelations);
-
-    if (relationError) {
-      console.error("Error creating topping category relations:", relationError);
-    }
-  }
-
-  return {
-    ...data,
-    topping_categories: topping_categories || []
-  };
 };
 
-export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuItem> => {
-  console.log("Updating menu item:", id, "with data:", updates);
-
-  const { topping_categories, tax_percentage, ...menuItemData } = updates as any;
-  
-  const taxValue = (typeof tax_percentage === 'string' || typeof tax_percentage === 'number')
-    ? (Number(tax_percentage) || 10)
-    : 10;
-
-  const { data, error } = await supabase
-    .from("menu_items")
-    .update({ ...menuItemData, tax_percentage: taxValue })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error updating menu item:", error);
+export const updateMenuItem = async (id: string, menuItem: Partial<MenuItem>): Promise<MenuItem> => {
+  try {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .update({
+        name: menuItem.name,
+        description: menuItem.description,
+        price: menuItem.price,
+        promotion_price: menuItem.promotion_price,
+        image: menuItem.image,
+        tax_percentage: menuItem.tax_percentage,
+        topping_categories: menuItem.topping_categories,
+        display_order: menuItem.display_order,
+        available_from: menuItem.available_from,
+        available_until: menuItem.available_until,
+        is_featured: menuItem.is_featured // Ensure is_featured is included in updates
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error('Error updating menu item:', error);
     throw error;
   }
-
-  if (topping_categories !== undefined) {
-    const { error: deleteError } = await supabase
-      .from("menu_item_topping_categories")
-      .delete()
-      .eq("menu_item_id", id);
-
-    if (deleteError) {
-      console.error("Error deleting existing topping category relations:", deleteError);
-    }
-
-    if (topping_categories && topping_categories.length > 0) {
-      const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
-        menu_item_id: id,
-        topping_category_id: categoryId,
-        display_order: index // Add display_order based on the array index
-      }));
-
-      const { error: insertError } = await supabase
-        .from("menu_item_topping_categories")
-        .insert(toppingCategoryRelations);
-
-      if (insertError) {
-        console.error("Error creating new topping category relations:", insertError);
-      }
-    }
-  }
-
-  return {
-    ...data,
-    topping_categories: topping_categories || []
-  };
 };
 
 export const deleteMenuItem = async (id: string): Promise<void> => {
