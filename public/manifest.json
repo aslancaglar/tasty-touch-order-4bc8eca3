@@ -1,7 +1,7 @@
 
 {
-  "name": "Tasty Touch Order",
-  "short_name": "Tasty Touch",
+  "name": "Qimbo Kiosk Order",
+  "short_name": "Qimbo Kiosk",
   "description": "A restaurant kiosk ordering system",
   "start_url": "/",
   "display": "standalone",

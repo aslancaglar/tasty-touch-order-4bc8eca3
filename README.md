@@ -1,5 +1,5 @@
 
-# Restaurant Point of Sale (POS) System
+# Qimbo Kiosk - Restaurant Point of Sale (POS) System
 
 This is a modern Point of Sale (POS) system designed for restaurants, particularly focused on providing a smooth ordering experience for both customers and staff. The application includes both a kiosk view for customers to place orders and an admin dashboard for restaurant management.
 

@@ -1,3 +1,4 @@
+
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -174,7 +175,7 @@ export function Sidebar({ forceDefaultLanguage = false }: SidebarProps) {
       <div className="flex items-center justify-between p-4 border-b">
         {!collapsed && (
           <h1 className="text-xl font-bold text-kiosk-primary">
-            TastyTouch
+            Qimbo Kiosk
           </h1>
         )}
         <button 
