@@ -82,9 +82,6 @@ const KioskView = () => {
   // Add the missing dataPreloaded state that we're using in our code
   const [dataPreloaded, setDataPreloaded] = useState(false);
 
-  // Add new state for featured items
-  const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
-
   // Get connection status for offline awareness
   const connectionStatus = useConnectionStatus();
 
@@ -819,13 +816,6 @@ const KioskView = () => {
             return orderA - orderB;
           });
         });
-
-        // Extract featured items from all categories
-        const allFeatured = sortedCategories.flatMap(category => 
-          category.items.filter(item => item.is_featured)
-        );
-        setFeaturedItems(allFeatured);
-        
         setCategories(sortedCategories || []);
         if (sortedCategories.length > 0) {
           setActiveCategory(sortedCategories[0].id);
@@ -852,13 +842,6 @@ const KioskView = () => {
           return orderA - orderB;
         });
       });
-
-      // Extract featured items from all categories
-      const allFeatured = sortedMenuData.flatMap(category => 
-        category.items.filter(item => item.is_featured)
-      );
-      setFeaturedItems(allFeatured);
-      
       setCategories(sortedMenuData);
       setCacheItem('categories', sortedMenuData, data.id);
       if (sortedMenuData.length > 0) {
@@ -997,25 +980,6 @@ const KioskView = () => {
     };
   }, []);
 
-  // Add special featured category to categories if there are featured items
-  const allCategories = featuredItems.length > 0 
-    ? [
-        {
-          id: 'featured',
-          name: t('featured') || 'Featured',
-          restaurant_id: restaurant?.id || '',
-          description: '',
-          icon: 'star',
-          image_url: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          display_order: -1,
-          items: featuredItems
-        },
-        ...categories
-      ] 
-    : categories;
-
   // Show preloading screen if preloading
   if (isPreloading) {
     return <PreloadingScreen 
@@ -1068,15 +1032,9 @@ const KioskView = () => {
         <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       </div>;
   }
-  
-  // Update how we determine active items
-  const activeItems = activeCategory === 'featured' 
-    ? featuredItems 
-    : categories.find(c => c.id === activeCategory)?.items || [];
-  
+  const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-  
   return <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
@@ -1087,20 +1045,20 @@ const KioskView = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Fixed width sidebar - 16vw */}
         <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
-          <MenuCategoryList categories={allCategories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
         </div>
 
         {/* Scrollable menu grid area */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-4">
             <MenuItemGrid 
-              items={activeItems} 
+              items={categories.flatMap(c => c.items)} 
               handleSelectItem={handleSelectItem} 
               currencySymbol={getCurrencySymbol(restaurant.currency || "EUR")} 
               t={t} 
               restaurantId={restaurant?.id} 
               refreshTrigger={refreshTrigger}
-              categories={allCategories}
+              categories={categories}
               uiLanguage={uiLanguage}
             />
           </div>
@@ -1119,7 +1077,7 @@ const KioskView = () => {
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       
-      {/* Order Confirmation Dialog */}
+      {/* New Order Confirmation Dialog */}
       <OrderConfirmationDialog 
         isOpen={showConfirmationDialog}
         onClose={handleConfirmationClose}

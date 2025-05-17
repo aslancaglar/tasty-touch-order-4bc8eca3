@@ -1,55 +1,149 @@
-
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, Edit, Plus, Trash2, Loader2 } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Plus, Edit, Trash2, Loader2, Utensils } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue 
-} from "@/components/ui/select";
-import { getIconComponent } from "@/utils/icon-mapping";
+  Restaurant, 
+  MenuCategory, 
+  MenuItem
+} from "@/types/database-types";
 import { 
   getCategoriesByRestaurantId, 
   getMenuItemsByCategory,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   createMenuItem,
   updateMenuItem,
   deleteMenuItem
 } from "@/services/kiosk-service";
-import { clearMenuCache } from "@/services/cache-service";
-import { Restaurant, MenuCategory, MenuItem } from "@/types/database-types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { clearCache, clearMenuCache } from "@/services/cache-service";
+import CategoryForm from "@/components/forms/CategoryForm";
 import MenuItemForm from "@/components/forms/MenuItemForm";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle, 
-  AlertDialogTrigger 
-} from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-const MenuTab = ({ restaurant }: { restaurant: Restaurant }) => {
+interface MenuTabProps {
+  restaurant: Restaurant;
+}
+
+// CategoryCard component to replace SortableCategory
+const CategoryCard = ({ 
+  category, 
+  isSelected, 
+  onSelect, 
+  onEdit, 
+  onDelete, 
+  isMobile 
+}: { 
+  category: MenuCategory; 
+  isSelected: boolean; 
+  onSelect: () => void; 
+  onEdit: () => void; 
+  onDelete: () => void;
+  isMobile?: boolean;
+}) => {
+  return (
+    <div
+      className={`border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${
+        isSelected ? 'border-kiosk-primary bg-muted/50' : 'border-border hover:border-muted-foreground'
+      }`}
+      onClick={onSelect}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="p-2 bg-primary/10 rounded-md w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
+            {category.icon ? (
+              <img 
+                src={category.icon} 
+                alt={category.name}
+                className="w-full h-full object-cover rounded"
+              />
+            ) : (
+              <div className="w-full h-full bg-muted rounded flex items-center justify-center">
+                <Utensils className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+              </div>
+            )}
+          </div>
+          <div className="overflow-hidden">
+            <h3 className="font-medium text-sm sm:text-base truncate">{category.name}</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+              {category.description || "No description"}
+            </p>
+            <span className="text-xs text-muted-foreground">Order: {category.display_order || 0}</span>
+          </div>
+        </div>
+        <div className="flex space-x-1 sm:space-x-2 ml-1">
+          <Button
+            variant="ghost"
+            size={isMobile ? "xs" : "icon"}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size={isMobile ? "xs" : "icon"}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MenuTab = ({ restaurant }: MenuTabProps) => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
+  const [selectedCategory, setSelectedCategory] = useState<MenuCategory | null>(null);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [isAddingItem, setIsAddingItem] = useState(false);
-  const [addingMenuItem, setAddingMenuItem] = useState(false);
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [updatingItem, setUpdatingItem] = useState(false);
-  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  
+  const [showCreateCategoryDialog, setShowCreateCategoryDialog] = useState(false);
+  const [showUpdateCategoryDialog, setShowUpdateCategoryDialog] = useState(false);
+  const [showDeleteCategoryDialog, setShowDeleteCategoryDialog] = useState(false);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<MenuCategory | null>(null);
+
+  const [showCreateItemDialog, setShowCreateItemDialog] = useState(false);
+  const [showUpdateItemDialog, setShowUpdateItemDialog] = useState(false);
+  const [showDeleteItemDialog, setShowDeleteItemDialog] = useState(false);
+  const [isCreatingItem, setIsCreatingItem] = useState(false);
+  const [isUpdatingItem, setIsUpdatingItem] = useState(false);
+  const [isDeletingItem, setIsDeletingItem] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+
   const { toast } = useToast();
+
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    TRY: "₺",
+    JPY: "¥",
+    CAD: "$",
+    AUD: "$",
+    CHF: "Fr.",
+    CNY: "¥",
+    RUB: "₽"
+  };
+
+  const getCurrencySymbol = (currency: string) => {
+    const code = currency?.toUpperCase() || "EUR";
+    return CURRENCY_SYMBOLS[code] || code;
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -57,16 +151,21 @@ const MenuTab = ({ restaurant }: { restaurant: Restaurant }) => {
       
       try {
         setLoading(true);
-        console.log("Fetching categories for restaurant ID:", restaurant.id);
         const data = await getCategoriesByRestaurantId(restaurant.id);
-        console.log("Fetched categories:", data);
-        setCategories(data);
+        // Sort categories by display_order
+        const sortedCategories = [...data].sort((a, b) => 
+          (a.display_order || 0) - (b.display_order || 0)
+        );
+        setCategories(sortedCategories);
+        if (sortedCategories.length > 0) {
+          setSelectedCategory(sortedCategories[0]);
+        }
         setLoading(false);
       } catch (error) {
         console.error("Error fetching categories:", error);
         toast({
           title: "Error",
-          description: "Failed to fetch menu categories. Please try again.",
+          description: "Failed to load categories",
           variant: "destructive"
         });
         setLoading(false);
@@ -74,22 +173,20 @@ const MenuTab = ({ restaurant }: { restaurant: Restaurant }) => {
     };
 
     fetchCategories();
-  }, [restaurant, toast]);
+  }, [restaurant.id, toast]);
 
   useEffect(() => {
     const fetchMenuItems = async () => {
-      if (categories.length === 0) return;
+      if (!selectedCategory) return;
       
       try {
         setLoading(true);
-        const itemsByCategory: Record<string, MenuItem[]> = {};
-        
-        for (const category of categories) {
-          const items = await getMenuItemsByCategory(category.id);
-          itemsByCategory[category.id] = items;
-        }
-        
-        setMenuItems(itemsByCategory);
+        const items = await getMenuItemsByCategory(selectedCategory.id);
+        // Sort menu items by display_order
+        const sortedItems = [...items].sort((a, b) => 
+          (a.display_order || 0) - (b.display_order || 0)
+        );
+        setMenuItems(sortedItems);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching menu items:", error);
@@ -98,315 +195,484 @@ const MenuTab = ({ restaurant }: { restaurant: Restaurant }) => {
     };
 
     fetchMenuItems();
-  }, [categories]);
+  }, [selectedCategory]);
 
-  const handleCategoryChange = (value: string) => {
-    setSelectedCategory(value);
-  };
-
-  const handleAddMenuItem = async (values: any) => {
+  const handleAddCategory = async (values: any) => {
     try {
-      setAddingMenuItem(true);
+      setIsCreatingCategory(true);
       
-      if (!selectedCategory) {
-        throw new Error("No category selected");
+      if (!restaurant?.id) {
+        throw new Error("Restaurant ID is missing");
       }
       
-      console.log("Adding menu item with values:", values);
-      
-      const newItem = await createMenuItem({
+      const newCategory = await createCategory({
         name: values.name,
         description: values.description || null,
-        price: parseFloat(values.price),
-        promotion_price: values.promotion_price ? parseFloat(values.promotion_price) : null,
-        image: values.image || null,
-        category_id: selectedCategory,
-        tax_percentage: values.tax_percentage ? parseFloat(values.tax_percentage) : 10,
-        topping_categories: values.topping_categories || [],
-        display_order: parseInt(values.display_order) || 0,
-        available_from: values.available_from || null,
-        available_until: values.available_until || null,
-        is_featured: values.is_featured || false // Ensure this field is passed correctly
+        image_url: values.image_url || null,
+        icon: "utensils",
+        restaurant_id: restaurant.id,
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0
       });
       
-      console.log("New menu item created:", newItem);
-      
-      // Update menu items state
-      setMenuItems(prev => ({
-        ...prev,
-        [selectedCategory]: [...(prev[selectedCategory] || []), newItem]
-      }));
-      
-      // Clear menu cache
-      if (restaurant?.id) {
-        clearMenuCache(restaurant.id);
+      const updatedCategories = [...categories, newCategory].sort((a, b) => 
+        (a.display_order || 0) - (b.display_order || 0)
+      );
+      setCategories(updatedCategories);
+      if (!selectedCategory) {
+        setSelectedCategory(newCategory);
       }
       
+      // Clear the menu cache after adding a category
+      clearMenuCache(restaurant.id);
+      
       toast({
-        title: "Menu Item Added",
-        description: `${values.name} has been added to the menu.`,
+        title: "Success",
+        description: `${values.name} has been added to your menu categories.`,
       });
       
-      setIsAddingItem(false);
+      setShowCreateCategoryDialog(false);
     } catch (error) {
-      console.error("Error adding menu item:", error);
+      console.error("Error adding category:", error);
       toast({
         title: "Error",
-        description: "Failed to add the menu item. Please try again.",
+        description: "Failed to add the category",
         variant: "destructive"
       });
     } finally {
-      setAddingMenuItem(false);
+      setIsCreatingCategory(false);
     }
   };
 
-  const handleUpdateMenuItem = async (itemId: string, values: any) => {
+  const handleEditCategory = async (categoryId: string, values: any) => {
     try {
-      setUpdatingItem(true);
+      setIsUpdatingCategory(true);
       
-      console.log("Updating menu item with values:", values);
-      
-      const updatedItem = await updateMenuItem(itemId, {
+      const updatedCategory = await updateCategory(categoryId, {
         name: values.name,
         description: values.description || null,
-        price: parseFloat(values.price),
-        promotion_price: values.promotion_price ? parseFloat(values.promotion_price) : null,
-        image: values.image || null,
-        tax_percentage: values.tax_percentage ? parseFloat(values.tax_percentage) : 10,
-        topping_categories: values.topping_categories || [],
-        display_order: parseInt(values.display_order) || 0,
-        available_from: values.available_from || null,
-        available_until: values.available_until || null,
-        is_featured: values.is_featured // Make sure we pass the featured status
+        image_url: values.image_url || null,
+        icon: values.icon || "utensils",
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0
       });
       
-      console.log("Menu item updated:", updatedItem);
+      const updatedCategories = categories.map(cat => 
+        cat.id === categoryId ? updatedCategory : cat
+      ).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
       
-      // Update menu items in state
-      setMenuItems(prev => {
-        const categoryItems = [...(prev[updatedItem.category_id] || [])];
-        const itemIndex = categoryItems.findIndex(item => item.id === itemId);
-        
-        if (itemIndex !== -1) {
-          categoryItems[itemIndex] = updatedItem;
-        }
-        
-        return {
-          ...prev,
-          [updatedItem.category_id]: categoryItems
-        };
-      });
+      setCategories(updatedCategories);
       
-      // Clear menu cache
-      if (restaurant?.id) {
-        clearMenuCache(restaurant.id);
-      }
+      // Clear the menu cache after updating a category
+      clearMenuCache(restaurant.id);
       
       toast({
-        title: "Menu Item Updated",
+        title: "Success",
         description: `${values.name} has been updated.`,
       });
       
-      setEditingItemId(null);
+      setShowUpdateCategoryDialog(false);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update the category",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+
+    try {
+      setIsDeletingCategory(true);
+      
+      await deleteCategory(categoryToDelete.id);
+      
+      setCategories(categories.filter(cat => cat.id !== categoryToDelete.id));
+      setMenuItems([]);
+      setSelectedCategory(null);
+      
+      // Clear the menu cache after deleting a category
+      clearMenuCache(restaurant.id);
+      
+      toast({
+        title: "Success",
+        description: "The category has been deleted.",
+      });
+      
+      setShowDeleteCategoryDialog(false);
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the category",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingCategory(false);
+    }
+  };
+
+  const handleEditMenuItem = async (values: any) => {
+    if (!selectedItem) return;
+
+    try {
+      setIsUpdatingItem(true);
+      
+      const updatedMenuItem = await updateMenuItem(selectedItem.id, {
+        name: values.name,
+        description: values.description || null,
+        price: Number(values.price),
+        promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
+        image: values.image || null,
+        topping_categories: values.topping_categories || [],
+        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : null,
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
+        available_from: values.available_from || null,
+        available_until: values.available_until || null
+      });
+      
+      const updatedItems = menuItems.map(item => 
+        item.id === selectedItem.id ? updatedMenuItem : item
+      ).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+      
+      setMenuItems(updatedItems);
+      
+      // Clear the menu cache after updating a menu item
+      clearMenuCache(restaurant.id);
+      
+      toast({
+        title: "Success",
+        description: `${values.name} has been updated.`,
+      });
+      
+      setShowUpdateItemDialog(false);
     } catch (error) {
       console.error("Error updating menu item:", error);
       toast({
         title: "Error",
-        description: "Failed to update the menu item. Please try again.",
+        description: "Failed to update the menu item",
         variant: "destructive"
       });
     } finally {
-      setUpdatingItem(false);
+      setIsUpdatingItem(false);
     }
   };
 
-  const handleDeleteMenuItem = async (itemId: string) => {
+  const handleAddMenuItem = async (values: any) => {
+    if (!selectedCategory) return;
+
     try {
-      setDeletingItemId(itemId);
+      setIsCreatingItem(true);
       
-      await deleteMenuItem(itemId);
-      
-      // Update menu items in state
-      setMenuItems(prev => {
-        const updatedMenuItems = {};
-        
-        for (const categoryId in prev) {
-          updatedMenuItems[categoryId] = prev[categoryId].filter(item => item.id !== itemId);
-        }
-        
-        return updatedMenuItems;
+      const newMenuItem = await createMenuItem({
+        name: values.name,
+        description: values.description || null,
+        price: Number(values.price),
+        promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
+        image: values.image || null,
+        category_id: selectedCategory.id,
+        topping_categories: values.topping_categories || [],
+        in_stock: true,
+        display_order: values.display_order ? parseInt(values.display_order, 10) : 0,
+        tax_percentage: values.tax_percentage ? Number(values.tax_percentage) : 10,
+        available_from: values.available_from || null,
+        available_until: values.available_until || null
       });
       
-      // Clear menu cache
-      if (restaurant?.id) {
-        clearMenuCache(restaurant.id);
-      }
+      const updatedItems = [...menuItems, newMenuItem].sort((a, b) => 
+        (a.display_order || 0) - (b.display_order || 0)
+      );
+      setMenuItems(updatedItems);
+      
+      // Clear the menu cache after adding a menu item
+      clearMenuCache(restaurant.id);
       
       toast({
-        title: "Menu Item Deleted",
+        title: "Success",
+        description: `${values.name} has been added to the menu.`,
+      });
+      
+      setShowCreateItemDialog(false);
+    } catch (error) {
+      console.error("Error adding menu item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add the menu item",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingItem(false);
+    }
+  };
+
+  const handleDeleteMenuItem = async () => {
+    if (!selectedItem) return;
+
+    try {
+      setIsDeletingItem(true);
+      
+      await deleteMenuItem(selectedItem.id);
+      
+      setMenuItems(menuItems.filter(item => item.id !== selectedItem.id));
+      
+      // Clear the menu cache after deleting a menu item
+      clearMenuCache(restaurant.id);
+      
+      toast({
+        title: "Success",
         description: "The menu item has been deleted.",
       });
+      
+      setShowDeleteItemDialog(false);
     } catch (error) {
       console.error("Error deleting menu item:", error);
       toast({
         title: "Error",
-        description: "Failed to delete the menu item. Please try again.",
+        description: "Failed to delete the menu item",
         variant: "destructive"
       });
     } finally {
-      setDeletingItemId(null);
+      setIsDeletingItem(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      {loading ? (
-        <div className="flex justify-center items-center h-[200px]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <>
-          {categories.length > 0 ? (
-            <Tabs defaultValue={categories[0].id} onValueChange={handleCategoryChange}>
-              <TabsList className="mb-4">
-                {categories.map((category) => (
-                  <TabsTrigger key={category.id} value={category.id} className="flex items-center">
-                    {getIconComponent(category.icon)}
-                    <span className="ml-2">{category.name}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              
-              {categories.map((category) => (
-                <TabsContent key={category.id} value={category.id}>
-                  <div className="space-y-4">
-                    {menuItems[category.id]?.map(item => (
-                      <div 
-                        key={item.id} 
-                        className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex items-center space-x-4">
-                          {item.image && (
-                            <img 
-                              src={item.image} 
-                              alt={item.name} 
-                              className="h-16 w-16 object-cover rounded-md"
-                            />
-                          )}
-                          <div>
-                            <h3 className="font-medium">{item.name}</h3>
-                            <p className="text-sm text-muted-foreground">{item.description}</p>
-                            <div className="flex items-center mt-1">
-                              <p className="text-sm font-medium">
-                                €{parseFloat(item.price.toString()).toFixed(2)}
-                                {item.promotion_price && (
-                                  <span className="ml-2 line-through text-muted-foreground">
-                                    €{parseFloat(item.promotion_price.toString()).toFixed(2)}
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex space-x-2 mt-4 md:mt-0">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle>Edit Menu Item</DialogTitle>
-                                <DialogDescription>Make changes to this menu item.</DialogDescription>
-                              </DialogHeader>
-                              <MenuItemForm 
-                                onSubmit={(values) => handleUpdateMenuItem(item.id, values)}
-                                initialValues={{
-                                  name: item.name,
-                                  description: item.description || "",
-                                  price: item.price.toString(),
-                                  promotion_price: item.promotion_price ? item.promotion_price.toString() : "",
-                                  image: item.image || "",
-                                  topping_categories: item.topping_categories || [],
-                                  tax_percentage: item.tax_percentage ? item.tax_percentage.toString() : "10",
-                                  display_order: item.display_order ? item.display_order.toString() : "0",
-                                  available_from: item.available_from || "",
-                                  available_until: item.available_until || "",
-                                  is_featured: item.is_featured || false
-                                }}
-                                isLoading={updatingItem}
-                                restaurantId={restaurant?.id || ""}
-                              />
-                            </DialogContent>
-                          </Dialog>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="text-red-500"
-                                disabled={deletingItemId === item.id}
-                              >
-                                {deletingItemId === item.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                )}
-                                Delete
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. Are you sure you want to delete this menu item?
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteMenuItem(item.id)}>
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                    ))}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <div className="border border-dashed rounded-lg p-4 flex items-center justify-center">
-                          <Button variant="ghost" className="w-full h-full flex items-center justify-center">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Menu Item
-                          </Button>
-                        </div>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Add Menu Item</DialogTitle>
-                          <DialogDescription>Create a new menu item.</DialogDescription>
-                        </DialogHeader>
-                        <MenuItemForm 
-                          onSubmit={handleAddMenuItem}
-                          isLoading={addingMenuItem}
-                          restaurantId={restaurant?.id || ""}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </TabsContent>
-              ))}
-            </Tabs>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No categories found for this restaurant.</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div>
+        <h2 className="text-xl sm:text-2xl font-bold">Menu Categories</h2>
+        <p className="text-muted-foreground text-sm">
+          Manage menu categories available in your restaurant.
+        </p>
+      </div>
+
+      <Button onClick={() => setShowCreateCategoryDialog(true)} className="bg-kiosk-primary w-full sm:w-auto">
+        <Plus className="mr-2 h-4 w-4" />
+        Add Category
+      </Button>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        {categories.map((category) => (
+          <CategoryCard
+            key={category.id}
+            category={category}
+            isSelected={selectedCategory?.id === category.id}
+            onSelect={() => setSelectedCategory(category)}
+            onEdit={() => {
+              setSelectedCategory(category);
+              setShowUpdateCategoryDialog(true);
+            }}
+            onDelete={() => {
+              setCategoryToDelete(category);
+              setShowDeleteCategoryDialog(true);
+            }}
+            isMobile={isMobile}
+          />
+        ))}
+      </div>
+
+      <Separator className="my-4 sm:my-6" />
+
+      {selectedCategory && (
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold">Menu Items - {selectedCategory.name}</h2>
+              <p className="text-sm text-muted-foreground">
+                Manage menu items in the selected category.
+              </p>
             </div>
-          )}
-        </>
+            <Button 
+              onClick={() => setShowCreateItemDialog(true)} 
+              className="bg-kiosk-primary w-full sm:w-auto"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Menu Item
+            </Button>
+          </div>
+
+          <div className="mt-4 space-y-3 sm:space-y-4">
+            {menuItems.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-3"
+              >
+                <div className="flex items-center space-x-3 sm:space-x-4">
+                  {item.image && (
+                    <img 
+                      src={item.image} 
+                      alt={item.name} 
+                      className="h-14 w-14 sm:h-16 sm:w-16 object-cover rounded-md"
+                    />
+                  )}
+                  <div>
+                    <h3 className="font-medium">{item.name}</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-sm font-medium">
+                        {getCurrencySymbol(restaurant.currency)}{parseFloat(item.price.toString()).toFixed(2)}
+                        {item.promotion_price && (
+                          <span className="ml-2 line-through text-muted-foreground">
+                            {getCurrencySymbol(restaurant.currency)}{parseFloat(item.promotion_price.toString()).toFixed(2)}
+                          </span>
+                        )}
+                      </p>
+                      <span className="text-xs text-muted-foreground">Order: {item.display_order || 0}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex space-x-2 self-end sm:self-center mt-2 sm:mt-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSelectedItem(item);
+                      setShowUpdateItemDialog(true);
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSelectedItem(item);
+                      setShowDeleteItemDialog(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            
+            {menuItems.length === 0 && !loading && (
+              <div className="text-center py-10 border rounded-lg bg-muted/20">
+                <p className="text-muted-foreground">No items found in this category</p>
+                <Button 
+                  onClick={() => setShowCreateItemDialog(true)} 
+                  variant="outline" 
+                  className="mt-4"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add First Menu Item
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
+
+      {/* Dialogs */}
+      <Dialog open={showCreateCategoryDialog} onOpenChange={setShowCreateCategoryDialog}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create Category</DialogTitle>
+          </DialogHeader>
+          <CategoryForm 
+            onSubmit={handleAddCategory}
+            isLoading={isCreatingCategory}
+            initialValues={{ display_order: "0" }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showUpdateCategoryDialog} onOpenChange={setShowUpdateCategoryDialog}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+          </DialogHeader>
+          {selectedCategory && (
+            <CategoryForm
+              onSubmit={(values) => handleEditCategory(selectedCategory.id, values)}
+              initialValues={{
+                name: selectedCategory.name,
+                description: selectedCategory.description || "",
+                icon: selectedCategory.icon || "",
+                display_order: selectedCategory.display_order?.toString() || "0"
+              }}
+              isLoading={isUpdatingCategory}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteCategoryDialog} onOpenChange={setShowDeleteCategoryDialog}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Delete Category</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to delete category "{categoryToDelete?.name}"?</p>
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button variant="secondary" onClick={() => setShowDeleteCategoryDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteCategory} disabled={isDeletingCategory}>
+              {isDeletingCategory ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateItemDialog} onOpenChange={setShowCreateItemDialog}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Menu Item</DialogTitle>
+          </DialogHeader>
+          <MenuItemForm 
+            onSubmit={handleAddMenuItem}
+            isLoading={isCreatingItem}
+            restaurantId={restaurant.id}
+            initialValues={{ display_order: "0" }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showUpdateItemDialog} onOpenChange={setShowUpdateItemDialog}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Menu Item</DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <MenuItemForm
+              onSubmit={handleEditMenuItem}
+              initialValues={{
+                name: selectedItem.name,
+                description: selectedItem.description || "",
+                price: selectedItem.price.toString(),
+                promotion_price: selectedItem.promotion_price ? selectedItem.promotion_price.toString() : "",
+                image: selectedItem.image || "",
+                topping_categories: selectedItem.topping_categories || [],
+                tax_percentage: selectedItem.tax_percentage ? selectedItem.tax_percentage.toString() : "10",
+                display_order: selectedItem.display_order?.toString() || "0",
+                available_from: selectedItem.available_from || "",
+                available_until: selectedItem.available_until || ""
+              }}
+              isLoading={isUpdatingItem}
+              restaurantId={restaurant.id}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteItemDialog} onOpenChange={setShowDeleteItemDialog}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Delete Menu Item</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to delete menu item "{selectedItem?.name}"?</p>
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button variant="secondary" onClick={() => setShowDeleteItemDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteMenuItem} disabled={isDeletingItem}>
+              {isDeletingItem ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
@@ -15,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import ImageUpload from "@/components/ImageUpload";
-import { Loader2, ArrowUp, ArrowDown, Clock, Infinity, Star } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, Clock, Infinity } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -55,7 +56,6 @@ const formSchema = z.object({
   available_from: z.string().optional(),
   available_until: z.string().optional(),
   availability_type: z.enum(["always", "time_restricted"]),
-  is_featured: z.boolean().default(false),
 });
 
 interface MenuItemFormProps {
@@ -98,7 +98,6 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       available_from: initialValues?.available_from || "",
       available_until: initialValues?.available_until || "",
       availability_type: initialAvailabilityType,
-      is_featured: initialValues?.is_featured || false,
     },
   });
 
@@ -237,11 +236,8 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       // Set time fields to null if always available
       available_from: values.availability_type === "always" ? "" : values.available_from,
       available_until: values.availability_type === "always" ? "" : values.available_until,
-      // Make sure is_featured is explicitly included
-      is_featured: values.is_featured
     };
     
-    console.log("Submitting with values:", finalValues);
     onSubmit(finalValues);
   };
 
@@ -311,66 +307,39 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="display_order"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Display Order</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Display order (e.g. 1, 2, 3)" 
-                    type="number" 
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="tax_percentage"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tax Percentage</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    step="0.01" 
-                    placeholder="10" 
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        
-        {/* Featured Item Toggle */}
         <FormField
           control={form.control}
-          name="is_featured"
+          name="display_order"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+            <FormItem>
+              <FormLabel>Display Order</FormLabel>
               <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
+                <Input 
+                  placeholder="Display order (e.g. 1, 2, 3)" 
+                  type="number" 
+                  {...field} 
                 />
               </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="flex items-center">
-                  <Star className="h-4 w-4 mr-1 text-yellow-500" />
-                  Featured Item
-                </FormLabel>
-                <FormDescription>
-                  Featured items will appear at the top of the menu
-                </FormDescription>
-              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="tax_percentage"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tax Percentage</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="10" 
+                  {...field} 
+                />
+              </FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />

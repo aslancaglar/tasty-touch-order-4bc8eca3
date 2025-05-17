@@ -144,7 +144,6 @@ export type Database = {
           id: string
           image: string | null
           in_stock: boolean
-          is_featured: boolean
           name: string
           price: number
           promotion_price: number | null
@@ -161,7 +160,6 @@ export type Database = {
           id?: string
           image?: string | null
           in_stock?: boolean
-          is_featured?: boolean
           name: string
           price: number
           promotion_price?: number | null
@@ -178,7 +176,6 @@ export type Database = {
           id?: string
           image?: string | null
           in_stock?: boolean
-          is_featured?: boolean
           name?: string
           price?: number
           promotion_price?: number | null
