@@ -1,4 +1,3 @@
-
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
@@ -119,7 +118,7 @@ const SheetContent = React.forwardRef<
       <div className="h-full overflow-y-auto pb-12">
         {children}
       </div>
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-red-100 hover:bg-red-200">
+      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-full p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-red-100 hover:bg-red-200">
         <X className="h-5 w-5 text-red-600" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
