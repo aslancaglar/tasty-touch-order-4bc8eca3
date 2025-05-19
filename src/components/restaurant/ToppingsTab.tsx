@@ -134,20 +134,20 @@ const ToppingsTab = ({
       if (isRefreshingData || !cachedCategories) {
         console.log("Fetching fresh topping categories data");
         
-        // Use retry logic for network requests
-        const { data, error } = await retryNetworkRequest(
-          () => supabase.from('topping_categories')
-                         .select('*')
-                         .eq('restaurant_id', restaurant.id)
-                         .order('created_at', { ascending: true }),
-          2 // max retries
-        );
+        // Fix: Properly await the supabase query and handle its result
+        const result = await retryNetworkRequest(async () => {
+          const response = await supabase.from('topping_categories')
+                           .select('*')
+                           .eq('restaurant_id', restaurant.id)
+                           .order('created_at', { ascending: true });
+          return response;
+        }, 2);
         
-        if (error) throw error;
+        if (result.error) throw result.error;
 
-        console.log("Fetched topping categories:", data);
-        setCacheItem('topping_categories', data, restaurant.id, true);
-        setCategories(data || []);
+        console.log("Fetched topping categories:", result.data);
+        setCacheItem('topping_categories', result.data, restaurant.id, true);
+        setCategories(result.data || []);
       } else {
         console.log("Using cached topping categories");
         setCategories(cachedCategories);
@@ -211,19 +211,19 @@ const ToppingsTab = ({
       if (isRefreshingData || !cachedToppings) {
         console.log("Fetching fresh toppings for category:", selectedCategory.id);
         
-        // Use retry logic for network requests
-        const { data, error } = await retryNetworkRequest(
-          () => supabase.from('toppings')
-                         .select('*')
-                         .eq('category_id', selectedCategory.id)
-                         .order('display_order', { ascending: true }),
-          2 // max retries
-        );
+        // Fix: Properly await the supabase query and handle its result
+        const result = await retryNetworkRequest(async () => {
+          const response = await supabase.from('toppings')
+                           .select('*')
+                           .eq('category_id', selectedCategory.id)
+                           .order('display_order', { ascending: true });
+          return response;
+        }, 2);
         
-        if (error) throw error;
+        if (result.error) throw result.error;
         
-        if (data) {
-          const updatedToppings = data.map(topping => ({
+        if (result.data) {
+          const updatedToppings = result.data.map(topping => ({
             ...topping,
             tax_percentage: typeof topping.tax_percentage === 'string' ? parseFloat(topping.tax_percentage) : topping.tax_percentage
           }));

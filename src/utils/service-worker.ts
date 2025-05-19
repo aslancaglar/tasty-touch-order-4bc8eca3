@@ -16,6 +16,43 @@ export async function registerServiceWorker(): Promise<void> {
   }
 }
 
+// Online status listener management
+type OnlineStatusListener = (status: boolean) => void;
+const listeners: OnlineStatusListener[] = [];
+
+// Add a listener for online status changes
+export function addOnlineStatusListener(listener: OnlineStatusListener): void {
+  listeners.push(listener);
+  
+  // If this is the first listener, set up the event handlers
+  if (listeners.length === 1) {
+    window.addEventListener('online', () => notifyListeners(true));
+    window.addEventListener('offline', () => notifyListeners(false));
+  }
+  
+  // Immediately notify with current status
+  listener(isOnline());
+}
+
+// Remove a listener
+export function removeOnlineStatusListener(listener: OnlineStatusListener): void {
+  const index = listeners.indexOf(listener);
+  if (index !== -1) {
+    listeners.splice(index, 1);
+  }
+  
+  // If no more listeners, remove event handlers
+  if (listeners.length === 0) {
+    window.removeEventListener('online', () => notifyListeners(true));
+    window.removeEventListener('offline', () => notifyListeners(false));
+  }
+}
+
+// Notify all listeners of status change
+function notifyListeners(status: boolean): void {
+  listeners.forEach(listener => listener(status));
+}
+
 // Retry a network request with exponential backoff
 export async function retryNetworkRequest<T>(
   requestFn: () => Promise<T>,

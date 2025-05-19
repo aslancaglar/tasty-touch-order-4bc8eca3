@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { addOnlineStatusListener, removeOnlineStatusListener, isOnline as checkIsOnline } from '@/utils/service-worker';
+import { isOnline as checkIsOnline } from '@/utils/service-worker';
 import { getCacheItem, setCacheItem } from '@/services/cache-service';
 
 // Define the options type directly with all required properties
@@ -70,13 +70,19 @@ export function useNetworkAwareFetch<TData, TError = Error>({
   const [isOnline, setIsOnline] = useState<boolean>(checkIsOnline());
 
   useEffect(() => {
-    const handleOnlineStatusChange = (status: boolean) => {
-      setIsOnline(status);
-    };
-
-    addOnlineStatusListener(handleOnlineStatusChange);
+    // Fix: Use window events directly instead of non-existent listener functions
+    const handleOnlineStatus = () => setIsOnline(true);
+    const handleOfflineStatus = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOfflineStatus);
+    
+    // Set initial state
+    setIsOnline(checkIsOnline());
+    
     return () => {
-      removeOnlineStatusListener(handleOnlineStatusChange);
+      window.removeEventListener('online', handleOnlineStatus);
+      window.removeEventListener('offline', handleOfflineStatus);
     };
   }, []);
 
@@ -167,13 +173,19 @@ export function useConnectionStatus(): 'online' | 'offline' {
   const [isOnline, setIsOnline] = useState<boolean>(checkIsOnline());
 
   useEffect(() => {
-    const handleOnlineStatusChange = (status: boolean) => {
-      setIsOnline(status);
-    };
-
-    addOnlineStatusListener(handleOnlineStatusChange);
+    // Fix: Use window events directly instead of non-existent listener functions
+    const handleOnlineStatus = () => setIsOnline(true);
+    const handleOfflineStatus = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOfflineStatus);
+    
+    // Set initial state
+    setIsOnline(checkIsOnline());
+    
     return () => {
-      removeOnlineStatusListener(handleOnlineStatusChange);
+      window.removeEventListener('online', handleOnlineStatus);
+      window.removeEventListener('offline', handleOfflineStatus);
     };
   }, []);
 
