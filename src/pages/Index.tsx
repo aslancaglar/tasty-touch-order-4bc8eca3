@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./Dashboard";
 import { Loader2 } from "lucide-react";
 import { setCachingEnabled, setCachingEnabledForAdmin } from "@/services/cache-service";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { isOnline } from "@/utils/service-worker";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const { user, loading } = useAuth();
   const { toast } = useToast();
+  const [redirecting, setRedirecting] = useState(false);
 
   // Ensure caching is properly set when the admin dashboard loads
   useEffect(() => {
@@ -37,6 +38,24 @@ const Index = () => {
     };
   }, [toast]);
 
+  // Add a delayed redirect to prevent rapid route toggling
+  useEffect(() => {
+    console.log("Auth state in Index:", { user, loading });
+
+    // Only set redirecting if we've finished loading and have no user
+    if (!loading && !user && !redirecting) {
+      console.log("No user found, preparing to redirect to auth page");
+      setRedirecting(true);
+      
+      // Small delay to prevent route flickering
+      const redirectTimer = setTimeout(() => {
+        console.log("Redirecting to auth page");
+      }, 100);
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [loading, user, redirecting]);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -46,10 +65,11 @@ const Index = () => {
   }
 
   if (!user) {
+    console.log("No authenticated user, redirecting to auth");
     return <Navigate to="/auth" />;
   }
 
-  // Pass useDefaultLanguage={true} to Dashboard to force English for admin
+  console.log("User authenticated, rendering Dashboard");
   return <Dashboard />;
 };
 
