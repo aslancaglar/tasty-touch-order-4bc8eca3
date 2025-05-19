@@ -28,9 +28,9 @@ const ToppingCategoryEditDialog = ({
 }: ToppingCategoryEditDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl p-0 gap-0 overflow-hidden border-none shadow-lg">
+      <DialogContent className="max-w-3xl p-0 gap-0 overflow-hidden border-none shadow-lg rounded-xl">
         <div className="flex flex-col h-full max-h-[85vh]">
-          {/* Header section with custom styling */}
+          {/* Header section with consistent styling */}
           <div className="flex flex-col p-6 border-b">
             <div className="flex items-start justify-between">
               <div>
@@ -41,7 +41,7 @@ const ToppingCategoryEditDialog = ({
               </div>
               <button
                 onClick={() => onOpenChange(false)}
-                className="rounded-full p-1 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#9b87f5]"
+                className="rounded-full p-1.5 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#9b87f5]"
               >
                 <X className="h-5 w-5 text-gray-500" />
               </button>
