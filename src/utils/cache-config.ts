@@ -33,7 +33,7 @@ export const initializeCacheConfig = () => {
   };
 };
 
-// Add a new function to handle failed cache operations with better error messages
+// Enhanced function to handle failed cache operations with better error messages
 export const handleCacheError = (operation: string, error: any): string => {
   console.error(`[CacheConfig] Error during ${operation}:`, error);
   
@@ -46,8 +46,14 @@ export const handleCacheError = (operation: string, error: any): string => {
     // Clean up the error message for user display
     const cleanedMessage = error.message
       .replace(/^Error:\s*/i, '')
-      .replace(/\b(?:supabase|api|http|endpoint|auth)\b/gi, 'server');
+      .replace(/\b(?:supabase|api|http|endpoint|auth)\b/gi, 'server')
+      .replace(/\b(?:database|constraint|unique)\b/gi, 'data')
+      .replace(/\b(?:syntax|query|function|table)\b/gi, 'request')
+      .substring(0, 120); // Limit length of error message
+      
     errorMessage += `: ${cleanedMessage}`;
+  } else if (typeof error === 'string') {
+    errorMessage += `: ${error}`;
   }
   
   return errorMessage;

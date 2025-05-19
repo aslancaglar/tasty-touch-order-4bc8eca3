@@ -1,138 +1,56 @@
 
-export const registerServiceWorker = () => {
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-          console.log('Service Worker registered with scope:', registration.scope);
-          
-          // Check if there's a waiting worker and notify the user
-          if (registration.waiting) {
-            notifyUpdateAvailable(registration);
-          }
-          
-          // Detect controller change and reload the page
-          let refreshing = false;
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (!refreshing) {
-              refreshing = true;
-              window.location.reload();
-            }
-          });
-          
-          // Handle updates
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing;
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    // New content is available, notify user
-                    notifyUpdateAvailable(registration);
-                  }
-                }
-              });
-            }
-          });
-        })
-        .catch(error => {
-          console.error('Service Worker registration failed:', error);
-        });
-    });
-  }
-};
+// Check if the browser is online
+export function isOnline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine;
+}
 
-// Function to notify user about update and prompt them to reload
-const notifyUpdateAvailable = (registration: ServiceWorkerRegistration) => {
-  // In a real app, show a UI notification/toast here
-  console.log('New version available! Ready to update.');
-  
-  // For demo purposes, we'll automatically update
-  if (registration.waiting) {
-    registration.waiting.postMessage({ action: 'skipWaiting' });
-  }
-};
-
-// Function to clear cache (can be called from UI)
-export const clearServiceWorkerCache = async () => {
+// Register service worker
+export async function registerServiceWorker(): Promise<void> {
   if ('serviceWorker' in navigator) {
-    const registration = await navigator.serviceWorker.ready;
-    if (registration && registration.active) {
-      registration.active.postMessage({ action: 'clearCache' });
-      console.log('Sent cache clear command to Service Worker');
-      return true;
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      console.info('Service Worker registered with scope:', registration.scope);
+    } catch (error) {
+      console.error('Service Worker registration failed:', error);
     }
   }
-  return false;
-};
+}
 
-// Function to check if the app is online
-export const isOnline = (): boolean => {
-  return navigator.onLine;
-};
-
-// Track online/offline status changes
-let onlineStatusListeners: Array<(status: boolean) => void> = [];
-
-// Function to add online status listener
-export const addOnlineStatusListener = (callback: (status: boolean) => void) => {
-  onlineStatusListeners.push(callback);
-  // Immediately call with current status
-  callback(isOnline());
-};
-
-// Function to remove online status listener
-export const removeOnlineStatusListener = (callback: (status: boolean) => void) => {
-  onlineStatusListeners = onlineStatusListeners.filter(listener => listener !== callback);
-};
-
-// Function to manually refresh network status
-export const checkNetworkStatus = (): boolean => {
-  const status = isOnline();
-  onlineStatusListeners.forEach(listener => listener(status));
-  return status;
-};
-
-// Enhanced function to retry a network request
-export const retryNetworkRequest = async <T>(
+// Retry a network request with exponential backoff
+export async function retryNetworkRequest<T>(
   requestFn: () => Promise<T>,
   maxRetries: number = 3,
-  delayMs: number = 1000
-): Promise<T> => {
+  initialDelay: number = 300
+): Promise<T> {
   let lastError: any;
+  let retries = 0;
   
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
+  while (retries < maxRetries) {
     try {
-      // Check if we're online
+      // Check if we're online before attempting request
       if (!isOnline()) {
-        throw new Error('Device is offline');
+        throw new Error('Network offline. Cannot complete request.');
       }
       
-      // Try the request
       return await requestFn();
     } catch (error) {
-      console.log(`Attempt ${attempt + 1}/${maxRetries} failed:`, error);
       lastError = error;
+      retries++;
       
-      // Wait before trying again (exponential backoff)
-      if (attempt < maxRetries - 1) {
-        await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(2, attempt)));
+      // If we've used all retries, throw the error
+      if (retries >= maxRetries) {
+        break;
       }
+      
+      // Exponential backoff with jitter
+      const delay = initialDelay * Math.pow(2, retries - 1) + Math.random() * 100;
+      console.log(`[RetryRequest] Attempt ${retries} failed, retrying in ${delay.toFixed(0)}ms...`);
+      
+      // Wait before trying again
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
   
-  throw lastError || new Error('Request failed after multiple attempts');
-};
-
-// Set up online/offline event listeners
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
-    console.log('[Network] Device is now ONLINE');
-    onlineStatusListeners.forEach(listener => listener(true));
-  });
-  
-  window.addEventListener('offline', () => {
-    console.log('[Network] Device is now OFFLINE');
-    onlineStatusListeners.forEach(listener => listener(false));
-  });
+  console.error(`[RetryRequest] All ${maxRetries} attempts failed:`, lastError);
+  throw lastError || new Error('Network request failed after multiple retries');
 }
