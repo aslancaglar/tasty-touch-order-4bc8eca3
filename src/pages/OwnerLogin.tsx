@@ -11,7 +11,7 @@ import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PASSWORD_MIN_LENGTH, PASSWORD_REQUIRES_NUMBERS, PASSWORD_REQUIRES_SYMBOLS } from "@/config/supabase";
-import DOMPurify from 'dompurify'; // For sanitizing user input
+import * as DOMPurify from 'dompurify'; // Updated import to fix TypeScript issue
 
 // Function to validate email format
 const isValidEmail = (email: string): boolean => {
