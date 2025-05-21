@@ -12,14 +12,35 @@ export interface ToggleGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "outline"
 }
 
+// Create a proper React context
+const ToggleGroupContext = React.createContext<ToggleGroupProps>({
+  value: "",
+  onValueChange: () => {},
+  type: "single",
+  disabled: false,
+  variant: "default",
+})
+
 export const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
-  ({ className, value, onValueChange, type = "single", disabled = false, variant = "default", ...props }, ref) => {
+  ({ className, value, onValueChange, type = "single", disabled = false, variant = "default", children, ...props }, ref) => {
+    const contextValue = React.useMemo(() => ({
+      value,
+      onValueChange,
+      type,
+      disabled,
+      variant,
+    }), [value, onValueChange, type, disabled, variant])
+
     return (
-      <div
-        ref={ref}
-        className={cn("flex flex-wrap gap-1", className)}
-        {...props}
-      />
+      <ToggleGroupContext.Provider value={contextValue}>
+        <div
+          ref={ref}
+          className={cn("flex flex-wrap gap-1", className)}
+          {...props}
+        >
+          {children}
+        </div>
+      </ToggleGroupContext.Provider>
     )
   }
 )
@@ -33,14 +54,7 @@ export interface ToggleGroupItemProps extends React.ButtonHTMLAttributes<HTMLBut
 
 export const ToggleGroupItem = React.forwardRef<HTMLButtonElement, ToggleGroupItemProps>(
   ({ className, value, disabled = false, variant = "default", onClick, ...props }, ref) => {
-    const parentToggleGroup = React.useContext({
-      value: "",
-      onValueChange: (_: string) => {},
-      type: "single",
-      disabled: false,
-      variant: "default",
-    } as React.Context<ToggleGroupProps>)
-
+    const parentToggleGroup = React.useContext(ToggleGroupContext)
     const isSelected = parentToggleGroup.value === value
     
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
