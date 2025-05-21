@@ -76,10 +76,9 @@ const ProtectedRoute = ({
     setAuthError(null);
     setSecurityFailure(false);
 
-    if (requireAdmin && user) {
+    if (user) {
+      // Always check admin status when we have a user - fixes the reload issue
       checkAdminStatus();
-    } else if (!requireAdmin) {
-      setCheckingAdmin(false);
     } else {
       setCheckingAdmin(false);
     }
@@ -125,9 +124,8 @@ const ProtectedRoute = ({
     return <Navigate to="/owner" replace />;
   }
 
-  // Handle owner routes for admin users
-  // Only redirect if specifically on the /owner route, not child routes,
-  // and if allowAdminAccess is false
+  // Handle owner routes for admin users - only redirect if specifically 
+  // requested to not allow admin access and we're on the specific owner path
   if (isAdmin && location.pathname === '/owner' && !allowAdminAccess) {
     console.log("Admin user detected on owner route, redirecting to admin dashboard");
     return <Navigate to="/" replace />;

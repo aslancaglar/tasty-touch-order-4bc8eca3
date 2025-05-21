@@ -33,6 +33,7 @@ import Auth from "./pages/Auth";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
 import OwnerLogin from "./pages/OwnerLogin";
+import Index from "./pages/Index";
 
 const App = () => {
   // Initialize cache config when the app starts
@@ -56,11 +57,7 @@ const App = () => {
               <Route path="/owner/login" element={<OwnerLogin />} />
               
               {/* Admin Routes - Protected and require admin role */}
-              <Route path="/" element={
-                <ProtectedRoute requireAdmin={true}>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
+              <Route path="/" element={<Index />} />
               <Route path="/restaurants" element={
                 <ProtectedRoute requireAdmin={true}>
                   <Restaurants />
