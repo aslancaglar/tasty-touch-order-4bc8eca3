@@ -46,13 +46,14 @@ interface OrderStats {
   monthlyCount: number;
   dailySales: number;
   monthlySales: number;
-  averageOrderValue: number; // Added field for average order value
+  averageOrderValue: number;
 }
 
 interface ChartData {
   name: string;
   orders: number;
   sales: number;
+  averageOrderValue: number;
 }
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
@@ -64,7 +65,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
     monthlyCount: 0,
     dailySales: 0,
     monthlySales: 0,
-    averageOrderValue: 0 // Initialize the new field
+    averageOrderValue: 0
   });
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
@@ -169,12 +170,20 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
           chartDataByDay[date] = {
             name: displayDate,
             orders: 0,
-            sales: 0
+            sales: 0,
+            averageOrderValue: 0
           };
         }
         
         chartDataByDay[date].orders += 1;
         chartDataByDay[date].sales += Number(order.total);
+      });
+      
+      // Calculate average order value for each day
+      Object.keys(chartDataByDay).forEach(date => {
+        chartDataByDay[date].averageOrderValue = chartDataByDay[date].orders > 0
+          ? chartDataByDay[date].sales / chartDataByDay[date].orders
+          : 0;
       });
       
       const formattedChartData = Object.values(chartDataByDay);
@@ -225,13 +234,21 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
           chartDataByDay[date] = {
             name: displayDate,
             orders: 0,
-            sales: 0
+            sales: 0,
+            averageOrderValue: 0
           };
         }
         
         chartDataByDay[date].orders += 1;
         chartDataByDay[date].sales += Number(order.total);
         totalSales += Number(order.total);
+      });
+      
+      // Calculate average order value for each day
+      Object.keys(chartDataByDay).forEach(date => {
+        chartDataByDay[date].averageOrderValue = chartDataByDay[date].orders > 0
+          ? chartDataByDay[date].sales / chartDataByDay[date].orders
+          : 0;
       });
       
       const formattedChartData = Object.values(chartDataByDay);
@@ -277,6 +294,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
           <p className="font-bold">{label}</p>
           <p className="text-sm">{`${t("statistics.orders")}: ${payload[0].value}`}</p>
           <p className="text-sm">{`${t("statistics.sales")}: ${formatCurrency(payload[1].value as number)}`}</p>
+          <p className="text-sm">{`${t("statistics.avgOrderValue") || "Avg. Order Value"}: ${formatCurrency(payload[2].value as number)}`}</p>
         </div>
       );
     }
@@ -476,6 +494,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                           <Legend />
                           <Bar yAxisId="left" dataKey="orders" fill="#8884d8" name={t("statistics.orders") || "Orders"} />
                           <Bar yAxisId="right" dataKey="sales" fill="#82ca9d" name={t("statistics.sales") || "Sales"} />
+                          <Bar yAxisId="right" dataKey="averageOrderValue" fill="#ffc658" name={t("statistics.avgOrderValue") || "Avg. Order Value"} />
                         </BarChart>
                       ) : (
                         <LineChart
@@ -509,6 +528,13 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                             dataKey="sales" 
                             stroke="#82ca9d" 
                             name={t("statistics.sales") || "Sales"}
+                          />
+                          <Line 
+                            yAxisId="right"
+                            type="monotone" 
+                            dataKey="averageOrderValue" 
+                            stroke="#ffc658" 
+                            name={t("statistics.avgOrderValue") || "Avg. Order Value"}
                           />
                         </LineChart>
                       )}
