@@ -1,4 +1,3 @@
-
 {
   "orderType": {
     "title": "Nasıl sipariş vermek istersiniz?",
@@ -111,25 +110,28 @@
     "error": "Hata",
     "loadError": "İstatistik verileri yüklenemedi",
     "customPeriodError": "Özel dönem verileri yüklenemedi",
-    "customDateRange": "Özel Tarih Aralığı",
-    "pickDate": "Tarih seçin",
-    "barChart": "Çubuk",
-    "lineChart": "Çizgi",
-    "selectedPeriodOrders": "Seçilen Dönem Siparişleri",
-    "todaysOrders": "Bugünün Siparişleri",
-    "selectedPeriodItems": "Seçilen Dönem Ürünleri",
-    "thisMonthsOrders": "Bu Ayın Siparişleri",
-    "selectedPeriodRevenue": "Seçilen Dönem Geliri",
-    "todaysRevenue": "Bugünün Geliri",
-    "selectedPeriodTotal": "Seçilen Dönem Toplamı",
-    "thisMonthsRevenue": "Bu Ayın Geliri",
     "orders": "Siparişler",
     "sales": "Satışlar",
+    "average": "Ortalama",
+    "avgOrderValue": "Ort. Sipariş Değeri",
+    "avgOrderValuePeriod": "Ort. Sipariş Değeri (Dönem)",
+    "customDateRange": "Özel Tarih Aralığı",
+    "pickDate": "Tarih seçin",
+    "todaysOrders": "Bugünkü Siparişler",
+    "todaysRevenue": "Bugünkü Gelir",
+    "thisMonthsOrders": "Bu Ayki Siparişler",
+    "thisMonthsRevenue": "Bu Ayki Gelir",
+    "selectedPeriodOrders": "Seçilen Dönem Siparişleri",
+    "selectedPeriodItems": "Seçilen Dönem Öğeleri",
+    "selectedPeriodRevenue": "Seçilen Dönem Geliri",
+    "selectedPeriodTotal": "Seçilen Dönem Toplamı",
     "ordersAndSales": "Siparişler ve Satışlar",
+    "last7Days": "Son 7 gün",
     "to": "ile",
     "now": "şimdi",
-    "last7Days": "Son 7 gün",
-    "noData": "Seçilen zaman dilimi için veri mevcut değil."
+    "barChart": "Sütun",
+    "lineChart": "Çizgi",
+    "noData": "Seçilen zaman dilimi için veri yok."
   },
   "menuItem": {
     "unavailable": "ŞU ANDA MEVCUT DEĞİL"

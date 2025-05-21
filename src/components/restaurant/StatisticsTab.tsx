@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Restaurant } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +46,7 @@ interface OrderStats {
   monthlyCount: number;
   dailySales: number;
   monthlySales: number;
+  averageOrderValue: number; // Added field for average order value
 }
 
 interface ChartData {
@@ -63,7 +63,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
     dailyCount: 0,
     monthlyCount: 0,
     dailySales: 0,
-    monthlySales: 0
+    monthlySales: 0,
+    averageOrderValue: 0 // Initialize the new field
   });
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
@@ -131,11 +132,17 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
       const dailySales = dailyOrders.reduce((sum, order) => sum + Number(order.total), 0);
       const monthlySales = monthlyOrders.reduce((sum, order) => sum + Number(order.total), 0);
       
+      // Calculate average order value for the month
+      const averageOrderValue = monthlyOrders.length > 0 
+        ? monthlySales / monthlyOrders.length 
+        : 0;
+      
       setOrderStats({
         dailyCount: dailyOrders.length,
         monthlyCount: monthlyOrders.length,
         dailySales,
-        monthlySales
+        monthlySales,
+        averageOrderValue
       });
       
       // Fetch data for the last 7 days for the chart - EXCLUDE CANCELLED ORDERS
@@ -230,12 +237,17 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
       const formattedChartData = Object.values(chartDataByDay);
       setChartData(formattedChartData);
       
+      // Calculate average order value for the custom period
+      const averageOrderValue = periodOrders.length > 0 
+        ? totalSales / periodOrders.length 
+        : 0;
+      
       setOrderStats({
-        ...orderStats,
         dailyCount: periodOrders.length,
         monthlyCount: periodOrders.length,
         dailySales: totalSales,
-        monthlySales: totalSales
+        monthlySales: totalSales,
+        averageOrderValue
       });
       
       setLoading(false);
@@ -354,7 +366,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
               {/* Daily Orders Card */}
               <Card>
                 <CardHeader className="pb-2">
@@ -412,6 +424,21 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
                 <CardContent>
                   <div className="text-2xl font-bold">{formatCurrency(orderStats.monthlySales)}</div>
                   <Badge variant="secondary" className="mt-1">{t("statistics.sales") || "Sales"}</Badge>
+                </CardContent>
+              </Card>
+              
+              {/* Average Order Value Card - NEW */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {customPeriodActive 
+                      ? (t("statistics.avgOrderValuePeriod") || "Avg. Order Value") 
+                      : (t("statistics.avgOrderValue") || "Avg. Order Value")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(orderStats.averageOrderValue)}</div>
+                  <Badge variant="outline" className="mt-1">{t("statistics.average") || "Average"}</Badge>
                 </CardContent>
               </Card>
             </div>
