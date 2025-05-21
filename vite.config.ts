@@ -12,8 +12,16 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === 'development' &&
-    componentTagger(),
+    // Only use component tagger in development mode
+    // And only if it's compatible with the current Vite version
+    mode === 'development' && (() => {
+      try {
+        return componentTagger();
+      } catch (e) {
+        console.warn('Warning: Could not initialize lovable-tagger due to compatibility issues', e);
+        return null;
+      }
+    })(),
   ].filter(Boolean),
   resolve: {
     alias: {
@@ -21,4 +29,3 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }));
-
