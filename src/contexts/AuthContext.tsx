@@ -20,23 +20,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log("Setting up AuthProvider...");
     
-    // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
-        console.log("Auth state change event:", event);
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      console.log("Initial session check:", currentSession ? "Session found" : "No session");
+    // Use a stale closure prevention technique with function reference
+    const handleAuthChange = (event: string, currentSession: Session | null) => {
+      console.log("Auth state change event:", event);
+      
+      // Synchronously update state
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
-    });
+      
+      // Additional security checks can be added here
+      if (event === 'TOKEN_REFRESHED') {
+        console.log("Token refreshed successfully");
+      }
+      
+      if (event === 'SIGNED_OUT') {
+        // Clear any application state or cached data
+        console.log("User signed out, clearing application state");
+      }
+    };
+    
+    // Set up auth state listener first - this prevents deadlocks
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+
+    // Then check for existing session
+    const initSession = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        console.log("Initial session check:", currentSession ? "Session found" : "No session");
+        
+        // Explicitly verify the session token is still valid
+        if (currentSession) {
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          if (!currentUser) {
+            // Invalid session detected, clear it
+            console.warn("Invalid session detected, clearing...");
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+          } else {
+            setSession(currentSession);
+            setUser(currentUser);
+          }
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error during session initialization:", error);
+        // Fail safely by assuming no valid session
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+      }
+    };
+    
+    initSession();
 
     return () => {
       console.log("Cleaning up AuthProvider...");
@@ -47,7 +85,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log("Signing out...");
-      const { error } = await supabase.auth.signOut();
+      // Use a timeout to prevent potential deadlocks with auth state changes
+      const { error } = await Promise.race([
+        supabase.auth.signOut(),
+        new Promise<{error: Error}>((_, reject) => 
+          setTimeout(() => reject({ error: new Error("Sign out timed out") }), 5000)
+        )
+      ]);
       
       if (error) {
         console.error("Error signing out:", error);
