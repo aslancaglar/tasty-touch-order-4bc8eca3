@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -8,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
-
 const Auth = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,9 @@ const Auth = () => {
     const checkSession = async () => {
       try {
         console.log("Checking for existing session...");
-        const { data } = await supabase.auth.getSession();
+        const {
+          data
+        } = await supabase.auth.getSession();
         if (data.session) {
           console.log("Session found, redirecting to home");
           navigate("/");
@@ -34,59 +36,50 @@ const Auth = () => {
         setCheckingSession(false);
       }
     };
-    
     checkSession();
   }, [navigate]);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const {
+        error
+      } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
-
       if (error) {
         throw error;
       }
-
       toast({
         title: "Login successful",
-        description: "Welcome back to TastyTouch admin dashboard!",
+        description: "Welcome back to TastyTouch admin dashboard!"
       });
-      
       navigate("/");
     } catch (error: any) {
       toast({
         title: "Login failed",
         description: error.message || "An error occurred during login",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
   // Don't render form until we've checked session status
   if (checkingSession) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+  return <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">TastyTouch Admin</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Qimbo Kiosk Admin</CardTitle>
           <CardDescription>
             Login to access your dashboard
           </CardDescription>
@@ -97,68 +90,32 @@ const Auth = () => {
               <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+                <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground"
-                  onClick={togglePasswordVisibility}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground" onClick={togglePasswordVisibility}>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10"
-                  required
-                />
+                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="pr-10" required />
               </div>
             </div>
           </CardContent>
           <CardFooter>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="flex items-center gap-1">
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <span className="flex items-center gap-1">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   Logging in...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
+                </span> : <span className="flex items-center gap-2">
                   <LogIn className="h-4 w-4" />
                   Login
-                </span>
-              )}
+                </span>}
             </Button>
           </CardFooter>
         </form>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default Auth;
