@@ -20,7 +20,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
-  // Check if user is already logged in - using useEffect instead of useState
+  // Check if user is already logged in
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -43,7 +43,7 @@ const Auth = () => {
           }
         }
       } catch (error) {
-        console.error("Error checking session:", error);
+        console.error("Error checking session");
       } finally {
         setCheckingSession(false);
       }
@@ -89,7 +89,7 @@ const Auth = () => {
         }
       }
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("Login failed");
       toast({
         title: "Login failed",
         description: error.message || "An error occurred during login",

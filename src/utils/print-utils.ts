@@ -73,8 +73,6 @@ export const printReceipt = (elementId: string) => {
   }
   
   console.log(`Attempting to print element with ID: ${elementId}`, {
-    userAgent: navigator.userAgent,
-    screen: { width: window.innerWidth, height: window.innerHeight },
     isMobileDevice: /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(navigator.userAgent.toLowerCase())
   });
   
@@ -203,7 +201,7 @@ export const printReceipt = (elementId: string) => {
           iframeWindow.print();
           console.log("Print dialog opened");
         } catch (error) {
-          console.error("Error opening print dialog:", error);
+          console.error("Error opening print dialog");
           throw new Error("Failed to open print dialog");
         }
         
@@ -218,7 +216,7 @@ export const printReceipt = (elementId: string) => {
       throw new Error("Failed to access iframe window");
     }
   } catch (error) {
-    console.error("Print error:", error);
+    console.error("Print error");
     throw error; // Re-throw for handling at call site
   }
 };

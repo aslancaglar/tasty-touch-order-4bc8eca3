@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Printer, Check, XCircle, RefreshCw } from "lucide-react";
+import { Loader2, Printer, Check, XCircle, RefreshCw, LockKeyhole } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,8 +35,16 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const [isFetching, setIsFetching] = useState(false);
   const [isTesting, setIsTesting] = useState<Record<string, boolean>>({});
   const [printers, setPrinters] = useState<Printer[]>([]);
+  const [maskedKey, setMaskedKey] = useState<string>("");
   
   const { toast } = useToast();
+
+  // Mask API key for display (show only last 4 characters)
+  const maskApiKey = (key: string): string => {
+    if (!key) return "";
+    if (key.length <= 4) return "••••";
+    return "•".repeat(key.length - 4) + key.slice(-4);
+  };
 
   useEffect(() => {
     const fetchApiConfig = async () => {
@@ -48,21 +57,21 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         
         if (error) {
           if (error.code !== 'PGRST116') { // Not found error
-            console.error("Error fetching print config:", error);
+            console.error("Error fetching print config");
           }
           return;
         }
         
         if (data) {
-          setApiKey(data.api_key || "");
-          setIsConfigured(!!data.api_key);
-          
           if (data.api_key) {
+            setApiKey(data.api_key);
+            setMaskedKey(maskApiKey(data.api_key));
+            setIsConfigured(true);
             fetchPrinters(data.api_key);
           }
         }
       } catch (error) {
-        console.error("Error fetching print config:", error);
+        console.error("Error fetching print configuration");
       }
     };
     
@@ -70,6 +79,15 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   }, [restaurantId]);
 
   const saveApiKey = async () => {
+    if (!apiKey.trim()) {
+      toast({
+        title: "Error",
+        description: "API key cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setIsFetching(true);
       
@@ -103,13 +121,14 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       setIsConfigured(true);
       setPrinters(printerData);
+      setMaskedKey(maskApiKey(apiKey));
       
       toast({
         title: "API Key Saved",
-        description: "PrintNode API key saved successfully",
+        description: "PrintNode API key saved securely",
       });
     } catch (error) {
-      console.error("Error saving API key:", error);
+      console.error("Error saving configuration");
       toast({
         title: "Error",
         description: "Error saving API key",
@@ -150,7 +169,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         description: `${printerData.length} printers retrieved`,
       });
     } catch (error) {
-      console.error("Error fetching printers:", error);
+      console.error("Error fetching printer data");
       toast({
         title: "Error",
         description: "Error fetching printers",
@@ -167,7 +186,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     }
     
     try {
-      // Make actual API call to PrintNode
+      // Make secure API call to PrintNode
       const response = await fetch('https://api.printnode.com/printers', {
         headers: {
           'Authorization': `Basic ${btoa(key + ':')}`
@@ -175,12 +194,11 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       });
       
       if (!response.ok) {
-        throw new Error(`PrintNode API error: ${response.status}`);
+        throw new Error(`API error: ${response.status}`);
       }
       
       const data = await response.json();
       
-      // Transform PrintNode response to our Printer interface
       return data.map((printer: any) => ({
         id: printer.id.toString(),
         name: printer.name,
@@ -189,7 +207,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         selected: false
       }));
     } catch (error) {
-      console.error("Error calling PrintNode API:", error);
+      console.error("Error calling API");
       
       // Fallback to mock data during development or when API fails
       if (process.env.NODE_ENV === 'development') {
@@ -254,7 +272,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         description: "Printer configuration updated",
       });
     } catch (error) {
-      console.error("Error saving printer selection:", error);
+      console.error("Error saving printer selection");
       toast({
         title: "Error",
         description: "Error saving printer selection",
@@ -300,7 +318,7 @@ is working correctly!
       // Properly encode for PrintNode - fix for non-Latin1 characters
       const encodedContent = btoa(unescape(encodeURIComponent(testReceipt)));
       
-      // In a real implementation, make an API call to PrintNode
+      // Make secure API call
       const response = await fetch('https://api.printnode.com/printjobs', {
         method: 'POST',
         headers: {
@@ -308,7 +326,7 @@ is working correctly!
           'Authorization': `Basic ${btoa(apiKey + ':')}`
         },
         body: JSON.stringify({
-          printer: parseInt(printerId, 10) || printerId, // Handle numeric IDs
+          printer: parseInt(printerId, 10) || printerId,
           title: "Test Print",
           contentType: "raw_base64",
           content: encodedContent,
@@ -318,8 +336,7 @@ is working correctly!
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`PrintNode API error: ${response.status}`, errorText);
-        throw new Error(`Error sending print job: ${response.status} - ${errorText}`);
+        throw new Error(`Error sending print job: ${response.status}`);
       }
       
       toast({
@@ -327,7 +344,7 @@ is working correctly!
         description: `Test print sent to ${printer.name}`,
       });
     } catch (error) {
-      console.error("Error testing printer:", error);
+      console.error("Error testing printer");
       toast({
         title: "Error",
         description: "Error sending test print: " + (error instanceof Error ? error.message : "Unknown error"),
@@ -346,24 +363,44 @@ is working correctly!
       <CardContent className="space-y-6">
         <div className="space-y-4">
           <Label htmlFor="api-key">PrintNode API Key</Label>
-          <div className="flex gap-2">
-            <Input 
-              id="api-key" 
-              type="password"
-              value={apiKey} 
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your PrintNode API key"
-              disabled={isFetching}
-              className="flex-1"
-            />
-            <Button 
-              onClick={saveApiKey}
-              disabled={isFetching || !apiKey}
-              className="bg-kiosk-primary"
-            >
-              {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-            </Button>
-          </div>
+          
+          {isConfigured ? (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-gray-100 border border-gray-300 rounded py-2 px-3 text-gray-600 font-mono flex items-center">
+                <LockKeyhole className="h-4 w-4 mr-2 text-gray-500" />
+                {maskedKey}
+              </div>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setIsConfigured(false);
+                  setApiKey("");
+                }}
+              >
+                Change
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input 
+                id="api-key" 
+                type="password"
+                value={apiKey} 
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter your PrintNode API key"
+                disabled={isFetching}
+                className="flex-1"
+              />
+              <Button 
+                onClick={saveApiKey}
+                disabled={isFetching || !apiKey}
+                className="bg-kiosk-primary"
+              >
+                {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              </Button>
+            </div>
+          )}
+          
           <p className="text-sm text-muted-foreground">
             Get an API key by creating an account on 
             <a href="https://www.printnode.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">

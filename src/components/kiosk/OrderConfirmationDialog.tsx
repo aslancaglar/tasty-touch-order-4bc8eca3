@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         error
       } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
       if (error) {
-        console.error("Error fetching print configuration:", error);
+        console.error("Error fetching print configuration");
         setIsPrinting(false);
         return;
       }
@@ -135,7 +136,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             printReceipt('receipt-content');
             console.log("Print receipt triggered successfully");
           } catch (printError) {
-            console.error("Error during browser printing:", printError);
+            console.error("Error during browser printing");
             toast({
               title: t("order.printError"),
               description: t("order.printErrorDesc"),
@@ -149,7 +150,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         console.log("Browser printing disabled for this device or restaurant");
       }
 
-      // Handle PrintNode printing
+      // Handle PrintNode printing (if configured)
       if (printConfig?.api_key && printConfig?.configured_printers) {
         const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
         const printerIds = printerArray.map(id => String(id));
@@ -172,7 +173,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         setHasPrinted(true);
       }
     } catch (error) {
-      console.error("Error during receipt printing:", error);
+      console.error("Error during receipt printing");
       toast({
         title: t("order.error"),
         description: t("order.errorPrinting"),
@@ -196,29 +197,32 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     uiLanguage?: SupportedLanguage;
   }) => {
     try {
-      // Use the updated generatePlainTextReceipt function with currency code
+      // Generate receipt content
       const receiptContent = generatePlainTextReceipt(
         orderData.cart,
         orderData.restaurant,
         orderData.orderType,
         orderData.tableNumber,
         orderData.orderNumber,
-        orderData.restaurant?.currency?.toUpperCase() || 'EUR', // Pass currency code directly
+        orderData.restaurant?.currency?.toUpperCase() || 'EUR',
         orderData.total,
         orderData.subtotal,
         orderData.tax,
-        10, // Tax rate (default)
-        (key) => t(key) // Translation function
+        10,
+        (key) => t(key)
       );
 
-      // Improved encoding for French characters - use TextEncoder for proper UTF-8 handling
+      // Encode content for sending
       const textEncoder = new TextEncoder();
       const encodedBytes = textEncoder.encode(receiptContent);
       const encodedContent = btoa(Array.from(encodedBytes).map(byte => String.fromCharCode(byte)).join(''));
       
-      console.log("Sending receipt to PrintNode printers:", printerIds);
+      console.log(`Sending receipt to ${printerIds.length} configured printers`);
+      
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
+        
+        // Make secure API call
         const response = await fetch('https://api.printnode.com/printjobs', {
           method: 'POST',
           headers: {
@@ -233,16 +237,15 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             source: "Restaurant Kiosk"
           })
         });
+        
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`PrintNode API error: ${response.status}`, errorText);
-          throw new Error(`Error sending print job: ${response.status} - ${errorText}`);
+          throw new Error(`Error sending print job: ${response.status}`);
         } else {
-          console.log(`PrintNode receipt sent successfully to printer ${printerId}`);
+          console.log(`Print receipt sent successfully`);
         }
       }
     } catch (error) {
-      console.error("Error sending receipt to PrintNode:", error);
+      console.error("Error sending receipt to printer");
     }
   };
   
