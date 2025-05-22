@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
+
 const Auth = () => {
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+  const location = useLocation();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,12 +24,22 @@ const Auth = () => {
     const checkSession = async () => {
       try {
         console.log("Checking for existing session...");
-        const {
-          data
-        } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
         if (data.session) {
-          console.log("Session found, redirecting to home");
-          navigate("/");
+          console.log("Session found, checking admin status...");
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', data.session.user.id)
+            .single();
+            
+          if (profileData?.is_admin) {
+            console.log("Admin user detected, redirecting to admin dashboard");
+            navigate("/");
+          } else {
+            console.log("Regular user detected, redirecting to owner dashboard");
+            navigate("/owner");
+          }
         }
       } catch (error) {
         console.error("Error checking session:", error);
@@ -38,24 +49,41 @@ const Auth = () => {
     };
     checkSession();
   }, [navigate]);
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const {
-        error
-      } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       if (error) {
         throw error;
       }
-      toast({
-        title: "Login successful",
-        description: "Welcome back to TastyTouch admin dashboard!"
-      });
-      navigate("/");
+      
+      // After successful login, check if user is admin
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', userData.user.id)
+          .single();
+        
+        toast({
+          title: "Login successful",
+          description: "Welcome back to TastyTouch admin dashboard!"
+        });
+        
+        if (profileData?.is_admin) {
+          console.log("Admin user login detected, redirecting to admin dashboard");
+          navigate("/");
+        } else {
+          console.log("Regular user login detected, redirecting to owner dashboard");
+          navigate("/owner");
+        }
+      }
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -66,6 +94,7 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -76,7 +105,9 @@ const Auth = () => {
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
       </div>;
   }
-  return <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+  
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold tracking-tight">Qimbo Kiosk Admin</CardTitle>
@@ -116,6 +147,8 @@ const Auth = () => {
           </CardFooter>
         </form>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default Auth;
