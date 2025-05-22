@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NetworkStatus } from "@/components/ui/network-status";
@@ -43,14 +43,14 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <div className="fixed bottom-4 right-4 z-50">
-            <NetworkStatus showLabel={true} />
-          </div>
-          <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <div className="fixed bottom-4 right-4 z-50">
+              <NetworkStatus showLabel={true} />
+            </div>
             <Routes>
               {/* Auth Routes */}
               <Route path="/auth" element={<Auth />} />
@@ -87,9 +87,9 @@ const App = () => {
               {/* Catch-all Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
+          </TooltipProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 };
