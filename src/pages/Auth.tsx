@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
+import * as DOMPurify from 'dompurify';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -54,9 +55,12 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Sanitize user inputs before sending to authentication
+      const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
+      
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+        email: sanitizedEmail,
+        password: password // Password doesn't need sanitization as it's used directly for auth
       });
       if (error) {
         throw error;
@@ -87,7 +91,7 @@ const Auth = () => {
     } catch (error: any) {
       toast({
         title: "Login failed",
-        description: error.message || "An error occurred during login",
+        description: DOMPurify.sanitize(error.message || "An error occurred during login"),
         variant: "destructive"
       });
     } finally {
@@ -121,7 +125,17 @@ const Auth = () => {
               <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="name@example.com" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  className="pl-10" 
+                  required 
+                  pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+                  title="Please enter a valid email address"
+                />
               </div>
             </div>
             <div className="space-y-2">
