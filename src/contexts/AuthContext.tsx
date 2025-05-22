@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -5,8 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 type AuthContextType = {
   session: Session | null;
   user: User | null;
-  signOut: () => Promise<void>;
+  isAdmin: boolean | null;
   loading: boolean;
+  adminCheckCompleted: boolean;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,7 +17,35 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
+
+  // Function to check admin status - separated to avoid direct calls in auth state change
+  const checkAdminStatus = async (userId: string) => {
+    if (!userId) return false;
+    
+    try {
+      console.log("Checking admin status for user:", userId);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error("Error checking admin status:", error);
+        return false;
+      }
+      
+      console.log("Admin check result:", data?.is_admin);
+      return data?.is_admin || false;
+    } catch (error) {
+      console.error("Exception checking admin status:", error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     console.log("Setting up AuthProvider...");
@@ -23,18 +54,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAuthChange = (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event);
       
-      // Synchronously update state
+      // Synchronously update session and user state
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
-      setLoading(false);
       
-      // Additional security checks can be added here
-      if (event === 'TOKEN_REFRESHED') {
-        console.log("Token refreshed successfully");
-      }
-      
+      // Reset admin status when session changes
       if (event === 'SIGNED_OUT') {
-        // Clear any application state or cached data
+        setIsAdmin(false);
+        setAdminCheckCompleted(true);
+        setLoading(false);
         console.log("User signed out, clearing application state");
       }
     };
@@ -57,10 +85,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await supabase.auth.signOut();
             setSession(null);
             setUser(null);
+            setIsAdmin(false);
+            setAdminCheckCompleted(true);
           } else {
             setSession(currentSession);
             setUser(currentUser);
+            
+            // Check admin status outside the auth state change callback
+            const adminStatus = await checkAdminStatus(currentUser.id);
+            setIsAdmin(adminStatus);
+            setAdminCheckCompleted(true);
           }
+        } else {
+          setIsAdmin(false);
+          setAdminCheckCompleted(true);
         }
         
         setLoading(false);
@@ -69,6 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Fail safely by assuming no valid session
         setSession(null);
         setUser(null);
+        setIsAdmin(false);
+        setAdminCheckCompleted(true);
         setLoading(false);
       }
     };
@@ -80,6 +120,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  // When the user state changes (and isn't being updated as part of initial load)
+  useEffect(() => {
+    const updateAdminStatus = async () => {
+      if (user && !loading) {
+        console.log("User state changed, updating admin status for:", user.id);
+        
+        try {
+          setAdminCheckCompleted(false);
+          const adminStatus = await checkAdminStatus(user.id);
+          setIsAdmin(adminStatus);
+        } finally {
+          setAdminCheckCompleted(true);
+        }
+      }
+    };
+    
+    updateAdminStatus();
+  }, [user, loading]);
 
   const signOut = async () => {
     try {
@@ -100,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear state regardless of API response
       setSession(null);
       setUser(null);
+      setIsAdmin(false);
       
       console.log("Sign out complete, session and user state cleared");
     } catch (error) {
@@ -107,14 +167,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Still clear state even if there's an error
       setSession(null);
       setUser(null);
+      setIsAdmin(false);
     }
   };
 
   const value = {
     session,
     user,
-    signOut,
+    isAdmin,
     loading,
+    adminCheckCompleted,
+    signOut,
   };
 
   return (
