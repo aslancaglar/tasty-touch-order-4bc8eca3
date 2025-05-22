@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
-import * as DOMPurify from 'dompurify';
+import DOMPurify from 'dompurify';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -89,9 +89,10 @@ const Auth = () => {
         }
       }
     } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         title: "Login failed",
-        description: DOMPurify.sanitize(error.message || "An error occurred during login"),
+        description: error.message || "An error occurred during login",
         variant: "destructive"
       });
     } finally {
