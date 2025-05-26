@@ -23,6 +23,11 @@ import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
 import { useConnectionStatus } from "@/hooks/use-network-aware-fetch";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
 
+// Import new utilities
+import { handleRestaurantError, validateRestaurantSlug, getErrorContext } from "@/utils/restaurant-error-handler";
+import { collectRestaurantDebugInfo, logRestaurantDebugInfo, validateRestaurantData } from "@/utils/restaurant-debug-utils";
+import { EnhancedCacheService } from "@/utils/enhanced-cache-service";
+
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
 };
@@ -989,23 +994,41 @@ const KioskView = () => {
     />;
   }
 
+  // Enhanced error display with better messaging
   if (loading && !restaurant) {
-    return <div className="flex items-center justify-center h-screen kiosk-view">
-        <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
-      </div>;
+    return (
+      <div className="flex items-center justify-center h-screen kiosk-view">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-purple-700 mx-auto mb-4" />
+          <p className="text-gray-600">Chargement du restaurant...</p>
+          {restaurantSlug && (
+            <p className="text-sm text-gray-400 mt-2">Slug: {restaurantSlug}</p>
+          )}
+        </div>
+      </div>
+    );
   }
+
   if (!restaurant) {
-    return <div className="flex items-center justify-center h-screen kiosk-view">
+    return (
+      <div className="flex items-center justify-center h-screen kiosk-view">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
           <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
+          {restaurantSlug && (
+            <p className="text-sm text-gray-400 mb-4">
+              Slug recherché: <code className="bg-gray-100 px-2 py-1 rounded">{restaurantSlug}</code>
+            </p>
+          )}
           <Button onClick={() => navigate('/')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t("backToHome")}
           </Button>
         </div>
-      </div>;
+      </div>
+    );
   }
+
   if (showWelcome) {
     return <div className="kiosk-view">
         <WelcomePage 

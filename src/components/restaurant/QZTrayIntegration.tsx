@@ -1,396 +1,339 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Printer, Check, XCircle, RefreshCw, Wifi, WifiOff } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, CheckCircle, Printer, RefreshCw, Settings, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  initializeQZTray, 
-  getQZPrinters, 
-  testQZPrinter, 
-  isQZTrayAvailable,
-  disconnectQZTray 
-} from "@/utils/qz-tray-utils";
-
-interface QZPrinter {
-  name: string;
-  connection: string;
-  type: string;
-  selected: boolean;
-}
+import { getQZPrinters, testQZPrinter, isQZTrayAvailable } from "@/utils/qz-tray-utils";
 
 interface QZTrayIntegrationProps {
   restaurantId: string;
 }
 
-const QZTrayIntegration = ({ restaurantId }: QZTrayIntegrationProps) => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
-  const [isTesting, setIsTesting] = useState<Record<string, boolean>>({});
-  const [printers, setPrinters] = useState<QZPrinter[]>([]);
-  const [qzTrayAvailable, setQzTrayAvailable] = useState(false);
-  
+interface PrinterConfig {
+  id: string;
+  name: string;
+  type: 'qz-tray' | 'printnode';
+  isActive: boolean;
+}
+
+const QZTrayIntegration: React.FC<QZTrayIntegrationProps> = ({ restaurantId }) => {
+  const [isQZAvailable, setIsQZAvailable] = useState(false);
+  const [availablePrinters, setAvailablePrinters] = useState<any[]>([]);
+  const [configuredPrinters, setConfiguredPrinters] = useState<PrinterConfig[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTesting, setIsTesting] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Load configuration
   useEffect(() => {
-    checkQZTrayAvailability();
-    loadSavedPrinters();
+    checkQZAvailability();
+    loadPrintConfig();
   }, [restaurantId]);
 
-  const checkQZTrayAvailability = () => {
+  const checkQZAvailability = () => {
     const available = isQZTrayAvailable();
-    setQzTrayAvailable(available);
+    setIsQZAvailable(available);
     
     if (!available) {
-      console.log("QZ Tray not available - please install QZ Tray");
+      toast({
+        title: "QZ Tray non détecté",
+        description: "Assurez-vous que QZ Tray est installé et en cours d'exécution.",
+        variant: "destructive"
+      });
     }
   };
 
-  const loadSavedPrinters = async () => {
+  const loadPrintConfig = async () => {
     try {
       const { data, error } = await supabase
         .from('restaurant_print_config')
-        .select('qz_tray_printers')
+        .select('configured_printers')
         .eq('restaurant_id', restaurantId)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') {
-        console.error("Error loading saved printers:", error);
+        console.error('Error loading print config:', error);
         return;
       }
-      
-      if (data?.qz_tray_printers) {
-        const savedPrinterNames = data.qz_tray_printers as string[];
-        // We'll fetch current printers and mark saved ones as selected
-        if (isConnected) {
-          await fetchPrinters(savedPrinterNames);
-        }
+
+      if (data?.configured_printers) {
+        const qzPrinters = data.configured_printers.filter((p: any) => p.type === 'qz-tray');
+        setConfiguredPrinters(qzPrinters || []);
       }
     } catch (error) {
-      console.error("Error loading saved QZ Tray printers:", error);
+      console.error('Error loading print config:', error);
     }
   };
 
-  const connectToQZTray = async () => {
-    if (!qzTrayAvailable) {
+  const discoverPrinters = async () => {
+    if (!isQZAvailable) {
       toast({
-        title: "QZ Tray Not Available",
-        description: "Please install QZ Tray from qz.io and ensure it's running",
+        title: "QZ Tray non disponible",
+        description: "Veuillez installer et démarrer QZ Tray.",
         variant: "destructive"
       });
       return;
     }
 
+    setIsLoading(true);
     try {
-      setIsConnecting(true);
+      const printers = await getQZPrinters();
+      setAvailablePrinters(printers);
       
-      const connected = await initializeQZTray();
-      
-      if (connected) {
-        setIsConnected(true);
-        await fetchPrinters();
-        
-        toast({
-          title: "QZ Tray Connected",
-          description: "Successfully connected to QZ Tray service",
-        });
-      } else {
-        throw new Error("Failed to connect to QZ Tray");
-      }
-    } catch (error) {
-      console.error("QZ Tray connection error:", error);
       toast({
-        title: "Connection Failed",
-        description: "Could not connect to QZ Tray. Ensure QZ Tray is running.",
+        title: "Imprimantes découvertes",
+        description: `${printers.length} imprimante(s) trouvée(s).`
+      });
+    } catch (error) {
+      console.error('Error discovering printers:', error);
+      toast({
+        title: "Erreur de découverte",
+        description: "Impossible de découvrir les imprimantes.",
         variant: "destructive"
       });
     } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  const fetchPrinters = async (savedPrinterNames: string[] = []) => {
-    try {
-      setIsFetching(true);
-      
-      const qzPrinters = await getQZPrinters();
-      
-      const printersWithSelection = qzPrinters.map(printer => ({
-        ...printer,
-        selected: savedPrinterNames.includes(printer.name)
-      }));
-      
-      setPrinters(printersWithSelection);
-      
-      toast({
-        title: "Printers Loaded",
-        description: `Found ${qzPrinters.length} QZ Tray printers`,
-      });
-    } catch (error) {
-      console.error("Error fetching QZ Tray printers:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch printers from QZ Tray",
-        variant: "destructive"
-      });
-    } finally {
-      setIsFetching(false);
-    }
-  };
-
-  const togglePrinterSelection = async (printerName: string) => {
-    const updatedPrinters = printers.map(printer => {
-      if (printer.name === printerName) {
-        return { ...printer, selected: !printer.selected };
-      }
-      return printer;
-    });
-    
-    setPrinters(updatedPrinters);
-    
-    try {
-      const selectedPrinterNames = updatedPrinters
-        .filter(p => p.selected)
-        .map(p => p.name);
-      
-      const { error } = await supabase
-        .from('restaurant_print_config')
-        .upsert({
-          restaurant_id: restaurantId,
-          qz_tray_printers: selectedPrinterNames
-        }, {
-          onConflict: 'restaurant_id'
-        });
-      
-      if (error) {
-        throw error;
-      }
-      
-      toast({
-        title: "Printers Updated",
-        description: "QZ Tray printer configuration saved",
-      });
-    } catch (error) {
-      console.error("Error saving QZ Tray printer selection:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save printer selection",
-        variant: "destructive"
-      });
+      setIsLoading(false);
     }
   };
 
   const testPrinter = async (printerName: string) => {
-    setIsTesting({ ...isTesting, [printerName]: true });
-    
+    setIsTesting(printerName);
     try {
       const success = await testQZPrinter(printerName);
       
-      if (success) {
-        toast({
-          title: "Test Print Sent",
-          description: `Test receipt sent to ${printerName} via QZ Tray`,
-        });
-      } else {
-        throw new Error("Test print failed");
-      }
-    } catch (error) {
-      console.error("Error testing QZ Tray printer:", error);
       toast({
-        title: "Test Failed",
-        description: `Failed to print test receipt: ${error instanceof Error ? error.message : "Unknown error"}`,
+        title: success ? "Test réussi" : "Test échoué",
+        description: success 
+          ? `L'imprimante ${printerName} fonctionne correctement.`
+          : `Impossible d'imprimer sur ${printerName}.`,
+        variant: success ? "default" : "destructive"
+      });
+    } catch (error) {
+      console.error('Printer test error:', error);
+      toast({
+        title: "Test échoué",
+        description: "Erreur lors du test de l'imprimante.",
         variant: "destructive"
       });
     } finally {
-      setIsTesting({ ...isTesting, [printerName]: false });
+      setIsTesting(null);
     }
   };
 
-  const disconnectFromQZTray = async () => {
+  const addPrinter = async (printerName: string) => {
     try {
-      await disconnectQZTray();
-      setIsConnected(false);
-      setPrinters([]);
+      const newPrinter: PrinterConfig = {
+        id: `qz-${Date.now()}`,
+        name: printerName,
+        type: 'qz-tray',
+        isActive: true
+      };
+
+      const updatedPrinters = [...configuredPrinters, newPrinter];
+
+      // Update database
+      const { error } = await supabase
+        .from('restaurant_print_config')
+        .upsert({
+          restaurant_id: restaurantId,
+          configured_printers: updatedPrinters
+        });
+
+      if (error) throw error;
+
+      setConfiguredPrinters(updatedPrinters);
       
       toast({
-        title: "Disconnected",
-        description: "Disconnected from QZ Tray service",
+        title: "Imprimante ajoutée",
+        description: `${printerName} a été ajoutée à la configuration.`
       });
     } catch (error) {
-      console.error("Error disconnecting from QZ Tray:", error);
+      console.error('Error adding printer:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter l'imprimante.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removePrinter = async (printerId: string) => {
+    try {
+      const updatedPrinters = configuredPrinters.filter(p => p.id !== printerId);
+
+      const { error } = await supabase
+        .from('restaurant_print_config')
+        .upsert({
+          restaurant_id: restaurantId,
+          configured_printers: updatedPrinters
+        });
+
+      if (error) throw error;
+
+      setConfiguredPrinters(updatedPrinters);
+      
+      toast({
+        title: "Imprimante supprimée",
+        description: "L'imprimante a été supprimée de la configuration."
+      });
+    } catch (error) {
+      console.error('Error removing printer:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'imprimante.",
+        variant: "destructive"
+      });
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Printer className="h-5 w-5" />
-          QZ Tray Integration
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {!qzTrayAvailable && (
-          <Alert>
-            <WifiOff className="h-4 w-4" />
-            <AlertDescription>
-              QZ Tray is not available. Please download and install QZ Tray from{" "}
-              <a 
-                href="https://qz.io/download/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                qz.io/download
-              </a>{" "}
-              and ensure it's running.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="space-y-4">
+    <div className="space-y-6">
+      {/* QZ Tray Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            QZ Tray Integration
+          </CardTitle>
+          <CardDescription>
+            Connectez des imprimantes thermiques directement via QZ Tray
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-base font-medium">Connection Status</Label>
-              <p className="text-sm text-muted-foreground">
-                Connect to QZ Tray for direct printer communication
-              </p>
-            </div>
-            
             <div className="flex items-center gap-2">
-              <Badge 
-                variant="outline" 
-                className={`
-                  ${isConnected 
-                    ? 'bg-green-100 text-green-800 border-green-200' 
-                    : 'bg-red-100 text-red-800 border-red-200'}
-                `}
-              >
-                {isConnected ? (
-                  <Wifi className="h-3 w-3 mr-1" />
-                ) : (
-                  <WifiOff className="h-3 w-3 mr-1" />
-                )}
-                {isConnected ? 'Connected' : 'Disconnected'}
-              </Badge>
-              
-              {!isConnected ? (
-                <Button 
-                  onClick={connectToQZTray}
-                  disabled={isConnecting || !qzTrayAvailable}
-                  className="bg-kiosk-primary"
-                >
-                  {isConnecting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Wifi className="h-4 w-4 mr-2" />
-                  )}
-                  Connect
-                </Button>
+              {isQZAvailable ? (
+                <CheckCircle className="h-5 w-5 text-green-500" />
               ) : (
-                <Button 
-                  variant="outline"
-                  onClick={disconnectFromQZTray}
-                >
-                  Disconnect
-                </Button>
+                <AlertCircle className="h-5 w-5 text-red-500" />
               )}
+              <span>
+                {isQZAvailable ? "QZ Tray détecté" : "QZ Tray non détecté"}
+              </span>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={checkQZAvailability}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Vérifier
+            </Button>
           </div>
-        </div>
-        
-        {isConnected && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-md font-medium">Available Printers</h3>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => fetchPrinters()}
-                disabled={isFetching}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            </div>
-            
-            {isFetching ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : printers.length > 0 ? (
-              <div className="space-y-3">
-                {printers.map((printer) => (
-                  <div key={printer.name} className="flex items-center justify-between p-3 border rounded-md">
-                    <div className="flex items-center space-x-3">
-                      <Checkbox 
-                        id={`qz-printer-${printer.name}`}
-                        checked={printer.selected}
-                        onCheckedChange={() => togglePrinterSelection(printer.name)}
-                      />
-                      <div>
-                        <label 
-                          htmlFor={`qz-printer-${printer.name}`} 
-                          className="font-medium cursor-pointer"
-                        >
-                          {printer.name}
-                        </label>
-                        <p className="text-sm text-muted-foreground">
-                          {printer.connection} • {printer.type}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                        <Check className="h-3 w-3 mr-1" />
-                        Available
-                      </Badge>
+        </CardContent>
+      </Card>
+
+      {/* Printer Discovery */}
+      {isQZAvailable && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Découverte d'imprimantes</CardTitle>
+            <CardDescription>
+              Recherchez les imprimantes connectées à QZ Tray
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              onClick={discoverPrinters}
+              disabled={isLoading}
+              className="w-full"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              {isLoading ? "Recherche..." : "Découvrir les imprimantes"}
+            </Button>
+
+            {availablePrinters.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium">Imprimantes disponibles :</h4>
+                {availablePrinters.map((printer, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium">{printer.name}</p>
+                      <p className="text-sm text-gray-500">{printer.connection}</p>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => testPrinter(printer.name)}
-                      disabled={isTesting[printer.name]}
-                    >
-                      {isTesting[printer.name] ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Printer className="h-4 w-4 mr-2" />
-                      )}
-                      Test
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => testPrinter(printer.name)}
+                        disabled={isTesting === printer.name}
+                      >
+                        {isTesting === printer.name ? "Test..." : "Tester"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => addPrinter(printer.name)}
+                        disabled={configuredPrinters.some(p => p.name === printer.name)}
+                      >
+                        {configuredPrinters.some(p => p.name === printer.name) ? "Ajoutée" : "Ajouter"}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="text-center py-6 border rounded-md">
-                <p className="text-muted-foreground">No printers found via QZ Tray</p>
-              </div>
             )}
-          </div>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h4 className="font-medium text-blue-900 mb-2">About QZ Tray</h4>
-          <p className="text-sm text-blue-800">
-            QZ Tray provides direct communication with thermal printers and other hardware. 
-            It's more reliable than browser printing and works offline. Download from{" "}
-            <a 
-              href="https://qz.io/download/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="underline hover:no-underline"
-            >
-              qz.io/download
-            </a>
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Configured Printers */}
+      {configuredPrinters.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Imprimantes configurées</CardTitle>
+            <CardDescription>
+              Gérez vos imprimantes QZ Tray configurées
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {configuredPrinters.map((printer) => (
+                <div
+                  key={printer.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <Printer className="h-4 w-4" />
+                    <div>
+                      <p className="font-medium">{printer.name}</p>
+                      <Badge variant={printer.isActive ? "default" : "secondary"}>
+                        {printer.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => testPrinter(printer.name)}
+                      disabled={isTesting === printer.name}
+                    >
+                      {isTesting === printer.name ? "Test..." : "Tester"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removePrinter(printer.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 };
 
