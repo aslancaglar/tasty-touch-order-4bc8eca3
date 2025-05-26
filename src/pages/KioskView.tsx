@@ -14,14 +14,16 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
+import NetworkErrorBoundary from "@/components/error/NetworkErrorBoundary";
 import { setCacheItem, getCacheItem, clearMenuCache, forceFlushMenuCache, isCacheNeedsRefresh } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
 import InactivityDialog from "@/components/kiosk/InactivityDialog";
 import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog";
 import { preloadAllRestaurantData, PreloaderState } from "@/utils/data-preloader";
 import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
-import { useConnectionStatus } from "@/hooks/use-network-aware-fetch";
+import { useConnectionStatus, useNetworkAwareFetch } from "@/hooks/use-network-aware-fetch";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { testNetworkConnectivity } from "@/utils/service-worker";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -56,7 +58,7 @@ const KioskView = () => {
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
-  const [orderPlaced, setOrderPlaced] = useState(false); // Reset the orderPlaced state so new orders can be placed
+  const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
@@ -70,7 +72,7 @@ const KioskView = () => {
     toast
   } = useToast();
 
-  // Add new states for preloading
+  // Add new states for enhanced error handling
   const [isPreloading, setIsPreloading] = useState(false);
   const [preloadState, setPreloadState] = useState<PreloaderState>({
     isLoading: false,
@@ -78,9 +80,8 @@ const KioskView = () => {
     stage: 'idle',
     error: null
   });
-  
-  // Add the missing dataPreloaded state that we're using in our code
   const [dataPreloaded, setDataPreloaded] = useState(false);
+  const [networkHealthy, setNetworkHealthy] = useState(true);
 
   // Get connection status for offline awareness
   const connectionStatus = useConnectionStatus();
@@ -102,10 +103,48 @@ const KioskView = () => {
     return CURRENCY_SYMBOLS[code] || code;
   };
 
-  // Use a simple t function that always returns a string, leveraging our language-utils
   const t = (key: string): string => {
     return getTranslation(key, uiLanguage as SupportedLanguage);
   };
+
+  // Enhanced connectivity monitoring
+  useEffect(() => {
+    const checkConnectivity = async () => {
+      const isHealthy = await testNetworkConnectivity();
+      setNetworkHealthy(isHealthy);
+      
+      if (!isHealthy && connectionStatus === 'online') {
+        console.warn('[KioskView] Network appears unhealthy despite being online');
+        toast({
+          title: "Connexion limitée",
+          description: "La connexion semble instable. Mode cache activé.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    // Check connectivity periodically
+    const interval = setInterval(checkConnectivity, 30000); // Every 30 seconds
+    checkConnectivity(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [connectionStatus, toast]);
+
+  // Show offline status when connection changes
+  useEffect(() => {
+    if (connectionStatus === 'offline' && restaurant) {
+      toast({
+        title: "Mode hors ligne",
+        description: "Utilisation des données en cache. Certaines fonctions peuvent être limitées.",
+        variant: "destructive"
+      });
+    } else if (connectionStatus === 'online' && restaurant && !networkHealthy) {
+      toast({
+        title: "Reconnexion en cours",
+        description: "Synchronisation des données...",
+      });
+    }
+  }, [connectionStatus, restaurant, networkHealthy, toast]);
 
   // Modify resetToWelcome to keep preloaded data
   const resetToWelcome = () => {
@@ -140,7 +179,7 @@ const KioskView = () => {
     resetToWelcome();
   };
 
-  // New function to preload all restaurant data
+  // Enhanced data preloading with better error handling
   const preloadAllData = async (forceRefresh = false) => {
     if (!restaurantSlug) return;
     
@@ -153,9 +192,11 @@ const KioskView = () => {
         error: null
       });
 
+      console.log(`[KioskView] Preloading data - Force refresh: ${forceRefresh}, Network: ${connectionStatus}`);
+
       const restaurant = await preloadAllRestaurantData(
         restaurantSlug,
-        { forceRefresh },
+        { forceRefresh: forceRefresh && connectionStatus === 'online' }, // Only force refresh if online
         (state) => setPreloadState(state)
       );
 
@@ -174,11 +215,25 @@ const KioskView = () => {
             setActiveCategory(cachedCategories[0].id);
           }
           setLoading(false);
-          setDataPreloaded(true); // Mark data as preloaded once it's loaded
+          setDataPreloaded(true);
+          
+          // Show cache notice if offline
+          if (connectionStatus === 'offline') {
+            toast({
+              title: "Mode hors ligne",
+              description: "Données en cache chargées. Fonctionnalités limitées.",
+              variant: "destructive"
+            });
+          }
         } else {
-          // No cached categories, need to load them
-          await preloadAllData(false);
-          setDataPreloaded(true); // Mark data as preloaded once it's loaded
+          // No cached categories, need to load them if online
+          if (connectionStatus === 'online') {
+            await preloadAllData(false);
+          } else {
+            // Offline with no cache - show error
+            throw new Error("Aucune donnée en cache disponible hors ligne");
+          }
+          setDataPreloaded(true);
         }
       }
       
@@ -189,20 +244,37 @@ const KioskView = () => {
       setLoading(false);
       setIsPreloading(false);
       
-      // If preloading fails but we have a cached restaurant, still show the app
+      // Enhanced error handling with cache fallback
       const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
       if (cachedRestaurant) {
         setRestaurant(cachedRestaurant);
-        toast({
-          title: "Offline mode",
-          description: "Using cached data. Some features may be limited.",
-          variant: "destructive"
-        });
+        
+        // Get cached categories for this restaurant
+        const menuCacheKey = `categories_${cachedRestaurant.id}`;
+        const cachedCategories = getCacheItem<CategoryWithItems[]>(menuCacheKey, cachedRestaurant.id);
+        
+        if (cachedCategories && cachedCategories.length > 0) {
+          setCategories(cachedCategories);
+          if (cachedCategories.length > 0) {
+            setActiveCategory(cachedCategories[0].id);
+          }
+          setDataPreloaded(true);
+          
+          toast({
+            title: "Mode hors ligne",
+            description: "Utilisation des données en cache. Fonctionnalités limitées.",
+            variant: "destructive"
+          });
+        } else {
+          throw error; // No cached data available
+        }
       } else {
         // No cached data, show error
         toast({
           title: t("restaurantNotFound"),
-          description: t("sorryNotFound"),
+          description: connectionStatus === 'offline' 
+            ? "Aucune donnée en cache disponible hors ligne"
+            : t("sorryNotFound"),
           variant: "destructive"
         });
         navigate('/');
@@ -210,7 +282,7 @@ const KioskView = () => {
     }
   };
 
-  // Modify the initial useEffect to use our preloader
+  // Enhanced initial data loading
   useEffect(() => {
     const fetchRestaurantAndMenu = async () => {
       if (!restaurantSlug) {
@@ -224,7 +296,7 @@ const KioskView = () => {
       const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
       
       if (cachedRestaurant) {
-        // We have a cached restaurant, show it immediately
+        console.log(`[KioskView] Found cached restaurant, loading immediately`);
         setRestaurant(cachedRestaurant);
         const lang = cachedRestaurant.ui_language === "en" ? "en" : cachedRestaurant.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
@@ -239,21 +311,28 @@ const KioskView = () => {
             setActiveCategory(cachedCategories[0].id);
           }
           setLoading(false);
-          setDataPreloaded(true); // Mark data as preloaded once it's loaded
+          setDataPreloaded(true);
+          
+          // If we're online and data is stale, refresh in background
+          if (connectionStatus === 'online' && isCacheNeedsRefresh(menuCacheKey, cachedRestaurant.id)) {
+            console.log(`[KioskView] Cache is stale, refreshing in background`);
+            preloadAllData(true);
+          }
         } else {
           // No cached categories, need to load them
-          await preloadAllData(false);
-          setDataPreloaded(true); // Mark data as preloaded once it's loaded
+          await preloadAllData(connectionStatus === 'online');
+          setDataPreloaded(true);
         }
       } else {
         // No cached restaurant, need to fetch everything
+        console.log(`[KioskView] No cached restaurant, fetching fresh data`);
         await preloadAllData(true);
-        setDataPreloaded(true); // Mark data as preloaded once it's loaded
+        setDataPreloaded(true);
       }
     };
     
     fetchRestaurantAndMenu();
-  }, [restaurantSlug, navigate, toast]);
+  }, [restaurantSlug, navigate, connectionStatus]);
 
   useEffect(() => {
     if (showWelcome) {
@@ -715,6 +794,17 @@ const KioskView = () => {
   };
   const handlePlaceOrder = async () => {
     if (!restaurant || cart.length === 0) return;
+    
+    // Check if we're offline
+    if (connectionStatus === 'offline') {
+      toast({
+        title: "Mode hors ligne",
+        description: "Impossible de passer commande hors ligne. Reconnectez-vous pour continuer.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       setPlacingOrder(true);
       const order = await createOrder({
@@ -897,27 +987,32 @@ const KioskView = () => {
     }
   };
 
-  // Modified handleRefreshMenu function to implement a full reload
+  // Enhanced menu refresh with network awareness
   const handleRefreshMenu = async () => {
+    if (connectionStatus === 'offline') {
+      toast({
+        title: "Mode hors ligne",
+        description: "Impossible de rafraîchir en mode hors ligne",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       if (!restaurant) return;
       
-      // Step 1: Set loading state to true for user feedback and disable button
       setLoading(true);
       console.log("[MenuRefresh] Starting menu refresh operation");
       
-      // Show "refreshing and reloading" toast message
       toast({
         title: t("refreshMenu"),
         description: t("cache.refreshing"),
         duration: 3000,
       });
       
-      // Step 2: Explicitly clear the menu cache first to ensure a clean slate
       console.log("[MenuRefresh] Force flushing all menu cache");
       forceFlushMenuCache(restaurant.id);
       
-      // Step 3: Preload all data with forceRefresh=true
       console.log("[MenuRefresh] Preloading fresh data with forceRefresh=true");
       await preloadAllRestaurantData(
         restaurantSlug || "",
@@ -930,7 +1025,6 @@ const KioskView = () => {
       
       console.log("[MenuRefresh] Refresh operation completed successfully, reloading the application");
       
-      // Step 4: Wait a short moment and then reload the entire page to get a fresh start
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -982,20 +1076,26 @@ const KioskView = () => {
 
   // Show preloading screen if preloading
   if (isPreloading) {
-    return <PreloadingScreen 
-      state={preloadState}
-      onRetry={() => preloadAllData(true)} 
-      uiLanguage={uiLanguage} 
-    />;
+    return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
+      <PreloadingScreen 
+        state={preloadState}
+        onRetry={() => preloadAllData(true)} 
+        uiLanguage={uiLanguage} 
+      />
+    </NetworkErrorBoundary>;
   }
 
   if (loading && !restaurant) {
-    return <div className="flex items-center justify-center h-screen kiosk-view">
+    return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
+      <div className="flex items-center justify-center h-screen kiosk-view">
         <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
-      </div>;
+      </div>
+    </NetworkErrorBoundary>;
   }
+
   if (!restaurant) {
-    return <div className="flex items-center justify-center h-screen kiosk-view">
+    return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
+      <div className="flex items-center justify-center h-screen kiosk-view">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">{t("restaurantNotFound")}</h1>
           <p className="text-gray-500 mb-4">{t("sorryNotFound")}</p>
@@ -1004,10 +1104,13 @@ const KioskView = () => {
             {t("backToHome")}
           </Button>
         </div>
-      </div>;
+      </div>
+    </NetworkErrorBoundary>;
   }
+
   if (showWelcome) {
-    return <div className="kiosk-view">
+    return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
+      <div className="kiosk-view">
         <WelcomePage 
           restaurant={restaurant} 
           onStart={() => {
@@ -1017,25 +1120,32 @@ const KioskView = () => {
           uiLanguage={uiLanguage}
           isDataLoading={isPreloading || loading} 
         />
-      </div>;
+      </div>
+    </NetworkErrorBoundary>;
   }
+
   if (showOrderTypeSelection) {
-    return <div className="kiosk-view">
+    return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
+      <div className="kiosk-view">
         <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
-        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
-      }} />
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+        }} />
         <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
-        setShowOrderTypeSelection(false);
-        setShowWelcome(true);
-      }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
+          setShowOrderTypeSelection(false);
+          setShowWelcome(true);
+        }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
         
         <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
-      </div>;
+      </div>
+    </NetworkErrorBoundary>;
   }
+
   const activeItems = categories.find(c => c.id === activeCategory)?.items || [];
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartIsEmpty = cart.length === 0;
-  return <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+
+  return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
+    <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
         <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
@@ -1068,8 +1178,8 @@ const KioskView = () => {
       {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} uiLanguage={uiLanguage} currency={restaurant.currency} />}
 
       <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
-      maxHeight: "60vh"
-    }}>
+        maxHeight: "60vh"
+      }}>
         <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} t={t} />
       </div>
 
@@ -1077,7 +1187,7 @@ const KioskView = () => {
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       
-      {/* New Order Confirmation Dialog */}
+      {/* Order Confirmation Dialog */}
       <OrderConfirmationDialog 
         isOpen={showConfirmationDialog}
         onClose={handleConfirmationClose}
@@ -1090,7 +1200,8 @@ const KioskView = () => {
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
       />
-    </div>;
+    </div>
+  </NetworkErrorBoundary>;
 };
 
 export default KioskView;
