@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -43,21 +42,13 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   getFormattedOptions,
   getFormattedToppings
 }) => {
-  const {
-    t
-  } = useTranslation(uiLanguage);
-  const {
-    toast
-  } = useToast();
+  const { t } = useTranslation(uiLanguage);
+  const { toast } = useToast();
   const isMobile = useIsMobile();
   const [countdown, setCountdown] = useState(10);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrinted, setHasPrinted] = useState(false);
-  const {
-    total,
-    subtotal,
-    tax
-  } = calculateCartTotals(cart);
+  const { total, subtotal, tax } = calculateCartTotals(cart);
 
   // Currency symbol helper
   const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -100,7 +91,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     };
   }, [isOpen, onClose]);
 
-  // Handle printing when dialog opens
+  // Handle printing when dialog opens with enhanced QZ Tray support
   useEffect(() => {
     if (isOpen && !hasPrinted && restaurant?.id) {
       handlePrintReceipt();
@@ -109,76 +100,117 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   
   const handlePrintReceipt = async () => {
     if (!restaurant?.id || hasPrinted || isPrinting) return;
+    
     try {
       setIsPrinting(true);
 
-      // Fetch print configuration
-      const {
-        data: printConfig,
-        error
-      } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
-      if (error) {
-        console.error("Error fetching print configuration");
-        setIsPrinting(false);
-        return;
+      // Fetch print configuration including QZ Tray settings
+      const { data: printConfig, error } = await supabase
+        .from('restaurant_print_config')
+        .select('api_key, configured_printers, browser_printing_enabled, qz_tray_printers')
+        .eq('restaurant_id', restaurant.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching print configuration:", error);
       }
 
-      // Handle browser printing
-      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
-      if (shouldUseBrowserPrinting) {
-        console.log("Using browser printing for receipt");
-        toast({
-          title: t("order.printing"),
-          description: t("order.printingPreparation")
-        });
-        setTimeout(() => {
-          try {
-            printReceipt('receipt-content');
-            console.log("Print receipt triggered successfully");
-          } catch (printError) {
-            console.error("Error during browser printing");
-            toast({
-              title: t("order.printError"),
-              description: t("order.printErrorDesc"),
-              variant: "destructive"
-            });
-          }
-          setIsPrinting(false);
-          setHasPrinted(true);
-        }, 500);
-      } else {
-        console.log("Browser printing disabled for this device or restaurant");
+      // Determine printing method priority:
+      // 1. QZ Tray (if configured and available)
+      // 2. PrintNode (if configured)
+      // 3. Browser printing (fallback)
+
+      let printingSuccessful = false;
+
+      // Try QZ Tray first if configured
+      if (printConfig?.qz_tray_printers && Array.isArray(printConfig.qz_tray_printers) && printConfig.qz_tray_printers.length > 0) {
+        console.log("Attempting QZ Tray printing...");
+        
+        try {
+          toast({
+            title: t("order.printing"),
+            description: "Printing via QZ Tray..."
+          });
+
+          // Use the enhanced printReceipt function with QZ Tray
+          await printReceipt('receipt-content', 'qz-tray', printConfig.qz_tray_printers[0]);
+          printingSuccessful = true;
+          console.log("QZ Tray printing successful");
+        } catch (qzError) {
+          console.error("QZ Tray printing failed:", qzError);
+          // Continue to try other methods
+        }
       }
 
-      // Handle PrintNode printing (if configured)
-      if (printConfig?.api_key && printConfig?.configured_printers) {
+      // Try PrintNode if QZ Tray failed or wasn't configured
+      if (!printingSuccessful && printConfig?.api_key && printConfig?.configured_printers) {
+        console.log("Attempting PrintNode printing...");
+        
         const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
         const printerIds = printerArray.map(id => String(id));
+        
         if (printerIds.length > 0) {
-          await sendReceiptToPrintNode(printConfig.api_key, printerIds, {
-            restaurant,
-            cart,
-            orderNumber,
-            tableNumber,
-            orderType,
-            subtotal,
-            tax,
-            total,
-            getFormattedOptions,
-            getFormattedToppings,
-            uiLanguage
-          });
+          try {
+            await sendReceiptToPrintNode(printConfig.api_key, printerIds, {
+              restaurant,
+              cart,
+              orderNumber,
+              tableNumber,
+              orderType,
+              subtotal,
+              tax,
+              total,
+              getFormattedOptions,
+              getFormattedToppings,
+              uiLanguage
+            });
+            printingSuccessful = true;
+            console.log("PrintNode printing successful");
+          } catch (printNodeError) {
+            console.error("PrintNode printing failed:", printNodeError);
+          }
         }
-        setIsPrinting(false);
-        setHasPrinted(true);
       }
+
+      // Fall back to browser printing if other methods failed
+      if (!printingSuccessful) {
+        const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig?.browser_printing_enabled !== false);
+        
+        if (shouldUseBrowserPrinting) {
+          console.log("Using browser printing as fallback");
+          
+          toast({
+            title: t("order.printing"),
+            description: t("order.printingPreparation")
+          });
+
+          setTimeout(async () => {
+            try {
+              await printReceipt('receipt-content', 'browser');
+              console.log("Browser printing triggered successfully");
+            } catch (printError) {
+              console.error("Error during browser printing:", printError);
+              toast({
+                title: t("order.printError"),
+                description: t("order.printErrorDesc"),
+                variant: "destructive"
+              });
+            }
+          }, 500);
+        } else {
+          console.log("All printing methods failed or disabled");
+        }
+      }
+
+      setHasPrinted(true);
     } catch (error) {
-      console.error("Error during receipt printing");
+      console.error("Error during receipt printing:", error);
       toast({
         title: t("order.error"),
         description: t("order.errorPrinting"),
         variant: "destructive"
       });
+    } finally {
       setIsPrinting(false);
     }
   };
@@ -249,7 +281,8 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     }
   };
   
-  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+  return (
+    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-md md:max-w-2xl rounded-lg overflow-hidden">
         <div className="flex flex-col items-center text-center p-4 space-y-6">
           {/* Order Confirmation Header */}
@@ -312,8 +345,18 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       </DialogContent>
 
       {/* Hidden Receipt Component for Printing */}
-      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
-    </Dialog>;
+      <OrderReceipt 
+        restaurant={restaurant} 
+        cart={cart} 
+        orderNumber={orderNumber} 
+        tableNumber={tableNumber} 
+        orderType={orderType} 
+        getFormattedOptions={getFormattedOptions} 
+        getFormattedToppings={getFormattedToppings} 
+        uiLanguage={uiLanguage} 
+      />
+    </Dialog>
+  );
 };
 
 export default OrderConfirmationDialog;
