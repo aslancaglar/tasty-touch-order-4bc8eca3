@@ -83,6 +83,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   uiLanguage = "fr",
 }) => {
   const [orderNumber, setOrderNumber] = useState<string>("0");
+  const [qzPrintAttempted, setQzPrintAttempted] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -127,6 +128,48 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     if (restaurant?.id) {
       try {
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
+        
+        // Préparer les données de commande
+        const orderData = {
+          restaurant,
+          cart,
+          orderNumber,
+          tableNumber,
+          orderType,
+          subtotal,
+          tax,
+          total,
+          getFormattedOptions,
+          getFormattedToppings
+        };
+
+        // 1. Tentative d'impression QZ Tray (nouvelle méthode) - indépendante
+        if (!qzPrintAttempted) {
+          setQzPrintAttempted(true);
+          try {
+            const isQZAvailable = await qzTrayService.isQZTrayAvailable();
+            if (isQZAvailable) {
+              console.log("QZ Tray available, attempting to print tickets...");
+              
+              // Impression QZ Tray en arrière-plan - ne bloque pas les autres méthodes
+              qzTrayService.printOrderTickets(orderData).then(() => {
+                console.log("QZ Tray printing completed successfully");
+                toast({
+                  title: "QZ Tray",
+                  description: "Tickets imprimés avec succès via QZ Tray"
+                });
+              }).catch((qzError) => {
+                console.warn("QZ Tray printing failed, continuing with other methods:", qzError);
+              });
+            } else {
+              console.log("QZ Tray not available, skipping QZ printing");
+            }
+          } catch (qzError) {
+            console.warn("QZ Tray check failed, continuing with existing methods:", qzError);
+          }
+        }
+
+        // 2. Méthodes d'impression existantes (inchangées)
         const { data: printConfig, error } = await supabase
           .from('restaurant_print_config')
           .select('api_key, configured_printers, browser_printing_enabled')
@@ -175,18 +218,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             await sendReceiptToPrintNode(
               printConfig.api_key,
               printerIds,
-              {
-                restaurant,
-                cart,
-                orderNumber,
-                tableNumber,
-                orderType,
-                subtotal,
-                tax,
-                total,
-                getFormattedOptions,
-                getFormattedToppings
-              }
+              orderData
             );
           }
         }

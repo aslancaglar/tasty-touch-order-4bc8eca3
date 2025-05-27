@@ -49,6 +49,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   const [countdown, setCountdown] = useState(10);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrinted, setHasPrinted] = useState(false);
+  const [qzPrintAttempted, setQzPrintAttempted] = useState(false);
   const { total, subtotal, tax } = calculateCartTotals(cart);
 
   // Currency symbol helper
@@ -101,6 +102,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   
   const handlePrintReceipt = async () => {
     if (!restaurant?.id || hasPrinted || isPrinting) return;
+    
     try {
       setIsPrinting(true);
 
@@ -119,37 +121,33 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         uiLanguage
       };
 
-      // Tentative d'impression QZ Tray en premier
-      try {
-        const isQZAvailable = await qzTrayService.isQZTrayAvailable();
-        if (isQZAvailable) {
-          console.log("QZ Tray available, printing tickets...");
-          toast({
-            title: t("order.printing"),
-            description: "Impression via QZ Tray en cours..."
-          });
-          
-          await qzTrayService.printOrderTickets(orderData);
-          
-          toast({
-            title: "Impression réussie",
-            description: "Les tickets ont été imprimés avec succès"
-          });
-          
-          setHasPrinted(true);
-          setIsPrinting(false);
-          return;
+      // 1. Tentative d'impression QZ Tray (nouvelle méthode) - indépendante
+      if (!qzPrintAttempted) {
+        setQzPrintAttempted(true);
+        try {
+          const isQZAvailable = await qzTrayService.isQZTrayAvailable();
+          if (isQZAvailable) {
+            console.log("QZ Tray available, attempting to print tickets...");
+            
+            // Impression QZ Tray en arrière-plan - ne bloque pas les autres méthodes
+            qzTrayService.printOrderTickets(orderData).then(() => {
+              console.log("QZ Tray printing completed successfully");
+              toast({
+                title: "QZ Tray",
+                description: "Tickets imprimés avec succès via QZ Tray"
+              });
+            }).catch((qzError) => {
+              console.warn("QZ Tray printing failed, continuing with other methods:", qzError);
+            });
+          } else {
+            console.log("QZ Tray not available, skipping QZ printing");
+          }
+        } catch (qzError) {
+          console.warn("QZ Tray check failed, continuing with existing methods:", qzError);
         }
-      } catch (qzError) {
-        console.error("QZ Tray printing failed:", qzError);
-        toast({
-          title: "Erreur QZ Tray",
-          description: "Tentative d'impression navigateur...",
-          variant: "destructive"
-        });
       }
 
-      // Fallback: impression navigateur + PrintNode
+      // 2. Méthodes d'impression existantes (inchangées)
       const { data: printConfig, error } = await supabase
         .from('restaurant_print_config')
         .select('api_key, configured_printers, browser_printing_enabled')
@@ -162,7 +160,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         return;
       }
 
-      // Handle browser printing
+      // Handle browser printing (méthode existante)
       const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
       if (shouldUseBrowserPrinting) {
         console.log("Using browser printing for receipt");
@@ -189,7 +187,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         console.log("Browser printing disabled for this device or restaurant");
       }
 
-      // Handle PrintNode printing (if configured)
+      // Handle PrintNode printing (méthode existante)
       if (printConfig?.api_key && printConfig?.configured_printers) {
         const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
         const printerIds = printerArray.map(id => String(id));
