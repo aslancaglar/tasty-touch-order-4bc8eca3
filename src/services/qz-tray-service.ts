@@ -1,4 +1,3 @@
-
 import { CartItem } from '@/types/database-types';
 import { generatePlainTextReceipt } from '@/utils/receipt-templates';
 
@@ -69,28 +68,21 @@ class QZTrayService {
         throw new Error('QZ Tray not available');
       }
 
-      // Configuration QZ Tray
+      // Simplified security configuration for development/testing
+      console.log('Setting up QZ Tray security configuration...');
+      
+      // Use empty certificate and signature for development
       window.qz.security.setCertificatePromise(() => {
-        return fetch('/qz-tray.der', { cache: 'no-store' })
-          .catch(() => {
-            // Fallback: utiliser le certificat par défaut
-            return Promise.resolve();
-          });
+        console.log('Using empty certificate for development');
+        return Promise.resolve();
       });
 
-      window.qz.security.setSignaturePromise((toSign: string) => {
-        return fetch('/qz-tray-signature', {
-          method: 'POST',
-          body: JSON.stringify({ data: toSign }),
-          headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.text())
-        .catch(() => {
-          // Fallback: signature vide pour développement
-          return Promise.resolve('');
-        });
+      window.qz.security.setSignaturePromise(() => {
+        console.log('Using empty signature for development');
+        return Promise.resolve('');
       });
 
+      console.log('Attempting to connect to QZ Tray WebSocket...');
       await window.qz.websocket.connect();
       this.isConnected = true;
       console.log('QZ Tray connected successfully');
@@ -120,7 +112,10 @@ class QZTrayService {
     }
 
     try {
+      console.log('Fetching printers from QZ Tray...');
       const printers = await window.qz.printers.find();
+      console.log('Raw printers response:', printers);
+      
       return printers.map((printer: any) => ({
         name: printer.name || printer,
         driver: printer.driver

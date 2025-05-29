@@ -103,10 +103,18 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
         } else {
           // Try to connect
           try {
-            // Set up security (simplified for diagnostics)
-            window.qz.security.setCertificatePromise(() => Promise.resolve());
-            window.qz.security.setSignaturePromise(() => Promise.resolve(''));
+            // Simplified security setup for development/testing
+            console.log("🔐 Setting up simplified security configuration...");
+            window.qz.security.setCertificatePromise(() => {
+              console.log("Using empty certificate for diagnostics");
+              return Promise.resolve();
+            });
+            window.qz.security.setSignaturePromise(() => {
+              console.log("Using empty signature for diagnostics");
+              return Promise.resolve('');
+            });
 
+            console.log("🔌 Attempting WebSocket connection...");
             await window.qz.websocket.connect();
             diagnosticResult.websocketConnected = true;
             console.log("✅ WebSocket connected successfully");
@@ -204,7 +212,8 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
       const wasConnected = checkWebSocketStatus();
       
       if (!wasConnected) {
-        // Connect if not already connected
+        // Connect if not already connected with simplified security
+        console.log("🔐 Setting up security for test print...");
         window.qz.security.setCertificatePromise(() => Promise.resolve());
         window.qz.security.setSignaturePromise(() => Promise.resolve(''));
         await window.qz.websocket.connect();
