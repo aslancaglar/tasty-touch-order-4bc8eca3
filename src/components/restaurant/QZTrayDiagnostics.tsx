@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +43,62 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
       console.warn("Could not check WebSocket status:", error);
       return false;
     }
+  };
+
+  const setupSecurityConfig = async () => {
+    console.log("🔐 Setting up security configuration...");
+    
+    // Try multiple security approaches
+    const approaches = [
+      // Approach 1: Use QZ Tray's built-in certificate handling
+      () => {
+        console.log("Trying built-in certificate handling...");
+        window.qz.security.setCertificatePromise(() => {
+          if (window.qz.security.requestSignature) {
+            return window.qz.security.requestSignature();
+          }
+          return Promise.resolve();
+        });
+        window.qz.security.setSignaturePromise((toSign: string) => {
+          if (window.qz.security.requestSignature) {
+            return window.qz.security.requestSignature(toSign);
+          }
+          return Promise.resolve();
+        });
+      },
+      // Approach 2: Bypass security entirely
+      () => {
+        console.log("Trying bypass security...");
+        window.qz.security.setCertificatePromise(() => Promise.resolve());
+        window.qz.security.setSignaturePromise(() => Promise.resolve());
+      },
+      // Approach 3: Return empty strings
+      () => {
+        console.log("Trying empty string security...");
+        window.qz.security.setCertificatePromise(() => Promise.resolve(''));
+        window.qz.security.setSignaturePromise(() => Promise.resolve(''));
+      }
+    ];
+
+    for (let i = 0; i < approaches.length; i++) {
+      try {
+        approaches[i]();
+        await window.qz.websocket.connect();
+        console.log(`✅ Security approach ${i + 1} successful`);
+        return true;
+      } catch (error) {
+        console.log(`❌ Security approach ${i + 1} failed:`, error);
+        if (window.qz.websocket.isActive()) {
+          try {
+            await window.qz.websocket.disconnect();
+          } catch (disconnectError) {
+            console.warn("Error disconnecting after failed approach:", disconnectError);
+          }
+        }
+      }
+    }
+    
+    return false;
   };
 
   const runDiagnostics = async () => {
@@ -101,33 +156,27 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
           // Get printers directly since we're already connected
           await getPrintersFromQZ(diagnosticResult);
         } else {
-          // Try to connect
+          // Try to connect with multiple security approaches
           try {
-            // Simplified security setup for development/testing
-            console.log("🔐 Setting up simplified security configuration...");
-            window.qz.security.setCertificatePromise(() => {
-              console.log("Using empty certificate for diagnostics");
-              return Promise.resolve();
-            });
-            window.qz.security.setSignaturePromise((toSign: string) => {
-              console.log("Using empty signature for diagnostics");
-              return Promise.resolve('');
-            });
+            console.log("🔌 Attempting WebSocket connection with smart security...");
+            const connected = await setupSecurityConfig();
+            
+            if (connected) {
+              diagnosticResult.websocketConnected = true;
+              console.log("✅ WebSocket connected successfully");
 
-            console.log("🔌 Attempting WebSocket connection...");
-            await window.qz.websocket.connect();
-            diagnosticResult.websocketConnected = true;
-            console.log("✅ WebSocket connected successfully");
+              // Get printers
+              await getPrintersFromQZ(diagnosticResult);
 
-            // Get printers
-            await getPrintersFromQZ(diagnosticResult);
-
-            // Disconnect after diagnostics
-            try {
-              await window.qz.websocket.disconnect();
-              console.log("🔌 WebSocket disconnected");
-            } catch (disconnectError) {
-              console.warn("⚠️ Error disconnecting WebSocket:", disconnectError);
+              // Disconnect after diagnostics
+              try {
+                await window.qz.websocket.disconnect();
+                console.log("🔌 WebSocket disconnected");
+              } catch (disconnectError) {
+                console.warn("⚠️ Error disconnecting WebSocket:", disconnectError);
+              }
+            } else {
+              throw new Error("All security approaches failed");
             }
 
           } catch (connectionError) {
@@ -212,11 +261,12 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
       const wasConnected = checkWebSocketStatus();
       
       if (!wasConnected) {
-        // Connect if not already connected with simplified security
+        // Connect if not already connected with smart security
         console.log("🔐 Setting up security for test print...");
-        window.qz.security.setCertificatePromise(() => Promise.resolve());
-        window.qz.security.setSignaturePromise((toSign: string) => Promise.resolve(''));
-        await window.qz.websocket.connect();
+        const connected = await setupSecurityConfig();
+        if (!connected) {
+          throw new Error("Failed to connect for test print");
+        }
       }
 
       // Create test print job
@@ -370,10 +420,11 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
                 <li>Ensure QZ Tray desktop application is installed and running</li>
                 <li>Check that printers are connected and powered on</li>
                 <li>Verify printer drivers are installed</li>
-                <li>Try restarting QZ Tray application</li>
+                <li>If using HTTPS, ensure certificate is properly installed in QZ Tray</li>
+                <li>Try running QZ Tray as administrator</li>
                 <li>Check firewall/antivirus settings</li>
-                <li>For HTTPS sites, allow insecure localhost connections</li>
-                <li>If connection already exists, the WebSocket may be persistent</li>
+                <li>Verify QZ Tray certificate is trusted by the browser</li>
+                <li>For persistent signing errors, try reinstalling QZ Tray certificate</li>
               </ol>
             </div>
           </div>
