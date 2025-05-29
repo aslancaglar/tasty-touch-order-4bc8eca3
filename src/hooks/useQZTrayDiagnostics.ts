@@ -50,13 +50,13 @@ export const useQZTrayDiagnostics = () => {
       () => {
         console.log("Trying installed certificate approach...");
         window.qz.security.setCertificatePromise(() => {
-          return new Promise((resolve) => {
+          return new Promise<void>((resolve) => {
             console.log("Using installed certificate");
             resolve();
           });
         });
         window.qz.security.setSignaturePromise((toSign: string) => {
-          return new Promise((resolve) => {
+          return new Promise<void>((resolve) => {
             console.log("Signing with installed certificate, data:", toSign);
             resolve();
           });
