@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -166,10 +167,7 @@ const RestaurantManage = () => {
             
             <TabsContent value="settings">
               {restaurant && (
-                <SettingsTab 
-                  restaurant={restaurant} 
-                  onRestaurantUpdated={handleRestaurantUpdated} 
-                />
+                <SettingsTab restaurant={restaurant} />
               )}
             </TabsContent>
             
