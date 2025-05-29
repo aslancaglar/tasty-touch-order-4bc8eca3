@@ -32,6 +32,20 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
     runDiagnostics();
   }, []);
 
+  const checkWebSocketStatus = (): boolean => {
+    if (!window.qz || !window.qz.websocket) {
+      return false;
+    }
+    
+    try {
+      // Check if QZ Tray websocket is already connected
+      return window.qz.websocket.isActive();
+    } catch (error) {
+      console.warn("Could not check WebSocket status:", error);
+      return false;
+    }
+  };
+
   const runDiagnostics = async () => {
     setIsRunning(true);
     setResults(null);
@@ -74,50 +88,44 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
           console.warn("⚠️ Could not get QZ Tray version:", error);
         }
 
-        // Step 2: Test WebSocket connection
-        console.log("🔌 Testing WebSocket connection...");
-        try {
-          // Set up security (simplified for diagnostics)
-          window.qz.security.setCertificatePromise(() => Promise.resolve());
-          window.qz.security.setSignaturePromise(() => Promise.resolve(''));
+        // Step 2: Check WebSocket connection status
+        console.log("🔌 Checking WebSocket connection status...");
+        
+        const isAlreadyConnected = checkWebSocketStatus();
+        console.log(`WebSocket already connected: ${isAlreadyConnected}`);
 
-          await window.qz.websocket.connect();
+        if (isAlreadyConnected) {
+          console.log("✅ WebSocket already connected");
           diagnosticResult.websocketConnected = true;
-          console.log("✅ WebSocket connected successfully");
-
-          // Step 3: Get available printers
-          console.log("🖨️ Fetching available printers...");
+          
+          // Get printers directly since we're already connected
+          await getPrintersFromQZ(diagnosticResult);
+        } else {
+          // Try to connect
           try {
-            const printers = await window.qz.printers.find();
-            console.log("📄 Raw printers response:", printers);
+            // Set up security (simplified for diagnostics)
+            window.qz.security.setCertificatePromise(() => Promise.resolve());
+            window.qz.security.setSignaturePromise(() => Promise.resolve(''));
 
-            if (Array.isArray(printers)) {
-              diagnosticResult.printers = printers.map((printer: any) => ({
-                name: printer.name || printer,
-                driver: printer.driver || 'Unknown',
-                status: printer.status || 'Unknown'
-              }));
-              console.log(`✅ Found ${diagnosticResult.printers.length} printers:`, diagnosticResult.printers);
-            } else {
-              console.log("⚠️ Printers response is not an array:", typeof printers);
-              diagnosticResult.errors.push("Invalid printers response format");
+            await window.qz.websocket.connect();
+            diagnosticResult.websocketConnected = true;
+            console.log("✅ WebSocket connected successfully");
+
+            // Get printers
+            await getPrintersFromQZ(diagnosticResult);
+
+            // Disconnect after diagnostics
+            try {
+              await window.qz.websocket.disconnect();
+              console.log("🔌 WebSocket disconnected");
+            } catch (disconnectError) {
+              console.warn("⚠️ Error disconnecting WebSocket:", disconnectError);
             }
-          } catch (printerError) {
-            console.error("❌ Failed to get printers:", printerError);
-            diagnosticResult.errors.push(`Failed to get printers: ${printerError.message}`);
-          }
 
-          // Disconnect after diagnostics
-          try {
-            await window.qz.websocket.disconnect();
-            console.log("🔌 WebSocket disconnected");
-          } catch (disconnectError) {
-            console.warn("⚠️ Error disconnecting WebSocket:", disconnectError);
+          } catch (connectionError) {
+            console.error("❌ WebSocket connection failed:", connectionError);
+            diagnosticResult.errors.push(`WebSocket connection failed: ${connectionError.message}`);
           }
-
-        } catch (connectionError) {
-          console.error("❌ WebSocket connection failed:", connectionError);
-          diagnosticResult.errors.push(`WebSocket connection failed: ${connectionError.message}`);
         }
       } else {
         diagnosticResult.errors.push("QZ Tray script not available");
@@ -147,6 +155,29 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
     }
   };
 
+  const getPrintersFromQZ = async (diagnosticResult: DiagnosticResult) => {
+    console.log("🖨️ Fetching available printers...");
+    try {
+      const printers = await window.qz.printers.find();
+      console.log("📄 Raw printers response:", printers);
+
+      if (Array.isArray(printers)) {
+        diagnosticResult.printers = printers.map((printer: any) => ({
+          name: printer.name || printer,
+          driver: printer.driver || 'Unknown',
+          status: printer.status || 'Unknown'
+        }));
+        console.log(`✅ Found ${diagnosticResult.printers.length} printers:`, diagnosticResult.printers);
+      } else {
+        console.log("⚠️ Printers response is not an array:", typeof printers);
+        diagnosticResult.errors.push("Invalid printers response format");
+      }
+    } catch (printerError) {
+      console.error("❌ Failed to get printers:", printerError);
+      diagnosticResult.errors.push(`Failed to get printers: ${printerError.message}`);
+    }
+  };
+
   const loadQZTrayScript = (): Promise<void> => {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -170,10 +201,14 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
     try {
       console.log(`🖨️ Testing print to: ${printerName}`);
       
-      // Connect
-      window.qz.security.setCertificatePromise(() => Promise.resolve());
-      window.qz.security.setSignaturePromise(() => Promise.resolve(''));
-      await window.qz.websocket.connect();
+      const wasConnected = checkWebSocketStatus();
+      
+      if (!wasConnected) {
+        // Connect if not already connected
+        window.qz.security.setCertificatePromise(() => Promise.resolve());
+        window.qz.security.setSignaturePromise(() => Promise.resolve(''));
+        await window.qz.websocket.connect();
+      }
 
       // Create test print job
       const config = window.qz.configs.create(printerName);
@@ -197,8 +232,10 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
         description: `Test print sent to ${printerName}`,
       });
 
-      // Disconnect
-      await window.qz.websocket.disconnect();
+      // Only disconnect if we connected in this function
+      if (!wasConnected) {
+        await window.qz.websocket.disconnect();
+      }
       
     } catch (error) {
       console.error("❌ Test print failed:", error);
@@ -327,6 +364,7 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
                 <li>Try restarting QZ Tray application</li>
                 <li>Check firewall/antivirus settings</li>
                 <li>For HTTPS sites, allow insecure localhost connections</li>
+                <li>If connection already exists, the WebSocket may be persistent</li>
               </ol>
             </div>
           </div>
