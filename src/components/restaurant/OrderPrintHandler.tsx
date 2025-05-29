@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CartItem } from "@/types/database-types";
 import { printReceipt } from "@/utils/print-utils";
 import { generatePlainTextReceipt } from "@/utils/receipt-templates";
-import { qzTrayService } from "@/services/qz-tray-service";
+import { qzTrayService } from "@/services/qz-tray/qz-tray-service";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 
