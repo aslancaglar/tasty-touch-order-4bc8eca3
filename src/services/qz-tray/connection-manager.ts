@@ -33,11 +33,11 @@ export class QZConnectionManager {
       // Set up security configuration for development/testing
       window.qz.security.setCertificatePromise(() => {
         console.log('Using empty certificate for development');
-        return Promise.resolve();
+        return Promise.resolve('');
       });
 
       window.qz.security.setSignaturePromise((toSign: string) => {
-        console.log('Using empty signature for development');
+        console.log('Using empty signature for development, data to sign:', toSign);
         return Promise.resolve('');
       });
 

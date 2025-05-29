@@ -7,6 +7,11 @@ export class QZPrinterManager {
       throw new Error('QZ Tray not connected');
     }
 
+    // Check if websocket is connected
+    if (!window.qz.websocket.isActive()) {
+      throw new Error('QZ Tray websocket not connected');
+    }
+
     try {
       console.log('Fetching printers from QZ Tray...');
       const printers = await window.qz.printers.find();
@@ -25,6 +30,11 @@ export class QZPrinterManager {
   async printToDevice(printerName: string, content: string): Promise<void> {
     if (!window.qz) {
       throw new Error('QZ Tray not connected');
+    }
+
+    // Check if websocket is connected
+    if (!window.qz.websocket.isActive()) {
+      throw new Error('QZ Tray websocket not connected');
     }
 
     const config = window.qz.configs.create(printerName);
