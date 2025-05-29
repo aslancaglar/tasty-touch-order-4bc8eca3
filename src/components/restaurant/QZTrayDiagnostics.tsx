@@ -109,7 +109,7 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
               console.log("Using empty certificate for diagnostics");
               return Promise.resolve();
             });
-            window.qz.security.setSignaturePromise(() => {
+            window.qz.security.setSignaturePromise((toSign: string) => {
               console.log("Using empty signature for diagnostics");
               return Promise.resolve('');
             });
@@ -215,7 +215,7 @@ const QZTrayDiagnostics: React.FC<QZTrayDiagnosticsProps> = ({ restaurantId }) =
         // Connect if not already connected with simplified security
         console.log("🔐 Setting up security for test print...");
         window.qz.security.setCertificatePromise(() => Promise.resolve());
-        window.qz.security.setSignaturePromise(() => Promise.resolve(''));
+        window.qz.security.setSignaturePromise((toSign: string) => Promise.resolve(''));
         await window.qz.websocket.connect();
       }
 

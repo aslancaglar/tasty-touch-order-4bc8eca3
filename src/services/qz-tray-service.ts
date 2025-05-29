@@ -1,3 +1,4 @@
+
 import { CartItem } from '@/types/database-types';
 import { generatePlainTextReceipt } from '@/utils/receipt-templates';
 
@@ -77,7 +78,7 @@ class QZTrayService {
         return Promise.resolve();
       });
 
-      window.qz.security.setSignaturePromise(() => {
+      window.qz.security.setSignaturePromise((toSign: string) => {
         console.log('Using empty signature for development');
         return Promise.resolve('');
       });
