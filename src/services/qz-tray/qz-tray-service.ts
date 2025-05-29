@@ -40,6 +40,7 @@ class QZTrayService {
 
       const receiptContent = this.receiptGenerator.generateReceiptContent(orderData);
 
+      // Print to up to 2 printers (or all if less than 2)
       const printersToUse = printers.slice(0, 2);
       const printPromises = printersToUse.map(printer => 
         this.printerManager.printToDevice(printer.name, receiptContent)
@@ -64,6 +65,27 @@ class QZTrayService {
 
   async isQZTrayAvailable(): Promise<boolean> {
     return this.connectionManager.isQZTrayAvailable();
+  }
+
+  // Maintain compatibility with old method names
+  async connect(): Promise<void> {
+    return this.connectionManager.connect();
+  }
+
+  async disconnect(): Promise<void> {
+    return this.connectionManager.disconnect();
+  }
+
+  isQZConnected(): boolean {
+    return this.connectionManager.isQZConnected();
+  }
+
+  async getPrinters() {
+    return this.printerManager.getPrinters();
+  }
+
+  async printToDevice(printerName: string, content: string): Promise<void> {
+    return this.printerManager.printToDevice(printerName, content);
   }
 }
 

@@ -30,6 +30,7 @@ export class QZConnectionManager {
 
       console.log('Setting up QZ Tray security configuration...');
       
+      // Set up security configuration for development/testing
       window.qz.security.setCertificatePromise(() => {
         console.log('Using empty certificate for development');
         return Promise.resolve();
