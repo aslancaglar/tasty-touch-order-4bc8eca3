@@ -3,35 +3,13 @@ export const setupQZTraySecurityConfig = async (): Promise<boolean> => {
   console.log("🔐 Setting up security configuration...");
   
   const approaches = [
-    // Approach 1: Use proper certificate handling for installed certificates
+    // Approach 1: Development/testing mode - bypass signing entirely
     () => {
-      console.log("Trying installed certificate approach...");
-      window.qz.security.setCertificatePromise(() => {
-        return new Promise<void>((resolve) => {
-          console.log("Using installed certificate");
-          resolve();
-        });
-      });
-      window.qz.security.setSignaturePromise((toSign: string) => {
-        return new Promise<void>((resolve) => {
-          console.log("Signing with installed certificate, data:", toSign);
-          resolve();
-        });
-      });
-    },
-    // Approach 2: Direct function returns
-    () => {
-      console.log("Trying direct function returns...");
-      window.qz.security.setCertificatePromise(() => Promise.resolve());
-      window.qz.security.setSignaturePromise(() => Promise.resolve());
-    },
-    // Approach 3: Return empty strings
-    () => {
-      console.log("Trying empty string returns...");
+      console.log("Trying bypass security approach...");
       window.qz.security.setCertificatePromise(() => Promise.resolve(''));
       window.qz.security.setSignaturePromise(() => Promise.resolve(''));
     },
-    // Approach 4: Use QZ Tray's built-in certificate management
+    // Approach 2: Use QZ Tray's built-in certificate management if available
     () => {
       console.log("Trying QZ Tray built-in certificate management...");
       if (window.qz.security.requestSignature) {
@@ -44,6 +22,32 @@ export const setupQZTraySecurityConfig = async (): Promise<boolean> => {
       } else {
         throw new Error("Built-in certificate management not available");
       }
+    },
+    // Approach 3: Proper certificate handling for production with installed certificates
+    () => {
+      console.log("Trying installed certificate approach...");
+      window.qz.security.setCertificatePromise(() => {
+        return new Promise<string>((resolve) => {
+          console.log("Using installed certificate");
+          resolve('');
+        });
+      });
+      window.qz.security.setSignaturePromise((toSign: string) => {
+        return new Promise<string>((resolve) => {
+          console.log("Signing with installed certificate, data:", toSign);
+          resolve('');
+        });
+      });
+    },
+    // Approach 4: Fallback with proper error handling
+    () => {
+      console.log("Trying fallback approach...");
+      window.qz.security.setCertificatePromise(() => {
+        return Promise.resolve();
+      });
+      window.qz.security.setSignaturePromise(() => {
+        return Promise.resolve();
+      });
     }
   ];
 

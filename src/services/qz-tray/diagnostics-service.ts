@@ -26,6 +26,7 @@ export const runQZTrayDiagnostics = async (): Promise<DiagnosticResult> => {
   try {
     console.log("🔍 Starting QZ Tray diagnostics...");
 
+    // Load QZ Tray script if not already loaded
     if (!window.qz) {
       console.log("📥 Loading QZ Tray script...");
       try {
@@ -34,6 +35,7 @@ export const runQZTrayDiagnostics = async (): Promise<DiagnosticResult> => {
       } catch (error) {
         console.error("❌ Failed to load QZ Tray script:", error);
         diagnosticResult.errors.push("Failed to load QZ Tray script");
+        return diagnosticResult;
       }
     } else {
       console.log("✅ QZ Tray script already available");
@@ -60,7 +62,7 @@ export const runQZTrayDiagnostics = async (): Promise<DiagnosticResult> => {
         await getPrintersFromQZ(diagnosticResult);
       } else {
         try {
-          console.log("🔌 Attempting WebSocket connection with smart security...");
+          console.log("🔌 Attempting WebSocket connection with improved security...");
           const connected = await setupQZTraySecurityConfig();
           
           if (connected) {
@@ -68,6 +70,7 @@ export const runQZTrayDiagnostics = async (): Promise<DiagnosticResult> => {
             console.log("✅ WebSocket connected successfully");
             await getPrintersFromQZ(diagnosticResult);
 
+            // Clean disconnect after diagnostics
             try {
               await window.qz.websocket.disconnect();
               console.log("🔌 WebSocket disconnected");

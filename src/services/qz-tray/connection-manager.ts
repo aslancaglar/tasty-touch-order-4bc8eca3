@@ -30,22 +30,14 @@ export class QZConnectionManager {
 
       console.log('Setting up QZ Tray security configuration...');
       
-      // Set up security configuration
+      // Use the most compatible security approach first
       window.qz.security.setCertificatePromise(() => {
-        console.log('Requesting certificate from QZ Tray...');
-        // Let QZ Tray handle certificate automatically
-        return window.qz.security.requestSignature ? 
-          window.qz.security.requestSignature() : 
-          Promise.resolve();
+        console.log('Certificate requested - using bypass mode');
+        return Promise.resolve('');
       });
 
       window.qz.security.setSignaturePromise((toSign: string) => {
-        console.log('Signing request with QZ Tray, data to sign:', toSign);
-        // For production with installed certificate, let QZ Tray handle signing
-        if (window.qz.security.requestSignature) {
-          return window.qz.security.requestSignature(toSign);
-        }
-        // Fallback for development/testing
+        console.log('Signature requested for:', toSign, '- using bypass mode');
         return Promise.resolve('');
       });
 
@@ -55,24 +47,6 @@ export class QZConnectionManager {
       console.log('QZ Tray connected successfully');
     } catch (error) {
       console.error('Failed to connect to QZ Tray:', error);
-      
-      // Try alternative security setup if first attempt fails
-      if (error.message && error.message.includes('sign')) {
-        console.log('Retrying with alternative security configuration...');
-        try {
-          // Alternative approach: bypass signing entirely
-          window.qz.security.setCertificatePromise(() => Promise.resolve());
-          window.qz.security.setSignaturePromise(() => Promise.resolve());
-          
-          await window.qz.websocket.connect();
-          this.isConnected = true;
-          console.log('QZ Tray connected with bypass security');
-          return;
-        } catch (retryError) {
-          console.error('Retry also failed:', retryError);
-        }
-      }
-      
       throw error;
     }
   }
@@ -92,7 +66,7 @@ export class QZConnectionManager {
   }
 
   isQZConnected(): boolean {
-    return this.isConnected;
+    return this.isConnected && window.qz && window.qz.websocket.isActive();
   }
 
   async isQZTrayAvailable(): Promise<boolean> {
