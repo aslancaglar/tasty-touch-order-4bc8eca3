@@ -10,7 +10,6 @@ import { generatePlainTextReceipt } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
-import { qzTrayService } from "@/services/qz-tray/qz-tray-service";
 import OrderReceipt from "./OrderReceipt";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
@@ -44,14 +43,21 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   getFormattedOptions,
   getFormattedToppings
 }) => {
-  const { t } = useTranslation(uiLanguage);
-  const { toast } = useToast();
+  const {
+    t
+  } = useTranslation(uiLanguage);
+  const {
+    toast
+  } = useToast();
   const isMobile = useIsMobile();
   const [countdown, setCountdown] = useState(10);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrinted, setHasPrinted] = useState(false);
-  const [qzPrintAttempted, setQzPrintAttempted] = useState(false);
-  const { total, subtotal, tax } = calculateCartTotals(cart);
+  const {
+    total,
+    subtotal,
+    tax
+  } = calculateCartTotals(cart);
 
   // Currency symbol helper
   const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -103,65 +109,21 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   
   const handlePrintReceipt = async () => {
     if (!restaurant?.id || hasPrinted || isPrinting) return;
-    
     try {
       setIsPrinting(true);
 
-      // Préparer les données de commande
-      const orderData = {
-        restaurant,
-        cart,
-        orderNumber,
-        tableNumber,
-        orderType,
-        subtotal,
-        tax,
-        total,
-        getFormattedOptions,
-        getFormattedToppings,
-        uiLanguage
-      };
-
-      // 1. Tentative d'impression QZ Tray (nouvelle méthode) - indépendante
-      if (!qzPrintAttempted) {
-        setQzPrintAttempted(true);
-        try {
-          const isQZAvailable = await qzTrayService.isQZTrayAvailable();
-          if (isQZAvailable) {
-            console.log("QZ Tray available, attempting to print tickets...");
-            
-            // Impression QZ Tray en arrière-plan - ne bloque pas les autres méthodes
-            qzTrayService.printOrderTickets(orderData).then(() => {
-              console.log("QZ Tray printing completed successfully");
-              toast({
-                title: "QZ Tray",
-                description: "Tickets imprimés avec succès via QZ Tray"
-              });
-            }).catch((qzError) => {
-              console.warn("QZ Tray printing failed, continuing with other methods:", qzError);
-            });
-          } else {
-            console.log("QZ Tray not available, skipping QZ printing");
-          }
-        } catch (qzError) {
-          console.warn("QZ Tray check failed, continuing with existing methods:", qzError);
-        }
-      }
-
-      // 2. Méthodes d'impression existantes (inchangées)
-      const { data: printConfig, error } = await supabase
-        .from('restaurant_print_config')
-        .select('api_key, configured_printers, browser_printing_enabled')
-        .eq('restaurant_id', restaurant.id)
-        .single();
-
+      // Fetch print configuration
+      const {
+        data: printConfig,
+        error
+      } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
       if (error) {
         console.error("Error fetching print configuration");
         setIsPrinting(false);
         return;
       }
 
-      // Handle browser printing (méthode existante)
+      // Handle browser printing
       const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
       if (shouldUseBrowserPrinting) {
         console.log("Using browser printing for receipt");
@@ -188,12 +150,24 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         console.log("Browser printing disabled for this device or restaurant");
       }
 
-      // Handle PrintNode printing (méthode existante)
+      // Handle PrintNode printing (if configured)
       if (printConfig?.api_key && printConfig?.configured_printers) {
         const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
         const printerIds = printerArray.map(id => String(id));
         if (printerIds.length > 0) {
-          await sendReceiptToPrintNode(printConfig.api_key, printerIds, orderData);
+          await sendReceiptToPrintNode(printConfig.api_key, printerIds, {
+            restaurant,
+            cart,
+            orderNumber,
+            tableNumber,
+            orderType,
+            subtotal,
+            tax,
+            total,
+            getFormattedOptions,
+            getFormattedToppings,
+            uiLanguage
+          });
         }
         setIsPrinting(false);
         setHasPrinted(true);
@@ -209,7 +183,19 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     }
   };
   
-  const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: any) => {
+  const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
+    restaurant: typeof restaurant;
+    cart: CartItem[];
+    orderNumber: string;
+    tableNumber?: string | null;
+    orderType: "dine-in" | "takeaway" | null;
+    subtotal: number;
+    tax: number;
+    total: number;
+    getFormattedOptions: (item: CartItem) => string;
+    getFormattedToppings: (item: CartItem) => string;
+    uiLanguage?: SupportedLanguage;
+  }) => {
     try {
       // Generate receipt content
       const receiptContent = generatePlainTextReceipt(

@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -26,45 +24,55 @@ import SettingsTab from "@/components/restaurant/SettingsTab";
 import StockTab from "@/components/restaurant/StockTab";
 import StatisticsTab from "@/components/restaurant/StatisticsTab";
 import { useTranslation } from "@/utils/language-utils";
-import { useQuery } from "@tanstack/react-query";
 
 const RestaurantManage = () => {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("menu");
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [loading, setLoading] = useState(true);
   
   const { toast } = useToast();
   // Always use English for admin pages
   const { t } = useTranslation('en');
   
-  // Use React Query to fetch restaurant data - this will sync with SettingsTab updates
-  const { data: restaurant, isLoading: loading, error } = useQuery({
-    queryKey: ['restaurant', id],
-    queryFn: async () => {
-      if (!id) throw new Error('No restaurant ID provided');
-      
-      const restaurants = await getRestaurants();
-      const foundRestaurant = restaurants.find(r => r.id === id);
-      
-      if (!foundRestaurant) {
-        throw new Error('Restaurant not found');
-      }
-      
-      console.log("Restaurant found:", foundRestaurant);
-      return foundRestaurant;
-    },
-    enabled: !!id
-  });
-
   useEffect(() => {
-    if (error) {
-      console.error("Error fetching restaurant:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load restaurant data",
-        variant: "destructive"
-      });
-    }
-  }, [error, toast]);
+    const fetchRestaurant = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const restaurants = await getRestaurants();
+        const foundRestaurant = restaurants.find(r => r.id === id);
+        
+        if (foundRestaurant) {
+          console.log("Restaurant found:", foundRestaurant);
+          setRestaurant(foundRestaurant);
+        } else {
+          toast({
+            title: "Error",
+            description: "Restaurant not found",
+            variant: "destructive"
+          });
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching restaurant:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load restaurant data",
+          variant: "destructive"
+        });
+        setLoading(false);
+      }
+    };
+
+    fetchRestaurant();
+  }, [id, toast]);
+
+  const handleRestaurantUpdated = (updatedRestaurant: Restaurant) => {
+    console.log("Restaurant updated:", updatedRestaurant);
+    setRestaurant(updatedRestaurant);
+  };
 
   if (loading && !restaurant) {
     return (
@@ -158,7 +166,10 @@ const RestaurantManage = () => {
             
             <TabsContent value="settings">
               {restaurant && (
-                <SettingsTab restaurant={restaurant} />
+                <SettingsTab 
+                  restaurant={restaurant} 
+                  onRestaurantUpdated={handleRestaurantUpdated} 
+                />
               )}
             </TabsContent>
             
@@ -181,4 +192,3 @@ const RestaurantManage = () => {
 };
 
 export default RestaurantManage;
-
