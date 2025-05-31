@@ -1,4 +1,5 @@
 import React from 'react';
+import { initializeQZTray, printReceiptWithQZ, isQZTrayAvailable } from './qz-tray-utils';
 
 /**
  * ESC/POS command constants for text formatting
@@ -53,11 +54,16 @@ let lastPrintTime = 0;
 const PRINT_DEBOUNCE_MS = 1000; // 1 second debounce
 
 /**
- * Prints the content of a specified element for a thermal printer
- * Enhanced with improved error handling and offline detection
+ * Enhanced print receipt function with QZ Tray support
  * @param elementId The ID of the element to print
+ * @param preferredMethod Preferred printing method: 'qz-tray', 'browser', or 'auto'
+ * @param qzPrinterName Optional specific QZ Tray printer name
  */
-export const printReceipt = (elementId: string) => {
+export const printReceipt = async (
+  elementId: string, 
+  preferredMethod: 'qz-tray' | 'browser' | 'auto' = 'auto',
+  qzPrinterName?: string
+) => {
   // Prevent double-printing by implementing debounce
   const now = Date.now();
   if (now - lastPrintTime < PRINT_DEBOUNCE_MS) {
@@ -73,6 +79,8 @@ export const printReceipt = (elementId: string) => {
   }
   
   console.log(`Attempting to print element with ID: ${elementId}`, {
+    preferredMethod,
+    qzPrinterName,
     isMobileDevice: /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(navigator.userAgent.toLowerCase())
   });
   
@@ -82,7 +90,111 @@ export const printReceipt = (elementId: string) => {
     throw new Error(`Print element '${elementId}' not found`);
   }
 
-  // Create a hidden iframe for printing
+  // Determine which printing method to use
+  const shouldUseQZTray = (preferredMethod === 'qz-tray') || 
+                          (preferredMethod === 'auto' && isQZTrayAvailable());
+
+  if (shouldUseQZTray) {
+    try {
+      console.log("Attempting QZ Tray printing...");
+      
+      // Convert HTML content to plain text for thermal printer
+      const plainTextContent = convertHTMLToPlainText(printContent);
+      
+      // Use specified printer or try to find a default thermal printer
+      const printerName = qzPrinterName || await getDefaultQZPrinter();
+      
+      if (!printerName) {
+        throw new Error("No QZ Tray printer available");
+      }
+      
+      const success = await printReceiptWithQZ(printerName, plainTextContent);
+      
+      if (success) {
+        console.log("QZ Tray printing successful");
+        return;
+      } else {
+        throw new Error("QZ Tray printing failed");
+      }
+    } catch (error) {
+      console.error("QZ Tray printing failed, falling back to browser printing:", error);
+      
+      // Fall back to browser printing if QZ Tray fails and auto mode is enabled
+      if (preferredMethod === 'auto') {
+        await browserPrint(elementId);
+        return;
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  // Use browser printing
+  await browserPrint(elementId);
+};
+
+/**
+ * Get default QZ Tray printer (first available thermal printer)
+ */
+const getDefaultQZPrinter = async (): Promise<string | null> => {
+  try {
+    const { getQZPrinters } = await import('./qz-tray-utils');
+    const printers = await getQZPrinters();
+    
+    // Return first available printer
+    return printers.length > 0 ? printers[0].name : null;
+  } catch (error) {
+    console.error("Error getting default QZ printer:", error);
+    return null;
+  }
+};
+
+/**
+ * Convert HTML content to plain text suitable for thermal printing
+ */
+const convertHTMLToPlainText = (element: HTMLElement): string => {
+  // Create a clone to avoid modifying the original
+  const clone = element.cloneNode(true) as HTMLElement;
+  
+  // Extract text content while preserving some structure
+  let text = '';
+  
+  // Process specific receipt sections
+  const header = clone.querySelector('.header');
+  if (header) {
+    text += centerText(header.textContent || '', ESCPOS.FONT_BOLD) + addLineFeed(2);
+  }
+  
+  const items = clone.querySelectorAll('.item');
+  items.forEach(item => {
+    const itemText = item.textContent || '';
+    text += itemText + addLineFeed();
+  });
+  
+  const totalSection = clone.querySelector('.total-section');
+  if (totalSection) {
+    text += createDivider() + addLineFeed();
+    text += totalSection.textContent || '';
+    text += addLineFeed(2);
+  }
+  
+  const footer = clone.querySelector('.footer');
+  if (footer) {
+    text += centerText(footer.textContent || '', ESCPOS.FONT_NORMAL) + addLineFeed();
+  }
+  
+  return text;
+};
+
+/**
+ * Browser-based printing (existing implementation)
+ */
+const browserPrint = async (elementId: string): Promise<void> => {
+  const printContent = document.getElementById(elementId);
+  if (!printContent) {
+    throw new Error(`Print element '${elementId}' not found`);
+  }
+
   try {
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';

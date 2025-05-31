@@ -1,32 +1,23 @@
 
-import React, { useEffect, useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import React, { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Check, Clock, Receipt, Printer } from "lucide-react";
-import { CartItem } from "@/types/database-types";
-import { calculateCartTotals } from "@/utils/price-utils";
-import { printReceipt } from "@/utils/print-utils";
-import { generatePlainTextReceipt } from "@/utils/receipt-templates";
-import { useToast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { Check, Printer, X } from "lucide-react";
+import { CartItem, Restaurant, OrderType } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
+import { printReceipt } from "@/utils/print-utils";
+import { useToast } from "@/hooks/use-toast";
 import OrderReceipt from "./OrderReceipt";
-import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
 interface OrderConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
   cart: CartItem[];
   orderNumber: string;
-  restaurant: {
-    id?: string;
-    name: string;
-    location?: string;
-    currency?: string;
-  } | null;
-  orderType: "dine-in" | "takeaway" | null;
-  tableNumber: string | null;
-  uiLanguage: SupportedLanguage;
+  restaurant: Restaurant;
+  orderType: OrderType;
+  tableNumber?: string | null;
+  uiLanguage: "fr" | "en" | "tr";
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
 }
@@ -43,277 +34,185 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   getFormattedOptions,
   getFormattedToppings
 }) => {
-  const {
-    t
-  } = useTranslation(uiLanguage);
-  const {
-    toast
-  } = useToast();
-  const isMobile = useIsMobile();
-  const [countdown, setCountdown] = useState(10);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [hasPrinted, setHasPrinted] = useState(false);
-  const {
-    total,
-    subtotal,
-    tax
-  } = calculateCartTotals(cart);
+  const [printConfig, setPrintConfig] = useState<any>(null);
+  const { toast } = useToast();
 
-  // Currency symbol helper
-  const CURRENCY_SYMBOLS: Record<string, string> = {
-    EUR: "€",
-    USD: "$",
-    GBP: "£",
-    TRY: "₺",
-    JPY: "¥",
-    CAD: "$",
-    AUD: "$",
-    CHF: "Fr.",
-    CNY: "¥",
-    RUB: "₽"
-  };
-  const getCurrencySymbol = (currency: string = "EUR"): string => {
-    const code = currency.toUpperCase();
-    return CURRENCY_SYMBOLS[code] || code;
-  };
-
-  // Handle countdown and auto-close
+  // Fetch print configuration
   useEffect(() => {
-    if (!isOpen) return;
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
+    const fetchPrintConfig = async () => {
+      if (!restaurant?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('restaurant_print_config')
+          .select('*')
+          .eq('restaurant_id', restaurant.id)
+          .single();
+
+        if (error) {
+          console.log('No print config found or error:', error);
+          setPrintConfig(null);
+          return;
         }
-        return prev - 1;
-      });
-    }, 1000);
 
-    // Auto close after countdown
-    const closeTimer = setTimeout(() => {
-      onClose();
-    }, 10000);
-    return () => {
-      clearInterval(timer);
-      clearTimeout(closeTimer);
+        setPrintConfig(data);
+      } catch (error) {
+        console.error('Error fetching print config:', error);
+        setPrintConfig(null);
+      }
     };
-  }, [isOpen, onClose]);
 
-  // Handle printing when dialog opens
-  useEffect(() => {
-    if (isOpen && !hasPrinted && restaurant?.id) {
-      handlePrintReceipt();
+    if (isOpen && restaurant?.id) {
+      fetchPrintConfig();
     }
   }, [isOpen, restaurant?.id]);
-  
-  const handlePrintReceipt = async () => {
-    if (!restaurant?.id || hasPrinted || isPrinting) return;
+
+  const handlePrint = async () => {
+    if (!cart.length || isPrinting) return;
+
+    setIsPrinting(true);
+    
     try {
-      setIsPrinting(true);
+      // First, determine the best printing method
+      let printMethod: 'qz-tray' | 'browser' | 'auto' = 'auto';
+      let qzPrinterName: string | undefined;
 
-      // Fetch print configuration
-      const {
-        data: printConfig,
-        error
-      } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
-      if (error) {
-        console.error("Error fetching print configuration");
-        setIsPrinting(false);
-        return;
-      }
-
-      // Handle browser printing
-      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
-      if (shouldUseBrowserPrinting) {
-        console.log("Using browser printing for receipt");
-        toast({
-          title: t("order.printing"),
-          description: t("order.printingPreparation")
-        });
-        setTimeout(() => {
-          try {
-            printReceipt('receipt-content');
-            console.log("Print receipt triggered successfully");
-          } catch (printError) {
-            console.error("Error during browser printing");
-            toast({
-              title: t("order.printError"),
-              description: t("order.printErrorDesc"),
-              variant: "destructive"
-            });
-          }
-          setIsPrinting(false);
-          setHasPrinted(true);
-        }, 500);
-      } else {
-        console.log("Browser printing disabled for this device or restaurant");
-      }
-
-      // Handle PrintNode printing (if configured)
-      if (printConfig?.api_key && printConfig?.configured_printers) {
-        const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
-        const printerIds = printerArray.map(id => String(id));
-        if (printerIds.length > 0) {
-          await sendReceiptToPrintNode(printConfig.api_key, printerIds, {
-            restaurant,
-            cart,
-            orderNumber,
-            tableNumber,
-            orderType,
-            subtotal,
-            tax,
-            total,
-            getFormattedOptions,
-            getFormattedToppings,
-            uiLanguage
-          });
+      // Check if we have QZ Tray configuration
+      if (printConfig?.configured_printers?.length > 0) {
+        const qzPrinters = printConfig.configured_printers.filter((p: any) => p.type === 'qz-tray');
+        if (qzPrinters.length > 0) {
+          printMethod = 'qz-tray';
+          qzPrinterName = qzPrinters[0].name;
         }
-        setIsPrinting(false);
-        setHasPrinted(true);
       }
-    } catch (error) {
-      console.error("Error during receipt printing");
+
+      // Fallback to browser printing if enabled
+      if (printMethod === 'auto' && printConfig?.browser_printing_enabled !== false) {
+        printMethod = 'browser';
+      }
+
+      console.log('Attempting to print receipt with method:', printMethod, 'printer:', qzPrinterName);
+
+      // Attempt to print
+      await printReceipt('order-receipt-content', printMethod, qzPrinterName);
+      
       toast({
-        title: t("order.error"),
-        description: t("order.errorPrinting"),
+        title: uiLanguage === 'fr' ? "Impression réussie" : uiLanguage === 'en' ? "Print successful" : "Yazdırma başarılı",
+        description: uiLanguage === 'fr' ? "Le reçu a été imprimé avec succès" : uiLanguage === 'en' ? "Receipt printed successfully" : "Fiş başarıyla yazdırıldı",
+      });
+
+    } catch (error) {
+      console.error('Print error:', error);
+      
+      toast({
+        title: uiLanguage === 'fr' ? "Erreur d'impression" : uiLanguage === 'en' ? "Print error" : "Yazdırma hatası",
+        description: uiLanguage === 'fr' ? "Impossible d'imprimer le reçu" : uiLanguage === 'en' ? "Failed to print receipt" : "Fiş yazdırılamadı",
         variant: "destructive"
       });
+    } finally {
       setIsPrinting(false);
     }
   };
-  
-  const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
-    restaurant: typeof restaurant;
-    cart: CartItem[];
-    orderNumber: string;
-    tableNumber?: string | null;
-    orderType: "dine-in" | "takeaway" | null;
-    subtotal: number;
-    tax: number;
-    total: number;
-    getFormattedOptions: (item: CartItem) => string;
-    getFormattedToppings: (item: CartItem) => string;
-    uiLanguage?: SupportedLanguage;
-  }) => {
-    try {
-      // Generate receipt content
-      const receiptContent = generatePlainTextReceipt(
-        orderData.cart,
-        orderData.restaurant,
-        orderData.orderType,
-        orderData.tableNumber,
-        orderData.orderNumber,
-        orderData.restaurant?.currency?.toUpperCase() || 'EUR',
-        orderData.total,
-        orderData.subtotal,
-        orderData.tax,
-        10,
-        (key) => t(key)
-      );
 
-      // Encode content for sending
-      const textEncoder = new TextEncoder();
-      const encodedBytes = textEncoder.encode(receiptContent);
-      const encodedContent = btoa(Array.from(encodedBytes).map(byte => String.fromCharCode(byte)).join(''));
-      
-      console.log(`Sending receipt to ${printerIds.length} configured printers`);
-      
-      for (const printerId of printerIds) {
-        console.log(`Sending to printer ID: ${printerId}`);
-        
-        // Make secure API call
-        const response = await fetch('https://api.printnode.com/printjobs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${btoa(apiKey + ':')}`
-          },
-          body: JSON.stringify({
-            printer: parseInt(printerId, 10) || printerId,
-            title: `Order #${orderData.orderNumber}`,
-            contentType: "raw_base64",
-            content: encodedContent,
-            source: "Restaurant Kiosk"
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Error sending print job: ${response.status}`);
-        } else {
-          console.log(`Print receipt sent successfully`);
-        }
+  const getText = (key: string): string => {
+    const translations = {
+      fr: {
+        orderConfirmed: "Commande confirmée !",
+        orderNumber: "Numéro de commande",
+        thankYou: "Merci pour votre commande",
+        preparationMessage: "Votre commande est en cours de préparation. Vous serez notifié quand elle sera prête.",
+        printReceipt: "Imprimer le reçu",
+        printing: "Impression...",
+        close: "Fermer"
+      },
+      en: {
+        orderConfirmed: "Order confirmed!",
+        orderNumber: "Order number",
+        thankYou: "Thank you for your order",
+        preparationMessage: "Your order is being prepared. You'll be notified when it's ready.",
+        printReceipt: "Print receipt",
+        printing: "Printing...",
+        close: "Close"
+      },
+      tr: {
+        orderConfirmed: "Sipariş onaylandı!",
+        orderNumber: "Sipariş numarası",
+        thankYou: "Siparişiniz için teşekkürler",
+        preparationMessage: "Siparişiniz hazırlanıyor. Hazır olduğunda bilgilendirileceksiniz.",
+        printReceipt: "Fiş yazdır",
+        printing: "Yazdırılıyor...",
+        close: "Kapat"
       }
-    } catch (error) {
-      console.error("Error sending receipt to printer");
-    }
+    };
+
+    return translations[uiLanguage]?.[key as keyof typeof translations.fr] || translations.fr[key as keyof typeof translations.fr];
   };
-  
-  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-md md:max-w-2xl rounded-lg overflow-hidden">
-        <div className="flex flex-col items-center text-center p-4 space-y-6">
-          {/* Order Confirmation Header */}
-          <div className="bg-green-100 rounded-full p-4 mb-2">
-            <Check className="h-12 w-12 text-green-600" />
-          </div>
-          
-          <h2 className="text-2xl font-bold text-green-800">
-            {t("orderConfirmation.title")}
-          </h2>
-          
-          {/* Order Details */}
-          <div className="space-y-2 w-full">
-            <p className="flex items-center justify-center gap-2">
-              <Receipt className="h-5 w-5 text-gray-600" />
-              {t("orderConfirmation.ticketPrinted")}
-            </p>
-            <p className="flex items-center justify-center gap-2">
-              <Printer className="h-5 w-5 text-gray-600" />
-              {isPrinting ? t("orderConfirmation.printing") : t("orderConfirmation.printed")}
-            </p>
-            <p>{t("orderConfirmation.preparation")}</p>
-          </div>
-          
-          {/* Payment Section */}
-          <div className="bg-blue-50 p-4 rounded-lg w-full">
-            <h3 className="font-bold text-blue-800 mb-2 text-3xl">
-              {t("orderConfirmation.payNow")}
-            </h3>
-            <p className="text-xl">{t("orderConfirmation.paymentInstructions")}</p>
-            
-            <div className="mt-4 space-y-2">
-              <div className="flex justify-between font-semibold">
-                <span>{t("orderConfirmation.total")}:</span>
-                <span>{total.toFixed(2)} {getCurrencySymbol(restaurant?.currency)}</span>
-              </div>
-              <div className="flex justify-between font-semibold">
-                <span>{t("orderConfirmation.orderNumber")}:</span>
-                <span>#{orderNumber}</span>
-              </div>
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-green-600">
+            <Check className="h-6 w-6" />
+            {getText('orderConfirmed')}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Order Number Display */}
+          <div className="text-center">
+            <p className="text-sm text-gray-600 mb-2">{getText('orderNumber')}</p>
+            <div className="bg-black text-white text-2xl font-bold py-3 px-6 rounded-lg inline-block">
+              #{orderNumber}
             </div>
           </div>
-          
-          {/* Warning */}
-          <div className="bg-yellow-50 p-3 rounded-md w-full">
-            <p className="text-sm text-yellow-800">
-              {t("orderConfirmation.preparationWarning")}
+
+          {/* Thank you message */}
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold">{getText('thankYou')}</h3>
+            <p className="text-gray-600 text-sm">
+              {getText('preparationMessage')}
             </p>
           </div>
-          
-          {/* Thank You Message */}
-          <p className="font-medium">{t("orderConfirmation.thankYou")}</p>
-          
-          {/* Countdown Timer */}
-          <div className="flex items-center text-gray-500 mt-2">
-            <Clock className="h-4 w-4 mr-1" />
-            <span>{t("orderConfirmation.redirecting")} {countdown}s</span>
+
+          {/* Hidden receipt content for printing */}
+          <div id="order-receipt-content" style={{ display: 'none' }}>
+            <OrderReceipt
+              cart={cart}
+              orderNumber={orderNumber}
+              restaurant={restaurant}
+              orderType={orderType}
+              tableNumber={tableNumber}
+              uiLanguage={uiLanguage}
+              getFormattedOptions={getFormattedOptions}
+              getFormattedToppings={getFormattedToppings}
+            />
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <Button
+              onClick={handlePrint}
+              disabled={isPrinting}
+              variant="outline"
+              className="flex-1"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              {isPrinting ? getText('printing') : getText('printReceipt')}
+            </Button>
+            
+            <Button 
+              onClick={onClose}
+              className="flex-1"
+            >
+              {getText('close')}
+            </Button>
           </div>
         </div>
       </DialogContent>
-
-      {/* Hidden Receipt Component for Printing */}
-      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
-    </Dialog>;
+    </Dialog>
+  );
 };
 
 export default OrderConfirmationDialog;
