@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { isOnline as checkIsOnline } from '@/utils/service-worker';
+import { isOnline as checkIsOnline, retryNetworkRequest } from '@/utils/service-worker';
 import { getCacheItem, setCacheItem } from '@/services/cache-service';
 
 // Define the options type directly with all required properties
@@ -11,6 +11,7 @@ interface NetworkAwareFetchOptions<TData, TError> {
   restaurantId: string;
   stallTime?: number; // Time in ms to stall before showing loading state
   forceNetwork?: boolean; // Force network fetch even when offline
+  fallbackToCache?: boolean; // Whether to fallback to cache on network errors
   // Include query options as separate properties
   queryKey: unknown[]; // Required
   enabled?: boolean;
@@ -30,6 +31,7 @@ interface NetworkAwareFetchResult<TData, TError> {
   lastUpdated: Date | null;
   connectionStatus: 'online' | 'offline';
   refreshData: () => void;
+  isNetworkError: boolean;
   // Include all necessary UseQueryResult properties
   data: TData | undefined;
   dataUpdatedAt: number;
@@ -62,17 +64,26 @@ export function useNetworkAwareFetch<TData, TError = Error>({
   restaurantId,
   stallTime = 50,
   forceNetwork = false,
+  fallbackToCache = true,
   queryKey, // Required
   ...queryOptions
 }: NetworkAwareFetchOptions<TData, TError>): NetworkAwareFetchResult<TData, TError> {
   const [isFromCache, setIsFromCache] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(checkIsOnline());
+  const [isNetworkError, setIsNetworkError] = useState<boolean>(false);
 
   useEffect(() => {
-    // Fix: Use window events directly instead of non-existent listener functions
-    const handleOnlineStatus = () => setIsOnline(true);
-    const handleOfflineStatus = () => setIsOnline(false);
+    const handleOnlineStatus = () => {
+      setIsOnline(true);
+      setIsNetworkError(false);
+      console.log('[NetworkAware] Device back online');
+    };
+    
+    const handleOfflineStatus = () => {
+      setIsOnline(false);
+      console.log('[NetworkAware] Device offline');
+    };
     
     window.addEventListener('online', handleOnlineStatus);
     window.addEventListener('offline', handleOfflineStatus);
@@ -87,66 +98,92 @@ export function useNetworkAwareFetch<TData, TError = Error>({
   }, []);
 
   const queryFn = async () => {
+    console.log(`[NetworkAware] Fetching data for ${cacheKey} - Online: ${isOnline}`);
+    
     // First check if we have cached data
     const cachedData = getCacheItem<TData>(cacheKey, restaurantId);
     
-    // If we're offline and have cached data, use it
-    if (!isOnline && cachedData) {
-      console.log(`[Network] Offline - Using cached data for ${cacheKey}`);
+    // If we're offline and have cached data, use it immediately
+    if (!isOnline && cachedData && !forceNetwork) {
+      console.log(`[NetworkAware] Offline - Using cached data for ${cacheKey}`);
       setIsFromCache(true);
+      setIsNetworkError(false);
       return cachedData;
     }
 
-    // If we're online, try to fetch from network
+    // If we're online or forced to use network, try to fetch
     if (isOnline || forceNetwork) {
       try {
-        console.log(`[Network] Online - Fetching fresh data for ${cacheKey}`);
-        const freshData = await fetchFn();
+        console.log(`[NetworkAware] Attempting network fetch for ${cacheKey}`);
+        
+        // Use retry mechanism for better reliability
+        const freshData = await retryNetworkRequest(
+          fetchFn,
+          3, // max retries
+          300 // initial delay
+        );
+        
+        console.log(`[NetworkAware] Network fetch successful for ${cacheKey}`);
         
         // Update the cache with fresh data
         setCacheItem(cacheKey, freshData, restaurantId);
         setLastUpdated(new Date());
         setIsFromCache(false);
+        setIsNetworkError(false);
         
         return freshData;
       } catch (error) {
-        console.error(`[Network] Fetch failed - Falling back to cache for ${cacheKey}`, error);
+        console.error(`[NetworkAware] Network fetch failed for ${cacheKey}:`, error);
+        setIsNetworkError(true);
         
-        // If network request fails and we have cached data, use it
-        if (cachedData) {
-          console.log(`[Network] Using cached data as fallback for ${cacheKey}`);
+        // If network request fails and we have cached data and fallback is enabled, use it
+        if (cachedData && fallbackToCache) {
+          console.log(`[NetworkAware] Network failed - Using cached data as fallback for ${cacheKey}`);
           setIsFromCache(true);
           return cachedData;
         }
         
-        // If no cache, rethrow the error
+        // If no cache or fallback disabled, rethrow the error
         throw error;
       }
     }
     
     // We're offline and don't have cached data
     if (cachedData) {
-      console.log(`[Network] Offline - Using cached data for ${cacheKey}`);
+      console.log(`[NetworkAware] Offline - Using cached data for ${cacheKey}`);
       setIsFromCache(true);
+      setIsNetworkError(false);
       return cachedData;
     }
     
     // No cached data and offline - throw a custom error
-    throw new Error('You are offline and no cached data is available');
+    const offlineError = new Error('You are offline and no cached data is available');
+    setIsNetworkError(true);
+    throw offlineError;
   };
 
   const queryResult = useQuery({
     queryKey, // Pass queryKey separately
     queryFn, // Use our custom queryFn
     staleTime: isFromCache ? 0 : 1000 * 60 * 5, // 5 minutes for fresh data, 0 for cached data
+    retry: (failureCount, error) => {
+      // Don't retry if we're offline and don't have cache
+      if (!isOnline && !getCacheItem(cacheKey, restaurantId)) {
+        return false;
+      }
+      // Don't retry more than 3 times
+      return failureCount < 3;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     ...queryOptions,
     ...(!isOnline && {
-      retry: false, // Don't retry if offline
       refetchOnWindowFocus: false, // Don't refetch on window focus if offline
     })
   });
 
   const refreshData = () => {
+    console.log(`[NetworkAware] Manual refresh requested for ${cacheKey}`);
+    setIsNetworkError(false);
     queryResult.refetch();
   };
 
@@ -156,6 +193,7 @@ export function useNetworkAwareFetch<TData, TError = Error>({
     lastUpdated,
     connectionStatus: isOnline ? 'online' : 'offline',
     refreshData,
+    isNetworkError,
     // Spread all queryResult properties
     ...queryResult,
     // Ensure all required properties are present
@@ -173,7 +211,6 @@ export function useConnectionStatus(): 'online' | 'offline' {
   const [isOnline, setIsOnline] = useState<boolean>(checkIsOnline());
 
   useEffect(() => {
-    // Fix: Use window events directly instead of non-existent listener functions
     const handleOnlineStatus = () => setIsOnline(true);
     const handleOfflineStatus = () => setIsOnline(false);
     
