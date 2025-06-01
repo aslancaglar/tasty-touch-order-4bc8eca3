@@ -1,4 +1,3 @@
-
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store } from "lucide-react";
@@ -18,32 +17,28 @@ interface PopularItem {
   restaurant_name: string;
   order_count: number;
 }
-
 interface PopularRestaurant {
   name: string;
   total_revenue: number;
 }
-
 interface StatCardProps {
   title: string;
   value: ReactNode; // Change to ReactNode to accept loading skeletons
   description: string;
   icon: React.ElementType;
-  trend?: { 
-    value: string; 
+  trend?: {
+    value: string;
     positive: boolean;
     fromLastMonthText: string; // Added this property to the type
   };
 }
-
 const StatCard = ({
   title,
   value,
   description,
   icon: Icon,
   trend
-}: StatCardProps) => (
-  <Card>
+}: StatCardProps) => <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2">
       <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
       <Icon className="h-4 w-4 text-muted-foreground" />
@@ -51,75 +46,61 @@ const StatCard = ({
     <CardContent>
       <div className="text-2xl font-bold">{value}</div>
       <p className="text-xs text-muted-foreground">{description}</p>
-      {trend && (
-        <div className="mt-2 flex items-center text-xs">
+      {trend && <div className="mt-2 flex items-center text-xs">
           <span className={trend.positive ? "text-green-500" : "text-red-500"}>
             {trend.positive ? "+" : ""}
             {trend.value}
           </span>
-          <ArrowUpRight
-            className={`ml-1 h-3 w-3 ${trend.positive ? "text-green-500" : "text-red-500"}`}
-            style={{ transform: trend.positive ? "none" : "rotate(135deg)" }}
-          />
+          <ArrowUpRight className={`ml-1 h-3 w-3 ${trend.positive ? "text-green-500" : "text-red-500"}`} style={{
+        transform: trend.positive ? "none" : "rotate(135deg)"
+      }} />
           <span className="ml-1 text-muted-foreground">
             {trend.fromLastMonthText}
           </span>
-        </div>
-      )}
+        </div>}
     </CardContent>
-  </Card>
-);
+  </Card>;
 
 // Fetch functions
 const fetchStats = async () => {
   console.log("[Dashboard] Fetching fresh statistics data");
-  
+
   // Total revenue - EXCLUDE CANCELLED ORDERS
-  const { data: totalRevenueData, error: totalRevenueError } = await supabase
-    .from("orders")
-    .select("total")
-    .neq("status", "cancelled");  // Exclude cancelled orders
+  const {
+    data: totalRevenueData,
+    error: totalRevenueError
+  } = await supabase.from("orders").select("total").neq("status", "cancelled"); // Exclude cancelled orders
 
   // Total restaurants
-  const { count: restaurantCount, error: restaurantsError } = await supabase
-    .from("restaurants")
-    .select("*", { count: "exact", head: true });
+  const {
+    count: restaurantCount,
+    error: restaurantsError
+  } = await supabase.from("restaurants").select("*", {
+    count: "exact",
+    head: true
+  });
 
   // Monthly order count - Using updated function that excludes cancelled orders
-  const { data: monthlyOrderData, error: monthlyError } = await supabase.rpc("get_monthly_order_count");
+  const {
+    data: monthlyOrderData,
+    error: monthlyError
+  } = await supabase.rpc("get_monthly_order_count");
 
   // Fixed daily order count calculation to ensure accurate counting
   const today = new Date();
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-  
-  const { data: dailyOrdersData, error: dailyOrdersError } = await supabase
-    .from("orders")
-    .select("id", { count: "exact" })
-    .gte("created_at", startOfDay.toISOString())
-    .lte("created_at", endOfDay.toISOString())
-    .neq("status", "cancelled");
-
+  const {
+    data: dailyOrdersData,
+    error: dailyOrdersError
+  } = await supabase.from("orders").select("id", {
+    count: "exact"
+  }).gte("created_at", startOfDay.toISOString()).lte("created_at", endOfDay.toISOString()).neq("status", "cancelled");
   const dailyOrderCount = dailyOrdersData?.length || 0;
-
   console.log("[Dashboard] Today's orders count:", dailyOrderCount);
   console.log("[Dashboard] Date range:", startOfDay.toISOString(), "to", endOfDay.toISOString());
-
-  if (
-    totalRevenueError ||
-    restaurantsError ||
-    monthlyError ||
-    dailyOrdersError
-  )
-    throw (
-      totalRevenueError ||
-      restaurantsError ||
-      monthlyError ||
-      dailyOrdersError
-    );
-
+  if (totalRevenueError || restaurantsError || monthlyError || dailyOrdersError) throw totalRevenueError || restaurantsError || monthlyError || dailyOrdersError;
   const revenue = totalRevenueData ? totalRevenueData.reduce((acc, cur) => acc + Number(cur.total), 0) : 0;
-
   return {
     revenue,
     restaurants: restaurantCount ?? 0,
@@ -131,52 +112,63 @@ const fetchStats = async () => {
 // Using updated functions that exclude cancelled orders
 const fetchPopularItems = async () => {
   console.log("[Dashboard] Fetching fresh popular items data");
-  
+
   // Top 5 items by sales (uses updated db function)
-  const { data, error } = await supabase.rpc("get_popular_items", { limit_count: 5 });
+  const {
+    data,
+    error
+  } = await supabase.rpc("get_popular_items", {
+    limit_count: 5
+  });
   if (error) throw error;
-  
+
   // Handle the case when data might be null or not an array
   if (!data) return [];
-  
+
   // Properly cast the JSON data to our type
-  const typedData = (typeof data === 'string' ? JSON.parse(data) : data);
+  const typedData = typeof data === 'string' ? JSON.parse(data) : data;
   return Array.isArray(typedData) ? typedData : [];
 };
-
 const fetchPopularRestaurants = async () => {
   console.log("[Dashboard] Fetching fresh popular restaurants data");
-  
+
   // Top 5 restaurants by revenue (uses updated db function)
-  const { data, error } = await supabase.rpc("get_popular_restaurants", { limit_count: 5 });
+  const {
+    data,
+    error
+  } = await supabase.rpc("get_popular_restaurants", {
+    limit_count: 5
+  });
   if (error) throw error;
-  
+
   // Handle the case when data might be null or not an array
   if (!data) return [];
-  
+
   // Properly cast the JSON data to our type
-  const typedData = (typeof data === 'string' ? JSON.parse(data) : data);
+  const typedData = typeof data === 'string' ? JSON.parse(data) : data;
   return Array.isArray(typedData) ? typedData : [];
 };
-
 interface PopularItemsProps {
   items: PopularItem[] | undefined;
   isLoading: boolean;
   title: string;
   description: string;
 }
-
-const PopularItems = ({ items, isLoading, title, description }: PopularItemsProps) => (
-  <Card className="col-span-2">
+const PopularItems = ({
+  items,
+  isLoading,
+  title,
+  description
+}: PopularItemsProps) => <Card className="col-span-2">
     <CardHeader>
       <CardTitle>{title}</CardTitle>
       <CardDescription>{description}</CardDescription>
     </CardHeader>
     <CardContent>
       <div className="space-y-4">
-        {isLoading
-          ? Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+        {isLoading ? Array.from({
+        length: 5
+      }).map((_, i) => <div key={i} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
                 <div className="flex items-center space-x-3">
                   <Skeleton className="h-8 w-8 rounded-full" />
                   <div>
@@ -188,10 +180,7 @@ const PopularItems = ({ items, isLoading, title, description }: PopularItemsProp
                   <Skeleton className="h-4 w-14 mb-1" />
                   <Skeleton className="h-3 w-14" />
                 </div>
-              </div>
-            ))
-          : (items ?? []).map((item, index) => (
-              <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+              </div>) : (items ?? []).map((item, index) => <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
                 <div className="flex items-center space-x-3">
                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                     <Pizza className="h-4 w-4 text-primary" />
@@ -205,48 +194,41 @@ const PopularItems = ({ items, isLoading, title, description }: PopularItemsProp
                   <p className="font-medium">${parseFloat(item.price.toString()).toFixed(2)}</p>
                   <p className="text-sm text-muted-foreground">{item.order_count} orders</p>
                 </div>
-              </div>
-            ))}
+              </div>)}
       </div>
     </CardContent>
-  </Card>
-);
-
+  </Card>;
 interface PopularRestaurantsProps {
   data: PopularRestaurant[] | undefined;
   isLoading: boolean;
   title: string;
   description: string;
 }
-
-const PopularRestaurants = ({ data, isLoading, title, description }: PopularRestaurantsProps) => (
-  <Card>
+const PopularRestaurants = ({
+  data,
+  isLoading,
+  title,
+  description
+}: PopularRestaurantsProps) => <Card>
     <CardHeader>
       <CardTitle>{title}</CardTitle>
       <CardDescription>{description}</CardDescription>
     </CardHeader>
     <CardContent>
       <div className="space-y-4">
-        {isLoading
-          ? Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between">
+        {isLoading ? Array.from({
+        length: 5
+      }).map((_, i) => <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <Skeleton className="h-8 w-8 rounded-full" />
                   <Skeleton className="h-4 w-32" />
                 </div>
                 <Skeleton className="h-4 w-16" />
-              </div>
-            ))
-          : (data ?? []).map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
+              </div>) : (data ?? []).map((item, index) => <div key={index} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                     <span className="text-xs font-bold text-primary">
-                      {item.name
-                        .split(" ")
-                        .map((w) => w[0])
-                        .slice(0, 2)
-                        .join("")}
+                      {item.name.split(" ").map(w => w[0]).slice(0, 2).join("")}
                     </span>
                   </div>
                   <p className="font-medium">{item.name}</p>
@@ -254,20 +236,21 @@ const PopularRestaurants = ({ data, isLoading, title, description }: PopularRest
                 <p className="font-medium">
                   ${parseFloat(item.total_revenue?.toString() ?? "0").toFixed(2)}
                 </p>
-              </div>
-            ))}
+              </div>)}
       </div>
     </CardContent>
-  </Card>
-);
-
+  </Card>;
 const Dashboard = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   // Always use English for admin dashboard
   const language: SupportedLanguage = 'en';
-  const { t } = useTranslation(language);
+  const {
+    t
+  } = useTranslation(language);
   const [orderCount, setOrderCount] = useState<number>(0);
-  
+
   // Ensure admin caching is disabled when admin dashboard loads
   useEffect(() => {
     setCachingEnabledForAdmin(false);
@@ -279,86 +262,54 @@ const Dashboard = () => {
     data: stats,
     isLoading: isStatsLoading,
     error: statsError
-  } = useQuery(getAdminQueryOptions(
-    ["dashboard-stats"],
-    fetchStats
-  ));
-
+  } = useQuery(getAdminQueryOptions(["dashboard-stats"], fetchStats));
   const {
     data: popularItems,
     isLoading: isItemsLoading,
     error: itemsError
-  } = useQuery(getAdminQueryOptions(
-    ["dashboard-popular-items"],
-    fetchPopularItems
-  ));
-
+  } = useQuery(getAdminQueryOptions(["dashboard-popular-items"], fetchPopularItems));
   const {
     data: popularRestaurants,
     isLoading: isRestaurantsLoading,
     error: restaurantsError
-  } = useQuery(getAdminQueryOptions(
-    ["dashboard-popular-restaurants"],
-    fetchPopularRestaurants
-  ));
-
-  return (
-    <AdminLayout useDefaultLanguage={true}>
+  } = useQuery(getAdminQueryOptions(["dashboard-popular-restaurants"], fetchPopularRestaurants));
+  return <AdminLayout useDefaultLanguage={true}>
       <div className="mb-8">
         <h1 className="text-3xl font-bold">{t("dashboard.title")}</h1>
-        <p className="text-muted-foreground">{t("dashboard.welcome")}</p>
+        
       </div>
 
       {statsError && <div className="mb-4 text-red-500 font-medium">Failed to load stats.</div>}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title={t("dashboard.totalRevenue")}
-          value={
-            isStatsLoading ? <Skeleton className="h-8 w-32" /> : `$${stats?.revenue?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
-          }
-          description={t("dashboard.revenueDesc")}
-          icon={BadgeDollarSign}
-          trend={{ value: "12.5%", positive: true, fromLastMonthText: t("dashboard.fromLastMonth") }}
-        />
-        <StatCard
-          title={t("dashboard.restaurants")}
-          value={isStatsLoading ? <Skeleton className="h-8 w-12" /> : stats?.restaurants ?? 0}
-          description={t("dashboard.restaurantsDesc")}
-          icon={ChefHat}
-          trend={{ value: "2", positive: true, fromLastMonthText: t("dashboard.fromLastMonth") }}
-        />
-        <StatCard
-          title={t("dashboard.totalOrders")}
-          value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.monthlyOrders ?? 0}
-          description={t("dashboard.totalOrdersDesc")}
-          icon={ShoppingBag}
-          trend={{ value: "5.2%", positive: true, fromLastMonthText: t("dashboard.fromLastMonth") }}
-        />
-        <StatCard
-          title={t("dashboard.dailyOrders")}
-          value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.dailyOrders ?? 0}
-          description={t("dashboard.dailyOrdersDesc")}
-          icon={Store}
-          trend={{ value: "15.3%", positive: true, fromLastMonthText: t("dashboard.fromLastMonth") }}
-        />
+        <StatCard title={t("dashboard.totalRevenue")} value={isStatsLoading ? <Skeleton className="h-8 w-32" /> : `$${stats?.revenue?.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`} description={t("dashboard.revenueDesc")} icon={BadgeDollarSign} trend={{
+        value: "12.5%",
+        positive: true,
+        fromLastMonthText: t("dashboard.fromLastMonth")
+      }} />
+        <StatCard title={t("dashboard.restaurants")} value={isStatsLoading ? <Skeleton className="h-8 w-12" /> : stats?.restaurants ?? 0} description={t("dashboard.restaurantsDesc")} icon={ChefHat} trend={{
+        value: "2",
+        positive: true,
+        fromLastMonthText: t("dashboard.fromLastMonth")
+      }} />
+        <StatCard title={t("dashboard.totalOrders")} value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.monthlyOrders ?? 0} description={t("dashboard.totalOrdersDesc")} icon={ShoppingBag} trend={{
+        value: "5.2%",
+        positive: true,
+        fromLastMonthText: t("dashboard.fromLastMonth")
+      }} />
+        <StatCard title={t("dashboard.dailyOrders")} value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.dailyOrders ?? 0} description={t("dashboard.dailyOrdersDesc")} icon={Store} trend={{
+        value: "15.3%",
+        positive: true,
+        fromLastMonthText: t("dashboard.fromLastMonth")
+      }} />
       </div>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <PopularItems 
-          items={popularItems} 
-          isLoading={isItemsLoading} 
-          title={t("dashboard.popularItems")} 
-          description={t("dashboard.popularItemsDesc")} 
-        />
-        <PopularRestaurants 
-          data={popularRestaurants} 
-          isLoading={isRestaurantsLoading} 
-          title={t("dashboard.popularRestaurants")} 
-          description={t("dashboard.popularRestaurantsDesc")} 
-        />
+        <PopularItems items={popularItems} isLoading={isItemsLoading} title={t("dashboard.popularItems")} description={t("dashboard.popularItemsDesc")} />
+        <PopularRestaurants data={popularRestaurants} isLoading={isRestaurantsLoading} title={t("dashboard.popularRestaurants")} description={t("dashboard.popularRestaurantsDesc")} />
       </div>
-    </AdminLayout>
-  );
+    </AdminLayout>;
 };
-
 export default Dashboard;
