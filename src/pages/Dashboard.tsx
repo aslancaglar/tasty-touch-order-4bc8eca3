@@ -19,7 +19,7 @@ interface PopularItem {
 }
 interface PopularRestaurant {
   name: string;
-  total_revenue: number;
+  total_orders: number;
 }
 interface StatCardProps {
   title: string;
@@ -132,7 +132,7 @@ const fetchPopularItems = async () => {
 const fetchPopularRestaurants = async () => {
   console.log("[Dashboard] Fetching fresh popular restaurants data");
 
-  // Top 5 restaurants by revenue (uses updated db function)
+  // Top 5 restaurants by order count (uses updated db function)
   const {
     data,
     error
@@ -231,8 +231,8 @@ const PopularRestaurants = ({
                   </div>
                   <p className="font-medium">{item.name}</p>
                 </div>
-                <p className="font-medium">
-                  ${parseFloat(item.total_revenue?.toString() ?? "0").toFixed(2)}
+                <p className="font-medium text-sm text-muted-foreground">
+                  {item.total_orders} orders
                 </p>
               </div>)}
       </div>
