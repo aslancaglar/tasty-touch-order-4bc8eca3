@@ -86,8 +86,6 @@ const fetchStats = async () => {
     error: monthlyError
   } = await supabase.rpc("get_monthly_order_count");
 
-  console.log("[Dashboard] Monthly order RPC result:", monthlyOrderData, "Error:", monthlyError);
-
   // Fixed daily order count calculation to ensure accurate counting
   const today = new Date();
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -101,19 +99,8 @@ const fetchStats = async () => {
   const dailyOrderCount = dailyOrdersData?.length || 0;
   console.log("[Dashboard] Today's orders count:", dailyOrderCount);
   console.log("[Dashboard] Date range:", startOfDay.toISOString(), "to", endOfDay.toISOString());
-  
   if (totalRevenueError || restaurantsError || monthlyError || dailyOrdersError) throw totalRevenueError || restaurantsError || monthlyError || dailyOrdersError;
-  
   const revenue = totalRevenueData ? totalRevenueData.reduce((acc, cur) => acc + Number(cur.total), 0) : 0;
-  
-  // Log the final stats to help debug
-  console.log("[Dashboard] Final stats:", {
-    revenue,
-    restaurants: restaurantCount ?? 0,
-    monthlyOrders: monthlyOrderData ?? 0,
-    dailyOrders: dailyOrderCount
-  });
-  
   return {
     revenue,
     restaurants: restaurantCount ?? 0,
@@ -220,7 +207,7 @@ const PopularRestaurants = ({
   isLoading,
   title,
   description
-}: PopularRestaurantsProps) => <Card className="col-span-2">
+}: PopularRestaurantsProps) => <Card>
     <CardHeader>
       <CardTitle>{title}</CardTitle>
       <CardDescription>{description}</CardDescription>
