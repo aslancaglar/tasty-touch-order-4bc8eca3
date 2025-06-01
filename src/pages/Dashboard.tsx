@@ -177,7 +177,6 @@ const PopularItems = ({
                   </div>
                 </div>
                 <div className="text-right">
-                  <Skeleton className="h-4 w-14 mb-1" />
                   <Skeleton className="h-3 w-14" />
                 </div>
               </div>) : (items ?? []).map((item, index) => <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
@@ -191,7 +190,6 @@ const PopularItems = ({
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium">${parseFloat(item.price.toString()).toFixed(2)}</p>
                   <p className="text-sm text-muted-foreground">{item.order_count} orders</p>
                 </div>
               </div>)}
