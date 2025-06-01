@@ -207,7 +207,7 @@ const PopularRestaurants = ({
   isLoading,
   title,
   description
-}: PopularRestaurantsProps) => <Card>
+}: PopularRestaurantsProps) => <Card className="col-span-2">
     <CardHeader>
       <CardTitle>{title}</CardTitle>
       <CardDescription>{description}</CardDescription>
