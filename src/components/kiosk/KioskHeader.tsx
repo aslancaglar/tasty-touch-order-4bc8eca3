@@ -29,13 +29,13 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
       {onRefresh && (
         <div className="absolute top-4 right-4 z-10">
           <Button 
-            size="icon" 
+            size="xs" 
             variant="ghost" 
             className="bg-white/20 text-white hover:bg-white/30" 
             onClick={onRefresh}
             aria-label={t("refreshMenu")}
           >
-            <Database className="h-4 w-4" />
+            <Database className="h-3 w-3" />
           </Button>
         </div>
       )}
