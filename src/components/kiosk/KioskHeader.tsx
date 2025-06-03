@@ -1,6 +1,5 @@
-
 import React from "react";
-import { Clock, Data } from "lucide-react";
+import { Clock, RotateCcw } from "lucide-react";
 import { Restaurant, OrderType } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
 
@@ -35,7 +34,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
             onClick={onRefresh}
             aria-label={t("refreshMenu")}
           >
-            <Data className="h-4 w-4" />
+            <RotateCcw className="h-4 w-4" />
           </Button>
         </div>
       )}
