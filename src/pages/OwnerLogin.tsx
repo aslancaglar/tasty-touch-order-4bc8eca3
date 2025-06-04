@@ -61,21 +61,6 @@ const OwnerLogin = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  // Wait for auth to finish loading before redirecting
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  // If user is already logged in, redirect to owner dashboard
-  if (user) {
-    console.log("User already logged in, redirecting to /owner");
-    return <Navigate to="/owner" />;
-  }
-  
   // Reset error when tab changes
   useEffect(() => {
     setAuthError(null);
@@ -91,6 +76,21 @@ const OwnerLogin = () => {
       setPasswordFeedback("");
     }
   }, [password, activeTab]);
+
+  // Wait for auth to finish loading before redirecting
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // If user is already logged in, redirect to owner dashboard
+  if (user) {
+    console.log("User already logged in, redirecting to /owner");
+    return <Navigate to="/owner" />;
+  }
   
   // Function to check if too many login attempts
   const checkLoginThrottle = (): boolean => {
