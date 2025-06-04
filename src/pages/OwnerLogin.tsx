@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PASSWORD_MIN_LENGTH, PASSWORD_REQUIRES_NUMBERS, PASSWORD_REQUIRES_SYMBOLS } from "@/config/supabase";
-import * as DOMPurify from 'dompurify';
+import DOMPurify from 'dompurify';
 
 // Function to validate email format
 const isValidEmail = (email: string): boolean => {
