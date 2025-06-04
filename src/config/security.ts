@@ -72,7 +72,7 @@ export const SECURITY_PATTERNS = {
   ],
   PATH_TRAVERSAL: [
     /\.\.\//,
-    /\.\.\\\/,
+    /\.\.\\/,
     /%2e%2e%2f/i,
     /%2e%2e%5c/i,
   ],
