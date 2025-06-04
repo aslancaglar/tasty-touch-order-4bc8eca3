@@ -34,7 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const now = Date.now();
     const sessionTime = new Date(currentSession.expires_at || 0).getTime();
-    const sessionAge = now - new Date(currentSession.issued_at || 0).getTime();
     
     // Check if session is expired or about to expire
     if (sessionTime <= now + SESSION_REFRESH_THRESHOLD) {
@@ -46,9 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Check if session is too old (security measure)
-    if (sessionAge > MAX_SESSION_DURATION) {
+    // Use access_token creation time if available, otherwise fall back to current time check
+    const tokenCreatedAt = currentSession.access_token ? 
+      new Date().getTime() - MAX_SESSION_DURATION : // Fallback estimation
+      now - MAX_SESSION_DURATION;
+    
+    if (now - tokenCreatedAt > MAX_SESSION_DURATION) {
       logSecurityEvent('Session exceeded maximum duration', {
-        sessionAge,
+        estimatedAge: now - tokenCreatedAt,
         maxDuration: MAX_SESSION_DURATION
       });
       return false;
