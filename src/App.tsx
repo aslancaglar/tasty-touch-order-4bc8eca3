@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NetworkStatus } from "@/components/ui/network-status";
+import SecurityMonitor from "@/components/security/SecurityMonitor";
 import { initializeCacheConfig } from "@/utils/cache-config";
 
 // Create a more sophisticated QueryClient with route-aware settings
@@ -48,9 +49,15 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            
+            {/* Security Monitoring */}
+            <SecurityMonitor />
+            
+            {/* Network Status */}
             <div className="fixed bottom-4 right-4 z-50">
               <NetworkStatus showLabel={true} />
             </div>
+            
             <Routes>
               {/* Auth Routes */}
               <Route path="/auth" element={<Auth />} />

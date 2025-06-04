@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { logSecurityEvent, handleError } from "@/utils/error-handler";
 
 type AuthContextType = {
   session: Session | null;
@@ -14,16 +15,58 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Session security constants
+const SESSION_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
+const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const ADMIN_CHECK_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
+  const [lastAdminCheck, setLastAdminCheck] = useState<number>(0);
 
-  // Function to check admin status - separated to avoid direct calls in auth state change
-  const checkAdminStatus = async (userId: string) => {
+  // Enhanced session validation
+  const validateSession = (currentSession: Session | null): boolean => {
+    if (!currentSession) return false;
+    
+    const now = Date.now();
+    const sessionTime = new Date(currentSession.expires_at || 0).getTime();
+    const sessionAge = now - new Date(currentSession.issued_at || 0).getTime();
+    
+    // Check if session is expired or about to expire
+    if (sessionTime <= now + SESSION_REFRESH_THRESHOLD) {
+      logSecurityEvent('Session expired or expiring soon', {
+        expiresAt: currentSession.expires_at,
+        timeToExpiry: sessionTime - now
+      });
+      return false;
+    }
+    
+    // Check if session is too old (security measure)
+    if (sessionAge > MAX_SESSION_DURATION) {
+      logSecurityEvent('Session exceeded maximum duration', {
+        sessionAge,
+        maxDuration: MAX_SESSION_DURATION
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Function to check admin status with caching
+  const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
+    
+    const now = Date.now();
+    
+    // Use cached result if recent enough
+    if (now - lastAdminCheck < ADMIN_CHECK_CACHE_DURATION && isAdmin !== null) {
+      return isAdmin;
+    }
     
     try {
       console.log("Checking admin status for user:", userId);
@@ -35,53 +78,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
       
       if (error) {
-        console.error("Error checking admin status:", error);
+        const errorDetails = handleError(error, 'Admin status check');
+        logSecurityEvent('Admin check failed', errorDetails);
         return false;
       }
       
-      console.log("Admin check result:", data?.is_admin);
-      return data?.is_admin || false;
+      const adminStatus = data?.is_admin || false;
+      setLastAdminCheck(now);
+      
+      console.log("Admin check result:", adminStatus);
+      return adminStatus;
     } catch (error) {
-      console.error("Exception checking admin status:", error);
+      const errorDetails = handleError(error, 'Admin status check exception');
+      logSecurityEvent('Admin check exception', errorDetails);
       return false;
     }
   };
 
   useEffect(() => {
-    console.log("Setting up AuthProvider...");
+    console.log("Setting up AuthProvider with enhanced security...");
     
-    // Use a stale closure prevention technique with function reference
     const handleAuthChange = (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event);
       
-      // Synchronously update session and user state
+      // Enhanced session validation
+      if (currentSession && !validateSession(currentSession)) {
+        logSecurityEvent('Invalid session detected', { event });
+        // Force logout for invalid sessions
+        supabase.auth.signOut();
+        return;
+      }
+      
+      // Update session and user state
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
-      // Reset admin status when session changes
+      // Handle logout events
       if (event === 'SIGNED_OUT') {
         setIsAdmin(false);
         setAdminCheckCompleted(true);
         setLoading(false);
-        console.log("User signed out, clearing application state");
+        setLastAdminCheck(0);
+        logSecurityEvent('User signed out', { timestamp: new Date().toISOString() });
+      }
+      
+      // Log sign-in events
+      if (event === 'SIGNED_IN' && currentSession?.user) {
+        logSecurityEvent('User signed in', { 
+          userId: currentSession.user.id,
+          timestamp: new Date().toISOString()
+        });
       }
     };
     
-    // Set up auth state listener first - this prevents deadlocks
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
-    // Then check for existing session
+    // Check for existing session with enhanced validation
     const initSession = async () => {
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         console.log("Initial session check:", currentSession ? "Session found" : "No session");
         
-        // Explicitly verify the session token is still valid
         if (currentSession) {
+          // Validate the session
+          if (!validateSession(currentSession)) {
+            logSecurityEvent('Invalid initial session', {});
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            setIsAdmin(false);
+            setAdminCheckCompleted(true);
+            return;
+          }
+          
+          // Verify the session token is still valid
           const { data: { user: currentUser } } = await supabase.auth.getUser();
           if (!currentUser) {
-            // Invalid session detected, clear it
-            console.warn("Invalid session detected, clearing...");
+            logSecurityEvent('Session token invalid', {});
             await supabase.auth.signOut();
             setSession(null);
             setUser(null);
@@ -91,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(currentSession);
             setUser(currentUser);
             
-            // Check admin status outside the auth state change callback
+            // Check admin status
             const adminStatus = await checkAdminStatus(currentUser.id);
             setIsAdmin(adminStatus);
             setAdminCheckCompleted(true);
@@ -103,8 +177,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setLoading(false);
       } catch (error) {
-        console.error("Error during session initialization:", error);
-        // Fail safely by assuming no valid session
+        const errorDetails = handleError(error, 'Session initialization');
+        logSecurityEvent('Session initialization failed', errorDetails);
+        
+        // Fail safely
         setSession(null);
         setUser(null);
         setIsAdmin(false);
@@ -121,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // When the user state changes (and isn't being updated as part of initial load)
+  // Update admin status when user changes
   useEffect(() => {
     const updateAdminStatus = async () => {
       if (user && !loading) {
@@ -143,7 +219,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log("Signing out...");
-      // Use a timeout to prevent potential deadlocks with auth state changes
+      logSecurityEvent('Sign out initiated', { 
+        userId: user?.id,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Use timeout to prevent deadlocks
       const { error } = await Promise.race([
         supabase.auth.signOut(),
         new Promise<{error: Error}>((_, reject) => 
@@ -152,22 +233,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
       
       if (error) {
-        console.error("Error signing out:", error);
+        const errorDetails = handleError(error, 'Sign out');
+        logSecurityEvent('Sign out failed', errorDetails);
         throw error;
       }
       
-      // Clear state regardless of API response
+      // Clear all state
       setSession(null);
       setUser(null);
       setIsAdmin(false);
+      setLastAdminCheck(0);
       
-      console.log("Sign out complete, session and user state cleared");
+      console.log("Sign out complete");
     } catch (error) {
-      console.error("Exception during sign out:", error);
-      // Still clear state even if there's an error
+      const errorDetails = handleError(error, 'Sign out exception');
+      logSecurityEvent('Sign out exception', errorDetails);
+      
+      // Clear state even on error
       setSession(null);
       setUser(null);
       setIsAdmin(false);
+      setLastAdminCheck(0);
     }
   };
 
