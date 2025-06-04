@@ -139,7 +139,8 @@ const SecurityMonitor = () => {
     setThreats(prev => prev.filter(t => t.timestamp !== timestamp));
   };
 
-  // Only show in development or when there are active threats
+  // Only show security alerts in development or when there are actual threats
+  // Hide the "Development Mode" badge in production or when there are no active threats
   if (process.env.NODE_ENV === 'production' && threats.length === 0) {
     return null;
   }
@@ -183,8 +184,8 @@ const SecurityMonitor = () => {
         </Alert>
       ))}
 
-      {/* Development Mode Indicator */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* Development Mode Indicator - only show when there are active threats */}
+      {process.env.NODE_ENV === 'development' && threats.length > 0 && (
         <Alert>
           <Shield className="h-4 w-4" />
           <AlertTitle>Development Mode</AlertTitle>

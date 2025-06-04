@@ -28,32 +28,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
   const [lastAdminCheck, setLastAdminCheck] = useState<number>(0);
 
-  // Enhanced session validation
+  // Simplified session validation - only check if session exists and is not expired
   const validateSession = (currentSession: Session | null): boolean => {
     if (!currentSession) return false;
     
     const now = Date.now();
     const sessionTime = new Date(currentSession.expires_at || 0).getTime();
     
-    // Check if session is expired or about to expire
-    if (sessionTime <= now + SESSION_REFRESH_THRESHOLD) {
-      logSecurityEvent('Session expired or expiring soon', {
+    // Only check if session is expired (with small buffer)
+    if (sessionTime <= now + 60000) { // 1 minute buffer instead of 5 minutes
+      logSecurityEvent('Session expired', {
         expiresAt: currentSession.expires_at,
         timeToExpiry: sessionTime - now
-      });
-      return false;
-    }
-    
-    // Check if session is too old (security measure)
-    // Use access_token creation time if available, otherwise fall back to current time check
-    const tokenCreatedAt = currentSession.access_token ? 
-      new Date().getTime() - MAX_SESSION_DURATION : // Fallback estimation
-      now - MAX_SESSION_DURATION;
-    
-    if (now - tokenCreatedAt > MAX_SESSION_DURATION) {
-      logSecurityEvent('Session exceeded maximum duration', {
-        estimatedAge: now - tokenCreatedAt,
-        maxDuration: MAX_SESSION_DURATION
       });
       return false;
     }
@@ -105,8 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAuthChange = (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event);
       
-      // Enhanced session validation
-      if (currentSession && !validateSession(currentSession)) {
+      // Only validate session for existing sessions, not on sign-in events
+      if (currentSession && event !== 'SIGNED_IN' && !validateSession(currentSession)) {
         logSecurityEvent('Invalid session detected', { event });
         // Force logout for invalid sessions
         supabase.auth.signOut();
@@ -138,15 +124,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
-    // Check for existing session with enhanced validation
+    // Check for existing session
     const initSession = async () => {
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         console.log("Initial session check:", currentSession ? "Session found" : "No session");
         
         if (currentSession) {
-          // Validate the session
-          if (!validateSession(currentSession)) {
+          // Validate the session only if it's older than a few seconds
+          const sessionAge = Date.now() - new Date(currentSession.expires_at || 0).getTime() + (currentSession.expires_in || 3600) * 1000;
+          
+          if (sessionAge > 10000 && !validateSession(currentSession)) { // Only validate if session is older than 10 seconds
             logSecurityEvent('Invalid initial session', {});
             await supabase.auth.signOut();
             setSession(null);
@@ -156,24 +144,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           
-          // Verify the session token is still valid
-          const { data: { user: currentUser } } = await supabase.auth.getUser();
-          if (!currentUser) {
-            logSecurityEvent('Session token invalid', {});
-            await supabase.auth.signOut();
-            setSession(null);
-            setUser(null);
-            setIsAdmin(false);
-            setAdminCheckCompleted(true);
-          } else {
-            setSession(currentSession);
-            setUser(currentUser);
-            
-            // Check admin status
-            const adminStatus = await checkAdminStatus(currentUser.id);
-            setIsAdmin(adminStatus);
-            setAdminCheckCompleted(true);
-          }
+          setSession(currentSession);
+          setUser(currentSession.user);
+          
+          // Check admin status
+          const adminStatus = await checkAdminStatus(currentSession.user.id);
+          setIsAdmin(adminStatus);
+          setAdminCheckCompleted(true);
         } else {
           setIsAdmin(false);
           setAdminCheckCompleted(true);
