@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PASSWORD_MIN_LENGTH, PASSWORD_REQUIRES_NUMBERS, PASSWORD_REQUIRES_SYMBOLS } from "@/config/supabase";
-import * as DOMPurify from 'dompurify'; // Updated import to fix TypeScript issue
+import * as DOMPurify from 'dompurify';
 
 // Function to validate email format
 const isValidEmail = (email: string): boolean => {
@@ -58,10 +59,20 @@ const OwnerLogin = () => {
   const [loginAttempts, setLoginAttempts] = useState<number[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+
+  // Wait for auth to finish loading before redirecting
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   // If user is already logged in, redirect to owner dashboard
   if (user) {
+    console.log("User already logged in, redirecting to /owner");
     return <Navigate to="/owner" />;
   }
   
@@ -100,20 +111,25 @@ const OwnerLogin = () => {
     e.preventDefault();
     setAuthError(null);
     
+    console.log("Login attempt started", { email: email.trim() });
+    
     // Input validation
     if (!email.trim() || !password) {
+      console.log("Login failed: Missing email or password");
       setAuthError("Email and password are required");
       return;
     }
     
     // Email format validation
     if (!isValidEmail(email)) {
+      console.log("Login failed: Invalid email format", { email: email.trim() });
       setAuthError("Please enter a valid email address");
       return;
     }
     
     // Check throttling
     if (checkLoginThrottle()) {
+      console.log("Login failed: Rate limited");
       return;
     }
     
@@ -125,19 +141,47 @@ const OwnerLogin = () => {
     try {
       // Sanitize inputs (prevents potential XSS in error displays)
       const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
+      console.log("Attempting login with sanitized email", { sanitizedEmail });
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: sanitizedEmail,
         password,
       });
 
+      console.log("Supabase auth response", { 
+        user: data?.user?.id, 
+        session: !!data?.session,
+        error: error?.message 
+      });
+
       if (error) {
-        console.error("Login error:", error.message);
-        // Use generic error messages to prevent username enumeration
-        setAuthError("Invalid email or password. Please try again.");
+        console.error("Login error details:", {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
+        
+        // Provide more specific error messages based on error type
+        if (error.message.includes('Invalid login credentials')) {
+          setAuthError("Invalid email or password. Please check your credentials and try again.");
+        } else if (error.message.includes('Email not confirmed')) {
+          setAuthError("Please check your email and click the confirmation link before logging in.");
+        } else if (error.message.includes('Too many requests')) {
+          setAuthError("Too many login attempts. Please wait a few minutes before trying again.");
+        } else {
+          setAuthError(`Login failed: ${error.message}`);
+        }
         return;
       }
 
+      if (!data?.user) {
+        console.error("Login succeeded but no user data returned");
+        setAuthError("Login succeeded but user data is missing. Please try again.");
+        return;
+      }
+
+      console.log("Login successful", { userId: data.user.id });
+      
       toast({
         title: "Login successful",
         description: "Welcome to your restaurant dashboard",
@@ -145,8 +189,17 @@ const OwnerLogin = () => {
       
       navigate("/owner");
     } catch (error) {
-      console.error("Login error:", error);
-      setAuthError("An unexpected error occurred. Please try again.");
+      console.error("Login exception:", {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      if (error instanceof Error) {
+        setAuthError(`Login failed: ${error.message}`);
+      } else {
+        setAuthError("An unexpected error occurred during login. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -155,6 +208,8 @@ const OwnerLogin = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    
+    console.log("Signup attempt started", { email: email.trim() });
     
     // Input validation
     if (!email.trim() || !password) {
@@ -180,8 +235,9 @@ const OwnerLogin = () => {
     try {
       // Sanitize inputs
       const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
+      console.log("Attempting signup with sanitized email", { sanitizedEmail });
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: sanitizedEmail,
         password,
         options: {
@@ -192,10 +248,23 @@ const OwnerLogin = () => {
         }
       });
 
+      console.log("Supabase signup response", { 
+        user: data?.user?.id, 
+        session: !!data?.session,
+        error: error?.message 
+      });
+
       if (error) {
+        console.error("Signup error details:", {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
         setAuthError(error.message);
         return;
       }
+
+      console.log("Signup successful", { userId: data?.user?.id });
 
       toast({
         title: "Sign up successful",
@@ -205,8 +274,17 @@ const OwnerLogin = () => {
       // Switch to login tab after successful signup
       setActiveTab("login");
     } catch (error) {
-      console.error("Signup error:", error);
-      setAuthError("An unexpected error occurred. Please try again.");
+      console.error("Signup exception:", {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      if (error instanceof Error) {
+        setAuthError(`Signup failed: ${error.message}`);
+      } else {
+        setAuthError("An unexpected error occurred during signup. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
