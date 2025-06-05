@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { logSecurityEvent, handleError } from "@/utils/error-handler";
 
 type AuthContextType = {
   session: Session | null;
@@ -14,188 +15,226 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Session security constants
+const SESSION_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
+const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const ADMIN_CHECK_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const [lastAdminCheck, setLastAdminCheck] = useState<number>(0);
 
-  // Simplified admin check
-  const checkAdminStatus = async (userId: string): Promise<boolean> => {
-    if (!userId) {
-      console.log("No userId provided for admin check");
+  // Simplified session validation - only check if session exists and is not expired
+  const validateSession = (currentSession: Session | null): boolean => {
+    if (!currentSession) return false;
+    
+    const now = Date.now();
+    const sessionTime = new Date(currentSession.expires_at || 0).getTime();
+    
+    // Only check if session is expired (with small buffer)
+    if (sessionTime <= now + 60000) { // 1 minute buffer instead of 5 minutes
+      logSecurityEvent('Session expired', {
+        expiresAt: currentSession.expires_at,
+        timeToExpiry: sessionTime - now
+      });
       return false;
+    }
+    
+    return true;
+  };
+
+  // Function to check admin status with caching
+  const checkAdminStatus = async (userId: string): Promise<boolean> => {
+    if (!userId) return false;
+    
+    const now = Date.now();
+    
+    // Use cached result if recent enough
+    if (now - lastAdminCheck < ADMIN_CHECK_CACHE_DURATION && isAdmin !== null) {
+      return isAdmin;
     }
     
     try {
       console.log("Checking admin status for user:", userId);
       
       const { data, error } = await supabase
-        .rpc('is_admin_user', { user_id: userId });
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
       
       if (error) {
-        console.error("Admin check failed:", error);
+        const errorDetails = handleError(error, 'Admin status check');
+        logSecurityEvent('Admin check failed', errorDetails);
         return false;
       }
       
-      const adminStatus = data || false;
+      const adminStatus = data?.is_admin || false;
+      setLastAdminCheck(now);
+      
       console.log("Admin check result:", adminStatus);
       return adminStatus;
     } catch (error) {
-      console.error("Admin check exception:", error);
+      const errorDetails = handleError(error, 'Admin status check exception');
+      logSecurityEvent('Admin check exception', errorDetails);
       return false;
     }
   };
 
-  // Process session and update all related state
-  const processSession = async (currentSession: Session | null, source: string) => {
-    console.log(`Processing session from ${source}:`, currentSession ? "Session present" : "No session");
-    
-    // Update session and user state immediately
-    setSession(currentSession);
-    setUser(currentSession?.user ?? null);
-    
-    // Handle no session case
-    if (!currentSession?.user) {
-      console.log("No session/user, clearing admin state");
-      setIsAdmin(false);
-      setAdminCheckCompleted(true);
-      setLoading(false);
-      setInitialized(true);
-      return;
-    }
-    
-    // Check admin status for authenticated users
-    try {
-      console.log("Checking admin status for user:", currentSession.user.id);
-      setAdminCheckCompleted(false);
-      const adminStatus = await checkAdminStatus(currentSession.user.id);
-      setIsAdmin(adminStatus);
-      console.log("Admin status set to:", adminStatus);
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-      setIsAdmin(false);
-    } finally {
-      setAdminCheckCompleted(true);
-      setLoading(false);
-      setInitialized(true);
-    }
-  };
-
   useEffect(() => {
-    console.log("Setting up AuthProvider...");
+    console.log("Setting up AuthProvider with enhanced security...");
     
-    let timeoutId: NodeJS.Timeout;
-    
-    // Set timeout protection to prevent infinite loading
-    const setLoadingTimeout = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        console.warn("Auth initialization timeout - forcing completion");
-        setLoading(false);
+    const handleAuthChange = (event: string, currentSession: Session | null) => {
+      console.log("Auth state change event:", event);
+      
+      // Only validate session for existing sessions, not on sign-in events
+      if (currentSession && event !== 'SIGNED_IN' && !validateSession(currentSession)) {
+        logSecurityEvent('Invalid session detected', { event });
+        // Force logout for invalid sessions
+        supabase.auth.signOut();
+        return;
+      }
+      
+      // Update session and user state
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      
+      // Handle logout events
+      if (event === 'SIGNED_OUT') {
+        setIsAdmin(false);
         setAdminCheckCompleted(true);
-        setInitialized(true);
-      }, 10000); // 10 second timeout
-    };
-    
-    const clearLoadingTimeout = () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = undefined;
+        setLoading(false);
+        setLastAdminCheck(0);
+        logSecurityEvent('User signed out', { timestamp: new Date().toISOString() });
+      }
+      
+      // Log sign-in events
+      if (event === 'SIGNED_IN' && currentSession?.user) {
+        logSecurityEvent('User signed in', { 
+          userId: currentSession.user.id,
+          timestamp: new Date().toISOString()
+        });
       }
     };
-
-    setLoadingTimeout();
     
-    // Single auth state change handler - this will handle both initial session and future changes
-    const handleAuthChange = async (event: string, currentSession: Session | null) => {
-      console.log("Auth state change event:", event, currentSession ? "Session present" : "No session");
-      
-      clearLoadingTimeout();
-      
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+
+    // Check for existing session
+    const initSession = async () => {
       try {
-        await processSession(currentSession, `auth-change-${event}`);
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        console.log("Initial session check:", currentSession ? "Session found" : "No session");
+        
+        if (currentSession) {
+          // Validate the session only if it's older than a few seconds
+          const sessionAge = Date.now() - new Date(currentSession.expires_at || 0).getTime() + (currentSession.expires_in || 3600) * 1000;
+          
+          if (sessionAge > 10000 && !validateSession(currentSession)) { // Only validate if session is older than 10 seconds
+            logSecurityEvent('Invalid initial session', {});
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            setIsAdmin(false);
+            setAdminCheckCompleted(true);
+            return;
+          }
+          
+          setSession(currentSession);
+          setUser(currentSession.user);
+          
+          // Check admin status
+          const adminStatus = await checkAdminStatus(currentSession.user.id);
+          setIsAdmin(adminStatus);
+          setAdminCheckCompleted(true);
+        } else {
+          setIsAdmin(false);
+          setAdminCheckCompleted(true);
+        }
+        
+        setLoading(false);
       } catch (error) {
-        console.error("Error processing session in auth change:", error);
+        const errorDetails = handleError(error, 'Session initialization');
+        logSecurityEvent('Session initialization failed', errorDetails);
+        
+        // Fail safely
         setSession(null);
         setUser(null);
         setIsAdmin(false);
         setAdminCheckCompleted(true);
         setLoading(false);
-        setInitialized(true);
       }
     };
     
-    // Set up auth state listener - this will automatically get initial session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
-
-    // Fallback: if no auth event fires within 2 seconds, manually get session
-    const fallbackTimeout = setTimeout(async () => {
-      if (!initialized) {
-        console.log("Fallback: manually getting session after 2 seconds");
-        try {
-          const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Error getting fallback session:", error);
-            clearLoadingTimeout();
-            setSession(null);
-            setUser(null);
-            setIsAdmin(false);
-            setAdminCheckCompleted(true);
-            setLoading(false);
-            setInitialized(true);
-            return;
-          }
-          
-          console.log("Fallback session retrieved:", currentSession ? "Session found" : "No session");
-          clearLoadingTimeout();
-          await processSession(currentSession, "fallback-manual");
-        } catch (error) {
-          console.error("Error during fallback session retrieval:", error);
-          clearLoadingTimeout();
-          setSession(null);
-          setUser(null);
-          setIsAdmin(false);
-          setAdminCheckCompleted(true);
-          setLoading(false);
-          setInitialized(true);
-        }
-      }
-    }, 2000);
+    initSession();
 
     return () => {
       console.log("Cleaning up AuthProvider...");
-      clearLoadingTimeout();
-      clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
   }, []);
 
+  // Update admin status when user changes
+  useEffect(() => {
+    const updateAdminStatus = async () => {
+      if (user && !loading) {
+        console.log("User state changed, updating admin status for:", user.id);
+        
+        try {
+          setAdminCheckCompleted(false);
+          const adminStatus = await checkAdminStatus(user.id);
+          setIsAdmin(adminStatus);
+        } finally {
+          setAdminCheckCompleted(true);
+        }
+      }
+    };
+    
+    updateAdminStatus();
+  }, [user, loading]);
+
   const signOut = async () => {
     try {
       console.log("Signing out...");
+      logSecurityEvent('Sign out initiated', { 
+        userId: user?.id,
+        timestamp: new Date().toISOString()
+      });
       
-      const { error } = await supabase.auth.signOut();
+      // Use timeout to prevent deadlocks
+      const { error } = await Promise.race([
+        supabase.auth.signOut(),
+        new Promise<{error: Error}>((_, reject) => 
+          setTimeout(() => reject({ error: new Error("Sign out timed out") }), 5000)
+        )
+      ]);
       
       if (error) {
-        console.error("Sign out failed:", error);
+        const errorDetails = handleError(error, 'Sign out');
+        logSecurityEvent('Sign out failed', errorDetails);
         throw error;
       }
       
-      // State will be cleared by the auth state change handler
-      console.log("Sign out complete");
-    } catch (error) {
-      console.error("Sign out exception:", error);
-      
-      // Force clear state even on error
+      // Clear all state
       setSession(null);
       setUser(null);
       setIsAdmin(false);
-      setAdminCheckCompleted(true);
-      setLoading(false);
+      setLastAdminCheck(0);
+      
+      console.log("Sign out complete");
+    } catch (error) {
+      const errorDetails = handleError(error, 'Sign out exception');
+      logSecurityEvent('Sign out exception', errorDetails);
+      
+      // Clear state even on error
+      setSession(null);
+      setUser(null);
+      setIsAdmin(false);
+      setLastAdminCheck(0);
     }
   };
 
@@ -207,14 +246,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     adminCheckCompleted,
     signOut,
   };
-
-  console.log("AuthProvider state:", { 
-    hasUser: !!user, 
-    isAdmin, 
-    loading, 
-    adminCheckCompleted,
-    initialized 
-  });
 
   return (
     <AuthContext.Provider value={value}>
