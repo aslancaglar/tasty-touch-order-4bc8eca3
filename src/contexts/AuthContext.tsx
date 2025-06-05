@@ -17,6 +17,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Admin check cache duration - 5 minutes
 const ADMIN_CHECK_CACHE_DURATION = 5 * 60 * 1000;
+// Timeout for admin check to prevent infinite loading
+const ADMIN_CHECK_TIMEOUT = 10000; // 10 seconds
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -53,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  // Function to check admin status with caching
+  // Function to check admin status with caching and timeout
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) {
       console.log("[AuthProvider] No userId provided for admin check");
@@ -71,11 +73,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("[AuthProvider] Checking admin status for user:", userId);
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', userId)
-        .single();
+      // Create a timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Admin check timeout')), ADMIN_CHECK_TIMEOUT);
+      });
+      
+      // Race the admin check against the timeout
+      const { data, error } = await Promise.race([
+        supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', userId)
+          .single(),
+        timeoutPromise
+      ]);
       
       if (error) {
         const errorDetails = handleError(error, 'Admin status check');
@@ -96,6 +107,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
   };
+
+  // Fallback timeout to ensure loading states don't hang indefinitely
+  useEffect(() => {
+    const fallbackTimeout = setTimeout(() => {
+      if (loading || !adminCheckCompleted) {
+        console.warn("[AuthProvider] Fallback timeout triggered - forcing completion of auth checks");
+        setAdminCheckCompleted(true);
+        setLoading(false);
+        // If we still don't have admin status, default to false
+        if (isAdmin === null) {
+          setIsAdmin(false);
+        }
+      }
+    }, 15000); // 15 second fallback
+
+    return () => clearTimeout(fallbackTimeout);
+  }, [loading, adminCheckCompleted, isAdmin]);
 
   useEffect(() => {
     console.log("[AuthProvider] Setting up AuthProvider...");
@@ -141,17 +169,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentSession?.user) {
         console.log("[AuthProvider] Checking admin status for authenticated user");
         setAdminCheckCompleted(false);
+        setLoading(true);
         try {
           const adminStatus = await checkAdminStatus(currentSession.user.id);
           setIsAdmin(adminStatus);
+          console.log("[AuthProvider] Admin check completed:", adminStatus);
         } catch (error) {
           console.error("[AuthProvider] Error checking admin status:", error);
           setIsAdmin(false);
         } finally {
           setAdminCheckCompleted(true);
           setLoading(false);
+          console.log("[AuthProvider] Auth state fully resolved");
         }
       } else {
+        console.log("[AuthProvider] No user session - setting defaults");
         setIsAdmin(false);
         setAdminCheckCompleted(true);
         setLoading(false);
@@ -193,22 +225,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // Check admin status
           setAdminCheckCompleted(false);
+          setLoading(true);
           try {
             const adminStatus = await checkAdminStatus(currentSession.user.id);
             setIsAdmin(adminStatus);
+            console.log("[AuthProvider] Initial admin check completed:", adminStatus);
           } catch (error) {
             console.error("[AuthProvider] Error checking admin status during init:", error);
             setIsAdmin(false);
           } finally {
             setAdminCheckCompleted(true);
+            setLoading(false);
+            console.log("[AuthProvider] Initial auth setup completed");
           }
         } else {
-          console.log("[AuthProvider] No session found");
+          console.log("[AuthProvider] No initial session found");
           setIsAdmin(false);
           setAdminCheckCompleted(true);
+          setLoading(false);
         }
-        
-        setLoading(false);
       } catch (error) {
         const errorDetails = handleError(error, 'Session initialization');
         logSecurityEvent('Session initialization failed', errorDetails);
@@ -282,6 +317,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     adminCheckCompleted,
     signOut,
   };
+
+  console.log("[AuthProvider] Current auth state:", { 
+    hasUser: !!user, 
+    loading, 
+    isAdmin, 
+    adminCheckCompleted 
+  });
 
   return (
     <AuthContext.Provider value={value}>
