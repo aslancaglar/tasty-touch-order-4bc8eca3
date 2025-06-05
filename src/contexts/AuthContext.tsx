@@ -16,8 +16,6 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Session security constants
-const SESSION_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
-const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 const ADMIN_CHECK_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -35,8 +33,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const now = Date.now();
     const sessionTime = new Date(currentSession.expires_at || 0).getTime();
     
-    // Only check if session is expired (with small buffer)
-    if (sessionTime <= now + 60000) { // 1 minute buffer instead of 5 minutes
+    // Only invalidate if session is actually expired (no buffer for refresh scenarios)
+    if (sessionTime <= now) {
       logSecurityEvent('Session expired', {
         expiresAt: currentSession.expires_at,
         timeToExpiry: sessionTime - now
@@ -89,17 +87,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log("Setting up AuthProvider with enhanced security...");
     
     const handleAuthChange = (event: string, currentSession: Session | null) => {
-      console.log("Auth state change event:", event);
+      console.log("Auth state change event:", event, currentSession ? "Session present" : "No session");
       
-      // Only validate session for existing sessions, not on sign-in events
-      if (currentSession && event !== 'SIGNED_IN' && !validateSession(currentSession)) {
-        logSecurityEvent('Invalid session detected', { event });
-        // Force logout for invalid sessions
-        supabase.auth.signOut();
-        return;
-      }
-      
-      // Update session and user state
+      // Update session and user state immediately
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
@@ -110,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         setLastAdminCheck(0);
         logSecurityEvent('User signed out', { timestamp: new Date().toISOString() });
+        return;
       }
       
       // Log sign-in events
@@ -118,6 +109,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           userId: currentSession.user.id,
           timestamp: new Date().toISOString()
         });
+      }
+      
+      // Only validate session for token refresh events, not initial loads
+      if (event === 'TOKEN_REFRESHED' && currentSession && !validateSession(currentSession)) {
+        logSecurityEvent('Invalid session after token refresh', { event });
+        supabase.auth.signOut();
+        return;
       }
     };
     
@@ -131,11 +129,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("Initial session check:", currentSession ? "Session found" : "No session");
         
         if (currentSession) {
-          // Validate the session only if it's older than a few seconds
-          const sessionAge = Date.now() - new Date(currentSession.expires_at || 0).getTime() + (currentSession.expires_in || 3600) * 1000;
-          
-          if (sessionAge > 10000 && !validateSession(currentSession)) { // Only validate if session is older than 10 seconds
-            logSecurityEvent('Invalid initial session', {});
+          // For initial session check, be more lenient - only validate if clearly expired
+          if (!validateSession(currentSession)) {
+            console.log("Initial session is expired, signing out");
             await supabase.auth.signOut();
             setSession(null);
             setUser(null);
