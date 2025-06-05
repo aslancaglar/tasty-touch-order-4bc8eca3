@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   // Simplified admin check
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(false);
       setAdminCheckCompleted(true);
       setLoading(false);
+      setInitialized(true);
       return;
     }
     
@@ -78,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setAdminCheckCompleted(true);
       setLoading(false);
+      setInitialized(true);
     }
   };
 
@@ -85,7 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log("Setting up AuthProvider...");
     
     let timeoutId: NodeJS.Timeout;
-    let isProcessingSession = false;
     
     // Set timeout protection to prevent infinite loading
     const setLoadingTimeout = () => {
@@ -94,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("Auth initialization timeout - forcing completion");
         setLoading(false);
         setAdminCheckCompleted(true);
+        setInitialized(true);
       }, 10000); // 10 second timeout
     };
     
@@ -106,73 +109,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setLoadingTimeout();
     
-    // Handle auth state changes (for sign in/out events)
+    // Single auth state change handler - this will handle both initial session and future changes
     const handleAuthChange = async (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event, currentSession ? "Session present" : "No session");
       
-      // Prevent processing the same session multiple times
-      if (isProcessingSession) {
-        console.log("Already processing session, skipping auth change");
-        return;
-      }
-      
       clearLoadingTimeout();
-      isProcessingSession = true;
       
       try {
         await processSession(currentSession, `auth-change-${event}`);
-      } finally {
-        isProcessingSession = false;
+      } catch (error) {
+        console.error("Error processing session in auth change:", error);
+        setSession(null);
+        setUser(null);
+        setIsAdmin(false);
+        setAdminCheckCompleted(true);
+        setLoading(false);
+        setInitialized(true);
       }
     };
     
-    // Set up auth state listener for future changes
+    // Set up auth state listener - this will automatically get initial session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
-    // Get initial session and process it directly
-    const initializeAuth = async () => {
-      try {
-        console.log("Getting initial session...");
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Error getting initial session:", error);
+    // Fallback: if no auth event fires within 2 seconds, manually get session
+    const fallbackTimeout = setTimeout(async () => {
+      if (!initialized) {
+        console.log("Fallback: manually getting session after 2 seconds");
+        try {
+          const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error("Error getting fallback session:", error);
+            clearLoadingTimeout();
+            setSession(null);
+            setUser(null);
+            setIsAdmin(false);
+            setAdminCheckCompleted(true);
+            setLoading(false);
+            setInitialized(true);
+            return;
+          }
+          
+          console.log("Fallback session retrieved:", currentSession ? "Session found" : "No session");
+          clearLoadingTimeout();
+          await processSession(currentSession, "fallback-manual");
+        } catch (error) {
+          console.error("Error during fallback session retrieval:", error);
           clearLoadingTimeout();
           setSession(null);
           setUser(null);
           setIsAdmin(false);
           setAdminCheckCompleted(true);
           setLoading(false);
-          return;
+          setInitialized(true);
         }
-        
-        console.log("Initial session retrieved:", currentSession ? "Session found" : "No session");
-        clearLoadingTimeout();
-        
-        // Process the initial session directly
-        isProcessingSession = true;
-        try {
-          await processSession(currentSession, "initial-load");
-        } finally {
-          isProcessingSession = false;
-        }
-      } catch (error) {
-        console.error("Error during auth initialization:", error);
-        clearLoadingTimeout();
-        setSession(null);
-        setUser(null);
-        setIsAdmin(false);
-        setAdminCheckCompleted(true);
-        setLoading(false);
       }
-    };
-
-    // Initialize authentication
-    initializeAuth();
+    }, 2000);
 
     return () => {
       console.log("Cleaning up AuthProvider...");
       clearLoadingTimeout();
+      clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -215,7 +212,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasUser: !!user, 
     isAdmin, 
     loading, 
-    adminCheckCompleted 
+    adminCheckCompleted,
+    initialized 
   });
 
   return (
