@@ -2,7 +2,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { logSecurityEvent, handleError } from "@/utils/error-handler";
 
 type AuthContextType = {
   session: Session | null;
@@ -49,10 +48,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Process session and update all related state
+  const processSession = async (currentSession: Session | null, source: string) => {
+    console.log(`Processing session from ${source}:`, currentSession ? "Session present" : "No session");
+    
+    // Update session and user state immediately
+    setSession(currentSession);
+    setUser(currentSession?.user ?? null);
+    
+    // Handle no session case
+    if (!currentSession?.user) {
+      console.log("No session/user, clearing admin state");
+      setIsAdmin(false);
+      setAdminCheckCompleted(true);
+      setLoading(false);
+      return;
+    }
+    
+    // Check admin status for authenticated users
+    try {
+      console.log("Checking admin status for user:", currentSession.user.id);
+      setAdminCheckCompleted(false);
+      const adminStatus = await checkAdminStatus(currentSession.user.id);
+      setIsAdmin(adminStatus);
+      console.log("Admin status set to:", adminStatus);
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      setIsAdmin(false);
+    } finally {
+      setAdminCheckCompleted(true);
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     console.log("Setting up AuthProvider...");
     
     let timeoutId: NodeJS.Timeout;
+    let isProcessingSession = false;
     
     // Set timeout protection to prevent infinite loading
     const setLoadingTimeout = () => {
@@ -73,83 +106,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setLoadingTimeout();
     
+    // Handle auth state changes (for sign in/out events)
     const handleAuthChange = async (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event, currentSession ? "Session present" : "No session");
       
-      // Clear any existing timeout
-      clearLoadingTimeout();
-      
-      // Update session and user state immediately
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      // Handle logout events or no session
-      if (event === 'SIGNED_OUT' || !currentSession) {
-        console.log("User signed out or no session, clearing admin state");
-        setIsAdmin(false);
-        setAdminCheckCompleted(true);
-        setLoading(false);
+      // Prevent processing the same session multiple times
+      if (isProcessingSession) {
+        console.log("Already processing session, skipping auth change");
         return;
       }
       
-      // Handle sign-in events - check admin status
-      if (currentSession?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        try {
-          console.log("Checking admin status for user:", currentSession.user.id);
-          setAdminCheckCompleted(false);
-          const adminStatus = await checkAdminStatus(currentSession.user.id);
-          setIsAdmin(adminStatus);
-          console.log("Admin status set to:", adminStatus);
-        } catch (error) {
-          console.error("Error checking admin status:", error);
-          setIsAdmin(false);
-        } finally {
-          setAdminCheckCompleted(true);
-          setLoading(false);
-        }
-      } else if (currentSession?.user) {
-        // Session exists but not a fresh sign-in, still need to check admin status
-        try {
-          console.log("Existing session found, checking admin status");
-          setAdminCheckCompleted(false);
-          const adminStatus = await checkAdminStatus(currentSession.user.id);
-          setIsAdmin(adminStatus);
-          console.log("Admin status set to:", adminStatus);
-        } catch (error) {
-          console.error("Error checking admin status:", error);
-          setIsAdmin(false);
-        } finally {
-          setAdminCheckCompleted(true);
-          setLoading(false);
-        }
-      } else {
-        // No user, complete loading
-        setIsAdmin(false);
-        setAdminCheckCompleted(true);
-        setLoading(false);
+      clearLoadingTimeout();
+      isProcessingSession = true;
+      
+      try {
+        await processSession(currentSession, `auth-change-${event}`);
+      } finally {
+        isProcessingSession = false;
       }
     };
     
-    // Set up auth state listener - this will handle both initial session and changes
+    // Set up auth state listener for future changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
-    // Get initial session - this will trigger the auth state change handler
-    supabase.auth.getSession().then(({ data: { session: currentSession }, error }) => {
-      if (error) {
-        console.error("Error getting initial session:", error);
+    // Get initial session and process it directly
+    const initializeAuth = async () => {
+      try {
+        console.log("Getting initial session...");
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting initial session:", error);
+          clearLoadingTimeout();
+          setSession(null);
+          setUser(null);
+          setIsAdmin(false);
+          setAdminCheckCompleted(true);
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Initial session retrieved:", currentSession ? "Session found" : "No session");
+        clearLoadingTimeout();
+        
+        // Process the initial session directly
+        isProcessingSession = true;
+        try {
+          await processSession(currentSession, "initial-load");
+        } finally {
+          isProcessingSession = false;
+        }
+      } catch (error) {
+        console.error("Error during auth initialization:", error);
         clearLoadingTimeout();
         setSession(null);
         setUser(null);
         setIsAdmin(false);
         setAdminCheckCompleted(true);
         setLoading(false);
-        return;
       }
-      
-      console.log("Initial session retrieved:", currentSession ? "Session found" : "No session");
-      // The auth state change handler will be triggered automatically
-      // so we don't need to manually call handleAuthChange here
-    });
+    };
+
+    // Initialize authentication
+    initializeAuth();
 
     return () => {
       console.log("Cleaning up AuthProvider...");
