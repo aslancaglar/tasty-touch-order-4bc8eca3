@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Session security constants
 const SESSION_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
-const ADMIN_CHECK_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (reduced from 5)
+const ADMIN_CHECK_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes cache
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
   const [lastAdminCheck, setLastAdminCheck] = useState<number>(0);
 
-  // Simplified session validation - just check if session exists and is not expired
+  // Simple session validation - just check if session exists and is not expired
   const validateSession = (currentSession: Session | null): boolean => {
     if (!currentSession) return false;
     
@@ -46,53 +46,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  // Use the new database function for admin check to avoid recursion
-  const checkAdminStatus = async (userId: string): Promise<boolean> => {
-    if (!userId) return false;
+  // Improved admin check with better caching
+  const checkAdminStatus = async (userId: string, forceRefresh: boolean = false): Promise<boolean> => {
+    if (!userId) {
+      console.log("No userId provided for admin check");
+      return false;
+    }
     
     const now = Date.now();
     
-    // Use cached result if recent enough
-    if (now - lastAdminCheck < ADMIN_CHECK_CACHE_DURATION && isAdmin !== null) {
+    // Use cached result if recent enough and not forcing refresh
+    if (!forceRefresh && now - lastAdminCheck < ADMIN_CHECK_CACHE_DURATION && isAdmin !== null) {
+      console.log("Using cached admin status:", isAdmin);
       return isAdmin;
     }
     
     try {
-      console.log("Checking admin status for user:", userId);
+      console.log("Performing fresh admin status check for user:", userId);
       
-      // Use the new is_admin_user function to avoid RLS recursion
+      // Use the database function to avoid RLS recursion
       const { data, error } = await supabase
         .rpc('is_admin_user', { user_id: userId });
       
       if (error) {
         const errorDetails = handleError(error, 'Admin status check');
         logSecurityEvent('Admin check failed', errorDetails);
+        console.error("Admin check failed:", error);
         return false;
       }
       
       const adminStatus = data || false;
       setLastAdminCheck(now);
       
-      console.log("Admin check result:", adminStatus);
+      console.log("Fresh admin check result:", adminStatus);
       return adminStatus;
     } catch (error) {
       const errorDetails = handleError(error, 'Admin status check exception');
       logSecurityEvent('Admin check exception', errorDetails);
+      console.error("Admin check exception:", error);
       return false;
     }
   };
 
   useEffect(() => {
-    console.log("Setting up AuthProvider with enhanced security...");
+    console.log("Setting up AuthProvider...");
     
-    const handleAuthChange = (event: string, currentSession: Session | null) => {
-      console.log("Auth state change event:", event);
+    const handleAuthChange = async (event: string, currentSession: Session | null) => {
+      console.log("Auth state change event:", event, currentSession ? "Session present" : "No session");
       
       // Only validate session for existing sessions, not on sign-in events
       if (currentSession && event !== 'SIGNED_IN' && !validateSession(currentSession)) {
         logSecurityEvent('Invalid session detected', { event });
+        console.log("Invalid session detected, signing out");
         // Force logout for invalid sessions
-        supabase.auth.signOut();
+        await supabase.auth.signOut();
         return;
       }
       
@@ -102,19 +109,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Handle logout events
       if (event === 'SIGNED_OUT') {
+        console.log("User signed out, clearing admin state");
         setIsAdmin(false);
         setAdminCheckCompleted(true);
         setLoading(false);
         setLastAdminCheck(0);
         logSecurityEvent('User signed out', { timestamp: new Date().toISOString() });
+        return;
       }
       
-      // Log sign-in events
-      if (event === 'SIGNED_IN' && currentSession?.user) {
-        logSecurityEvent('User signed in', { 
-          userId: currentSession.user.id,
-          timestamp: new Date().toISOString()
-        });
+      // Handle sign-in events - check admin status
+      if (currentSession?.user) {
+        if (event === 'SIGNED_IN') {
+          logSecurityEvent('User signed in', { 
+            userId: currentSession.user.id,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        try {
+          console.log("Checking admin status for user:", currentSession.user.id);
+          setAdminCheckCompleted(false);
+          const adminStatus = await checkAdminStatus(currentSession.user.id, true); // Force refresh on auth change
+          setIsAdmin(adminStatus);
+          console.log("Admin status set to:", adminStatus);
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+          setIsAdmin(false);
+        } finally {
+          setAdminCheckCompleted(true);
+          setLoading(false);
+        }
+      } else {
+        // No user, complete loading
+        setIsAdmin(false);
+        setAdminCheckCompleted(true);
+        setLoading(false);
       }
     };
     
@@ -124,6 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check for existing session
     const initSession = async () => {
       try {
+        console.log("Checking for existing session...");
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         console.log("Initial session check:", currentSession ? "Session found" : "No session");
         
@@ -131,22 +162,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Validate the session
           if (!validateSession(currentSession)) {
             logSecurityEvent('Invalid initial session', {});
+            console.log("Initial session invalid, signing out");
             await supabase.auth.signOut();
             setSession(null);
             setUser(null);
             setIsAdmin(false);
             setAdminCheckCompleted(true);
+            setLoading(false);
             return;
           }
           
           setSession(currentSession);
           setUser(currentSession.user);
           
-          // Check admin status using new non-recursive function
-          const adminStatus = await checkAdminStatus(currentSession.user.id);
-          setIsAdmin(adminStatus);
-          setAdminCheckCompleted(true);
+          try {
+            console.log("Checking admin status for existing session user:", currentSession.user.id);
+            const adminStatus = await checkAdminStatus(currentSession.user.id, true); // Force refresh on init
+            setIsAdmin(adminStatus);
+            console.log("Initial admin status set to:", adminStatus);
+          } catch (error) {
+            console.error("Error checking initial admin status:", error);
+            setIsAdmin(false);
+          } finally {
+            setAdminCheckCompleted(true);
+          }
         } else {
+          console.log("No initial session found");
           setIsAdmin(false);
           setAdminCheckCompleted(true);
         }
@@ -155,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         const errorDetails = handleError(error, 'Session initialization');
         logSecurityEvent('Session initialization failed', errorDetails);
+        console.error("Session initialization failed:", error);
         
         // Fail safely
         setSession(null);
@@ -171,26 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Cleaning up AuthProvider...");
       subscription.unsubscribe();
     };
-  }, []);
-
-  // Update admin status when user changes
-  useEffect(() => {
-    const updateAdminStatus = async () => {
-      if (user && !loading) {
-        console.log("User state changed, updating admin status for:", user.id);
-        
-        try {
-          setAdminCheckCompleted(false);
-          const adminStatus = await checkAdminStatus(user.id);
-          setIsAdmin(adminStatus);
-        } finally {
-          setAdminCheckCompleted(true);
-        }
-      }
-    };
-    
-    updateAdminStatus();
-  }, [user, loading]);
+  }, []); // Remove all dependencies to prevent re-runs
 
   const signOut = async () => {
     try {
@@ -211,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         const errorDetails = handleError(error, 'Sign out');
         logSecurityEvent('Sign out failed', errorDetails);
+        console.error("Sign out failed:", error);
         throw error;
       }
       
@@ -219,17 +243,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setIsAdmin(false);
       setLastAdminCheck(0);
+      setAdminCheckCompleted(true);
       
       console.log("Sign out complete");
     } catch (error) {
       const errorDetails = handleError(error, 'Sign out exception');
       logSecurityEvent('Sign out exception', errorDetails);
+      console.error("Sign out exception:", error);
       
       // Clear state even on error
       setSession(null);
       setUser(null);
       setIsAdmin(false);
       setLastAdminCheck(0);
+      setAdminCheckCompleted(true);
     }
   };
 
@@ -241,6 +268,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     adminCheckCompleted,
     signOut,
   };
+
+  console.log("AuthProvider state:", { 
+    hasUser: !!user, 
+    isAdmin, 
+    loading, 
+    adminCheckCompleted 
+  });
 
   return (
     <AuthContext.Provider value={value}>
