@@ -17,8 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Session security constants
 const SESSION_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
-const MAX_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-const ADMIN_CHECK_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const ADMIN_CHECK_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (reduced from 5)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -28,15 +27,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
   const [lastAdminCheck, setLastAdminCheck] = useState<number>(0);
 
-  // Simplified session validation - only check if session exists and is not expired
+  // Simplified session validation - just check if session exists and is not expired
   const validateSession = (currentSession: Session | null): boolean => {
     if (!currentSession) return false;
     
     const now = Date.now();
     const sessionTime = new Date(currentSession.expires_at || 0).getTime();
     
-    // Only check if session is expired (with small buffer)
-    if (sessionTime <= now + 60000) { // 1 minute buffer instead of 5 minutes
+    // Check if session is expired (with small buffer)
+    if (sessionTime <= now + 30000) { // 30 seconds buffer
       logSecurityEvent('Session expired', {
         expiresAt: currentSession.expires_at,
         timeToExpiry: sessionTime - now
@@ -47,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  // Function to check admin status with caching
+  // Use the new database function for admin check to avoid recursion
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
     
@@ -61,11 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Checking admin status for user:", userId);
       
+      // Use the new is_admin_user function to avoid RLS recursion
       const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', userId)
-        .single();
+        .rpc('is_admin_user', { user_id: userId });
       
       if (error) {
         const errorDetails = handleError(error, 'Admin status check');
@@ -73,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       
-      const adminStatus = data?.is_admin || false;
+      const adminStatus = data || false;
       setLastAdminCheck(now);
       
       console.log("Admin check result:", adminStatus);
@@ -131,10 +128,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("Initial session check:", currentSession ? "Session found" : "No session");
         
         if (currentSession) {
-          // Validate the session only if it's older than a few seconds
-          const sessionAge = Date.now() - new Date(currentSession.expires_at || 0).getTime() + (currentSession.expires_in || 3600) * 1000;
-          
-          if (sessionAge > 10000 && !validateSession(currentSession)) { // Only validate if session is older than 10 seconds
+          // Validate the session
+          if (!validateSession(currentSession)) {
             logSecurityEvent('Invalid initial session', {});
             await supabase.auth.signOut();
             setSession(null);
@@ -147,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(currentSession);
           setUser(currentSession.user);
           
-          // Check admin status
+          // Check admin status using new non-recursive function
           const adminStatus = await checkAdminStatus(currentSession.user.id);
           setIsAdmin(adminStatus);
           setAdminCheckCompleted(true);
