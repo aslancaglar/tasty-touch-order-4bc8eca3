@@ -52,14 +52,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log("Setting up AuthProvider...");
     
+    let timeoutId: NodeJS.Timeout;
+    
+    // Set timeout protection to prevent infinite loading
+    const setLoadingTimeout = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.warn("Auth initialization timeout - forcing completion");
+        setLoading(false);
+        setAdminCheckCompleted(true);
+      }, 10000); // 10 second timeout
+    };
+    
+    const clearLoadingTimeout = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = undefined;
+      }
+    };
+
+    setLoadingTimeout();
+    
     const handleAuthChange = async (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event, currentSession ? "Session present" : "No session");
+      
+      // Clear any existing timeout
+      clearLoadingTimeout();
       
       // Update session and user state immediately
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
-      // Handle logout events
+      // Handle logout events or no session
       if (event === 'SIGNED_OUT' || !currentSession) {
         console.log("User signed out or no session, clearing admin state");
         setIsAdmin(false);
@@ -69,9 +93,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       // Handle sign-in events - check admin status
-      if (currentSession?.user) {
+      if (currentSession?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         try {
           console.log("Checking admin status for user:", currentSession.user.id);
+          setAdminCheckCompleted(false);
+          const adminStatus = await checkAdminStatus(currentSession.user.id);
+          setIsAdmin(adminStatus);
+          console.log("Admin status set to:", adminStatus);
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+          setIsAdmin(false);
+        } finally {
+          setAdminCheckCompleted(true);
+          setLoading(false);
+        }
+      } else if (currentSession?.user) {
+        // Session exists but not a fresh sign-in, still need to check admin status
+        try {
+          console.log("Existing session found, checking admin status");
           setAdminCheckCompleted(false);
           const adminStatus = await checkAdminStatus(currentSession.user.id);
           setIsAdmin(adminStatus);
@@ -91,65 +130,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
     
-    // Set up auth state listener
+    // Set up auth state listener - this will handle both initial session and changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
-    // Check for existing session
-    const initSession = async () => {
-      try {
-        console.log("Checking for existing session...");
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Error getting session:", error);
-          setSession(null);
-          setUser(null);
-          setIsAdmin(false);
-          setAdminCheckCompleted(true);
-          setLoading(false);
-          return;
-        }
-        
-        console.log("Initial session check:", currentSession ? "Session found" : "No session");
-        
-        if (currentSession) {
-          setSession(currentSession);
-          setUser(currentSession.user);
-          
-          try {
-            console.log("Checking admin status for existing session user:", currentSession.user.id);
-            const adminStatus = await checkAdminStatus(currentSession.user.id);
-            setIsAdmin(adminStatus);
-            console.log("Initial admin status set to:", adminStatus);
-          } catch (error) {
-            console.error("Error checking initial admin status:", error);
-            setIsAdmin(false);
-          } finally {
-            setAdminCheckCompleted(true);
-          }
-        } else {
-          console.log("No initial session found");
-          setIsAdmin(false);
-          setAdminCheckCompleted(true);
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error("Session initialization failed:", error);
-        
-        // Fail safely
+    // Get initial session - this will trigger the auth state change handler
+    supabase.auth.getSession().then(({ data: { session: currentSession }, error }) => {
+      if (error) {
+        console.error("Error getting initial session:", error);
+        clearLoadingTimeout();
         setSession(null);
         setUser(null);
         setIsAdmin(false);
         setAdminCheckCompleted(true);
         setLoading(false);
+        return;
       }
-    };
-    
-    initSession();
+      
+      console.log("Initial session retrieved:", currentSession ? "Session found" : "No session");
+      // The auth state change handler will be triggered automatically
+      // so we don't need to manually call handleAuthChange here
+    });
 
     return () => {
       console.log("Cleaning up AuthProvider...");
+      clearLoadingTimeout();
       subscription.unsubscribe();
     };
   }, []);
@@ -165,21 +169,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       
-      // Clear all state
-      setSession(null);
-      setUser(null);
-      setIsAdmin(false);
-      setAdminCheckCompleted(true);
-      
+      // State will be cleared by the auth state change handler
       console.log("Sign out complete");
     } catch (error) {
       console.error("Sign out exception:", error);
       
-      // Clear state even on error
+      // Force clear state even on error
       setSession(null);
       setUser(null);
       setIsAdmin(false);
       setAdminCheckCompleted(true);
+      setLoading(false);
     }
   };
 
