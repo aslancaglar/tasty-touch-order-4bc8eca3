@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,8 +21,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
 
-  // Function to check admin status with better error handling
-  const checkAdminStatus = async (userId: string): Promise<boolean> => {
+  // Function to check admin status with retry logic
+  const checkAdminStatus = async (userId: string, retryCount = 0): Promise<boolean> => {
+    const maxRetries = 3;
+    
     if (!userId) {
       console.log("[AuthProvider] No userId provided for admin check");
       return false;
@@ -31,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     try {
       const startTime = Date.now();
-      console.log(`[AuthProvider] ${new Date().toISOString()} - Starting admin check for user:`, userId);
+      console.log(`[AuthProvider] ${new Date().toISOString()} - Starting admin check for user:`, userId, `(attempt ${retryCount + 1})`);
       
       // Use maybeSingle() to handle missing profiles gracefully
       const { data, error } = await supabase
@@ -45,9 +46,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) {
         console.error("[AuthProvider] Error checking admin status:", error);
+        
+        // Retry on network or temporary errors
+        if (retryCount < maxRetries && (error.message?.includes('network') || error.code === 'PGRST301')) {
+          console.log(`[AuthProvider] Retrying admin check (${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+          return checkAdminStatus(userId, retryCount + 1);
+        }
+        
         const errorDetails = handleError(error, 'Admin status check');
         logSecurityEvent('Admin check failed', errorDetails);
-        return false;
+        return false; // Default to non-admin on persistent errors
       }
       
       // If no profile exists, user is not admin
@@ -61,13 +70,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return adminStatus;
     } catch (error) {
       console.error("[AuthProvider] Exception in admin status check:", error);
+      
+      // Retry on exceptions
+      if (retryCount < maxRetries) {
+        console.log(`[AuthProvider] Retrying admin check after exception (${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return checkAdminStatus(userId, retryCount + 1);
+      }
+      
       const errorDetails = handleError(error, 'Admin status check exception');
       logSecurityEvent('Admin check exception', errorDetails);
-      return false;
+      return false; // Default to non-admin on persistent exceptions
     }
   };
 
-  // FIXED: Removed problematic dependencies that caused infinite loop
   useEffect(() => {
     console.log(`[AuthProvider] ${new Date().toISOString()} - Setting up AuthProvider...`);
     
@@ -98,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch (error) {
             console.error(`[AuthProvider] ${new Date().toISOString()} - Error in admin status check:`, error);
             if (isComponentMounted) {
+              // Set default values but don't clear the user session
               setIsAdmin(false);
               setAdminCheckCompleted(true);
             }
@@ -151,30 +168,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const errorDetails = handleError(error, 'Session initialization');
         logSecurityEvent('Session initialization failed', errorDetails);
         
-        // Fail safely
+        // Fail safely - don't clear user session, just complete loading
         if (isComponentMounted) {
-          setSession(null);
-          setUser(null);
-          setIsAdmin(false);
-          setAdminCheckCompleted(true);
           setLoading(false);
+          if (!adminCheckCompleted) {
+            // If admin check hasn't completed, default to non-admin but don't clear session
+            if (user && isAdmin === null) {
+              console.log(`[AuthProvider] Setting default admin status to false due to timeout`);
+              setIsAdmin(false);
+            }
+            setAdminCheckCompleted(true);
+          }
         }
       }
     };
     
     initSession();
 
-    // Increased timeout and better logging
+    // FIXED: Improved timeout handling - don't clear user session
     const timeoutId = setTimeout(() => {
       if (isComponentMounted && loading) {
-        console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth initialization timeout (10s), completing with current state`);
+        console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth initialization timeout (15s), completing with current state`);
         console.log(`[AuthProvider] Current state - Session:`, !!session, "User:", !!user, "IsAdmin:", isAdmin);
+        
+        // Complete loading but preserve existing session/user state
         setLoading(false);
         if (!adminCheckCompleted) {
+          // If admin check hasn't completed, default to non-admin but don't clear session
+          if (user && isAdmin === null) {
+            console.log(`[AuthProvider] Setting default admin status to false due to timeout`);
+            setIsAdmin(false);
+          }
           setAdminCheckCompleted(true);
         }
       }
-    }, 10000); // Increased from 3 seconds to 10 seconds
+    }, 15000); // Increased timeout to 15 seconds
 
     return () => {
       console.log(`[AuthProvider] ${new Date().toISOString()} - Cleaning up AuthProvider...`);
@@ -182,7 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
       clearTimeout(timeoutId);
     };
-  }, []); // FIXED: Empty dependency array to prevent infinite loop
+  }, []);
 
   const signOut = async () => {
     try {

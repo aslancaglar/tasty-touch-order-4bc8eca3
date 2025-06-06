@@ -1,4 +1,3 @@
-
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -8,7 +7,6 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
-  // Added property to allow admins to still access owner routes when needed
   allowAdminAccess?: boolean;
 }
 
@@ -38,18 +36,29 @@ const ProtectedRoute = ({
     allowAdminAccess
   });
 
-  // Show loading spinner while authentication is being checked
-  if (loading || !adminCheckCompleted) {
-    const loadingMessage = loading ? "Verifying authentication..." : "Checking permissions...";
-    console.log(`[ProtectedRoute] ${new Date().toISOString()} - Showing loading state:`, loadingMessage);
+  // IMPROVED: Better loading state handling
+  if (loading) {
+    console.log(`[ProtectedRoute] ${new Date().toISOString()} - Showing loading state for auth loading`);
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="mt-4 text-gray-600">{loadingMessage}</p>
-          <p className="mt-2 text-sm text-gray-500">
-            {loading ? "Please wait..." : "Verifying your access level..."}
-          </p>
+          <p className="mt-4 text-gray-600">Verifying authentication...</p>
+          <p className="mt-2 text-sm text-gray-500">Please wait...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // IMPROVED: Separate check for admin verification when user exists and admin check is required
+  if (user && requireAdmin && !adminCheckCompleted) {
+    console.log(`[ProtectedRoute] ${new Date().toISOString()} - Showing loading state for admin verification`);
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
+          <p className="mt-4 text-gray-600">Verifying admin permissions...</p>
+          <p className="mt-2 text-sm text-gray-500">Checking your access level...</p>
         </div>
       </div>
     );
@@ -78,34 +87,22 @@ const ProtectedRoute = ({
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
+  // IMPROVED: Handle admin status more robustly
+  const finalAdminStatus = adminCheckCompleted ? (isAdmin ?? false) : isAdmin;
+
   // Handle admin-required routes for non-admin users
-  if (requireAdmin && isAdmin === false) {
+  if (requireAdmin && finalAdminStatus === false) {
     console.log(`[ProtectedRoute] ${new Date().toISOString()} - Access denied - User is not an admin, redirecting to /owner`);
     return <Navigate to="/owner" replace />;
   }
 
-  // Handle admin-required routes when admin status is still null (shouldn't happen now)
-  if (requireAdmin && isAdmin === null) {
-    console.log(`[ProtectedRoute] ${new Date().toISOString()} - Admin status null, showing loading`);
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="mt-4 text-gray-600">Verifying admin permissions...</p>
-          <p className="mt-2 text-sm text-gray-500">Please wait while we check your access level...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Handle owner routes for admin users - only redirect if specifically 
-  // requested to not allow admin access and we're on the specific owner path
-  if (isAdmin && location.pathname === '/owner' && !allowAdminAccess) {
+  // Handle owner routes for admin users
+  if (finalAdminStatus && location.pathname === '/owner' && !allowAdminAccess) {
     console.log(`[ProtectedRoute] ${new Date().toISOString()} - Admin user detected on owner route, redirecting to admin dashboard`);
     return <Navigate to="/" replace />;
   }
 
-  console.log(`[ProtectedRoute] ${new Date().toISOString()} - Access granted`, { requireAdmin, isAdmin });
+  console.log(`[ProtectedRoute] ${new Date().toISOString()} - Access granted`, { requireAdmin, isAdmin: finalAdminStatus });
   return <>{children}</>;
 };
 
