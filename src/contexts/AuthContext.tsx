@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logSecurityEvent, handleError } from "@/utils/error-handler";
@@ -21,6 +21,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
+  
+  // Add refs to track state and prevent infinite loops
+  const initializationRef = useRef(false);
+  const adminCheckAttempts = useRef(0);
+  const maxAdminCheckAttempts = 3;
 
   // Function to check admin status with retry logic
   const checkAdminStatus = async (userId: string, retryCount = 0): Promise<boolean> => {
@@ -31,9 +36,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
     
+    // Prevent excessive admin check attempts
+    if (adminCheckAttempts.current >= maxAdminCheckAttempts) {
+      console.warn("[AuthProvider] Max admin check attempts reached, defaulting to false");
+      return false;
+    }
+    
+    adminCheckAttempts.current++;
+    
     try {
       const startTime = Date.now();
-      console.log(`[AuthProvider] ${new Date().toISOString()} - Starting admin check for user:`, userId, `(attempt ${retryCount + 1})`);
+      console.log(`[AuthProvider] ${new Date().toISOString()} - Starting admin check for user:`, userId, `(attempt ${retryCount + 1}, total attempts: ${adminCheckAttempts.current})`);
       
       // Use maybeSingle() to handle missing profiles gracefully
       const { data, error } = await supabase
@@ -88,7 +101,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log(`[AuthProvider] ${new Date().toISOString()} - Setting up AuthProvider...`);
     
+    // Prevent multiple initializations
+    if (initializationRef.current) {
+      console.log("[AuthProvider] Already initialized, skipping");
+      return;
+    }
+    
+    initializationRef.current = true;
     let isComponentMounted = true;
+    let timeoutId: NodeJS.Timeout;
     
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -96,6 +117,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!isComponentMounted) return;
         
         console.log(`[AuthProvider] ${new Date().toISOString()} - Auth state change:`, event, currentSession ? "Session present" : "No session");
+        
+        // Clear any existing timeout since we have a definitive auth state
+        if (timeoutId) {
+          console.log(`[AuthProvider] ${new Date().toISOString()} - Clearing timeout due to auth state change`);
+          clearTimeout(timeoutId);
+        }
         
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
@@ -108,17 +135,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const adminStatus = await checkAdminStatus(currentSession.user.id);
             if (isComponentMounted) {
               console.log(`[AuthProvider] ${new Date().toISOString()} - Setting admin status:`, adminStatus, "and marking check as completed");
-              // FIXED: Always set a definitive boolean value, never null
               setIsAdmin(adminStatus);
               setAdminCheckCompleted(true);
+              setLoading(false); // Complete loading after admin check
             }
           } catch (error) {
             console.error(`[AuthProvider] ${new Date().toISOString()} - Error in admin status check:`, error);
             if (isComponentMounted) {
-              // FIXED: Always set a definitive boolean value on error
               console.log(`[AuthProvider] ${new Date().toISOString()} - Setting admin status to false due to error and marking check as completed`);
               setIsAdmin(false);
               setAdminCheckCompleted(true);
+              setLoading(false); // Complete loading even on error
             }
           }
           
@@ -133,6 +160,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (isComponentMounted) {
             setIsAdmin(null);
             setAdminCheckCompleted(false);
+            setLoading(false); // Complete loading for logged out state
+            adminCheckAttempts.current = 0; // Reset attempts counter
           }
           
           if (event === 'SIGNED_OUT') {
@@ -141,12 +170,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               timestamp: new Date().toISOString()
             });
           }
-        }
-        
-        // Complete initialization after processing auth state
-        if (isComponentMounted) {
-          console.log(`[AuthProvider] ${new Date().toISOString()} - Completing auth initialization`);
-          setLoading(false);
         }
       }
     );
@@ -179,30 +202,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     initSession();
 
-    // FIXED: Improved timeout handling - ensure we always set definitive values
-    const timeoutId = setTimeout(() => {
-      if (isComponentMounted && loading) {
-        console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth initialization timeout (15s), completing with current state`);
-        console.log(`[AuthProvider] Current state - Session:`, !!session, "User:", !!user, "IsAdmin:", isAdmin);
-        
-        // Complete loading but preserve existing session/user state
-        setLoading(false);
-        // FIXED: If we have a user but admin check hasn't completed, set default values
-        if (user && !adminCheckCompleted) {
-          console.log(`[AuthProvider] Setting admin status to false due to timeout and marking check as completed`);
-          setIsAdmin(false);
-          setAdminCheckCompleted(true);
+    // FIXED: Improved timeout handling with functional state updates to avoid stale closures
+    timeoutId = setTimeout(() => {
+      if (!isComponentMounted) return;
+      
+      console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth initialization timeout (10s)`);
+      
+      // Use functional state updates to get current state values
+      setLoading(currentLoading => {
+        if (currentLoading) {
+          console.log(`[AuthProvider] ${new Date().toISOString()} - Timeout: Completing loading`);
+          return false;
         }
-      }
-    }, 15000); // Reduced timeout to 15 seconds
+        return currentLoading;
+      });
+      
+      // Only set admin defaults if we have a user but no completed admin check
+      setUser(currentUser => {
+        if (currentUser) {
+          setAdminCheckCompleted(currentAdminCheckCompleted => {
+            if (!currentAdminCheckCompleted) {
+              console.log(`[AuthProvider] ${new Date().toISOString()} - Timeout: Setting admin status to false and marking check as completed`);
+              setIsAdmin(false);
+              return true;
+            }
+            return currentAdminCheckCompleted;
+          });
+        }
+        return currentUser;
+      });
+    }, 10000); // Reduced timeout to 10 seconds
 
     return () => {
       console.log(`[AuthProvider] ${new Date().toISOString()} - Cleaning up AuthProvider...`);
       isComponentMounted = false;
       subscription.unsubscribe();
-      clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      initializationRef.current = false; // Reset for potential remount
     };
-  }, []);
+  }, []); // Empty dependency array to run only once
 
   const signOut = async () => {
     try {
