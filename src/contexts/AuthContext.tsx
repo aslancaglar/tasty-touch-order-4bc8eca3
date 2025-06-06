@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
 
   // Function to check admin status with retry logic
-  const checkAdminStatus = async (userId: string, retryCount = 0): Promise<boolean> => {
+  const checkAdminStatus = async (userId: string, retryCount = 0): Promise<boolean | null> => {
     const maxRetries = 3;
     
     if (!userId) {
@@ -102,19 +102,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (currentSession?.user) {
           // User is logged in, check admin status
           console.log(`[AuthProvider] ${new Date().toISOString()} - User logged in, checking admin status`);
-          setAdminCheckCompleted(false);
+          // FIXED: Don't set adminCheckCompleted to false immediately - wait for actual result
           
           try {
             const adminStatus = await checkAdminStatus(currentSession.user.id);
             if (isComponentMounted) {
               console.log(`[AuthProvider] ${new Date().toISOString()} - Setting admin status:`, adminStatus);
+              // FIXED: Only set adminCheckCompleted to true when we have a definitive result
               setIsAdmin(adminStatus);
               setAdminCheckCompleted(true);
             }
           } catch (error) {
             console.error(`[AuthProvider] ${new Date().toISOString()} - Error in admin status check:`, error);
             if (isComponentMounted) {
-              // Set default values but don't clear the user session
+              // FIXED: Set definitive values when check fails - don't leave admin status as null
               setIsAdmin(false);
               setAdminCheckCompleted(true);
             }
@@ -129,8 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // User is logged out
           console.log(`[AuthProvider] ${new Date().toISOString()} - User logged out, resetting admin status`);
           if (isComponentMounted) {
-            setIsAdmin(false);
-            setAdminCheckCompleted(true);
+            setIsAdmin(null);
+            setAdminCheckCompleted(false);
           }
           
           if (event === 'SIGNED_OUT') {
@@ -161,48 +162,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!currentSession && isComponentMounted) {
           console.log(`[AuthProvider] ${new Date().toISOString()} - No existing session, completing initialization`);
           setLoading(false);
-          setAdminCheckCompleted(true);
+          setAdminCheckCompleted(false); // FIXED: No admin check needed if no user
         }
       } catch (error) {
         console.error(`[AuthProvider] ${new Date().toISOString()} - Error in session initialization:`, error);
         const errorDetails = handleError(error, 'Session initialization');
         logSecurityEvent('Session initialization failed', errorDetails);
         
-        // Fail safely - don't clear user session, just complete loading
+        // Fail safely - complete loading but preserve any existing session
         if (isComponentMounted) {
           setLoading(false);
-          if (!adminCheckCompleted) {
-            // If admin check hasn't completed, default to non-admin but don't clear session
-            if (user && isAdmin === null) {
-              console.log(`[AuthProvider] Setting default admin status to false due to timeout`);
-              setIsAdmin(false);
-            }
-            setAdminCheckCompleted(true);
-          }
         }
       }
     };
     
     initSession();
 
-    // FIXED: Improved timeout handling - don't clear user session
+    // FIXED: Improved timeout handling - be more conservative about clearing state
     const timeoutId = setTimeout(() => {
       if (isComponentMounted && loading) {
-        console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth initialization timeout (15s), completing with current state`);
+        console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth initialization timeout (20s), completing with current state`);
         console.log(`[AuthProvider] Current state - Session:`, !!session, "User:", !!user, "IsAdmin:", isAdmin);
         
         // Complete loading but preserve existing session/user state
         setLoading(false);
-        if (!adminCheckCompleted) {
-          // If admin check hasn't completed, default to non-admin but don't clear session
-          if (user && isAdmin === null) {
+        // FIXED: Only set admin check completed if we actually have a user
+        if (user) {
+          if (isAdmin === null) {
             console.log(`[AuthProvider] Setting default admin status to false due to timeout`);
             setIsAdmin(false);
           }
           setAdminCheckCompleted(true);
         }
       }
-    }, 15000); // Increased timeout to 15 seconds
+    }, 20000); // Increased timeout to 20 seconds for slower connections
 
     return () => {
       console.log(`[AuthProvider] ${new Date().toISOString()} - Cleaning up AuthProvider...`);

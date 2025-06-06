@@ -39,29 +39,15 @@ const Index = () => {
 
   console.log(`[Index] ${new Date().toISOString()} - Render - Loading:`, loading, "AdminCheckCompleted:", adminCheckCompleted, "User:", !!user, "IsAdmin:", isAdmin);
 
-  // IMPROVED: Better loading state handling
+  // Show loading for initial auth check
   if (loading) {
     console.log(`[Index] ${new Date().toISOString()} - Showing loading spinner for auth loading`);
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading authentication...</p>
+          <p className="mt-4 text-gray-600">Verifying authentication...</p>
           <p className="mt-2 text-sm text-gray-500">Please wait while we verify your session...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // IMPROVED: Separate check for admin verification when user exists
-  if (user && !adminCheckCompleted) {
-    console.log(`[Index] ${new Date().toISOString()} - Showing loading spinner for admin check`);
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="mt-4 text-gray-600">Verifying permissions...</p>
-          <p className="mt-2 text-sm text-gray-500">Checking your access level...</p>
         </div>
       </div>
     );
@@ -73,19 +59,43 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  // IMPROVED: Handle admin status more robustly
-  // If adminCheckCompleted is true but isAdmin is still null, default to false
-  const finalAdminStatus = adminCheckCompleted ? (isAdmin ?? false) : isAdmin;
+  // FIXED: Better handling of admin check state - wait for definitive result
+  if (!adminCheckCompleted) {
+    console.log(`[Index] ${new Date().toISOString()} - Showing loading spinner for admin check`);
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
+          <p className="mt-4 text-gray-600">Verifying admin permissions...</p>
+          <p className="mt-2 text-sm text-gray-500">Checking your access level...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // FIXED: Now we know adminCheckCompleted is true, so isAdmin should be boolean, not null
   // If user is not an admin, redirect to owner page
-  if (finalAdminStatus === false) {
-    console.log(`[Index] ${new Date().toISOString()} - User is not an admin, redirecting to owner page`);
+  if (isAdmin === false) {
+    console.log(`[Index] ${new Date().toISOString()} - User is confirmed non-admin, redirecting to owner page`);
     return <Navigate to="/owner" replace />;
   }
 
-  // User is admin, render Dashboard
-  console.log(`[Index] ${new Date().toISOString()} - User is admin, rendering Dashboard`);
-  return <Dashboard />;
+  // FIXED: Only render dashboard if user is confirmed admin
+  if (isAdmin === true) {
+    console.log(`[Index] ${new Date().toISOString()} - User is confirmed admin, rendering Dashboard`);
+    return <Dashboard />;
+  }
+
+  // This should not happen, but add safety fallback
+  console.warn(`[Index] ${new Date().toISOString()} - Unexpected state: adminCheckCompleted=${adminCheckCompleted}, isAdmin=${isAdmin}`);
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
+        <p className="mt-4 text-gray-600">Processing access permissions...</p>
+      </div>
+    </div>
+  );
 };
 
 export default Index;

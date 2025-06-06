@@ -1,3 +1,4 @@
+
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -36,7 +37,7 @@ const ProtectedRoute = ({
     allowAdminAccess
   });
 
-  // IMPROVED: Better loading state handling
+  // Show loading for initial auth check
   if (loading) {
     console.log(`[ProtectedRoute] ${new Date().toISOString()} - Showing loading state for auth loading`);
     return (
@@ -50,8 +51,15 @@ const ProtectedRoute = ({
     );
   }
 
-  // IMPROVED: Separate check for admin verification when user exists and admin check is required
-  if (user && requireAdmin && !adminCheckCompleted) {
+  // Redirect to login if not authenticated
+  if (!user) {
+    console.log(`[ProtectedRoute] ${new Date().toISOString()} - No user, redirecting to /auth`);
+    // Save the location they were trying to access for redirect after login
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // FIXED: Wait for admin check to complete when admin privileges are required
+  if (requireAdmin && !adminCheckCompleted) {
     console.log(`[ProtectedRoute] ${new Date().toISOString()} - Showing loading state for admin verification`);
     return (
       <div className="flex h-screen items-center justify-center">
@@ -80,29 +88,20 @@ const ProtectedRoute = ({
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!user) {
-    console.log(`[ProtectedRoute] ${new Date().toISOString()} - No user, redirecting to /auth`);
-    // Save the location they were trying to access for redirect after login
-    return <Navigate to="/auth" state={{ from: location }} replace />;
-  }
-
-  // IMPROVED: Handle admin status more robustly
-  const finalAdminStatus = adminCheckCompleted ? (isAdmin ?? false) : isAdmin;
-
+  // FIXED: Now that adminCheckCompleted is true, isAdmin should be boolean
   // Handle admin-required routes for non-admin users
-  if (requireAdmin && finalAdminStatus === false) {
-    console.log(`[ProtectedRoute] ${new Date().toISOString()} - Access denied - User is not an admin, redirecting to /owner`);
+  if (requireAdmin && isAdmin === false) {
+    console.log(`[ProtectedRoute] ${new Date().toISOString()} - Access denied - User is confirmed non-admin, redirecting to /owner`);
     return <Navigate to="/owner" replace />;
   }
 
   // Handle owner routes for admin users
-  if (finalAdminStatus && location.pathname === '/owner' && !allowAdminAccess) {
+  if (isAdmin === true && location.pathname === '/owner' && !allowAdminAccess) {
     console.log(`[ProtectedRoute] ${new Date().toISOString()} - Admin user detected on owner route, redirecting to admin dashboard`);
     return <Navigate to="/" replace />;
   }
 
-  console.log(`[ProtectedRoute] ${new Date().toISOString()} - Access granted`, { requireAdmin, isAdmin: finalAdminStatus });
+  console.log(`[ProtectedRoute] ${new Date().toISOString()} - Access granted`, { requireAdmin, isAdmin });
   return <>{children}</>;
 };
 
