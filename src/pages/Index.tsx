@@ -19,7 +19,7 @@ const Index = () => {
     
     // Make sure admin caching is disabled
     setCachingEnabledForAdmin(false);
-    console.log("[AdminDashboard] Disabled caching for admin routes");
+    console.log(`[Index] ${new Date().toISOString()} - Disabled caching for admin routes`);
     
     // Warn if offline - admin features require connectivity
     if (!online) {
@@ -37,17 +37,19 @@ const Index = () => {
     };
   }, [toast]);
 
-  console.log("Index render - Loading:", loading, "AdminCheckCompleted:", adminCheckCompleted, "User:", !!user, "IsAdmin:", isAdmin);
+  console.log(`[Index] ${new Date().toISOString()} - Render - Loading:`, loading, "AdminCheckCompleted:", adminCheckCompleted, "User:", !!user, "IsAdmin:", isAdmin);
 
   // Display loading state until both authentication and admin check are complete
   if (loading || !adminCheckCompleted) {
-    console.log("Index: Showing loading spinner");
+    const loadingMessage = loading ? "Loading authentication..." : "Verifying permissions...";
+    console.log(`[Index] ${new Date().toISOString()} - Showing loading spinner:`, loadingMessage);
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="mt-4 text-gray-600">
-            {loading ? "Loading authentication..." : "Verifying permissions..."}
+          <p className="mt-4 text-gray-600">{loadingMessage}</p>
+          <p className="mt-2 text-sm text-gray-500">
+            {loading ? "Establishing connection..." : "Checking your permissions..."}
           </p>
         </div>
       </div>
@@ -56,31 +58,32 @@ const Index = () => {
 
   // If no user is authenticated, redirect to auth page
   if (!user) {
-    console.log("Index: No authenticated user, redirecting to auth");
+    console.log(`[Index] ${new Date().toISOString()} - No authenticated user, redirecting to auth`);
     return <Navigate to="/auth" replace />;
   }
 
   // If user is not an admin, redirect to owner page
   if (isAdmin === false) {
-    console.log("Index: User is not an admin, redirecting to owner page");
+    console.log(`[Index] ${new Date().toISOString()} - User is not an admin, redirecting to owner page`);
     return <Navigate to="/owner" replace />;
   }
 
   // If admin status is still null (shouldn't happen with improved logic)
   if (isAdmin === null) {
-    console.log("Index: Admin status is null, showing loading");
+    console.log(`[Index] ${new Date().toISOString()} - Admin status is null, showing loading`);
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
           <p className="mt-4 text-gray-600">Checking permissions...</p>
+          <p className="mt-2 text-sm text-gray-500">Please wait while we verify your access level...</p>
         </div>
       </div>
     );
   }
 
   // User is admin, render Dashboard
-  console.log("Index: User is admin, rendering Dashboard");
+  console.log(`[Index] ${new Date().toISOString()} - User is admin, rendering Dashboard`);
   return <Dashboard />;
 };
 
