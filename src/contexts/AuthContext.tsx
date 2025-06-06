@@ -22,84 +22,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
   
-  // Add refs to track state and prevent infinite loops
+  // Prevent multiple initializations and infinite loops
   const initializationRef = useRef(false);
-  const adminCheckAttempts = useRef(0);
-  const maxAdminCheckAttempts = 3;
+  const adminCheckRef = useRef<Map<string, boolean>>(new Map());
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Function to check admin status with retry logic
-  const checkAdminStatus = async (userId: string, retryCount = 0): Promise<boolean> => {
-    const maxRetries = 3;
-    
-    if (!userId) {
-      console.log("[AuthProvider] No userId provided for admin check");
-      return false;
+  // Function to check admin status with caching
+  const checkAdminStatus = async (userId: string): Promise<boolean> => {
+    // Check cache first
+    if (adminCheckRef.current.has(userId)) {
+      const cachedResult = adminCheckRef.current.get(userId)!;
+      console.log(`[AuthProvider] ${new Date().toISOString()} - Using cached admin status:`, cachedResult);
+      return cachedResult;
     }
-    
-    // Prevent excessive admin check attempts
-    if (adminCheckAttempts.current >= maxAdminCheckAttempts) {
-      console.warn("[AuthProvider] Max admin check attempts reached, defaulting to false");
-      return false;
-    }
-    
-    adminCheckAttempts.current++;
-    
+
     try {
-      const startTime = Date.now();
-      console.log(`[AuthProvider] ${new Date().toISOString()} - Starting admin check for user:`, userId, `(attempt ${retryCount + 1}, total attempts: ${adminCheckAttempts.current})`);
+      console.log(`[AuthProvider] ${new Date().toISOString()} - Checking admin status for user:`, userId);
       
-      // Use maybeSingle() to handle missing profiles gracefully
       const { data, error } = await supabase
         .from('profiles')
         .select('is_admin')
         .eq('id', userId)
         .maybeSingle();
       
-      const duration = Date.now() - startTime;
-      console.log(`[AuthProvider] ${new Date().toISOString()} - Admin check completed in ${duration}ms`);
-      
       if (error) {
         console.error("[AuthProvider] Error checking admin status:", error);
-        
-        // Retry on network or temporary errors
-        if (retryCount < maxRetries && (error.message?.includes('network') || error.code === 'PGRST301')) {
-          console.log(`[AuthProvider] Retrying admin check (${retryCount + 1}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
-          return checkAdminStatus(userId, retryCount + 1);
-        }
-        
         const errorDetails = handleError(error, 'Admin status check');
         logSecurityEvent('Admin check failed', errorDetails);
-        return false; // Default to non-admin on persistent errors
-      }
-      
-      // If no profile exists, user is not admin
-      if (!data) {
-        console.log("[AuthProvider] No profile found for user, defaulting to non-admin");
+        adminCheckRef.current.set(userId, false);
         return false;
       }
       
-      const adminStatus = data.is_admin || false;
+      const adminStatus = data?.is_admin || false;
       console.log(`[AuthProvider] ${new Date().toISOString()} - Admin check result:`, adminStatus);
+      
+      // Cache the result
+      adminCheckRef.current.set(userId, adminStatus);
       return adminStatus;
     } catch (error) {
       console.error("[AuthProvider] Exception in admin status check:", error);
-      
-      // Retry on exceptions
-      if (retryCount < maxRetries) {
-        console.log(`[AuthProvider] Retrying admin check after exception (${retryCount + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return checkAdminStatus(userId, retryCount + 1);
-      }
-      
       const errorDetails = handleError(error, 'Admin status check exception');
       logSecurityEvent('Admin check exception', errorDetails);
-      return false; // Default to non-admin on persistent exceptions
+      adminCheckRef.current.set(userId, false);
+      return false;
     }
   };
 
   useEffect(() => {
-    console.log(`[AuthProvider] ${new Date().toISOString()} - Setting up AuthProvider...`);
+    console.log(`[AuthProvider] ${new Date().toISOString()} - Initializing AuthProvider...`);
     
     // Prevent multiple initializations
     if (initializationRef.current) {
@@ -108,141 +78,128 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     initializationRef.current = true;
-    let isComponentMounted = true;
-    let timeoutId: NodeJS.Timeout;
-    
-    // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        if (!isComponentMounted) return;
-        
-        console.log(`[AuthProvider] ${new Date().toISOString()} - Auth state change:`, event, currentSession ? "Session present" : "No session");
-        
-        // Clear any existing timeout since we have a definitive auth state
-        if (timeoutId) {
-          console.log(`[AuthProvider] ${new Date().toISOString()} - Clearing timeout due to auth state change`);
-          clearTimeout(timeoutId);
-        }
-        
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        
-        if (currentSession?.user) {
-          // User is logged in, check admin status
-          console.log(`[AuthProvider] ${new Date().toISOString()} - User logged in, checking admin status`);
-          
-          try {
-            const adminStatus = await checkAdminStatus(currentSession.user.id);
-            if (isComponentMounted) {
-              console.log(`[AuthProvider] ${new Date().toISOString()} - Setting admin status:`, adminStatus, "and marking check as completed");
-              setIsAdmin(adminStatus);
-              setAdminCheckCompleted(true);
-              setLoading(false); // Complete loading after admin check
-            }
-          } catch (error) {
-            console.error(`[AuthProvider] ${new Date().toISOString()} - Error in admin status check:`, error);
-            if (isComponentMounted) {
-              console.log(`[AuthProvider] ${new Date().toISOString()} - Setting admin status to false due to error and marking check as completed`);
-              setIsAdmin(false);
-              setAdminCheckCompleted(true);
-              setLoading(false); // Complete loading even on error
-            }
-          }
-          
-          logSecurityEvent('Auth state updated', { 
-            event,
-            userId: currentSession.user.id,
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          // User is logged out
-          console.log(`[AuthProvider] ${new Date().toISOString()} - User logged out, resetting admin status`);
-          if (isComponentMounted) {
-            setIsAdmin(null);
-            setAdminCheckCompleted(false);
-            setLoading(false); // Complete loading for logged out state
-            adminCheckAttempts.current = 0; // Reset attempts counter
-          }
-          
-          if (event === 'SIGNED_OUT') {
-            logSecurityEvent('User signed out', { 
-              event,
-              timestamp: new Date().toISOString()
-            });
-          }
-        }
-      }
-    );
+    let isMounted = true;
 
-    // Check for existing session after setting up the listener
-    const initSession = async () => {
+    const initializeAuth = async () => {
       try {
-        console.log(`[AuthProvider] ${new Date().toISOString()} - Checking for existing session...`);
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        console.log(`[AuthProvider] ${new Date().toISOString()} - Initial session check:`, currentSession ? "Session found" : "No session");
-        
-        // The onAuthStateChange will handle the session processing
-        // We just need to ensure loading is completed if no session
-        if (!currentSession && isComponentMounted) {
-          console.log(`[AuthProvider] ${new Date().toISOString()} - No existing session, completing initialization`);
-          setLoading(false);
-          setAdminCheckCompleted(false);
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
         }
-      } catch (error) {
-        console.error(`[AuthProvider] ${new Date().toISOString()} - Error in session initialization:`, error);
-        const errorDetails = handleError(error, 'Session initialization');
-        logSecurityEvent('Session initialization failed', errorDetails);
-        
-        // Fail safely - complete loading but preserve any existing session
-        if (isComponentMounted) {
-          setLoading(false);
-        }
-      }
-    };
-    
-    initSession();
 
-    // FIXED: Improved timeout handling with functional state updates to avoid stale closures
-    timeoutId = setTimeout(() => {
-      if (!isComponentMounted) return;
-      
-      console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth initialization timeout (10s)`);
-      
-      // Use functional state updates to get current state values
-      setLoading(currentLoading => {
-        if (currentLoading) {
-          console.log(`[AuthProvider] ${new Date().toISOString()} - Timeout: Completing loading`);
-          return false;
-        }
-        return currentLoading;
-      });
-      
-      // Only set admin defaults if we have a user but no completed admin check
-      setUser(currentUser => {
-        if (currentUser) {
-          setAdminCheckCompleted(currentAdminCheckCompleted => {
-            if (!currentAdminCheckCompleted) {
-              console.log(`[AuthProvider] ${new Date().toISOString()} - Timeout: Setting admin status to false and marking check as completed`);
-              setIsAdmin(false);
-              return true;
+        // Set up auth state listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, currentSession) => {
+            if (!isMounted) return;
+            
+            console.log(`[AuthProvider] ${new Date().toISOString()} - Auth state change:`, event, currentSession ? "Session present" : "No session");
+            
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            
+            if (currentSession?.user) {
+              // User is logged in, check admin status
+              try {
+                const adminStatus = await checkAdminStatus(currentSession.user.id);
+                if (isMounted) {
+                  setIsAdmin(adminStatus);
+                  setAdminCheckCompleted(true);
+                  setLoading(false);
+                }
+              } catch (error) {
+                console.error(`[AuthProvider] Error in admin check:`, error);
+                if (isMounted) {
+                  setIsAdmin(false);
+                  setAdminCheckCompleted(true);
+                  setLoading(false);
+                }
+              }
+              
+              logSecurityEvent('Auth state updated', { 
+                event,
+                userId: currentSession.user.id,
+                timestamp: new Date().toISOString()
+              });
+            } else {
+              // User is logged out
+              if (isMounted) {
+                setIsAdmin(null);
+                setAdminCheckCompleted(false);
+                setLoading(false);
+                // Clear admin cache
+                adminCheckRef.current.clear();
+              }
+              
+              if (event === 'SIGNED_OUT') {
+                logSecurityEvent('User signed out', { 
+                  event,
+                  timestamp: new Date().toISOString()
+                });
+              }
             }
-            return currentAdminCheckCompleted;
-          });
-        }
-        return currentUser;
-      });
-    }, 10000); // Reduced timeout to 10 seconds
+          }
+        );
 
-    return () => {
-      console.log(`[AuthProvider] ${new Date().toISOString()} - Cleaning up AuthProvider...`);
-      isComponentMounted = false;
-      subscription.unsubscribe();
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+        // Check for existing session
+        console.log(`[AuthProvider] ${new Date().toISOString()} - Checking for existing session...`);
+        const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("[AuthProvider] Error getting session:", sessionError);
+          if (isMounted) {
+            setLoading(false);
+          }
+          return;
+        }
+
+        console.log(`[AuthProvider] ${new Date().toISOString()} - Existing session:`, existingSession ? "Found" : "None");
+        
+        // If no existing session, complete loading immediately
+        if (!existingSession) {
+          if (isMounted) {
+            setLoading(false);
+            setAdminCheckCompleted(false);
+          }
+        }
+        // The onAuthStateChange will handle session processing for existing sessions
+
+        // Set a safety timeout to prevent infinite loading
+        timeoutRef.current = setTimeout(() => {
+          if (isMounted && loading) {
+            console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth timeout reached, completing loading`);
+            setLoading(false);
+            if (user && !adminCheckCompleted) {
+              setIsAdmin(false);
+              setAdminCheckCompleted(true);
+            }
+          }
+        }, 8000); // 8 second timeout
+
+        return subscription;
+      } catch (error) {
+        console.error(`[AuthProvider] Error in initialization:`, error);
+        const errorDetails = handleError(error, 'Auth initialization');
+        logSecurityEvent('Auth initialization failed', errorDetails);
+        
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-      initializationRef.current = false; // Reset for potential remount
     };
-  }, []); // Empty dependency array to run only once
+
+    initializeAuth().then(subscription => {
+      return () => {
+        console.log(`[AuthProvider] ${new Date().toISOString()} - Cleaning up...`);
+        isMounted = false;
+        subscription?.unsubscribe();
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+        initializationRef.current = false;
+      };
+    });
+  }, []); // Empty dependency array
 
   const signOut = async () => {
     try {
@@ -260,6 +217,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       
+      // Clear admin cache
+      adminCheckRef.current.clear();
+      
       console.log(`[AuthProvider] ${new Date().toISOString()} - Sign out complete`);
     } catch (error) {
       const errorDetails = handleError(error, 'Sign out exception');
@@ -268,8 +228,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear state even on error
       setSession(null);
       setUser(null);
-      setIsAdmin(false);
-      setAdminCheckCompleted(true);
+      setIsAdmin(null);
+      setAdminCheckCompleted(false);
+      adminCheckRef.current.clear();
     }
   };
 

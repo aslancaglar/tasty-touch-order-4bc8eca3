@@ -4,10 +4,6 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { registerServiceWorker } from '@/utils/service-worker'
-import initializeCacheConfig from "@/utils/cache-config"
-
-// Initialize cache configuration immediately
-initializeCacheConfig();
 
 // Register service worker
 registerServiceWorker();
