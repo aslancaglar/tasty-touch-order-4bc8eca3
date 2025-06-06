@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
 
   // Function to check admin status with retry logic
-  const checkAdminStatus = async (userId: string, retryCount = 0): Promise<boolean | null> => {
+  const checkAdminStatus = async (userId: string, retryCount = 0): Promise<boolean> => {
     const maxRetries = 3;
     
     if (!userId) {
@@ -102,20 +103,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (currentSession?.user) {
           // User is logged in, check admin status
           console.log(`[AuthProvider] ${new Date().toISOString()} - User logged in, checking admin status`);
-          // FIXED: Don't set adminCheckCompleted to false immediately - wait for actual result
           
           try {
             const adminStatus = await checkAdminStatus(currentSession.user.id);
             if (isComponentMounted) {
-              console.log(`[AuthProvider] ${new Date().toISOString()} - Setting admin status:`, adminStatus);
-              // FIXED: Only set adminCheckCompleted to true when we have a definitive result
+              console.log(`[AuthProvider] ${new Date().toISOString()} - Setting admin status:`, adminStatus, "and marking check as completed");
+              // FIXED: Always set a definitive boolean value, never null
               setIsAdmin(adminStatus);
               setAdminCheckCompleted(true);
             }
           } catch (error) {
             console.error(`[AuthProvider] ${new Date().toISOString()} - Error in admin status check:`, error);
             if (isComponentMounted) {
-              // FIXED: Set definitive values when check fails - don't leave admin status as null
+              // FIXED: Always set a definitive boolean value on error
+              console.log(`[AuthProvider] ${new Date().toISOString()} - Setting admin status to false due to error and marking check as completed`);
               setIsAdmin(false);
               setAdminCheckCompleted(true);
             }
@@ -162,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!currentSession && isComponentMounted) {
           console.log(`[AuthProvider] ${new Date().toISOString()} - No existing session, completing initialization`);
           setLoading(false);
-          setAdminCheckCompleted(false); // FIXED: No admin check needed if no user
+          setAdminCheckCompleted(false);
         }
       } catch (error) {
         console.error(`[AuthProvider] ${new Date().toISOString()} - Error in session initialization:`, error);
@@ -178,24 +179,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     initSession();
 
-    // FIXED: Improved timeout handling - be more conservative about clearing state
+    // FIXED: Improved timeout handling - ensure we always set definitive values
     const timeoutId = setTimeout(() => {
       if (isComponentMounted && loading) {
-        console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth initialization timeout (20s), completing with current state`);
+        console.warn(`[AuthProvider] ${new Date().toISOString()} - Auth initialization timeout (15s), completing with current state`);
         console.log(`[AuthProvider] Current state - Session:`, !!session, "User:", !!user, "IsAdmin:", isAdmin);
         
         // Complete loading but preserve existing session/user state
         setLoading(false);
-        // FIXED: Only set admin check completed if we actually have a user
-        if (user) {
-          if (isAdmin === null) {
-            console.log(`[AuthProvider] Setting default admin status to false due to timeout`);
-            setIsAdmin(false);
-          }
+        // FIXED: If we have a user but admin check hasn't completed, set default values
+        if (user && !adminCheckCompleted) {
+          console.log(`[AuthProvider] Setting admin status to false due to timeout and marking check as completed`);
+          setIsAdmin(false);
           setAdminCheckCompleted(true);
         }
       }
-    }, 20000); // Increased timeout to 20 seconds for slower connections
+    }, 15000); // Reduced timeout to 15 seconds
 
     return () => {
       console.log(`[AuthProvider] ${new Date().toISOString()} - Cleaning up AuthProvider...`);

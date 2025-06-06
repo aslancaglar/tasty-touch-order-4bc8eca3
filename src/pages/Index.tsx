@@ -59,7 +59,7 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  // FIXED: Better handling of admin check state - wait for definitive result
+  // FIXED: Wait for admin check to complete AND ensure we have a definitive admin status
   if (!adminCheckCompleted) {
     console.log(`[Index] ${new Date().toISOString()} - Showing loading spinner for admin check`);
     return (
@@ -73,20 +73,34 @@ const Index = () => {
     );
   }
 
-  // FIXED: Now we know adminCheckCompleted is true, so isAdmin should be boolean, not null
+  // FIXED: Additional safety check - if admin check is completed but isAdmin is still null, something went wrong
+  if (adminCheckCompleted && isAdmin === null) {
+    console.error(`[Index] ${new Date().toISOString()} - Admin check completed but isAdmin is null - this should not happen`);
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
+          <p className="mt-4 text-gray-600">Processing access permissions...</p>
+          <p className="mt-2 text-sm text-gray-500">Please wait a moment...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Now we know adminCheckCompleted is true and isAdmin is boolean, not null
   // If user is not an admin, redirect to owner page
   if (isAdmin === false) {
     console.log(`[Index] ${new Date().toISOString()} - User is confirmed non-admin, redirecting to owner page`);
     return <Navigate to="/owner" replace />;
   }
 
-  // FIXED: Only render dashboard if user is confirmed admin
+  // If user is confirmed admin, render Dashboard
   if (isAdmin === true) {
     console.log(`[Index] ${new Date().toISOString()} - User is confirmed admin, rendering Dashboard`);
     return <Dashboard />;
   }
 
-  // This should not happen, but add safety fallback
+  // This should not happen with the new logic, but add safety fallback
   console.warn(`[Index] ${new Date().toISOString()} - Unexpected state: adminCheckCompleted=${adminCheckCompleted}, isAdmin=${isAdmin}`);
   return (
     <div className="flex h-screen items-center justify-center">
