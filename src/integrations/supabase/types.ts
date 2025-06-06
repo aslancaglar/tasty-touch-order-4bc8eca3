@@ -864,10 +864,6 @@ export type Database = {
         Args: { limit_count: number }
         Returns: Json
       }
-      is_admin_user: {
-        Args: { user_id?: string }
-        Returns: boolean
-      }
       is_menu_item_available_now: {
         Args: { item_id: string }
         Returns: boolean
