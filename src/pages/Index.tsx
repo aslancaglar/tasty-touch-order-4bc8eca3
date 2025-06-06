@@ -37,29 +37,50 @@ const Index = () => {
     };
   }, [toast]);
 
+  console.log("Index render - Loading:", loading, "AdminCheckCompleted:", adminCheckCompleted, "User:", !!user, "IsAdmin:", isAdmin);
+
   // Display loading state until both authentication and admin check are complete
   if (loading || !adminCheckCompleted) {
+    console.log("Index: Showing loading spinner");
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-700" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
+          <p className="mt-4 text-gray-600">
+            {loading ? "Loading authentication..." : "Verifying permissions..."}
+          </p>
+        </div>
       </div>
     );
   }
 
   // If no user is authenticated, redirect to auth page
   if (!user) {
-    console.log("No authenticated user, redirecting to auth");
-    return <Navigate to="/auth" />;
+    console.log("Index: No authenticated user, redirecting to auth");
+    return <Navigate to="/auth" replace />;
   }
 
   // If user is not an admin, redirect to owner page
-  if (user && isAdmin === false) {
-    console.log("User is not an admin, redirecting to owner page");
-    return <Navigate to="/owner" />;
+  if (isAdmin === false) {
+    console.log("Index: User is not an admin, redirecting to owner page");
+    return <Navigate to="/owner" replace />;
+  }
+
+  // If admin status is still null (shouldn't happen with improved logic)
+  if (isAdmin === null) {
+    console.log("Index: Admin status is null, showing loading");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
+          <p className="mt-4 text-gray-600">Checking permissions...</p>
+        </div>
+      </div>
+    );
   }
 
   // User is admin, render Dashboard
-  console.log("User is admin, rendering Dashboard");
+  console.log("Index: User is admin, rendering Dashboard");
   return <Dashboard />;
 };
 

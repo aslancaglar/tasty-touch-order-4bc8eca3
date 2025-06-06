@@ -28,13 +28,26 @@ const ProtectedRoute = ({
     setSecurityFailure(false);
   }, [user, isAdmin]);
 
+  console.log("ProtectedRoute render:", {
+    pathname: location.pathname,
+    loading,
+    adminCheckCompleted,
+    user: !!user,
+    isAdmin,
+    requireAdmin,
+    allowAdminAccess
+  });
+
   // Show loading spinner while authentication is being checked
   if (loading || !adminCheckCompleted) {
+    console.log("ProtectedRoute: Showing loading state");
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="mt-4 text-gray-600">Verifying authentication...</p>
+          <p className="mt-4 text-gray-600">
+            {loading ? "Verifying authentication..." : "Checking permissions..."}
+          </p>
         </div>
       </div>
     );
@@ -42,6 +55,7 @@ const ProtectedRoute = ({
 
   // Show security error if verification failed but user is logged in
   if (securityFailure && user) {
+    console.log("ProtectedRoute: Showing security failure");
     return (
       <div className="flex h-screen items-center justify-center p-4">
         <Alert variant="destructive" className="max-w-lg">
@@ -63,15 +77,28 @@ const ProtectedRoute = ({
   }
 
   // Handle admin-required routes for non-admin users
-  if (requireAdmin && !isAdmin) {
-    console.log("Access denied: User is not an admin, redirecting to /owner");
+  if (requireAdmin && isAdmin === false) {
+    console.log("ProtectedRoute: Access denied - User is not an admin, redirecting to /owner");
     return <Navigate to="/owner" replace />;
+  }
+
+  // Handle admin-required routes when admin status is still null (shouldn't happen now)
+  if (requireAdmin && isAdmin === null) {
+    console.log("ProtectedRoute: Admin status null, showing loading");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
+          <p className="mt-4 text-gray-600">Verifying admin permissions...</p>
+        </div>
+      </div>
+    );
   }
 
   // Handle owner routes for admin users - only redirect if specifically 
   // requested to not allow admin access and we're on the specific owner path
   if (isAdmin && location.pathname === '/owner' && !allowAdminAccess) {
-    console.log("Admin user detected on owner route, redirecting to admin dashboard");
+    console.log("ProtectedRoute: Admin user detected on owner route, redirecting to admin dashboard");
     return <Navigate to="/" replace />;
   }
 
