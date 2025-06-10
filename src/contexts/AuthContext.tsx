@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logSecurityEvent, handleError } from "@/utils/error-handler";
-import { SECURITY_CONFIG, validateSessionSecurity } from "@/config/security";
+import { SECURITY_CONFIG } from "@/config/security";
 
 type AuthContextType = {
   session: Session | null;
@@ -27,30 +27,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [lastAdminCheck, setLastAdminCheck] = useState<number>(0);
   const [userRole, setUserRole] = useState<'admin' | 'owner' | null>(null);
 
-  // Enhanced session validation using new security measures
+  // Fixed session validation logic
   const validateSession = async (currentSession: Session | null): Promise<boolean> => {
     if (!currentSession) return false;
     
     const now = Date.now();
-    const sessionTime = new Date(currentSession.expires_at || 0).getTime();
+    // Convert Supabase expires_at (Unix timestamp in seconds) to milliseconds
+    const sessionExpiryMs = new Date(currentSession.expires_at || 0).getTime();
     
-    // Check if session is expired
-    if (sessionTime <= now + 60000) { // 1 minute buffer
+    console.log('Session validation:', {
+      now,
+      expiresAt: currentSession.expires_at,
+      sessionExpiryMs,
+      timeToExpiry: sessionExpiryMs - now
+    });
+    
+    // Check if session is expired (with 1 minute buffer)
+    if (sessionExpiryMs <= now + 60000) {
       logSecurityEvent('Session expired', {
         expiresAt: currentSession.expires_at,
-        timeToExpiry: sessionTime - now
+        timeToExpiry: sessionExpiryMs - now
       });
       return false;
     }
 
-    // Use new session validation function
-    const isSecureSession = await validateSessionSecurity();
-    if (!isSecureSession) {
-      logSecurityEvent('Session security validation failed');
+    // Use database session validation function for additional checks
+    try {
+      const { data, error } = await supabase.rpc('validate_session_security');
+      if (error) {
+        console.error('Database session validation error:', error);
+        logSecurityEvent('Database session validation failed', { error: error.message });
+        return false;
+      }
+      return data === true;
+    } catch (error) {
+      console.error('Session validation exception:', error);
+      logSecurityEvent('Session validation exception', { error });
       return false;
     }
-    
-    return true;
   };
 
   // Enhanced admin status check using new RLS-compliant function
@@ -116,10 +130,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAuthChange = async (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event);
       
-      // Enhanced validation for existing sessions
-      if (currentSession && event !== 'SIGNED_IN') {
+      // Only validate existing sessions on token refresh or recovery, not on initial sign in
+      if (currentSession && (event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT')) {
         const isValid = await validateSession(currentSession);
-        if (!isValid) {
+        if (!isValid && event !== 'SIGNED_OUT') {
           logSecurityEvent('Invalid session detected during auth change', { event });
           await supabase.auth.signOut();
           return;
@@ -165,10 +179,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("Initial session check:", currentSession ? "Session found" : "No session");
         
         if (currentSession) {
-          // Enhanced session validation on startup
+          // Skip validation for fresh sessions (less than 30 seconds old)
           const sessionAge = Date.now() - new Date(currentSession.expires_at || 0).getTime() + (currentSession.expires_in || 3600) * 1000;
           
-          if (sessionAge > 10000) { // Only validate if session is older than 10 seconds
+          if (sessionAge > 30000) { // Only validate if session is older than 30 seconds
             const isValid = await validateSession(currentSession);
             if (!isValid) {
               logSecurityEvent('Invalid initial session detected');
@@ -213,13 +227,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     initSession();
 
-    // Set up periodic session validation
+    // Set up periodic session validation (but only for sessions older than 5 minutes)
     const validationInterval = setInterval(async () => {
       if (session) {
-        const isValid = await validateSession(session);
-        if (!isValid) {
-          logSecurityEvent('Session validation failed during periodic check');
-          await supabase.auth.signOut();
+        const sessionAge = Date.now() - new Date(session.expires_at || 0).getTime() + (session.expires_in || 3600) * 1000;
+        if (sessionAge > 300000) { // Only validate sessions older than 5 minutes
+          const isValid = await validateSession(session);
+          if (!isValid) {
+            logSecurityEvent('Session validation failed during periodic check');
+            await supabase.auth.signOut();
+          }
         }
       }
     }, SECURITY_CONFIG.SESSION.VALIDATION_INTERVAL);

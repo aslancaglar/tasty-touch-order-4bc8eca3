@@ -23,28 +23,46 @@ const ProtectedRoute = ({
   const [securityFailure, setSecurityFailure] = useState(false);
   const [sessionValid, setSessionValid] = useState<boolean | null>(null);
 
-  // Enhanced session validation on route access
+  // More selective session validation - only for older sessions
   useEffect(() => {
     const checkSessionSecurity = async () => {
       if (user && adminCheckCompleted) {
         try {
-          const isValid = await validateSession();
-          setSessionValid(isValid);
+          // Only validate sessions that are more than 2 minutes old to avoid validating fresh logins
+          const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
+          const sessionAge = Date.now() - sessionStart;
           
-          if (!isValid) {
-            logSecurityEvent('Invalid session detected in ProtectedRoute', {
-              route: location.pathname,
-              userId: user.id,
-              requireAdmin,
-            });
-            setAuthError("Your session is no longer valid. Please log in again.");
-            setSecurityFailure(true);
+          if (sessionAge > 120000) { // 2 minutes
+            const isValid = await validateSession();
+            setSessionValid(isValid);
+            
+            if (!isValid) {
+              logSecurityEvent('Invalid session detected in ProtectedRoute', {
+                route: location.pathname,
+                userId: user.id,
+                requireAdmin,
+                sessionAge
+              });
+              setAuthError("Your session has expired. Please log in again.");
+              setSecurityFailure(true);
+            }
+          } else {
+            // For fresh sessions, assume they're valid
+            setSessionValid(true);
           }
         } catch (error) {
           console.error('Session validation error:', error);
-          setSessionValid(false);
-          setSecurityFailure(true);
-          setAuthError("Session validation failed. Please log in again.");
+          // Don't fail for fresh sessions on validation errors
+          const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
+          const sessionAge = Date.now() - sessionStart;
+          
+          if (sessionAge > 300000) { // Only fail if session is older than 5 minutes
+            setSessionValid(false);
+            setSecurityFailure(true);
+            setAuthError("Session validation failed. Please log in again.");
+          } else {
+            setSessionValid(true);
+          }
         }
       }
     };

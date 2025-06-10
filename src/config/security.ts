@@ -10,12 +10,13 @@ export const SECURITY_CONFIG = {
     MAX_FILENAME_LENGTH: 100,
   },
   
-  // Session security - aligned with new RLS policies
+  // Session security - improved validation timing
   SESSION: {
     REFRESH_THRESHOLD: 5 * 60 * 1000, // 5 minutes before expiry
     MAX_DURATION: 24 * 60 * 60 * 1000, // 24 hours (matches DB function)
     ADMIN_CHECK_CACHE: 5 * 60 * 1000, // 5 minutes
     VALIDATION_INTERVAL: 60 * 1000, // 1 minute validation check
+    FRESH_SESSION_GRACE_PERIOD: 2 * 60 * 1000, // 2 minutes grace for fresh sessions
   },
   
   // Rate limiting
@@ -130,15 +131,19 @@ export const sanitizeInput = (input: string): string => {
     .trim();
 };
 
-// Session validation using new DB function
+// Enhanced session validation with better timestamp handling
 export const validateSessionSecurity = async (): Promise<boolean> => {
   try {
-    // This would call the new validate_session_security() DB function
-    // For now, we'll implement client-side validation
     const currentTime = Date.now();
     const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
     
-    if (!sessionStart || (currentTime - sessionStart) > SECURITY_CONFIG.SESSION.MAX_DURATION) {
+    if (!sessionStart) {
+      return false;
+    }
+    
+    // Check if session is within reasonable duration
+    const sessionAge = currentTime - sessionStart;
+    if (sessionAge > SECURITY_CONFIG.SESSION.MAX_DURATION) {
       return false;
     }
     
