@@ -1,94 +1,105 @@
 
-import React from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import React, { useEffect, useState } from 'react';
+import { validateInput, sanitizeInput } from '@/config/security';
+import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, AlertTriangle } from 'lucide-react';
-import { logSecurityEvent } from '@/config/security';
 
 interface SecurityValidationWrapperProps {
   children: React.ReactNode;
-  requireAuth?: boolean;
-  requiredRole?: 'admin' | 'owner';
-  restaurantId?: string;
-  className?: string;
+  enableInputValidation?: boolean;
+  enableRateLimit?: boolean;
+  enableSecurityMonitoring?: boolean;
 }
 
 const SecurityValidationWrapper: React.FC<SecurityValidationWrapperProps> = ({
   children,
-  requireAuth = false,
-  requiredRole,
-  restaurantId,
-  className = ""
+  enableInputValidation = true,
+  enableRateLimit = true,
+  enableSecurityMonitoring = true
 }) => {
-  const [securityStatus, setSecurityStatus] = React.useState<'loading' | 'authorized' | 'unauthorized'>('loading');
-  const [errorMessage, setErrorMessage] = React.useState<string>('');
+  const [securityWarnings, setSecurityWarnings] = useState<string[]>([]);
+  const { metrics, isSecurityAlertActive } = useSecurityMonitor({
+    trackFailedLogins: enableSecurityMonitoring,
+    trackRateLimits: enableRateLimit,
+    trackSuspiciousPatterns: enableSecurityMonitoring
+  });
 
-  React.useEffect(() => {
-    const validateSecurity = async () => {
-      try {
-        // Basic auth check
-        if (requireAuth) {
-          // This would integrate with your auth system
-          const isAuthenticated = true; // Replace with actual auth check
+  // Monitor for potential XSS attempts in the DOM
+  useEffect(() => {
+    if (!enableInputValidation) return;
+
+    const monitorInputs = () => {
+      const inputs = document.querySelectorAll('input, textarea');
+      
+      inputs.forEach(input => {
+        const handleInput = (event: Event) => {
+          const target = event.target as HTMLInputElement;
+          const value = target.value;
           
-          if (!isAuthenticated) {
-            setSecurityStatus('unauthorized');
-            setErrorMessage('Authentication required');
-            logSecurityEvent('Unauthorized access attempt', { component: 'SecurityValidationWrapper' });
-            return;
+          // Check for suspicious patterns
+          if (value.includes('<script') || value.includes('javascript:')) {
+            setSecurityWarnings(prev => [
+              ...prev.slice(-4), // Keep only last 5 warnings
+              'Potentially malicious input detected and blocked'
+            ]);
+            
+            // Sanitize the input
+            target.value = sanitizeInput(value);
           }
-        }
-
-        // Role-based access control
-        if (requiredRole) {
-          // This would integrate with your role system
-          const hasRole = true; // Replace with actual role check
-          
-          if (!hasRole) {
-            setSecurityStatus('unauthorized');
-            setErrorMessage(`${requiredRole} role required`);
-            logSecurityEvent('Insufficient permissions', { 
-              component: 'SecurityValidationWrapper',
-              requiredRole,
-              restaurantId 
-            });
-            return;
-          }
-        }
-
-        setSecurityStatus('authorized');
-      } catch (error) {
-        setSecurityStatus('unauthorized');
-        setErrorMessage('Security validation failed');
-        logSecurityEvent('Security validation error', { 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        });
-      }
+        };
+        
+        input.addEventListener('input', handleInput);
+      });
     };
 
-    validateSecurity();
-  }, [requireAuth, requiredRole, restaurantId]);
+    // Initial setup and re-setup when DOM changes
+    monitorInputs();
+    
+    const observer = new MutationObserver(monitorInputs);
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    return () => observer.disconnect();
+  }, [enableInputValidation]);
 
-  if (securityStatus === 'loading') {
-    return (
-      <div className={`flex items-center justify-center p-4 ${className}`}>
-        <Shield className="animate-spin h-6 w-6 text-blue-600" />
-        <span className="ml-2">Validating permissions...</span>
-      </div>
-    );
-  }
-
-  if (securityStatus === 'unauthorized') {
-    return (
-      <Alert variant="destructive" className={className}>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Access Denied</AlertTitle>
-        <AlertDescription>{errorMessage}</AlertDescription>
-      </Alert>
-    );
-  }
+  // Clear warnings after 10 seconds
+  useEffect(() => {
+    if (securityWarnings.length > 0) {
+      const timer = setTimeout(() => {
+        setSecurityWarnings([]);
+      }, 10000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [securityWarnings]);
 
   return (
-    <div className={className}>
+    <div className="security-validation-wrapper">
+      {/* Security Alerts */}
+      {isSecurityAlertActive && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Security monitoring has detected suspicious activity. Enhanced security measures are active.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {/* Security Warnings */}
+      {securityWarnings.map((warning, index) => (
+        <Alert key={index} variant="destructive" className="mb-2">
+          <Shield className="h-4 w-4" />
+          <AlertDescription>{warning}</AlertDescription>
+        </Alert>
+      ))}
+      
+      {/* Debug info in development */}
+      {process.env.NODE_ENV === 'development' && enableSecurityMonitoring && (
+        <div className="fixed bottom-4 right-4 bg-black/80 text-white p-2 rounded text-xs font-mono">
+          Security Metrics: F:{metrics.failedAttempts} S:{metrics.suspiciousActivity} R:{metrics.rateLimitViolations}
+        </div>
+      )}
+      
       {children}
     </div>
   );

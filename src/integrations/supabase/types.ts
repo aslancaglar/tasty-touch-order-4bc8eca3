@@ -917,6 +917,10 @@ export type Database = {
         Args: { order_uuid: string }
         Returns: string
       }
+      get_restaurant_from_topping_category: {
+        Args: { category_uuid: string }
+        Returns: string
+      }
       is_admin_secure: {
         Args: Record<PropertyKey, never>
         Returns: boolean

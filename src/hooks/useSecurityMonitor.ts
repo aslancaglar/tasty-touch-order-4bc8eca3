@@ -1,110 +1,169 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { logSecurityEvent } from '@/config/security';
+import { useEffect, useState, useCallback } from 'react';
+import { logSecurityEvent, checkRateLimit, SECURITY_CONFIG } from '@/config/security';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SecurityMetrics {
-  validationErrors: number;
-  securityViolations: number;
-  authenticatedRequests: number;
-  failedAuthAttempts: number;
+  failedAttempts: number;
+  suspiciousActivity: number;
+  rateLimitViolations: number;
+  lastIncident: Date | null;
 }
 
-interface SecurityEvent {
-  id: string;
-  type: 'validation_error' | 'security_violation' | 'auth_failure' | 'suspicious_activity';
-  message: string;
-  timestamp: Date;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  metadata?: Record<string, any>;
+interface SecurityMonitorConfig {
+  trackFailedLogins?: boolean;
+  trackRateLimits?: boolean;
+  trackSuspiciousPatterns?: boolean;
+  alertThreshold?: number;
 }
 
-export const useSecurityMonitor = () => {
+export const useSecurityMonitor = (config: SecurityMonitorConfig = {}) => {
+  const { user } = useAuth();
   const [metrics, setMetrics] = useState<SecurityMetrics>({
-    validationErrors: 0,
-    securityViolations: 0,
-    authenticatedRequests: 0,
-    failedAuthAttempts: 0,
+    failedAttempts: 0,
+    suspiciousActivity: 0,
+    rateLimitViolations: 0,
+    lastIncident: null
   });
 
-  const [recentEvents, setRecentEvents] = useState<SecurityEvent[]>([]);
-  const [isMonitoring, setIsMonitoring] = useState(false);
+  const {
+    trackFailedLogins = true,
+    trackRateLimits = true,
+    trackSuspiciousPatterns = true,
+    alertThreshold = SECURITY_CONFIG.MONITORING.ALERT_THRESHOLD_CRITICAL
+  } = config;
 
-  const recordSecurityEvent = useCallback((event: Omit<SecurityEvent, 'id' | 'timestamp'>) => {
-    const newEvent: SecurityEvent = {
-      ...event,
-      id: crypto.randomUUID(),
-      timestamp: new Date(),
-    };
-
-    setRecentEvents(prev => [newEvent, ...prev.slice(0, 49)]); // Keep last 50 events
-
-    // Update metrics
-    setMetrics(prev => ({
-      ...prev,
-      validationErrors: event.type === 'validation_error' ? prev.validationErrors + 1 : prev.validationErrors,
-      securityViolations: event.type === 'security_violation' ? prev.securityViolations + 1 : prev.securityViolations,
-      failedAuthAttempts: event.type === 'auth_failure' ? prev.failedAuthAttempts + 1 : prev.failedAuthAttempts,
-    }));
-
-    // Log to security system
-    logSecurityEvent(event.message, {
-      type: event.type,
-      severity: event.severity,
-      ...event.metadata,
-    });
-  }, []);
-
-  const startMonitoring = useCallback(() => {
-    setIsMonitoring(true);
+  // Track security events
+  const trackSecurityEvent = useCallback((
+    eventType: 'failed_login' | 'rate_limit' | 'suspicious_activity',
+    details: Record<string, any> = {}
+  ) => {
+    const now = new Date();
     
-    // Monitor for client-side security events
-    const handleError = (event: ErrorEvent) => {
-      if (event.error?.name === 'SecurityError' || event.error?.name === 'ValidationError') {
-        recordSecurityEvent({
-          type: 'security_violation',
-          message: event.error.message,
-          severity: 'high',
-          metadata: {
-            filename: event.filename,
-            lineno: event.lineno,
-            stack: event.error.stack,
-          },
-        });
+    setMetrics(prev => {
+      const updated = { ...prev, lastIncident: now };
+      
+      switch (eventType) {
+        case 'failed_login':
+          if (trackFailedLogins) {
+            updated.failedAttempts += 1;
+          }
+          break;
+        case 'rate_limit':
+          if (trackRateLimits) {
+            updated.rateLimitViolations += 1;
+          }
+          break;
+        case 'suspicious_activity':
+          if (trackSuspiciousPatterns) {
+            updated.suspiciousActivity += 1;
+          }
+          break;
       }
-    };
+      
+      return updated;
+    });
 
-    window.addEventListener('error', handleError);
+    // Log the security event
+    logSecurityEvent(`Security monitor: ${eventType}`, {
+      eventType,
+      userId: user?.id,
+      timestamp: now.toISOString(),
+      userAgent: navigator.userAgent,
+      ...details
+    });
 
-    return () => {
-      window.removeEventListener('error', handleError);
-      setIsMonitoring(false);
-    };
-  }, [recordSecurityEvent]);
+    // Check if we've exceeded alert threshold
+    const totalEvents = metrics.failedAttempts + metrics.suspiciousActivity + metrics.rateLimitViolations;
+    if (totalEvents >= alertThreshold) {
+      logSecurityEvent('CRITICAL: Security alert threshold exceeded', {
+        totalEvents: totalEvents + 1,
+        threshold: alertThreshold,
+        userId: user?.id,
+        metrics: metrics
+      });
+    }
+  }, [user?.id, metrics, alertThreshold, trackFailedLogins, trackRateLimits, trackSuspiciousPatterns]);
 
-  const getSecurityScore = useCallback(() => {
-    const total = metrics.validationErrors + metrics.securityViolations + metrics.failedAuthAttempts;
-    if (total === 0) return 100;
+  // Rate limiting check with monitoring
+  const checkRateLimitWithMonitoring = useCallback((
+    identifier: string,
+    maxRequests?: number
+  ): boolean => {
+    const allowed = checkRateLimit(identifier, maxRequests);
     
-    // Simple scoring algorithm - can be enhanced
-    const score = Math.max(0, 100 - (total * 2));
-    return score;
-  }, [metrics]);
+    if (!allowed) {
+      trackSecurityEvent('rate_limit', {
+        identifier,
+        maxRequests: maxRequests || SECURITY_CONFIG.RATE_LIMITING.MAX_REQUESTS_PER_MINUTE
+      });
+    }
+    
+    return allowed;
+  }, [trackSecurityEvent]);
 
-  const getCriticalEvents = useCallback(() => {
-    return recentEvents.filter(event => event.severity === 'critical' || event.severity === 'high');
-  }, [recentEvents]);
-
+  // Monitor suspicious patterns in user behavior
   useEffect(() => {
-    const cleanup = startMonitoring();
+    if (!trackSuspiciousPatterns) return;
+
+    const monitorSuspiciousActivity = () => {
+      // Monitor rapid navigation patterns
+      let navigationCount = 0;
+      const resetNavigationCount = () => navigationCount = 0;
+      
+      const handleNavigation = () => {
+        navigationCount++;
+        if (navigationCount > 20) { // Suspicious if more than 20 navigations per minute
+          trackSecurityEvent('suspicious_activity', {
+            pattern: 'rapid_navigation',
+            count: navigationCount
+          });
+        }
+      };
+
+      // Monitor for potential bot behavior
+      const handleMouseMove = () => {
+        // Reset navigation count on mouse movement (sign of human activity)
+        if (navigationCount > 0) {
+          navigationCount = Math.max(0, navigationCount - 1);
+        }
+      };
+
+      window.addEventListener('popstate', handleNavigation);
+      window.addEventListener('mousemove', handleMouseMove);
+      
+      const interval = setInterval(resetNavigationCount, 60000); // Reset every minute
+
+      return () => {
+        window.removeEventListener('popstate', handleNavigation);
+        window.removeEventListener('mousemove', handleMouseMove);
+        clearInterval(interval);
+      };
+    };
+
+    const cleanup = monitorSuspiciousActivity();
     return cleanup;
-  }, [startMonitoring]);
+  }, [trackSuspiciousPatterns, trackSecurityEvent]);
+
+  // Reset metrics periodically
+  useEffect(() => {
+    const resetInterval = setInterval(() => {
+      setMetrics(prev => ({
+        ...prev,
+        failedAttempts: Math.max(0, prev.failedAttempts - 1),
+        suspiciousActivity: Math.max(0, prev.suspiciousActivity - 1),
+        rateLimitViolations: Math.max(0, prev.rateLimitViolations - 1)
+      }));
+    }, SECURITY_CONFIG.MONITORING.LOG_RETENTION_HOURS * 60 * 60 * 1000); // Decay metrics over time
+
+    return () => clearInterval(resetInterval);
+  }, []);
 
   return {
     metrics,
-    recentEvents,
-    isMonitoring,
-    recordSecurityEvent,
-    getSecurityScore,
-    getCriticalEvents,
+    trackSecurityEvent,
+    checkRateLimit: checkRateLimitWithMonitoring,
+    isSecurityAlertActive: 
+      (metrics.failedAttempts + metrics.suspiciousActivity + metrics.rateLimitViolations) >= alertThreshold
   };
 };
