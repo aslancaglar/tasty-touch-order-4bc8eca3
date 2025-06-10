@@ -11,11 +11,18 @@ interface SecurityThreat {
   timestamp: number;
 }
 
-const SecurityMonitor = () => {
+interface SecurityMonitorProps {
+  disabled?: boolean;
+}
+
+const SecurityMonitor = ({ disabled = false }: SecurityMonitorProps) => {
   const [threats, setThreats] = useState<SecurityThreat[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
+    // Skip all monitoring if disabled
+    if (disabled) return;
+
     // Monitor network status
     const handleOnline = () => {
       setIsOnline(true);
@@ -119,9 +126,12 @@ const SecurityMonitor = () => {
       console.log = originalConsoleLog;
       window.fetch = originalFetch;
     };
-  }, []);
+  }, [disabled]);
 
   const addThreat = (threat: SecurityThreat) => {
+    // Don't add threats if monitoring is disabled
+    if (disabled) return;
+    
     setThreats(prev => {
       const newThreats = [threat, ...prev].slice(0, 5); // Keep only last 5
       return newThreats;
@@ -138,6 +148,11 @@ const SecurityMonitor = () => {
   const dismissThreat = (timestamp: number) => {
     setThreats(prev => prev.filter(t => t.timestamp !== timestamp));
   };
+
+  // Don't render anything if disabled
+  if (disabled) {
+    return null;
+  }
 
   // Only show security alerts in development or when there are actual threats
   // Hide the "Development Mode" badge in production or when there are no active threats
