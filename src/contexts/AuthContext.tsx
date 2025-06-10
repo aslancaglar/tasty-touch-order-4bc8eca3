@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,32 +27,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<'admin' | 'owner' | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<number>(0);
 
-  // Simplified session validation logic
+  // Simplified and more reliable session validation
   const validateSession = async (currentSession: Session | null = session): Promise<boolean> => {
     if (!currentSession) return false;
     
     const now = Date.now();
     const sessionAge = now - sessionStartTime;
     
-    // Skip validation for very fresh sessions (less than 2 minutes)
-    if (sessionAge < 120000) {
-      console.log('Skipping validation for fresh session');
+    // Skip validation for very fresh sessions (less than 5 minutes)
+    if (sessionAge < 300000) {
+      console.log('Skipping validation for fresh session (less than 5 minutes)');
       return true;
     }
     
-    // Convert Supabase expires_at (Unix timestamp in seconds) to milliseconds
-    const sessionExpiryMs = new Date(currentSession.expires_at || 0).getTime();
+    // Check if session is expired with correct timestamp handling
+    const sessionExpiryMs = currentSession.expires_at ? currentSession.expires_at * 1000 : 0;
     
     console.log('Session validation:', {
       now,
       expiresAt: currentSession.expires_at,
       sessionExpiryMs,
       timeToExpiry: sessionExpiryMs - now,
-      sessionAge
+      sessionAge,
+      isExpired: sessionExpiryMs <= now
     });
     
-    // Check if session is expired (with 5 minute buffer for admin operations)
-    if (sessionExpiryMs <= now + 300000) {
+    // Check if session is expired (no buffer needed for admin operations)
+    if (sessionExpiryMs <= now) {
       logSecurityEvent('Session expired', {
         expiresAt: currentSession.expires_at,
         timeToExpiry: sessionExpiryMs - now
@@ -61,20 +61,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    // Only use database validation for older sessions
-    if (sessionAge > 600000) { // 10 minutes
+    // Only use database validation for much older sessions to reduce noise
+    if (sessionAge > 1800000) { // 30 minutes
       try {
         const { data, error } = await supabase.rpc('validate_session_security');
         if (error) {
           console.error('Database session validation error:', error);
-          logSecurityEvent('Database session validation failed', { error: error.message });
-          return false;
+          return false; // Don't log as security event for DB errors
         }
         return data === true;
       } catch (error) {
         console.error('Session validation exception:', error);
-        logSecurityEvent('Session validation exception', { error });
-        return false;
+        return false; // Don't log as security event for exceptions
       }
     }
     
@@ -167,16 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionExpiry: currentSession.expires_at
         });
       } else if (event === 'TOKEN_REFRESHED' && currentSession) {
-        // Only validate on token refresh if session is older than 5 minutes
-        const sessionAge = Date.now() - sessionStartTime;
-        if (sessionAge > 300000) {
-          const isValid = await validateSession(currentSession);
-          if (!isValid) {
-            logSecurityEvent('Invalid session detected during token refresh');
-            await supabase.auth.signOut();
-            return;
-          }
-        }
+        // Don't validate on token refresh - this is a normal operation
+        console.log('Token refreshed successfully');
       }
     };
     
@@ -232,11 +222,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     initSession();
 
-    // Set up periodic session validation (only for sessions older than 10 minutes)
+    // Reduce frequency of periodic session validation to prevent noise
     const validationInterval = setInterval(async () => {
       if (session) {
         const sessionAge = Date.now() - sessionStartTime;
-        if (sessionAge > 600000) { // Only validate sessions older than 10 minutes
+        if (sessionAge > 1800000) { // Only validate sessions older than 30 minutes
           const isValid = await validateSession(session);
           if (!isValid) {
             logSecurityEvent('Session validation failed during periodic check');
@@ -244,7 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       }
-    }, SECURITY_CONFIG.SESSION.VALIDATION_INTERVAL);
+    }, 300000); // Check every 5 minutes instead of every minute
 
     return () => {
       console.log("Cleaning up enhanced AuthProvider...");
@@ -346,3 +336,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+}

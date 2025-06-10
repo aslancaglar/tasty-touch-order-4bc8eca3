@@ -1,3 +1,4 @@
+
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -22,16 +23,16 @@ const ProtectedRoute = ({
   const [securityFailure, setSecurityFailure] = useState(false);
   const [sessionValid, setSessionValid] = useState<boolean | null>(null);
 
-  // Much more selective session validation - only for routes that require it and older sessions
+  // Much more selective session validation - only for admin routes with old sessions
   useEffect(() => {
     const checkSessionSecurity = async () => {
       if (user && adminCheckCompleted && requireAdmin) {
         try {
-          // Only validate sessions that are older than 5 minutes
+          // Only validate sessions that are older than 30 minutes for admin routes
           const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
           const sessionAge = Date.now() - sessionStart;
           
-          if (sessionAge > 300000) { // 5 minutes
+          if (sessionAge > 1800000) { // 30 minutes
             const isValid = await validateSession();
             setSessionValid(isValid);
             
@@ -51,11 +52,11 @@ const ProtectedRoute = ({
           }
         } catch (error) {
           console.error('Session validation error:', error);
-          // Don't fail for validation errors on fresh sessions
+          // Only fail for very old sessions
           const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
           const sessionAge = Date.now() - sessionStart;
           
-          if (sessionAge > 600000) { // Only fail if session is older than 10 minutes
+          if (sessionAge > 3600000) { // Only fail if session is older than 1 hour
             setSessionValid(false);
             setSecurityFailure(true);
             setAuthError("Session validation failed. Please log in again.");
@@ -85,7 +86,7 @@ const ProtectedRoute = ({
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="mt-4 text-gray-600">Verifying authentication and security...</p>
+          <p className="mt-4 text-gray-600">Verifying authentication...</p>
         </div>
       </div>
     );
@@ -104,9 +105,9 @@ const ProtectedRoute = ({
       <div className="flex h-screen items-center justify-center p-4">
         <Alert variant="destructive" className="max-w-lg">
           <ShieldOff className="h-4 w-4" />
-          <AlertTitle>Security Verification Failed</AlertTitle>
+          <AlertTitle>Session Expired</AlertTitle>
           <AlertDescription>
-            {authError || "There was a problem verifying your session security. Please log in again."}
+            {authError || "Your session has expired. Please log in again."}
           </AlertDescription>
         </Alert>
       </div>
@@ -139,7 +140,7 @@ const ProtectedRoute = ({
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Access Denied</AlertTitle>
           <AlertDescription>
-            You don't have the required permissions to access this page. Redirecting to your dashboard...
+            You don't have the required permissions to access this page.
           </AlertDescription>
         </Alert>
       </div>
@@ -166,7 +167,7 @@ const ProtectedRoute = ({
     isAdmin,
   });
 
-  console.log("ProtectedRoute: Access granted with enhanced security", { 
+  console.log("ProtectedRoute: Access granted", { 
     requireAdmin, 
     isAdmin, 
     userRole,

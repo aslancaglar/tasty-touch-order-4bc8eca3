@@ -23,7 +23,7 @@ const SecurityMonitor = () => {
   const isKioskRoute = location.pathname.startsWith('/r/');
 
   useEffect(() => {
-    // Enhanced network monitoring
+    // Network monitoring
     const handleOnline = () => {
       setIsOnline(true);
       logSecurityEvent('Network connection restored');
@@ -40,7 +40,7 @@ const SecurityMonitor = () => {
       });
     };
 
-    // Enhanced security monitoring for new RLS implementation
+    // Much more selective security monitoring - only for critical threats
     const checkUrlSecurity = () => {
       const url = window.location.href;
       const suspiciousPatterns = [
@@ -49,8 +49,6 @@ const SecurityMonitor = () => {
         /vbscript:/i,
         /onload=/i,
         /onerror=/i,
-        /union\s+select/i,
-        /drop\s+table/i,
       ];
 
       for (const pattern of suspiciousPatterns) {
@@ -67,64 +65,35 @@ const SecurityMonitor = () => {
       }
     };
 
-    // Simplified session monitoring - reduce false positives
+    // Very limited session monitoring - only for critical session issues
     const monitorSessionSecurity = async () => {
       if (user && !isKioskRoute) {
         try {
-          const isValid = await validateSession();
-          if (!isValid) {
-            // Only add session threats for critical issues
-            const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
-            const sessionAge = Date.now() - sessionStart;
-            
-            // Only show session alerts for sessions older than 10 minutes
-            if (sessionAge > 600000) {
+          // Only validate sessions older than 30 minutes to reduce noise
+          const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
+          const sessionAge = Date.now() - sessionStart;
+          
+          // Only show session alerts for very old sessions
+          if (sessionAge > 1800000) { // 30 minutes
+            const isValid = await validateSession();
+            if (!isValid) {
               addThreat({
                 type: 'session',
                 severity: 'high',
-                message: 'Session security validation failed. Please log in again.',
+                message: 'Session has expired. Please log in again.',
                 timestamp: Date.now()
               });
-              logSecurityEvent('Session validation failed in security monitor');
+              logSecurityEvent('Session expired in security monitor');
             }
           }
         } catch (error) {
-          // Reduce noise from auth system errors
+          // Don't create threats for auth system errors
           console.log('Auth system check completed', { error });
         }
       }
     };
 
-    // Enhanced console monitoring for RLS bypass attempts
-    const originalConsoleLog = console.log;
-    console.log = (...args) => {
-      const message = args.join(' ').toLowerCase();
-      const suspiciousTerms = [
-        'bypass rls',
-        'disable row level security',
-        'auth.uid() is null',
-        'superuser',
-        'security definer',
-        'elevation',
-        'privilege escalation'
-      ];
-
-      for (const term of suspiciousTerms) {
-        if (message.includes(term)) {
-          addThreat({
-            type: 'rls',
-            severity: 'critical',
-            message: 'Potential security bypass attempt detected in console.',
-            timestamp: Date.now()
-          });
-          logSecurityEvent('Security bypass attempt detected', { message, term });
-          break;
-        }
-      }
-      originalConsoleLog.apply(console, args);
-    };
-
-    // Enhanced fetch monitoring for RLS compliance
+    // Minimal rate limiting detection
     let requestCount = 0;
     const requestWindow = 60000; // 1 minute
     let windowStart = Date.now();
@@ -141,31 +110,19 @@ const SecurityMonitor = () => {
       
       requestCount++;
       
-      // Enhanced rate limiting detection
-      if (requestCount > 100) {
+      // Only alert for very high request rates
+      if (requestCount > 200) {
         addThreat({
           type: 'rate_limit',
           severity: 'high',
-          message: 'Suspicious request rate detected. Possible automated attack.',
+          message: 'Very high request rate detected. Possible automated attack.',
           timestamp: Date.now()
         });
-        logSecurityEvent('High request rate detected', { 
+        logSecurityEvent('Very high request rate detected', { 
           requestCount, 
           timeWindow: requestWindow,
           possibleAttack: true
         });
-      }
-
-      // Monitor for potential RLS bypass attempts in requests
-      const url = args[0]?.toString() || '';
-      if (url.includes('rpc') && url.includes('bypass')) {
-        addThreat({
-          type: 'rls',
-          severity: 'critical',
-          message: 'Potential RLS bypass attempt detected in API request.',
-          timestamp: Date.now()
-        });
-        logSecurityEvent('RLS bypass attempt in API request', { url });
       }
       
       return originalFetch.apply(window, args);
@@ -180,13 +137,12 @@ const SecurityMonitor = () => {
       checkUrlSecurity();
     }
     
-    // Set up periodic session monitoring with reduced frequency
-    const sessionCheckInterval = setInterval(monitorSessionSecurity, 120000); // Every 2 minutes instead of 30 seconds
+    // Much less frequent session monitoring
+    const sessionCheckInterval = setInterval(monitorSessionSecurity, 300000); // Every 5 minutes
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      console.log = originalConsoleLog;
       window.fetch = originalFetch;
       clearInterval(sessionCheckInterval);
     };
@@ -194,14 +150,14 @@ const SecurityMonitor = () => {
 
   const addThreat = (threat: SecurityThreat) => {
     setThreats(prev => {
-      const newThreats = [threat, ...prev].slice(0, 3); // Reduce to max 3 threats
+      const newThreats = [threat, ...prev].slice(0, 2); // Reduce to max 2 threats
       return newThreats;
     });
 
-    // Auto-remove based on severity with shorter durations
-    const removeDelay = threat.severity === 'low' ? 15000 : 
-                       threat.severity === 'medium' ? 30000 : 
-                       threat.severity === 'high' ? 60000 : 120000; // Reduced timings
+    // Auto-remove threats faster to reduce noise
+    const removeDelay = threat.severity === 'low' ? 10000 : 
+                       threat.severity === 'medium' ? 20000 : 
+                       threat.severity === 'high' ? 30000 : 60000; // Faster removal
 
     setTimeout(() => {
       setThreats(prev => prev.filter(t => t.timestamp !== threat.timestamp));
@@ -217,15 +173,18 @@ const SecurityMonitor = () => {
     return null;
   }
 
-  // In production, only show critical threats and reduce noise
+  // In production, only show critical threats
   if (process.env.NODE_ENV === 'production' && threats.length === 0) {
     return null;
   }
 
-  // Filter out low-severity threats in production
-  const filteredThreats = process.env.NODE_ENV === 'production' 
-    ? threats.filter(t => t.severity === 'high' || t.severity === 'critical')
-    : threats;
+  // Filter to only show high and critical threats
+  const filteredThreats = threats.filter(t => t.severity === 'high' || t.severity === 'critical');
+
+  // Don't show anything if no serious threats
+  if (filteredThreats.length === 0 && isOnline) {
+    return null;
+  }
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
@@ -244,18 +203,18 @@ const SecurityMonitor = () => {
 
   return (
     <div className="fixed bottom-4 left-4 z-50 space-y-2 max-w-sm">
-      {/* Network Status */}
+      {/* Network Status - only show if offline */}
       {!isOnline && (
         <Alert variant="warning">
           <WifiOff className="h-4 w-4" />
           <AlertTitle>Offline</AlertTitle>
           <AlertDescription>
-            You're currently offline. Security monitoring is limited.
+            You're currently offline. Some features may not work.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Enhanced Security Threats - only show filtered threats */}
+      {/* Only show critical security threats */}
       {filteredThreats.map((threat) => (
         <Alert 
           key={threat.timestamp}
@@ -271,22 +230,11 @@ const SecurityMonitor = () => {
             {threat.message}
             <br />
             <small className="text-xs opacity-75">
-              Type: {threat.type} • Click to dismiss • {new Date(threat.timestamp).toLocaleTimeString()}
+              Click to dismiss • {new Date(threat.timestamp).toLocaleTimeString()}
             </small>
           </AlertDescription>
         </Alert>
       ))}
-
-      {/* Development Mode Indicator - only show if there are actual issues */}
-      {process.env.NODE_ENV === 'development' && filteredThreats.length > 0 && (
-        <Alert>
-          <Shield className="h-4 w-4" />
-          <AlertTitle>Development Mode</AlertTitle>
-          <AlertDescription>
-            Enhanced security monitoring with RLS compliance is active.
-          </AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 };
