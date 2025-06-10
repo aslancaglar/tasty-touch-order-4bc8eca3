@@ -23,16 +23,16 @@ const ProtectedRoute = ({
   const [securityFailure, setSecurityFailure] = useState(false);
   const [sessionValid, setSessionValid] = useState<boolean | null>(null);
 
-  // More selective session validation - only for older sessions
+  // Much more selective session validation - only for routes that require it and older sessions
   useEffect(() => {
     const checkSessionSecurity = async () => {
-      if (user && adminCheckCompleted) {
+      if (user && adminCheckCompleted && requireAdmin) {
         try {
-          // Only validate sessions that are more than 2 minutes old to avoid validating fresh logins
+          // Only validate sessions that are older than 5 minutes
           const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
           const sessionAge = Date.now() - sessionStart;
           
-          if (sessionAge > 120000) { // 2 minutes
+          if (sessionAge > 300000) { // 5 minutes
             const isValid = await validateSession();
             setSessionValid(isValid);
             
@@ -52,11 +52,11 @@ const ProtectedRoute = ({
           }
         } catch (error) {
           console.error('Session validation error:', error);
-          // Don't fail for fresh sessions on validation errors
+          // Don't fail for validation errors on fresh sessions
           const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
           const sessionAge = Date.now() - sessionStart;
           
-          if (sessionAge > 300000) { // Only fail if session is older than 5 minutes
+          if (sessionAge > 600000) { // Only fail if session is older than 10 minutes
             setSessionValid(false);
             setSecurityFailure(true);
             setAuthError("Session validation failed. Please log in again.");
@@ -64,6 +64,9 @@ const ProtectedRoute = ({
             setSessionValid(true);
           }
         }
+      } else if (user && adminCheckCompleted) {
+        // For non-admin routes, just mark as valid
+        setSessionValid(true);
       }
     };
 
@@ -78,7 +81,7 @@ const ProtectedRoute = ({
   }, [user, isAdmin]);
 
   // Show loading while authentication and session validation are in progress
-  if (loading || !adminCheckCompleted || (user && sessionValid === null)) {
+  if (loading || !adminCheckCompleted || (user && requireAdmin && sessionValid === null)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
