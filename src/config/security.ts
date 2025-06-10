@@ -1,4 +1,5 @@
 
+
 // Configuration options for input validation and security
 export const SECURITY_CONFIG = {
   INPUT: {
@@ -26,6 +27,8 @@ export const SECURITY_CONFIG = {
     MAX_DURATION_MS: 86400000, // 24 hours
     IDLE_TIMEOUT_MS: 3600000, // 1 hour
     ROTATION_INTERVAL_MS: 1800000, // 30 minutes
+    REFRESH_THRESHOLD: 300000, // 5 minutes before expiry
+    ADMIN_CHECK_CACHE: 300000, // 5 minutes cache for admin checks
   }
 };
 
@@ -123,13 +126,35 @@ export const logSecurityEvent = (message: string, data: Record<string, any> = {}
   console.warn(`SECURITY EVENT: ${message}`, event);
 };
 
-// Add aliases for backward compatibility
-export const validateInput = (input: string) => {
-  // Basic validation - can be enhanced
-  return input && typeof input === 'string' && input.trim().length > 0;
+// Enhanced input validation function that accepts validation type
+export const validateInput = (input: string, validationType?: string) => {
+  if (!input || typeof input !== 'string') {
+    return false;
+  }
+
+  const trimmedInput = input.trim();
+  if (trimmedInput.length === 0) {
+    return false;
+  }
+
+  // Apply length limits based on validation type
+  switch (validationType) {
+    case 'name':
+      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_NAME_LENGTH;
+    case 'description':
+      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_DESCRIPTION_LENGTH;
+    case 'email':
+      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_EMAIL_LENGTH;
+    case 'url':
+      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_URL_LENGTH;
+    case 'text':
+    default:
+      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_TEXT_LENGTH;
+  }
 };
 
 export const sanitizeInput = (input: string) => {
   // Basic sanitization - can be enhanced
   return input.replace(/[<>]/g, '').trim();
 };
+

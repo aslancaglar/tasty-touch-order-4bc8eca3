@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Check for session age (prevent indefinite sessions)
     const sessionAge = now - new Date(currentSession.user?.created_at || 0).getTime();
-    if (sessionAge > SECURITY_CONFIG.SESSION.MAX_DURATION) {
+    if (sessionAge > SECURITY_CONFIG.SESSION.MAX_DURATION_MS) {
       logSecurityEvent('Session too old', {
         sessionAge: sessionAge,
         userId: currentSession.user?.id
