@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +24,18 @@ const ApiKeySecurityMonitor = ({ restaurantId }: ApiKeySecurityMonitorProps) => 
   const loadApiKeys = async () => {
     try {
       setIsLoading(true);
+      
+      // Check rate limiting for API operations
+      const rateLimitKey = `api-keys-${restaurantId}`;
+      if (!checkRateLimit(rateLimitKey, 30)) { // 30 requests per minute for API operations
+        toast({
+          title: "Rate Limit Exceeded",
+          description: "Too many API key requests. Please try again later.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const [keys, rotationNeeded] = await Promise.all([
         secureApiKeyService.getApiKeyRecords(restaurantId),
         secureApiKeyService.getKeysNeedingRotation()
@@ -37,6 +48,11 @@ const ApiKeySecurityMonitor = ({ restaurantId }: ApiKeySecurityMonitorProps) => 
       logSecurityEvent('API key loading failed', { 
         restaurantId, 
         error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      toast({
+        title: "Security Error",
+        description: "Failed to load API keys securely",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
