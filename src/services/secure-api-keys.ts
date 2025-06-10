@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_URL } from "@/config/supabase";
 
 export interface ApiKeyRecord {
   id: string;
@@ -21,7 +22,7 @@ class SecureApiKeyService {
       throw new Error('User not authenticated');
     }
 
-    const response = await fetch(`${supabase.supabaseUrl}/functions/v1/api-key-manager`, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/api-key-manager`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
