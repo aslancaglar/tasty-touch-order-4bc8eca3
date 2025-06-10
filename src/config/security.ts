@@ -78,6 +78,9 @@ export const SECURITY_PATTERNS = {
   ],
 } as const;
 
+// Security event logging function - re-export from error-handler
+export { logSecurityEvent } from '@/utils/error-handler';
+
 // Security validation functions
 export const validateInput = (input: string, type: 'text' | 'name' | 'description' = 'text'): boolean => {
   if (typeof input !== 'string') return false;
