@@ -1,4 +1,3 @@
-import { log } from "@/utils/error-handler";
 
 // Configuration options for input validation and security
 export const SECURITY_CONFIG = {
@@ -22,6 +21,11 @@ export const SECURITY_CONFIG = {
   CSRF: {
     TOKEN_LENGTH: 64,
     TOKEN_EXPIRY_MS: 3600000, // 1 hour
+  },
+  SESSION: {
+    MAX_DURATION_MS: 86400000, // 24 hours
+    IDLE_TIMEOUT_MS: 3600000, // 1 hour
+    ROTATION_INTERVAL_MS: 1800000, // 30 minutes
   }
 };
 
@@ -116,5 +120,16 @@ export const logSecurityEvent = (message: string, data: Record<string, any> = {}
     ...data,
   };
 
-  log(`SECURITY EVENT: ${message}`, event);
+  console.warn(`SECURITY EVENT: ${message}`, event);
+};
+
+// Add aliases for backward compatibility
+export const validateInput = (input: string) => {
+  // Basic validation - can be enhanced
+  return input && typeof input === 'string' && input.trim().length > 0;
+};
+
+export const sanitizeInput = (input: string) => {
+  // Basic sanitization - can be enhanced
+  return input.replace(/[<>]/g, '').trim();
 };

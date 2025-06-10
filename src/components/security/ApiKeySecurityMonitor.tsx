@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +7,7 @@ import { AlertTriangle, Shield, RefreshCw, Clock, Eye, EyeOff } from "lucide-rea
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { secureApiKeyService, type ApiKeyRecord } from "@/services/secure-api-keys";
 import { useToast } from "@/hooks/use-toast";
-import { logSecurityEvent } from "@/utils/error-handler";
+import { logSecurityEvent, checkRateLimit } from "@/config/security";
 
 interface ApiKeySecurityMonitorProps {
   restaurantId: string;

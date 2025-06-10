@@ -98,16 +98,30 @@ const SecureForm: React.FC<SecureFormProps> = ({
             {field.required && <span className="text-red-500 ml-1">*</span>}
           </Label>
           
-          <SecureInput
-            id={field.name}
-            name={field.name}
-            validationType={field.type}
-            required={field.required}
-            placeholder={field.placeholder}
-            onSecureChange={(value, isValid) => handleInputChange(field.name, value, isValid)}
-            showValidation={true}
-            className="w-full"
-          />
+          {field.type === 'number' ? (
+            <SecureInput
+              id={field.name}
+              name={field.name}
+              type="number"
+              validationType="text"
+              required={field.required}
+              placeholder={field.placeholder}
+              onSecureChange={(value, isValid) => handleInputChange(field.name, value, isValid)}
+              showValidation={true}
+              className="w-full"
+            />
+          ) : (
+            <SecureInput
+              id={field.name}
+              name={field.name}
+              validationType={field.type}
+              required={field.required}
+              placeholder={field.placeholder}
+              onSecureChange={(value, isValid) => handleInputChange(field.name, value, isValid)}
+              showValidation={true}
+              className="w-full"
+            />
+          )}
           
           {errors[field.name] && (
             <p className="text-sm text-red-600">{errors[field.name]}</p>
