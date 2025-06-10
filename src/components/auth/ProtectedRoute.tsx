@@ -1,10 +1,9 @@
-
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { Loader2, ShieldOff, AlertTriangle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { logSecurityEvent } from "@/config/security";
+import { logSecurityEvent } from "@/utils/error-handler";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
