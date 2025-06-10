@@ -853,11 +853,27 @@ export type Database = {
         Args: { limit_count: number }
         Returns: Json
       }
+      get_restaurant_from_category: {
+        Args: { category_uuid: string }
+        Returns: string
+      }
+      get_restaurant_from_order: {
+        Args: { order_uuid: string }
+        Returns: string
+      }
+      is_admin_secure: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_menu_item_available_now: {
         Args: { item_id: string }
         Returns: boolean
       }
       is_restaurant_owner: {
+        Args: { restaurant_uuid: string }
+        Returns: boolean
+      }
+      is_restaurant_owner_secure: {
         Args: { restaurant_uuid: string }
         Returns: boolean
       }

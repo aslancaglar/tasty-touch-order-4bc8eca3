@@ -4,11 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { Loader2, ShieldOff } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { logSecurityEvent } from "@/utils/error-handler";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
-  // Added property to allow admins to still access owner routes when needed
   allowAdminAccess?: boolean;
 }
 
@@ -28,6 +28,20 @@ const ProtectedRoute = ({
     setSecurityFailure(false);
   }, [user, isAdmin]);
 
+  // Enhanced security logging
+  useEffect(() => {
+    if (!loading && adminCheckCompleted) {
+      logSecurityEvent('Route access attempt', {
+        path: location.pathname,
+        userId: user?.id,
+        isAdmin: isAdmin,
+        requireAdmin: requireAdmin,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [user, isAdmin, loading, adminCheckCompleted, location.pathname, requireAdmin]);
+
   // Show loading spinner while authentication is being checked
   if (loading || !adminCheckCompleted) {
     return (
@@ -42,6 +56,12 @@ const ProtectedRoute = ({
 
   // Show security error if verification failed but user is logged in
   if (securityFailure && user) {
+    logSecurityEvent('Security verification failure displayed', {
+      userId: user?.id,
+      path: location.pathname,
+      error: authError
+    });
+    
     return (
       <div className="flex h-screen items-center justify-center p-4">
         <Alert variant="destructive" className="max-w-lg">
@@ -58,13 +78,25 @@ const ProtectedRoute = ({
   // Redirect to login if not authenticated
   if (!user) {
     console.log("ProtectedRoute: No user, redirecting to /auth");
-    // Save the location they were trying to access for redirect after login
+    logSecurityEvent('Unauthenticated access attempt', {
+      path: location.pathname,
+      requireAdmin: requireAdmin,
+      timestamp: new Date().toISOString()
+    });
+    
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
   // Handle admin-required routes for non-admin users
   if (requireAdmin && !isAdmin) {
     console.log("Access denied: User is not an admin, redirecting to /owner");
+    logSecurityEvent('Unauthorized admin access attempt', {
+      userId: user.id,
+      path: location.pathname,
+      isAdmin: isAdmin,
+      timestamp: new Date().toISOString()
+    });
+    
     return <Navigate to="/owner" replace />;
   }
 
@@ -72,10 +104,24 @@ const ProtectedRoute = ({
   // requested to not allow admin access and we're on the specific owner path
   if (isAdmin && location.pathname === '/owner' && !allowAdminAccess) {
     console.log("Admin user detected on owner route, redirecting to admin dashboard");
+    logSecurityEvent('Admin redirected from owner route', {
+      userId: user.id,
+      path: location.pathname,
+      timestamp: new Date().toISOString()
+    });
+    
     return <Navigate to="/" replace />;
   }
 
   console.log("ProtectedRoute: Access granted", { requireAdmin, isAdmin });
+  logSecurityEvent('Route access granted', {
+    userId: user.id,
+    path: location.pathname,
+    isAdmin: isAdmin,
+    requireAdmin: requireAdmin,
+    timestamp: new Date().toISOString()
+  });
+  
   return <>{children}</>;
 };
 

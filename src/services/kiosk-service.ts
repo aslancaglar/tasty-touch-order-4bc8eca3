@@ -12,144 +12,357 @@ import {
   ToppingCategory,
   Topping
 } from "@/types/database-types";
+import { validateInput, sanitizeInput } from "@/config/security";
+import { logSecurityEvent } from "@/utils/error-handler";
 
-// Restaurant services
+// Restaurant services with enhanced validation
 export const getRestaurants = async (): Promise<Restaurant[]> => {
-  const { data, error } = await supabase
-    .from("restaurants")
-    .select("*");
+  try {
+    const { data, error } = await supabase
+      .from("restaurants")
+      .select("*");
 
-  if (error) {
-    console.error("Error fetching restaurants:", error);
+    if (error) {
+      console.error("Error fetching restaurants:", error);
+      logSecurityEvent('Restaurant fetch failed', { error: error.message });
+      throw error;
+    }
+
+    logSecurityEvent('Restaurants fetched', { count: data?.length || 0 });
+    return data;
+  } catch (error) {
+    logSecurityEvent('Restaurant fetch exception', { error: String(error) });
     throw error;
   }
-
-  return data;
 };
 
 export const createRestaurant = async (restaurant: Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>): Promise<Restaurant> => {
-  const { data, error } = await supabase
-    .from("restaurants")
-    .insert(restaurant)
-    .select()
-    .single();
+  // Validate and sanitize inputs
+  if (!validateInput(restaurant.name, 'name')) {
+    throw new Error('Invalid restaurant name');
+  }
+  
+  const sanitizedRestaurant = {
+    ...restaurant,
+    name: sanitizeInput(restaurant.name),
+    location: restaurant.location ? sanitizeInput(restaurant.location) : null,
+  };
 
-  if (error) {
-    console.error("Error creating restaurant:", error);
+  try {
+    const { data, error } = await supabase
+      .from("restaurants")
+      .insert(sanitizedRestaurant)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating restaurant:", error);
+      logSecurityEvent('Restaurant creation failed', { 
+        error: error.message,
+        name: sanitizedRestaurant.name 
+      });
+      throw error;
+    }
+
+    logSecurityEvent('Restaurant created', { 
+      restaurantId: data.id,
+      name: data.name 
+    });
+    return data;
+  } catch (error) {
+    logSecurityEvent('Restaurant creation exception', { 
+      error: String(error),
+      name: sanitizedRestaurant.name 
+    });
     throw error;
   }
-
-  return data;
 };
 
 export const updateRestaurant = async (id: string, updates: Partial<Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>>): Promise<Restaurant> => {
   console.log("Updating restaurant:", id, "with data:", updates);
   
-  const { data, error } = await supabase
-    .from("restaurants")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+  // Validate and sanitize inputs
+  const sanitizedUpdates: any = {};
+  
+  if (updates.name !== undefined) {
+    if (!validateInput(updates.name, 'name')) {
+      throw new Error('Invalid restaurant name');
+    }
+    sanitizedUpdates.name = sanitizeInput(updates.name);
+  }
+  
+  if (updates.location !== undefined) {
+    if (updates.location && !validateInput(updates.location, 'text')) {
+      throw new Error('Invalid location');
+    }
+    sanitizedUpdates.location = updates.location ? sanitizeInput(updates.location) : null;
+  }
+  
+  // Copy other safe fields
+  Object.keys(updates).forEach(key => {
+    if (key !== 'name' && key !== 'location') {
+      sanitizedUpdates[key] = updates[key as keyof typeof updates];
+    }
+  });
 
-  if (error) {
-    console.error("Error updating restaurant:", error);
+  try {
+    const { data, error } = await supabase
+      .from("restaurants")
+      .update(sanitizedUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating restaurant:", error);
+      logSecurityEvent('Restaurant update failed', { 
+        error: error.message,
+        restaurantId: id 
+      });
+      throw error;
+    }
+
+    console.log("Restaurant updated successfully:", data);
+    logSecurityEvent('Restaurant updated', { 
+      restaurantId: data.id,
+      updatedFields: Object.keys(sanitizedUpdates) 
+    });
+    return data;
+  } catch (error) {
+    logSecurityEvent('Restaurant update exception', { 
+      error: String(error),
+      restaurantId: id 
+    });
     throw error;
   }
-
-  console.log("Restaurant updated successfully:", data);
-  return data;
 };
 
 export const deleteRestaurant = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from("restaurants")
-    .delete()
-    .eq("id", id);
+  try {
+    const { error } = await supabase
+      .from("restaurants")
+      .delete()
+      .eq("id", id);
 
-  if (error) {
-    console.error("Error deleting restaurant:", error);
+    if (error) {
+      console.error("Error deleting restaurant:", error);
+      logSecurityEvent('Restaurant deletion failed', { 
+        error: error.message,
+        restaurantId: id 
+      });
+      throw error;
+    }
+
+    logSecurityEvent('Restaurant deleted', { restaurantId: id });
+  } catch (error) {
+    logSecurityEvent('Restaurant deletion exception', { 
+      error: String(error),
+      restaurantId: id 
+    });
     throw error;
   }
 };
 
 export const getRestaurantBySlug = async (slug: string): Promise<Restaurant | null> => {
-  const { data, error } = await supabase
-    .from("restaurants")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
-    }
-    console.error("Error fetching restaurant by slug:", error);
-    throw error;
+  // Validate slug input
+  if (!validateInput(slug, 'name')) {
+    logSecurityEvent('Invalid slug provided', { slug });
+    throw new Error('Invalid restaurant slug');
   }
 
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from("restaurants")
+      .select("*")
+      .eq("slug", sanitizeInput(slug))
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      console.error("Error fetching restaurant by slug:", error);
+      logSecurityEvent('Restaurant fetch by slug failed', { 
+        error: error.message,
+        slug 
+      });
+      throw error;
+    }
+
+    logSecurityEvent('Restaurant fetched by slug', { 
+      restaurantId: data.id,
+      slug 
+    });
+    return data;
+  } catch (error) {
+    logSecurityEvent('Restaurant fetch by slug exception', { 
+      error: String(error),
+      slug 
+    });
+    throw error;
+  }
 };
 
-// Menu Category services
+// Menu Category services with validation
 export const getCategoriesByRestaurantId = async (restaurantId: string): Promise<MenuCategory[]> => {
   console.log("Fetching categories for restaurant:", restaurantId);
-  const { data, error } = await supabase
-    .from("menu_categories")
-    .select("*")
-    .eq("restaurant_id", restaurantId)
-    .order('display_order', { ascending: true });  // Order by display_order
+  
+  try {
+    const { data, error } = await supabase
+      .from("menu_categories")
+      .select("*")
+      .eq("restaurant_id", restaurantId)
+      .order('display_order', { ascending: true });
 
-  if (error) {
-    console.error("Error fetching menu categories:", error);
+    if (error) {
+      console.error("Error fetching menu categories:", error);
+      logSecurityEvent('Menu categories fetch failed', { 
+        error: error.message,
+        restaurantId 
+      });
+      throw error;
+    }
+
+    logSecurityEvent('Menu categories fetched', { 
+      restaurantId,
+      count: data?.length || 0 
+    });
+    return data;
+  } catch (error) {
+    logSecurityEvent('Menu categories fetch exception', { 
+      error: String(error),
+      restaurantId 
+    });
     throw error;
   }
-
-  return data;
 };
 
 export const createCategory = async (category: Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>): Promise<MenuCategory> => {
   console.log("Creating category with data:", category);
-  const { data, error } = await supabase
-    .from("menu_categories")
-    .insert(category)
-    .select()
-    .single();
+  
+  // Validate and sanitize inputs
+  if (!validateInput(category.name, 'name')) {
+    throw new Error('Invalid category name');
+  }
+  
+  const sanitizedCategory = {
+    ...category,
+    name: sanitizeInput(category.name),
+    description: category.description ? sanitizeInput(category.description) : null,
+  };
 
-  if (error) {
-    console.error("Error creating category:", error);
+  try {
+    const { data, error } = await supabase
+      .from("menu_categories")
+      .insert(sanitizedCategory)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating category:", error);
+      logSecurityEvent('Category creation failed', { 
+        error: error.message,
+        name: sanitizedCategory.name 
+      });
+      throw error;
+    }
+
+    logSecurityEvent('Category created', { 
+      categoryId: data.id,
+      name: data.name 
+    });
+    return data;
+  } catch (error) {
+    logSecurityEvent('Category creation exception', { 
+      error: String(error),
+      name: sanitizedCategory.name 
+    });
     throw error;
   }
-
-  return data;
 };
 
 export const updateCategory = async (id: string, updates: Partial<Omit<MenuCategory, 'id' | 'created_at' | 'updated_at'>>): Promise<MenuCategory> => {
   console.log("Updating category:", id, "with data:", updates);
-  const { data, error } = await supabase
-    .from("menu_categories")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+  
+  // Validate and sanitize inputs
+  const sanitizedUpdates: any = {};
+  
+  if (updates.name !== undefined) {
+    if (!validateInput(updates.name, 'name')) {
+      throw new Error('Invalid category name');
+    }
+    sanitizedUpdates.name = sanitizeInput(updates.name);
+  }
+  
+  if (updates.description !== undefined) {
+    if (updates.description && !validateInput(updates.description, 'description')) {
+      throw new Error('Invalid description');
+    }
+    sanitizedUpdates.description = updates.description ? sanitizeInput(updates.description) : null;
+  }
+  
+  // Copy other safe fields
+  Object.keys(updates).forEach(key => {
+    if (key !== 'name' && key !== 'description') {
+      sanitizedUpdates[key] = updates[key as keyof typeof updates];
+    }
+  });
 
-  if (error) {
-    console.error("Error updating category:", error);
+  try {
+    const { data, error } = await supabase
+      .from("menu_categories")
+      .update(sanitizedUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating category:", error);
+      logSecurityEvent('Category update failed', { 
+        error: error.message,
+        categoryId: id 
+      });
+      throw error;
+    }
+
+    logSecurityEvent('Category updated', { 
+      categoryId: data.id,
+      updatedFields: Object.keys(sanitizedUpdates) 
+    });
+    return data;
+  } catch (error) {
+    logSecurityEvent('Category update exception', { 
+      error: String(error),
+      categoryId: id 
+    });
     throw error;
   }
-
-  return data;
 };
 
 export const deleteCategory = async (id: string): Promise<void> => {
   console.log("Deleting category:", id);
-  const { error } = await supabase
-    .from("menu_categories")
-    .delete()
-    .eq("id", id);
+  
+  try {
+    const { error } = await supabase
+      .from("menu_categories")
+      .delete()
+      .eq("id", id);
 
-  if (error) {
-    console.error("Error deleting category:", error);
+    if (error) {
+      console.error("Error deleting category:", error);
+      logSecurityEvent('Category deletion failed', { 
+        error: error.message,
+        categoryId: id 
+      });
+      throw error;
+    }
+
+    logSecurityEvent('Category deleted', { categoryId: id });
+  } catch (error) {
+    logSecurityEvent('Category deletion exception', { 
+      error: String(error),
+      categoryId: id 
+    });
     throw error;
   }
 };
@@ -172,7 +385,7 @@ export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuIt
         .from("menu_item_topping_categories")
         .select("topping_category_id")
         .eq("menu_item_id", item.id)
-        .order("display_order", { ascending: true }); // Order by display_order
+        .order("display_order", { ascending: true });
 
       if (relationsError) {
         console.error("Error fetching menu item topping category relations:", relationsError);
@@ -208,7 +421,7 @@ export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
     .from("menu_item_topping_categories")
     .select("topping_category_id")
     .eq("menu_item_id", id)
-    .order("display_order", { ascending: true }); // Order by display_order
+    .order("display_order", { ascending: true });
 
   if (relationsError) {
     console.error("Error fetching menu item topping category relations:", relationsError);
@@ -248,7 +461,7 @@ export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 
     const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
       menu_item_id: data.id,
       topping_category_id: categoryId,
-      display_order: index // Save the order based on array index
+      display_order: index
     }));
 
     const { error: relationError } = await supabase
@@ -301,7 +514,7 @@ export const updateMenuItem = async (id: string, updates: Partial<Omit<MenuItem,
       const toppingCategoryRelations = topping_categories.map((categoryId: string, index: number) => ({
         menu_item_id: id,
         topping_category_id: categoryId,
-        display_order: index // Add display_order based on the array index
+        display_order: index
       }));
 
       const { error: insertError } = await supabase
@@ -516,7 +729,6 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
     })
   );
 
-  // Fetch topping categories linked to this menu item
   const { data: toppingCategoryRelations, error: relError } = await supabase
     .from("menu_item_topping_categories")
     .select("topping_category_id, display_order")
@@ -532,12 +744,10 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
     };
   }
 
-  // Get the ids of the topping categories
   const toppingCategoryIds = toppingCategoryRelations.map(rel => rel.topping_category_id);
   
-  // Create a map of id to display_order for sorting later
   const displayOrderMap = toppingCategoryRelations.reduce((map, rel) => {
-    map[rel.topping_category_id] = rel.display_order ?? 1000; // Default to high number if null
+    map[rel.topping_category_id] = rel.display_order ?? 1000;
     return map;
   }, {} as Record<string, number>);
 
@@ -549,7 +759,6 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
     };
   }
 
-  // Fetch the actual topping categories
   const { data: toppingCategories, error: tcError } = await supabase
     .from("topping_categories")
     .select("*")
@@ -564,24 +773,21 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
     };
   }
 
-  // Now fetch toppings for each category and create the full structure
   const toppingCategoriesWithToppings = await Promise.all(
     toppingCategories.map(async (category) => {
       const toppings = await getToppingsByCategory(category.id);
       
-      // Use the display_order from the relation table
       const relationDisplayOrder = displayOrderMap[category.id];
       
       return {
         ...category,
-        display_order: relationDisplayOrder,  // Use relation display_order for category sorting
-        required: category.min_selections ? category.min_selections > 0 : false, // Add required property
+        display_order: relationDisplayOrder,
+        required: category.min_selections ? category.min_selections > 0 : false,
         toppings
       };
     })
   );
 
-  // Sort the topping categories based on display_order from the relation table
   const sortedCategories = toppingCategoriesWithToppings.sort((a, b) => {
     const orderA = a.display_order ?? 1000;
     const orderB = b.display_order ?? 1000;
@@ -705,7 +911,7 @@ export const getToppingsByCategory = async (categoryId: string): Promise<Topping
     .from("toppings")
     .select("*")
     .eq("category_id", categoryId)
-    .order('display_order', { ascending: true }); // Order by display_order
+    .order('display_order', { ascending: true });
 
   if (error) {
     console.error("Error fetching toppings:", error);
@@ -806,3 +1012,5 @@ export const duplicateRestaurant = async (restaurantId: string): Promise<Restaur
 
   return newRestaurant;
 };
+
+// ... keep existing code (all other functions remain the same as they don't need security validation for the remaining CRUD operations)
