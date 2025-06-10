@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<'admin' | 'owner' | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<number>(0);
 
-  // Simplified and more reliable session validation
+  // Simplified session validation
   const validateSession = async (currentSession: Session | null = session): Promise<boolean> => {
     if (!currentSession) return false;
     
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isExpired: sessionExpiryMs <= now
     });
     
-    // Check if session is expired (no buffer needed for admin operations)
+    // Check if session is expired
     if (sessionExpiryMs <= now) {
       logSecurityEvent('Session expired', {
         expiresAt: currentSession.expires_at,
@@ -61,25 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    // Only use database validation for much older sessions to reduce noise
-    if (sessionAge > 1800000) { // 30 minutes
-      try {
-        const { data, error } = await supabase.rpc('validate_session_security');
-        if (error) {
-          console.error('Database session validation error:', error);
-          return false; // Don't log as security event for DB errors
-        }
-        return data === true;
-      } catch (error) {
-        console.error('Session validation exception:', error);
-        return false; // Don't log as security event for exceptions
-      }
-    }
-    
     return true;
   };
 
-  // Enhanced admin status check with direct database query as fallback
+  // Check admin status using the profiles table directly
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
     
@@ -93,30 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Checking admin status for user:", userId);
       
-      // First try the RLS-compliant function
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('is_current_user_admin');
-      
-      if (!rpcError && rpcData !== null) {
-        const adminStatus = rpcData || false;
-        setLastAdminCheck(now);
-        
-        // Also get user role
-        const { data: roleData, error: roleError } = await supabase
-          .rpc('get_current_user_role');
-        
-        if (!roleError && roleData) {
-          setUserRole(roleData as 'admin' | 'owner');
-        } else {
-          setUserRole(adminStatus ? 'admin' : 'owner');
-        }
-        
-        console.log("Admin check result:", adminStatus, "Role:", roleData);
-        return adminStatus;
-      }
-      
-      // If RPC fails, try direct profile query as fallback
-      console.log("RPC failed, trying direct profile query", rpcError);
+      // Query the profiles table directly to check admin status
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('is_admin')
@@ -124,9 +87,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
       
       if (profileError) {
-        console.error("Profile query also failed:", profileError);
+        console.error("Profile query failed:", profileError);
         const errorDetails = handleError(profileError, 'Admin status check - profile query');
-        logSecurityEvent('Admin check failed - both methods', errorDetails);
+        logSecurityEvent('Admin check failed', errorDetails);
         return false;
       }
       
@@ -134,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLastAdminCheck(now);
       setUserRole(adminStatus ? 'admin' : 'owner');
       
-      console.log("Direct profile query result:", adminStatus);
+      console.log("Admin status check result:", adminStatus);
       return adminStatus;
       
     } catch (error) {
@@ -151,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log("Setting up AuthProvider with enhanced admin detection...");
+    console.log("Setting up AuthProvider...");
     
     const handleAuthChange = async (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event);
@@ -184,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionExpiry: currentSession.expires_at
         });
         
-        // Immediately check admin status for new sessions
+        // Check admin status for new sessions
         setAdminCheckCompleted(false);
         try {
           const adminStatus = await checkAdminStatus(currentSession.user.id);
@@ -205,7 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
 
-    // Enhanced session initialization
+    // Initialize session
     const initSession = async () => {
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -225,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(currentSession);
           setUser(currentSession.user);
           
-          // Check admin status with enhanced error handling
+          // Check admin status
           setAdminCheckCompleted(false);
           try {
             const adminStatus = await checkAdminStatus(currentSession.user.id);
@@ -245,10 +208,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setLoading(false);
       } catch (error) {
-        const errorDetails = handleError(error, 'Enhanced session initialization');
+        const errorDetails = handleError(error, 'Session initialization');
         logSecurityEvent('Session initialization failed', errorDetails);
         
-        // Enhanced failure handling
+        // Failure handling
         setSession(null);
         setUser(null);
         setIsAdmin(false);
@@ -262,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     initSession();
 
-    // Reduce frequency of periodic session validation to prevent noise
+    // Periodic session validation (reduced frequency)
     const validationInterval = setInterval(async () => {
       if (session) {
         const sessionAge = Date.now() - sessionStartTime;
@@ -274,20 +237,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       }
-    }, 300000); // Check every 5 minutes instead of every minute
+    }, 300000); // Check every 5 minutes
 
     return () => {
-      console.log("Cleaning up enhanced AuthProvider...");
+      console.log("Cleaning up AuthProvider...");
       subscription.unsubscribe();
       clearInterval(validationInterval);
     };
   }, []);
 
-  // Enhanced admin status updates
+  // Update admin status when user changes
   useEffect(() => {
     const updateAdminStatus = async () => {
       if (user && !loading) {
-        console.log("User state changed, updating admin status with enhanced detection for:", user.id);
+        console.log("User state changed, updating admin status for:", user.id);
         
         try {
           setAdminCheckCompleted(false);
@@ -306,17 +269,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateAdminStatus();
   }, [user, loading]);
 
-  // Enhanced sign out with security logging
+  // Sign out with security logging
   const signOut = async () => {
     try {
-      console.log("Initiating secure sign out...");
+      console.log("Initiating sign out...");
       logSecurityEvent('Sign out initiated', { 
         userId: user?.id,
         timestamp: new Date().toISOString(),
         sessionDuration: sessionStartTime ? Date.now() - sessionStartTime : 0
       });
       
-      // Enhanced sign out with timeout protection
+      // Sign out with timeout protection
       const { error } = await Promise.race([
         supabase.auth.signOut(),
         new Promise<{error: Error}>((_, reject) => 
@@ -330,7 +293,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       
-      // Enhanced state cleanup
+      // State cleanup
       setSession(null);
       setUser(null);
       setIsAdmin(false);
@@ -339,7 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSessionStartTime(0);
       localStorage.removeItem('session_start');
       
-      console.log("Secure sign out complete");
+      console.log("Sign out complete");
     } catch (error) {
       const errorDetails = handleError(error, 'Sign out exception');
       logSecurityEvent('Sign out exception', errorDetails);
