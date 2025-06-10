@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +11,7 @@ import { securityHeaders } from "@/utils/security-headers";
 import { logSecurityEventAudit } from "@/utils/audit-logger";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import OwnerLogin from "./pages/OwnerLogin";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import RestaurantDashboard from "./pages/RestaurantDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -63,6 +65,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/owner/login" element={<OwnerLogin />} />
                 <Route path="/owner" element={<OwnerDashboard />} />
                 <Route path="/restaurant/:restaurantId" element={<RestaurantDashboard />} />
                 <Route path="/admin" element={<AdminDashboard />} />
