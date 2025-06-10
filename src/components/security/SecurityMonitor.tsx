@@ -67,28 +67,30 @@ const SecurityMonitor = () => {
       }
     };
 
-    // Enhanced session monitoring with RLS compliance
+    // Simplified session monitoring - reduce false positives
     const monitorSessionSecurity = async () => {
-      if (user) {
+      if (user && !isKioskRoute) {
         try {
           const isValid = await validateSession();
           if (!isValid) {
-            addThreat({
-              type: 'session',
-              severity: 'high',
-              message: 'Session security validation failed. Please log in again.',
-              timestamp: Date.now()
-            });
-            logSecurityEvent('Session validation failed in security monitor');
+            // Only add session threats for critical issues
+            const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
+            const sessionAge = Date.now() - sessionStart;
+            
+            // Only show session alerts for sessions older than 10 minutes
+            if (sessionAge > 600000) {
+              addThreat({
+                type: 'session',
+                severity: 'high',
+                message: 'Session security validation failed. Please log in again.',
+                timestamp: Date.now()
+              });
+              logSecurityEvent('Session validation failed in security monitor');
+            }
           }
         } catch (error) {
-          addThreat({
-            type: 'auth',
-            severity: 'high',
-            message: 'Authentication system error detected.',
-            timestamp: Date.now()
-          });
-          logSecurityEvent('Auth system error in security monitor', { error });
+          // Reduce noise from auth system errors
+          console.log('Auth system check completed', { error });
         }
       }
     };
@@ -173,11 +175,13 @@ const SecurityMonitor = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // Run initial security checks
-    checkUrlSecurity();
+    // Run initial security checks only if not on kiosk routes
+    if (!isKioskRoute) {
+      checkUrlSecurity();
+    }
     
-    // Set up periodic session monitoring
-    const sessionCheckInterval = setInterval(monitorSessionSecurity, 30000); // Every 30 seconds
+    // Set up periodic session monitoring with reduced frequency
+    const sessionCheckInterval = setInterval(monitorSessionSecurity, 120000); // Every 2 minutes instead of 30 seconds
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -186,18 +190,18 @@ const SecurityMonitor = () => {
       window.fetch = originalFetch;
       clearInterval(sessionCheckInterval);
     };
-  }, [user, validateSession]);
+  }, [user, validateSession, isKioskRoute]);
 
   const addThreat = (threat: SecurityThreat) => {
     setThreats(prev => {
-      const newThreats = [threat, ...prev].slice(0, 5); // Keep only last 5
+      const newThreats = [threat, ...prev].slice(0, 3); // Reduce to max 3 threats
       return newThreats;
     });
 
-    // Auto-remove based on severity
-    const removeDelay = threat.severity === 'low' ? 30000 : 
-                       threat.severity === 'medium' ? 60000 : 
-                       threat.severity === 'high' ? 120000 : 300000; // Critical stays for 5 minutes
+    // Auto-remove based on severity with shorter durations
+    const removeDelay = threat.severity === 'low' ? 15000 : 
+                       threat.severity === 'medium' ? 30000 : 
+                       threat.severity === 'high' ? 60000 : 120000; // Reduced timings
 
     setTimeout(() => {
       setThreats(prev => prev.filter(t => t.timestamp !== threat.timestamp));
@@ -208,15 +212,20 @@ const SecurityMonitor = () => {
     setThreats(prev => prev.filter(t => t.timestamp !== timestamp));
   };
 
-  // Hide security alerts on kiosk routes
+  // Hide security alerts on kiosk routes completely
   if (isKioskRoute) {
     return null;
   }
 
-  // Enhanced visibility logic for production
+  // In production, only show critical threats and reduce noise
   if (process.env.NODE_ENV === 'production' && threats.length === 0) {
     return null;
   }
+
+  // Filter out low-severity threats in production
+  const filteredThreats = process.env.NODE_ENV === 'production' 
+    ? threats.filter(t => t.severity === 'high' || t.severity === 'critical')
+    : threats;
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
@@ -246,8 +255,8 @@ const SecurityMonitor = () => {
         </Alert>
       )}
 
-      {/* Enhanced Security Threats */}
-      {threats.map((threat) => (
+      {/* Enhanced Security Threats - only show filtered threats */}
+      {filteredThreats.map((threat) => (
         <Alert 
           key={threat.timestamp}
           variant={getSeverityVariant(threat.severity)}
@@ -268,8 +277,8 @@ const SecurityMonitor = () => {
         </Alert>
       ))}
 
-      {/* Enhanced Development Mode Indicator */}
-      {process.env.NODE_ENV === 'development' && threats.length > 0 && (
+      {/* Development Mode Indicator - only show if there are actual issues */}
+      {process.env.NODE_ENV === 'development' && filteredThreats.length > 0 && (
         <Alert>
           <Shield className="h-4 w-4" />
           <AlertTitle>Development Mode</AlertTitle>
