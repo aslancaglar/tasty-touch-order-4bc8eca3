@@ -525,13 +525,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_restaurant_owners_restaurant_id"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "restaurant_owners_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
@@ -827,10 +820,6 @@ export type Database = {
         Args: { source_restaurant_id: string }
         Returns: string
       }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
       get_daily_order_count: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -870,22 +859,6 @@ export type Database = {
       }
       is_restaurant_owner: {
         Args: { restaurant_uuid: string }
-        Returns: boolean
-      }
-      is_restaurant_owner_secure: {
-        Args: { restaurant_uuid: string }
-        Returns: boolean
-      }
-      validate_email: {
-        Args: { email_input: string }
-        Returns: boolean
-      }
-      validate_price: {
-        Args: { price_input: number }
-        Returns: boolean
-      }
-      validate_quantity: {
-        Args: { quantity_input: number }
         Returns: boolean
       }
     }
