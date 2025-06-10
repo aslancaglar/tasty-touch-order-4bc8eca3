@@ -53,15 +53,16 @@ const formSchema = z.object({
         return false;
       }
     }, "Display order must be a valid positive number"),
+  csrfToken: z.string().optional(),
 });
 
-interface CategoryFormProps {
-  onSubmit: (values: z.infer<typeof formSchema>) => void;
+interface SecureCategoryFormProps {
+  onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>;
   initialValues?: Partial<z.infer<typeof formSchema>>;
   isLoading?: boolean;
 }
 
-const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps) => {
+const SecureCategoryForm = ({ onSubmit, initialValues, isLoading }: SecureCategoryFormProps) => {
   const [iconUrl, setIconUrl] = useState<string | undefined>(initialValues?.icon || undefined);
 
   const { csrfToken, handleSubmit: secureHandleSubmit } = useSecureForm({
@@ -71,9 +72,10 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
       display_order: { type: 'number', required: true, min: 0, allowDecimals: false },
     },
     onSubmit: async (validatedData) => {
-      onSubmit({
+      await onSubmit({
         ...validatedData,
         icon: iconUrl,
+        csrfToken,
       });
     },
   });
@@ -85,6 +87,7 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
       description: initialValues?.description || "",
       icon: initialValues?.icon || "",
       display_order: initialValues?.display_order || "0",
+      csrfToken,
     },
   });
 
@@ -97,6 +100,7 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
   };
 
   const handleIconUpload = (url: string) => {
+    // Validate URL before setting
     try {
       validateAndSanitizeInput(url, 'url');
       setIconUrl(url);
@@ -207,4 +211,4 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
   );
 };
 
-export default CategoryForm;
+export default SecureCategoryForm;
