@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +17,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import RestaurantSettings from "./pages/RestaurantSettings";
 import MenuSettings from "./pages/MenuSettings";
 import OrderManagement from "./pages/OrderManagement";
+import Restaurants from "./pages/Restaurants";
 import Kiosk from "./pages/Kiosk";
 import NotFound from "./pages/NotFound";
 import { registerServiceWorker } from "@/utils/service-worker";
@@ -67,6 +67,7 @@ function App() {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/owner/login" element={<OwnerLogin />} />
                 <Route path="/owner" element={<OwnerDashboard />} />
+                <Route path="/restaurants" element={<Restaurants />} />
                 <Route path="/restaurant/:restaurantId" element={<RestaurantDashboard />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/restaurant/:restaurantId/settings" element={<RestaurantSettings />} />
