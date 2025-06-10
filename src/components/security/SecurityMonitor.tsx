@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Shield, WifiOff, Lock } from 'lucide-react';
 import { logSecurityEvent } from '@/config/security';
@@ -16,6 +17,10 @@ const SecurityMonitor = () => {
   const [threats, setThreats] = useState<SecurityThreat[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { validateSession, user } = useAuth();
+  const location = useLocation();
+
+  // Check if current route is a kiosk route
+  const isKioskRoute = location.pathname.startsWith('/r/');
 
   useEffect(() => {
     // Enhanced network monitoring
@@ -202,6 +207,11 @@ const SecurityMonitor = () => {
   const dismissThreat = (timestamp: number) => {
     setThreats(prev => prev.filter(t => t.timestamp !== timestamp));
   };
+
+  // Hide security alerts on kiosk routes
+  if (isKioskRoute) {
+    return null;
+  }
 
   // Enhanced visibility logic for production
   if (process.env.NODE_ENV === 'production' && threats.length === 0) {
