@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logSecurityEvent, handleError } from "@/utils/error-handler";
+import { logAuthEvent } from "@/utils/audit-logger";
 
 type AuthContextType = {
   session: Session | null;
@@ -28,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
   const [lastAdminCheck, setLastAdminCheck] = useState<number>(0);
 
-  // Simplified session validation - only check if session exists and is not expired
+  // Enhanced session validation with audit logging
   const validateSession = (currentSession: Session | null): boolean => {
     if (!currentSession) return false;
     
@@ -36,18 +37,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const sessionTime = new Date(currentSession.expires_at || 0).getTime();
     
     // Only check if session is expired (with small buffer)
-    if (sessionTime <= now + 60000) { // 1 minute buffer instead of 5 minutes
+    if (sessionTime <= now + 60000) { // 1 minute buffer
       logSecurityEvent('Session expired', {
         expiresAt: currentSession.expires_at,
         timeToExpiry: sessionTime - now
       });
+      
+      logAuthEvent('session_expired', currentSession.user?.id, {
+        expiresAt: currentSession.expires_at,
+        timeToExpiry: sessionTime - now
+      });
+      
       return false;
     }
     
     return true;
   };
 
-  // Function to check admin status with caching
+  // Function to check admin status with caching and audit logging
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
     
@@ -61,6 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Checking admin status for user:", userId);
       
+      logAuthEvent('admin_check_initiated', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('is_admin')
@@ -70,17 +79,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         const errorDetails = handleError(error, 'Admin status check');
         logSecurityEvent('Admin check failed', errorDetails);
+        logAuthEvent('admin_check_failed', userId, { error: error.message });
         return false;
       }
       
       const adminStatus = data?.is_admin || false;
       setLastAdminCheck(now);
       
+      logAuthEvent('admin_check_completed', userId, { 
+        isAdmin: adminStatus,
+        cached: false 
+      });
+      
       console.log("Admin check result:", adminStatus);
       return adminStatus;
     } catch (error) {
       const errorDetails = handleError(error, 'Admin status check exception');
       logSecurityEvent('Admin check exception', errorDetails);
+      logAuthEvent('admin_check_exception', userId, { error: String(error) });
       return false;
     }
   };
@@ -91,9 +107,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAuthChange = (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event);
       
+      // Log all auth state changes
+      logAuthEvent(`auth_state_change_${event}`, currentSession?.user?.id, {
+        event,
+        sessionExists: !!currentSession,
+        timestamp: new Date().toISOString()
+      });
+      
       // Only validate session for existing sessions, not on sign-in events
       if (currentSession && event !== 'SIGNED_IN' && !validateSession(currentSession)) {
         logSecurityEvent('Invalid session detected', { event });
+        logAuthEvent('invalid_session_detected', currentSession.user?.id, { event });
         // Force logout for invalid sessions
         supabase.auth.signOut();
         return;
@@ -110,6 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         setLastAdminCheck(0);
         logSecurityEvent('User signed out', { timestamp: new Date().toISOString() });
+        logAuthEvent('user_signed_out', undefined, { 
+          timestamp: new Date().toISOString() 
+        });
       }
       
       // Log sign-in events
@@ -117,6 +144,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logSecurityEvent('User signed in', { 
           userId: currentSession.user.id,
           timestamp: new Date().toISOString()
+        });
+        logAuthEvent('user_signed_in', currentSession.user.id, {
+          email: currentSession.user.email,
+          timestamp: new Date().toISOString(),
+          provider: currentSession.user.app_metadata?.provider
         });
       }
     };
@@ -127,6 +159,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check for existing session
     const initSession = async () => {
       try {
+        logAuthEvent('session_initialization_started');
+        
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         console.log("Initial session check:", currentSession ? "Session found" : "No session");
         
@@ -136,6 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           if (sessionAge > 10000 && !validateSession(currentSession)) { // Only validate if session is older than 10 seconds
             logSecurityEvent('Invalid initial session', {});
+            logAuthEvent('invalid_initial_session', currentSession.user?.id);
             await supabase.auth.signOut();
             setSession(null);
             setUser(null);
@@ -147,6 +182,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(currentSession);
           setUser(currentSession.user);
           
+          logAuthEvent('existing_session_restored', currentSession.user.id, {
+            sessionAge,
+            email: currentSession.user.email
+          });
+          
           // Check admin status
           const adminStatus = await checkAdminStatus(currentSession.user.id);
           setIsAdmin(adminStatus);
@@ -154,12 +194,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setIsAdmin(false);
           setAdminCheckCompleted(true);
+          logAuthEvent('no_existing_session');
         }
         
         setLoading(false);
+        logAuthEvent('session_initialization_completed');
       } catch (error) {
         const errorDetails = handleError(error, 'Session initialization');
         logSecurityEvent('Session initialization failed', errorDetails);
+        logAuthEvent('session_initialization_failed', undefined, {
+          error: String(error)
+        });
         
         // Fail safely
         setSession(null);
@@ -200,8 +245,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log("Signing out...");
+      const userId = user?.id;
+      
       logSecurityEvent('Sign out initiated', { 
-        userId: user?.id,
+        userId,
+        timestamp: new Date().toISOString()
+      });
+      
+      logAuthEvent('sign_out_initiated', userId, {
         timestamp: new Date().toISOString()
       });
       
@@ -216,6 +267,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         const errorDetails = handleError(error, 'Sign out');
         logSecurityEvent('Sign out failed', errorDetails);
+        logAuthEvent('sign_out_failed', userId, {
+          error: error.message
+        });
         throw error;
       }
       
@@ -225,10 +279,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(false);
       setLastAdminCheck(0);
       
+      logAuthEvent('sign_out_completed', userId);
       console.log("Sign out complete");
     } catch (error) {
       const errorDetails = handleError(error, 'Sign out exception');
       logSecurityEvent('Sign out exception', errorDetails);
+      logAuthEvent('sign_out_exception', user?.id, {
+        error: String(error)
+      });
       
       // Clear state even on error
       setSession(null);
