@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string | null
+          table_name: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string
@@ -525,13 +564,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_restaurant_owners_restaurant_id"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "restaurant_owners_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
@@ -864,6 +896,10 @@ export type Database = {
         Args: { limit_count: number }
         Returns: Json
       }
+      is_current_user_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_menu_item_available_now: {
         Args: { item_id: string }
         Returns: boolean
@@ -872,20 +908,12 @@ export type Database = {
         Args: { restaurant_uuid: string }
         Returns: boolean
       }
-      is_restaurant_owner_secure: {
+      user_owns_restaurant: {
         Args: { restaurant_uuid: string }
         Returns: boolean
       }
-      validate_email: {
-        Args: { email_input: string }
-        Returns: boolean
-      }
-      validate_price: {
-        Args: { price_input: number }
-        Returns: boolean
-      }
-      validate_quantity: {
-        Args: { quantity_input: number }
+      validate_session_security: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
     }
