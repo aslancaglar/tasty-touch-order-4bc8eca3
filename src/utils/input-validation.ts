@@ -1,6 +1,24 @@
 
-import { SECURITY_CONFIG, SECURITY_PATTERNS, ValidationError, SecurityError, logSecurityEvent } from '@/config/security';
+import { SECURITY_CONFIG, SECURITY_PATTERNS, logSecurityEvent } from '@/config/security';
 import DOMPurify from 'dompurify';
+
+// Define custom error classes
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+export class SecurityError extends Error {
+  public code: string;
+  
+  constructor(message: string, code: string = 'SECURITY_ERROR') {
+    super(message);
+    this.name = 'SecurityError';
+    this.code = code;
+  }
+}
 
 // Enhanced input validation with security patterns
 export const validateAndSanitizeInput = (
