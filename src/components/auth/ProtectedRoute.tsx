@@ -23,7 +23,7 @@ const ProtectedRoute = ({
   const [securityFailure, setSecurityFailure] = useState(false);
   const [sessionValid, setSessionValid] = useState<boolean | null>(null);
 
-  // Much more selective session validation - only for admin routes with old sessions
+  // Enhanced session validation - only for admin routes with old sessions
   useEffect(() => {
     const checkSessionSecurity = async () => {
       if (user && adminCheckCompleted && requireAdmin) {
@@ -124,14 +124,21 @@ const ProtectedRoute = ({
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Enhanced admin requirement check with role-based access
-  if (requireAdmin && !isAdmin) {
-    console.log("Access denied: User is not an admin, redirecting to /owner");
+  // Enhanced admin requirement check with better debugging
+  if (requireAdmin && isAdmin !== true) {
+    console.log("Access denied: Admin required but user admin status:", { 
+      isAdmin, 
+      userRole, 
+      adminCheckCompleted,
+      userId: user.id 
+    });
+    
     logSecurityEvent('Unauthorized admin access attempt', {
       route: location.pathname,
       userId: user.id,
       userRole,
       isAdmin,
+      adminCheckCompleted,
     });
     
     return (
@@ -140,7 +147,8 @@ const ProtectedRoute = ({
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Access Denied</AlertTitle>
           <AlertDescription>
-            You don't have the required permissions to access this page.
+            You don't have the required admin permissions to access this page.
+            {isAdmin === null && " Admin status is still being verified."}
           </AlertDescription>
         </Alert>
       </div>
@@ -171,7 +179,8 @@ const ProtectedRoute = ({
     requireAdmin, 
     isAdmin, 
     userRole,
-    sessionValid 
+    sessionValid,
+    adminCheckCompleted
   });
   
   return <>{children}</>;

@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  // Enhanced admin status check using new RLS-compliant function
+  // Enhanced admin status check with direct database query as fallback
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
     
@@ -93,31 +93,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Checking admin status for user:", userId);
       
-      // Use the new RLS-compliant function
-      const { data, error } = await supabase
+      // First try the RLS-compliant function
+      const { data: rpcData, error: rpcError } = await supabase
         .rpc('is_current_user_admin');
       
-      if (error) {
-        const errorDetails = handleError(error, 'Admin status check');
-        logSecurityEvent('Admin check failed', errorDetails);
+      if (!rpcError && rpcData !== null) {
+        const adminStatus = rpcData || false;
+        setLastAdminCheck(now);
+        
+        // Also get user role
+        const { data: roleData, error: roleError } = await supabase
+          .rpc('get_current_user_role');
+        
+        if (!roleError && roleData) {
+          setUserRole(roleData as 'admin' | 'owner');
+        } else {
+          setUserRole(adminStatus ? 'admin' : 'owner');
+        }
+        
+        console.log("Admin check result:", adminStatus, "Role:", roleData);
+        return adminStatus;
+      }
+      
+      // If RPC fails, try direct profile query as fallback
+      console.log("RPC failed, trying direct profile query", rpcError);
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
+      
+      if (profileError) {
+        console.error("Profile query also failed:", profileError);
+        const errorDetails = handleError(profileError, 'Admin status check - profile query');
+        logSecurityEvent('Admin check failed - both methods', errorDetails);
         return false;
       }
       
-      const adminStatus = data || false;
+      const adminStatus = profileData?.is_admin || false;
       setLastAdminCheck(now);
+      setUserRole(adminStatus ? 'admin' : 'owner');
       
-      // Also get user role
-      const { data: roleData, error: roleError } = await supabase
-        .rpc('get_current_user_role');
-      
-      if (!roleError && roleData) {
-        setUserRole(roleData as 'admin' | 'owner');
-      } else {
-        setUserRole(adminStatus ? 'admin' : 'owner');
-      }
-      
-      console.log("Admin check result:", adminStatus, "Role:", roleData);
+      console.log("Direct profile query result:", adminStatus);
       return adminStatus;
+      
     } catch (error) {
       const errorDetails = handleError(error, 'Admin status check exception');
       logSecurityEvent('Admin check exception', errorDetails);
@@ -132,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log("Setting up AuthProvider with enhanced security and RLS...");
+    console.log("Setting up AuthProvider with enhanced admin detection...");
     
     const handleAuthChange = async (event: string, currentSession: Session | null) => {
       console.log("Auth state change event:", event);
@@ -164,6 +183,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           timestamp: new Date().toISOString(),
           sessionExpiry: currentSession.expires_at
         });
+        
+        // Immediately check admin status for new sessions
+        setAdminCheckCompleted(false);
+        try {
+          const adminStatus = await checkAdminStatus(currentSession.user.id);
+          setIsAdmin(adminStatus);
+          console.log("New session admin status:", adminStatus);
+        } catch (error) {
+          console.error("Error checking admin status on sign in:", error);
+          setIsAdmin(false);
+        } finally {
+          setAdminCheckCompleted(true);
+        }
       } else if (event === 'TOKEN_REFRESHED' && currentSession) {
         // Don't validate on token refresh - this is a normal operation
         console.log('Token refreshed successfully');
@@ -193,10 +225,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(currentSession);
           setUser(currentSession.user);
           
-          // Check admin status using new RLS-compliant method
-          const adminStatus = await checkAdminStatus(currentSession.user.id);
-          setIsAdmin(adminStatus);
-          setAdminCheckCompleted(true);
+          // Check admin status with enhanced error handling
+          setAdminCheckCompleted(false);
+          try {
+            const adminStatus = await checkAdminStatus(currentSession.user.id);
+            setIsAdmin(adminStatus);
+            console.log("Initial admin status:", adminStatus);
+          } catch (error) {
+            console.error("Error during initial admin check:", error);
+            setIsAdmin(false);
+          } finally {
+            setAdminCheckCompleted(true);
+          }
         } else {
           setIsAdmin(false);
           setUserRole(null);
@@ -247,12 +287,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const updateAdminStatus = async () => {
       if (user && !loading) {
-        console.log("User state changed, updating admin status with RLS compliance for:", user.id);
+        console.log("User state changed, updating admin status with enhanced detection for:", user.id);
         
         try {
           setAdminCheckCompleted(false);
           const adminStatus = await checkAdminStatus(user.id);
           setIsAdmin(adminStatus);
+          console.log("Updated admin status:", adminStatus);
+        } catch (error) {
+          console.error("Error updating admin status:", error);
+          setIsAdmin(false);
         } finally {
           setAdminCheckCompleted(true);
         }

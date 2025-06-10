@@ -9,45 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      audit_log: {
-        Row: {
-          action: string
-          created_at: string | null
-          id: string
-          ip_address: unknown | null
-          new_data: Json | null
-          old_data: Json | null
-          record_id: string | null
-          table_name: string
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string | null
-          id?: string
-          ip_address?: unknown | null
-          new_data?: Json | null
-          old_data?: Json | null
-          record_id?: string | null
-          table_name: string
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string | null
-          id?: string
-          ip_address?: unknown | null
-          new_data?: Json | null
-          old_data?: Json | null
-          record_id?: string | null
-          table_name?: string
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       menu_categories: {
         Row: {
           created_at: string
@@ -859,10 +820,6 @@ export type Database = {
         Args: { source_restaurant_id: string }
         Returns: string
       }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
       get_daily_order_count: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -896,24 +853,12 @@ export type Database = {
         Args: { limit_count: number }
         Returns: Json
       }
-      is_current_user_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       is_menu_item_available_now: {
         Args: { item_id: string }
         Returns: boolean
       }
       is_restaurant_owner: {
         Args: { restaurant_uuid: string }
-        Returns: boolean
-      }
-      user_owns_restaurant: {
-        Args: { restaurant_uuid: string }
-        Returns: boolean
-      }
-      validate_session_security: {
-        Args: Record<PropertyKey, never>
         Returns: boolean
       }
     }
