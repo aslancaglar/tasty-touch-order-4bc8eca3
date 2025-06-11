@@ -1,160 +1,144 @@
-
-
-// Configuration options for input validation and security
 export const SECURITY_CONFIG = {
-  INPUT: {
-    MAX_TEXT_LENGTH: 1000,
-    MAX_NAME_LENGTH: 100,
-    MAX_DESCRIPTION_LENGTH: 2000,
-    MAX_URL_LENGTH: 2000,
-    MAX_EMAIL_LENGTH: 254,
-  },
+  // Rate limiting configuration
   RATE_LIMITING: {
     MAX_REQUESTS_PER_MINUTE: 60,
-    MAX_VALIDATION_ERRORS_PER_MINUTE: 10,
-    LOCKOUT_DURATION_MS: 300000, // 5 minutes
+    MAX_LOGIN_ATTEMPTS: 5,
+    LOCKOUT_DURATION_MINUTES: 15,
   },
+  
+  // Security monitoring configuration
   MONITORING: {
+    ENABLED: true,
+    LOG_SECURITY_EVENTS: true,
+    ALERT_THRESHOLD_HIGH: 10,
+    ALERT_THRESHOLD_CRITICAL: 20,
     LOG_RETENTION_HOURS: 24,
-    MAX_EVENTS_IN_MEMORY: 100,
-    ALERT_THRESHOLD_CRITICAL: 5,
   },
-  CSRF: {
-    TOKEN_LENGTH: 64,
-    TOKEN_EXPIRY_MS: 3600000, // 1 hour
+  
+  // Input validation settings
+  VALIDATION: {
+    MAX_INPUT_LENGTH: 10000,
+    ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
+    MAX_FILE_SIZE_MB: 10,
   },
-  SESSION: {
-    MAX_DURATION_MS: 86400000, // 24 hours
-    IDLE_TIMEOUT_MS: 3600000, // 1 hour
-    ROTATION_INTERVAL_MS: 1800000, // 30 minutes
-    REFRESH_THRESHOLD: 300000, // 5 minutes before expiry
-    ADMIN_CHECK_CACHE: 300000, // 5 minutes cache for admin checks
+  
+  // Network security
+  NETWORK: {
+    TIMEOUT_MS: 30000,
+    MAX_RETRIES: 3,
   }
-};
-
-// Enhanced security patterns
-export const SECURITY_PATTERNS = {
-  XSS: [
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    /<iframe\b[^>]*>/gi,
-    /javascript:/gi,
-    /vbscript:/gi,
-    /onload\s*=/gi,
-    /onerror\s*=/gi,
-    /onclick\s*=/gi,
-    /onmouseover\s*=/gi,
-    /<img[^>]+src[^>]*=["'][^"']*javascript:/gi,
-    /<object\b[^>]*>/gi,
-    /<embed\b[^>]*>/gi,
-    /<link[^>]+href[^>]*=["'][^"']*javascript:/gi,
-  ],
-  SQL_INJECTION: [
-    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)/gi,
-    /(--|\#|\/\*|\*\/)/gi,
-    /(\b(OR|AND)\b\s+\w+\s*=\s*\w+)/gi,
-    /('|('')|"|("")|(\%27)|(\%22))/gi,
-    /(\%3D)/gi, // URL encoded =
-    /(\%20(OR|AND))/gi,
-    /(WAITFOR|DELAY)\s/gi,
-    /(CAST\s*\()/gi,
-    /(CONVERT\s*\()/gi,
-  ],
-  PATH_TRAVERSAL: [
-    /(\.\.[\/\\])+/g,
-    /(\.\.%2F)+/gi,
-    /(\.\.%5C)+/gi,
-    /(%2E%2E%2F)+/gi,
-    /(%2E%2E%5C)+/gi,
-    /(\.\.\\)+/g,
-  ],
-  COMMAND_INJECTION: [
-    /(\||&|;|`|\$\(|\$\{)/g,
-    /(nc|netcat|wget|curl|ping|nslookup|dig)\s/gi,
-    /(rm|del|format|fdisk)\s/gi,
-  ],
-  SUSPICIOUS_PATTERNS: [
-    /(password|passwd|pwd)\s*[:=]/gi,
-    /(api_key|apikey|token|secret)\s*[:=]/gi,
-    /(eval|exec|system|shell_exec)\s*\(/gi,
-    /base64_decode\s*\(/gi,
-  ]
 };
 
 // Rate limiting store
-const rateLimitStore = new Map<string, { count: number; resetTime: number; isLocked: boolean }>();
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-export const checkRateLimit = (identifier: string, maxRequests = SECURITY_CONFIG.RATE_LIMITING.MAX_REQUESTS_PER_MINUTE): boolean => {
+// Security event logging
+export const logSecurityEvent = (event: string, details: Record<string, any> = {}) => {
+  if (!SECURITY_CONFIG.MONITORING.LOG_SECURITY_EVENTS) return;
+  
+  const timestamp = new Date().toISOString();
+  console.log(`[SECURITY] ${timestamp}: ${event}`, details);
+  
+  // Store in session storage for development monitoring
+  if (typeof window !== 'undefined') {
+    try {
+      const events = JSON.parse(sessionStorage.getItem('security_events') || '[]');
+      events.push({ timestamp, event, details });
+      
+      // Keep only last 100 events
+      if (events.length > 100) {
+        events.splice(0, events.length - 100);
+      }
+      
+      sessionStorage.setItem('security_events', JSON.stringify(events));
+    } catch (error) {
+      console.warn('Could not store security event:', error);
+    }
+  }
+};
+
+// Rate limiting function
+export const checkRateLimit = (identifier: string, maxRequests?: number): boolean => {
   const now = Date.now();
-  const windowMs = 60000; // 1 minute
+  const windowMs = 60 * 1000; // 1 minute window
+  const limit = maxRequests || SECURITY_CONFIG.RATE_LIMITING.MAX_REQUESTS_PER_MINUTE;
   
-  const current = rateLimitStore.get(identifier) || { count: 0, resetTime: now + windowMs, isLocked: false };
+  const entry = rateLimitStore.get(identifier);
   
-  // Check if locked
-  if (current.isLocked && now < current.resetTime) {
+  if (!entry || now > entry.resetTime) {
+    // New window or expired entry
+    rateLimitStore.set(identifier, {
+      count: 1,
+      resetTime: now + windowMs
+    });
+    return true;
+  }
+  
+  if (entry.count >= limit) {
+    logSecurityEvent('Rate limit exceeded', { 
+      identifier, 
+      attempts: entry.count,
+      limit 
+    });
     return false;
   }
   
-  // Reset if window expired
-  if (now > current.resetTime) {
-    current.count = 0;
-    current.resetTime = now + windowMs;
-    current.isLocked = false;
-  }
-  
-  current.count++;
-  
-  // Lock if exceeded
-  if (current.count > maxRequests) {
-    current.isLocked = true;
-    current.resetTime = now + SECURITY_CONFIG.RATE_LIMITING.LOCKOUT_DURATION_MS;
-    logSecurityEvent('Rate limit exceeded', { identifier, count: current.count });
-    return false;
-  }
-  
-  rateLimitStore.set(identifier, current);
+  entry.count++;
   return true;
 };
 
-// Enhanced security event logging with severity levels
-export const logSecurityEvent = (message: string, data: Record<string, any> = {}) => {
-  const event = {
-    timestamp: new Date().toISOString(),
-    message,
-    ...data,
-  };
-
-  console.warn(`SECURITY EVENT: ${message}`, event);
+// Input sanitization
+export const sanitizeInput = (input: string): string => {
+  if (!input || typeof input !== 'string') return '';
+  
+  // Basic XSS prevention
+  return input
+    .replace(/[<>]/g, '') // Remove potential HTML tags
+    .substring(0, SECURITY_CONFIG.VALIDATION.MAX_INPUT_LENGTH)
+    .trim();
 };
 
-// Enhanced input validation function that accepts validation type
-export const validateInput = (input: string, validationType?: string) => {
-  if (!input || typeof input !== 'string') {
-    return false;
+// Validate file uploads
+export const validateFileUpload = (file: File): { valid: boolean; error?: string } => {
+  if (!SECURITY_CONFIG.VALIDATION.ALLOWED_FILE_TYPES.includes(file.type)) {
+    return { valid: false, error: 'File type not allowed' };
   }
-
-  const trimmedInput = input.trim();
-  if (trimmedInput.length === 0) {
-    return false;
+  
+  if (file.size > SECURITY_CONFIG.VALIDATION.MAX_FILE_SIZE_MB * 1024 * 1024) {
+    return { valid: false, error: 'File size too large' };
   }
+  
+  return { valid: true };
+};
 
-  // Apply length limits based on validation type
-  switch (validationType) {
-    case 'name':
-      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_NAME_LENGTH;
-    case 'description':
-      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_DESCRIPTION_LENGTH;
-    case 'email':
-      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_EMAIL_LENGTH;
-    case 'url':
-      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_URL_LENGTH;
-    case 'text':
-    default:
-      return trimmedInput.length <= SECURITY_CONFIG.INPUT.MAX_TEXT_LENGTH;
+// Network request wrapper with security features
+export const secureNetworkRequest = async (
+  url: string, 
+  options: RequestInit = {}
+): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(), 
+    SECURITY_CONFIG.NETWORK.TIMEOUT_MS
+  );
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    logSecurityEvent('Network request failed', { url, error: error.message });
+    throw error;
   }
 };
 
-export const sanitizeInput = (input: string) => {
-  // Basic sanitization - can be enhanced
-  return input.replace(/[<>]/g, '').trim();
-};
-
+export default SECURITY_CONFIG;

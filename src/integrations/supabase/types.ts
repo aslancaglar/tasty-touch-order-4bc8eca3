@@ -750,6 +750,30 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       topping_categories: {
         Row: {
           allow_multiple_same_topping: boolean
@@ -936,6 +960,10 @@ export type Database = {
       is_restaurant_owner_secure: {
         Args: { restaurant_uuid: string }
         Returns: boolean
+      }
+      log_security_event: {
+        Args: { event_type: string; event_data?: Json }
+        Returns: undefined
       }
       rotate_api_key: {
         Args: {

@@ -22,10 +22,15 @@ export const handleError = (error: any, context: string = 'Unknown'): ErrorDetai
       severity = 'high';
     }
     
-    // RLS violations are critical security events
+    // RLS violations are now properly secured - these should be rare
     if (error.message?.includes('row-level security') || 
         error.message?.includes('insufficient_privilege')) {
       severity = 'critical';
+      logSecurityEvent('CRITICAL: RLS policy violation detected', {
+        error: error.message,
+        context,
+        code: error.code
+      });
     }
   }
   
