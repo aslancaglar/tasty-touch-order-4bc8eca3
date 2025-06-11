@@ -40,6 +40,14 @@ export const handleError = (error: any, context: string = 'Unknown'): ErrorDetai
       error.message?.includes('fetch')) {
     severity = 'medium';
   }
+
+  // API key related errors should be high severity
+  if (error.message?.includes('API key') || 
+      error.message?.includes('authentication') ||
+      error.message?.includes('authorization') ||
+      error.message?.includes('permission')) {
+    severity = 'high';
+  }
   
   const errorDetails: ErrorDetails = {
     message: error?.message || 'Unknown error occurred',
@@ -87,6 +95,14 @@ export const handleDatabaseError = (error: any, context: string): ErrorDetails =
     message: error?.message || 'Database operation failed',
     isDatabaseError: true
   }, `Database:${context}`);
+};
+
+export const handleApiKeyError = (error: any, context: string): ErrorDetails => {
+  return handleError({
+    ...error,
+    message: error?.message || 'API key operation failed',
+    isApiKeyError: true
+  }, `ApiKey:${context}`);
 };
 
 // Export security logging function for backward compatibility
