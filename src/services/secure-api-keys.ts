@@ -26,6 +26,14 @@ export interface ApiKeyRotationLog {
   created_at: string;
 }
 
+export interface ApiKeyRotationAlert {
+  restaurant_id: string;
+  service_name: string;
+  key_name: string;
+  days_since_rotation: number;
+  alert_level: 'OK' | 'INFO' | 'WARNING' | 'CRITICAL';
+}
+
 class SecureApiKeyService {
   private async callApiKeyManager(action: string, payload: any) {
     const { data: { session } } = await supabase.auth.getSession();
@@ -119,6 +127,18 @@ class SecureApiKeyService {
     return data || [];
   }
 
+  async getKeysNeedingRotationAlerts(restaurantId?: string): Promise<ApiKeyRotationAlert[]> {
+    const { data, error } = await supabase.rpc('get_keys_needing_rotation_alerts');
+    if (error) throw error;
+    
+    let alerts = data || [];
+    if (restaurantId) {
+      alerts = alerts.filter((alert: ApiKeyRotationAlert) => alert.restaurant_id === restaurantId);
+    }
+    
+    return alerts;
+  }
+
   async getRotationAuditLog(restaurantId: string): Promise<ApiKeyRotationLog[]> {
     const { data, error } = await supabase
       .from('api_key_rotation_log')
@@ -133,6 +153,12 @@ class SecureApiKeyService {
 
   async forceRotateOverdueKeys(): Promise<any[]> {
     const { data, error } = await supabase.rpc('force_rotate_overdue_keys');
+    if (error) throw error;
+    return data || [];
+  }
+
+  async autoDeactivateOverdueKeys(): Promise<any[]> {
+    const { data, error } = await supabase.rpc('auto_deactivate_overdue_keys');
     if (error) throw error;
     return data || [];
   }

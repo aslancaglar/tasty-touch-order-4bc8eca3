@@ -617,7 +617,6 @@ export type Database = {
       }
       restaurant_print_config: {
         Row: {
-          api_key: string | null
           browser_printing_enabled: boolean | null
           configured_printers: Json | null
           created_at: string | null
@@ -627,7 +626,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          api_key?: string | null
           browser_printing_enabled?: boolean | null
           configured_printers?: Json | null
           created_at?: string | null
@@ -637,7 +635,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          api_key?: string | null
           browser_printing_enabled?: boolean | null
           configured_printers?: Json | null
           created_at?: string | null
@@ -891,6 +888,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_deactivate_overdue_keys: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          restaurant_id: string
+          service_name: string
+          key_name: string
+          action_taken: string
+        }[]
+      }
       duplicate_restaurant: {
         Args: { source_restaurant_id: string }
         Returns: string
@@ -923,6 +929,16 @@ export type Database = {
           service_name: string
           key_name: string
           days_since_rotation: number
+        }[]
+      }
+      get_keys_needing_rotation_alerts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          restaurant_id: string
+          service_name: string
+          key_name: string
+          days_since_rotation: number
+          alert_level: string
         }[]
       }
       get_monthly_order_count: {
