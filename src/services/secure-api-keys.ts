@@ -232,5 +232,3 @@ class SecureApiKeyService {
 }
 
 export const secureApiKeyService = new SecureApiKeyService();
-
-}
