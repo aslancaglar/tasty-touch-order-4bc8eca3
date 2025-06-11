@@ -1,75 +1,117 @@
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { validateAndSanitizeInput, ValidationError, SecurityError } from "@/utils/input-validation"
-import { logSecurityEvent } from "@/config/security"
+import React, { useState, useCallback } from 'react';
+import { Input } from '@/components/ui/input';
+import { validateAndSanitizeInput, validateNumericInput, ValidationError, SecurityError } from '@/utils/input-validation';
+import { logSecurityEvent } from '@/config/security';
+import { cn } from '@/lib/utils';
 
-export interface SecureInputProps extends Omit<React.ComponentProps<"input">, 'onChange'> {
-  validationType?: 'text' | 'name' | 'description' | 'email' | 'url';
-  required?: boolean;
+interface SecureInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+  validationType?: 'text' | 'name' | 'description' | 'email' | 'url' | 'number';
   onSecureChange?: (value: string, isValid: boolean) => void;
   showValidation?: boolean;
+  min?: number;
+  max?: number;
+  allowDecimals?: boolean;
 }
 
-const SecureInput = React.forwardRef<HTMLInputElement, SecureInputProps>(
+export const SecureInput = React.forwardRef<HTMLInputElement, SecureInputProps>(
   ({ 
-    className, 
-    type = "text", 
-    validationType = 'text',
-    required = false,
-    onSecureChange,
-    showValidation = true,
+    validationType = 'text', 
+    onSecureChange, 
+    showValidation = false,
+    min,
+    max,
+    allowDecimals,
+    className,
     ...props 
   }, ref) => {
-    const [error, setError] = React.useState<string>('');
-    const [isValid, setIsValid] = React.useState(true);
+    const [validationError, setValidationError] = useState<string | null>(null);
+    const [isValid, setIsValid] = useState(true);
 
-    const handleChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      
+    const handleChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = event.target.value;
+      let processedValue = rawValue;
+      let valid = true;
+      let error: string | null = null;
+
       try {
-        const sanitizedValue = validateAndSanitizeInput(value, validationType, required);
-        setError('');
-        setIsValid(true);
-        onSecureChange?.(sanitizedValue, true);
+        if (validationType === 'number') {
+          if (rawValue.trim() === '') {
+            processedValue = '';
+            if (props.required) {
+              valid = false;
+              error = 'This field is required';
+            }
+          } else {
+            const numValue = validateNumericInput(rawValue, min, max, allowDecimals);
+            processedValue = numValue.toString();
+          }
+        } else {
+          processedValue = validateAndSanitizeInput(rawValue, validationType, props.required);
+        }
       } catch (err) {
-        if (err instanceof ValidationError) {
-          setError(err.message);
-          setIsValid(false);
-          onSecureChange?.(value, false);
-        } else if (err instanceof SecurityError) {
-          logSecurityEvent('Security validation failed in SecureInput', {
-            component: 'SecureInput',
-            validationType,
-            errorCode: err.code
-          });
-          setError('Invalid input detected');
-          setIsValid(false);
-          onSecureChange?.(value, false);
+        valid = false;
+        if (err instanceof ValidationError || err instanceof SecurityError) {
+          error = err.message;
+          
+          // Log security errors
+          if (err instanceof SecurityError) {
+            logSecurityEvent('Input security violation', {
+              validationType,
+              inputLength: rawValue.length,
+              errorCode: err.code,
+              fieldName: props.name || 'unknown'
+            });
+          }
+        } else {
+          error = 'Invalid input';
+        }
+        
+        // For security errors, clear the input
+        if (err instanceof SecurityError) {
+          processedValue = '';
         }
       }
-    }, [validationType, required, onSecureChange]);
+
+      // Update the actual input value
+      event.target.value = processedValue;
+
+      setValidationError(error);
+      setIsValid(valid);
+
+      // Call the secure change handler
+      if (onSecureChange) {
+        onSecureChange(processedValue, valid);
+      }
+    }, [validationType, onSecureChange, props.required, props.name, min, max, allowDecimals]);
 
     return (
       <div className="space-y-1">
-        <input
-          type={type}
-          className={cn(
-            "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-            !isValid && showValidation && "border-red-500 focus-visible:ring-red-500",
-            className
-          )}
+        <Input
+          {...props}
           ref={ref}
           onChange={handleChange}
-          {...props}
+          className={cn(
+            className,
+            !isValid && showValidation && "border-red-500 focus:border-red-500",
+            isValid && showValidation && "border-green-500 focus:border-green-500"
+          )}
+          aria-invalid={!isValid}
+          aria-describedby={validationError ? `${props.id}-error` : undefined}
         />
-        {error && showValidation && (
-          <p className="text-sm text-red-500">{error}</p>
+        
+        {showValidation && validationError && (
+          <p 
+            id={`${props.id}-error`}
+            className="text-sm text-red-600"
+            role="alert"
+          >
+            {validationError}
+          </p>
         )}
       </div>
-    )
+    );
   }
-)
-SecureInput.displayName = "SecureInput"
+);
 
-export { SecureInput }
+SecureInput.displayName = "SecureInput";
