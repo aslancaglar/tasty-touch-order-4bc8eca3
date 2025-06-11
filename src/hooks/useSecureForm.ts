@@ -1,103 +1,99 @@
 
-import { useState, useCallback, useMemo } from 'react';
-import { validateFormData, generateCSRFToken, validateCSRFToken, ValidationError } from '@/utils/input-validation';
+import { useState, useCallback } from 'react';
+import { validateFormData, generateCSRFToken, ValidationError, SecurityError } from '@/utils/input-validation';
 import { logSecurityEvent } from '@/config/security';
+import { toast } from '@/hooks/use-toast';
 
-interface UseSecureFormConfig {
-  schema: Record<string, {
+interface FormSchema {
+  [key: string]: {
     type: 'text' | 'name' | 'description' | 'email' | 'url' | 'number';
     required?: boolean;
     min?: number;
     max?: number;
     allowDecimals?: boolean;
-  }>;
+  };
+}
+
+interface UseSecureFormOptions {
+  schema: FormSchema;
   onSubmit: (data: Record<string, any>) => Promise<void> | void;
   enableCSRF?: boolean;
 }
 
-export const useSecureForm = ({ schema, onSubmit, enableCSRF = true }: UseSecureFormConfig) => {
+export const useSecureForm = ({ schema, onSubmit, enableCSRF = true }: UseSecureFormOptions) => {
+  const [csrfToken] = useState(() => enableCSRF ? generateCSRFToken() : '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
-  // Generate CSRF token
-  const csrfToken = useMemo(() => {
-    return enableCSRF ? generateCSRFToken() : '';
-  }, [enableCSRF]);
 
-  const validateField = useCallback((name: string, value: any): string | null => {
+  const validateField = useCallback((name: string, value: any) => {
     const fieldSchema = schema[name];
     if (!fieldSchema) return null;
 
     try {
       if (fieldSchema.type === 'number') {
-        // Handle numeric validation in the component
-        return null;
+        validateFormData({ [name]: value }, { [name]: fieldSchema });
       } else {
         validateFormData({ [name]: value }, { [name]: fieldSchema });
-        return null;
       }
+      return null;
     } catch (error) {
-      if (error instanceof ValidationError) {
+      if (error instanceof ValidationError || error instanceof SecurityError) {
         return error.message;
       }
-      return 'Validation failed';
+      return 'Invalid input';
     }
   }, [schema]);
 
-  const handleSubmit = useCallback(async (data: Record<string, any>) => {
-    if (isSubmitting) return;
-
+  const handleSubmit = useCallback(async (formData: Record<string, any>) => {
     setIsSubmitting(true);
     setErrors({});
 
     try {
-      // Validate CSRF token if enabled
-      if (enableCSRF) {
-        const submittedToken = data.csrfToken;
-        if (!submittedToken || !validateCSRFToken(submittedToken, csrfToken)) {
-          logSecurityEvent('CSRF token validation failed', { 
-            hasToken: !!submittedToken,
-            tokenMatch: submittedToken === csrfToken 
-          });
-          throw new ValidationError('Security validation failed');
-        }
-        // Remove CSRF token from data before validation
-        delete data.csrfToken;
+      // CSRF validation
+      if (enableCSRF && formData.csrfToken !== csrfToken) {
+        logSecurityEvent('CSRF token mismatch', { 
+          expected: csrfToken.substring(0, 8) + '...', 
+          received: formData.csrfToken?.substring(0, 8) + '...' 
+        });
+        throw new SecurityError('Security validation failed', 'CSRF_MISMATCH');
       }
 
       // Validate all form data
-      const validatedData = validateFormData(data, schema);
-      
-      // Log successful validation
-      logSecurityEvent('Form validation successful', { 
-        fields: Object.keys(validatedData),
-        enableCSRF 
-      });
+      const validatedData = validateFormData(formData, schema);
 
-      // Submit the form
+      // Call the submit handler
       await onSubmit(validatedData);
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        // Handle field-specific errors
-        const fieldMatch = error.message.match(/^(\w+):\s*(.+)/);
-        if (fieldMatch) {
-          setErrors({ [fieldMatch[1]]: fieldMatch[2] });
-        } else {
-          setErrors({ general: error.message });
-        }
-      } else {
-        console.error('Form submission error:', error);
-        setErrors({ general: 'An unexpected error occurred' });
-      }
-      
-      logSecurityEvent('Form submission failed', { 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        enableCSRF 
+
+      toast({
+        title: "Success",
+        description: "Form submitted successfully",
       });
+    } catch (error) {
+      console.error('Form submission error:', error);
+      
+      if (error instanceof ValidationError) {
+        toast({
+          title: "Validation Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else if (error instanceof SecurityError) {
+        toast({
+          title: "Security Error",
+          description: "A security issue was detected. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, schema, onSubmit, enableCSRF, csrfToken]);
+  }, [schema, onSubmit, enableCSRF, csrfToken]);
 
   return {
     csrfToken,

@@ -302,6 +302,8 @@ const ToppingsTab = ({
 
   // The rest of the component's methods are kept the same but with improved error handling
   const handleDeleteCategory = async () => {
+    // ... keep existing code for handleDeleteCategory but add proper error handling
+
     if (!selectedCategoryToDelete?.id) return;
     try {
       if (isOffline) {
@@ -366,9 +368,9 @@ const ToppingsTab = ({
         error
       } = await supabase.from('toppings').insert([{
         name: formData.name,
-        price: typeof formData.price === 'string' ? parseFloat(formData.price) : formData.price,
-        tax_percentage: typeof formData.tax_percentage === 'string' ? parseFloat(formData.tax_percentage) : formData.tax_percentage,
-        display_order: typeof formData.display_order === 'string' ? parseInt(formData.display_order) : formData.display_order,
+        price: parseFloat(formData.price),
+        tax_percentage: parseFloat(formData.tax_percentage || "10"),
+        display_order: parseInt(formData.display_order || "0"),
         category_id: selectedCategory?.id
       }]).select().single();
       if (error) throw error;
@@ -414,9 +416,9 @@ const ToppingsTab = ({
         error
       } = await supabase.from('toppings').update({
         name: formData.name,
-        price: typeof formData.price === 'string' ? parseFloat(formData.price) : formData.price,
-        tax_percentage: typeof formData.tax_percentage === 'string' ? parseFloat(formData.tax_percentage) : formData.tax_percentage,
-        display_order: typeof formData.display_order === 'string' ? parseInt(formData.display_order) : formData.display_order
+        price: parseFloat(formData.price),
+        tax_percentage: parseFloat(formData.tax_percentage || "10"),
+        display_order: parseInt(formData.display_order || "0")
       }).eq('id', toppingId);
       if (error) throw error;
       
