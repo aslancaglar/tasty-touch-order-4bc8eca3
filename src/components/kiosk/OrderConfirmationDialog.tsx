@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { generatePlainTextReceipt } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
+import { secureApiKeyService } from "@/services/secure-api-keys";
 import OrderReceipt from "./OrderReceipt";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
@@ -112,11 +112,11 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     try {
       setIsPrinting(true);
 
-      // Fetch print configuration
+      // Fetch print configuration (no longer includes api_key)
       const {
         data: printConfig,
         error
-      } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
+      } = await supabase.from('restaurant_print_config').select('configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
       if (error) {
         console.error("Error fetching print configuration");
         setIsPrinting(false);
@@ -150,24 +150,28 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         console.log("Browser printing disabled for this device or restaurant");
       }
 
-      // Handle PrintNode printing (if configured)
-      if (printConfig?.api_key && printConfig?.configured_printers) {
+      // Handle PrintNode printing (using secure API key service)
+      if (printConfig?.configured_printers) {
         const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
         const printerIds = printerArray.map(id => String(id));
         if (printerIds.length > 0) {
-          await sendReceiptToPrintNode(printConfig.api_key, printerIds, {
-            restaurant,
-            cart,
-            orderNumber,
-            tableNumber,
-            orderType,
-            subtotal,
-            tax,
-            total,
-            getFormattedOptions,
-            getFormattedToppings,
-            uiLanguage
-          });
+          // Get API key securely
+          const apiKey = await secureApiKeyService.retrieveApiKey(restaurant.id, 'printnode');
+          if (apiKey) {
+            await sendReceiptToPrintNode(apiKey, printerIds, {
+              restaurant,
+              cart,
+              orderNumber,
+              tableNumber,
+              orderType,
+              subtotal,
+              tax,
+              total,
+              getFormattedOptions,
+              getFormattedToppings,
+              uiLanguage
+            });
+          }
         }
         setIsPrinting(false);
         setHasPrinted(true);

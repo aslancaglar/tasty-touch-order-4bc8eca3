@@ -66,30 +66,8 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           return;
         }
 
-        // Check for legacy plaintext key
-        const { data, error } = await supabase
-          .from('restaurant_print_config')
-          .select('api_key')
-          .eq('restaurant_id', restaurantId)
-          .single();
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching print config:", error);
-          return;
-        }
-        
-        if (data?.api_key) {
-          setHasLegacyKey(true);
-          setSecurityStatus('legacy');
-          setApiKey(data.api_key);
-          setMaskedKey(maskApiKey(data.api_key));
-          setIsConfigured(true);
-          logSecurityEvent('Legacy PrintNode API key detected', { 
-            restaurantId,
-            securityRisk: 'plaintext_storage'
-          });
-          fetchPrinters(data.api_key);
-        }
+        // No legacy key check needed since api_key column was removed
+        setSecurityStatus('none');
       } catch (error) {
         console.error("Error checking API key configuration:", error);
         logSecurityEvent('API key configuration check failed', { 
@@ -130,7 +108,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       // Store API key securely in vault
       await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
       
-      // Update print config without the API key
+      // Update print config (no longer includes api_key)
       const printConfig: PrintConfig = {
         restaurant_id: restaurantId,
         configured_printers: []
@@ -180,12 +158,6 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       // Store the current key securely
       await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
-      
-      // Clear the plaintext key
-      await supabase
-        .from('restaurant_print_config')
-        .update({ api_key: null })
-        .eq('restaurant_id', restaurantId);
       
       setHasLegacyKey(false);
       setSecurityStatus('secure');

@@ -133,10 +133,17 @@ class SecureApiKeyService {
     
     let alerts = data || [];
     if (restaurantId) {
-      alerts = alerts.filter((alert: ApiKeyRotationAlert) => alert.restaurant_id === restaurantId);
+      alerts = alerts.filter((alert: any) => alert.restaurant_id === restaurantId);
     }
     
-    return alerts;
+    // Type cast the alerts to ensure they match our interface
+    return alerts.map((alert: any): ApiKeyRotationAlert => ({
+      restaurant_id: alert.restaurant_id,
+      service_name: alert.service_name,
+      key_name: alert.key_name,
+      days_since_rotation: alert.days_since_rotation,
+      alert_level: alert.alert_level as 'OK' | 'INFO' | 'WARNING' | 'CRITICAL'
+    }));
   }
 
   async getRotationAuditLog(restaurantId: string): Promise<ApiKeyRotationLog[]> {
