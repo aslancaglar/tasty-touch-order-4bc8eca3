@@ -115,7 +115,10 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
     };
 
     secureHandleSubmit({
-      ...convertedValues,
+      name: convertedValues.name,
+      price: convertedValues.price.toString(),
+      tax_percentage: convertedValues.tax_percentage.toString(),
+      display_order: convertedValues.display_order.toString(),
       csrfToken,
     });
   };
