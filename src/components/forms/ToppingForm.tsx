@@ -22,29 +22,32 @@ const toppingSchema = z.object({
         return false;
       }
     }, "Caractères invalides détectés dans le nom"),
-  price: z.string()
+  price: z.union([z.string(), z.number()])
     .refine((val) => {
       try {
-        validateNumericInput(val, 0, 999999, true);
-        return true;
+        const numVal = typeof val === 'string' ? parseFloat(val) : val;
+        validateNumericInput(val.toString(), 0, 999999, true);
+        return !isNaN(numVal) && numVal >= 0;
       } catch {
         return false;
       }
     }, "Le prix doit être un nombre valide supérieur ou égal à 0"),
-  tax_percentage: z.string()
+  tax_percentage: z.union([z.string(), z.number()])
     .refine((val) => {
       try {
-        validateNumericInput(val, 0, 100, true);
-        return true;
+        const numVal = typeof val === 'string' ? parseFloat(val) : val;
+        validateNumericInput(val.toString(), 0, 100, true);
+        return !isNaN(numVal) && numVal >= 0 && numVal <= 100;
       } catch {
         return false;
       }
     }, "La TVA doit être un pourcentage entre 0 et 100"),
-  display_order: z.string()
+  display_order: z.union([z.string(), z.number()])
     .refine((val) => {
       try {
-        validateNumericInput(val, 0, undefined, false);
-        return true;
+        const numVal = typeof val === 'string' ? parseInt(val) : val;
+        validateNumericInput(val.toString(), 0, undefined, false);
+        return !isNaN(numVal) && numVal >= 0;
       } catch {
         return false;
       }
@@ -58,9 +61,9 @@ interface ToppingFormProps {
   onSubmit: (values: ToppingFormValues) => void;
   initialValues?: {
     name: string;
-    price: string;
-    tax_percentage?: string;
-    display_order?: string;
+    price: string | number;
+    tax_percentage?: string | number;
+    display_order?: string | number;
     in_stock?: boolean;
   };
   isLoading?: boolean;
@@ -83,6 +86,9 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
     onSubmit: async (validatedData) => {
       onSubmit({
         ...validatedData,
+        price: typeof validatedData.price === 'string' ? parseFloat(validatedData.price) : validatedData.price,
+        tax_percentage: typeof validatedData.tax_percentage === 'string' ? parseFloat(validatedData.tax_percentage) : validatedData.tax_percentage,
+        display_order: typeof validatedData.display_order === 'string' ? parseInt(validatedData.display_order) : validatedData.display_order,
         in_stock: form.getValues('in_stock'),
       });
     },
@@ -92,9 +98,9 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
     resolver: zodResolver(toppingSchema),
     defaultValues: {
       name: initialValues?.name || "",
-      price: initialValues?.price || "0",
-      tax_percentage: initialValues?.tax_percentage || "10",
-      display_order: initialValues?.display_order || "0",
+      price: initialValues?.price?.toString() || "0",
+      tax_percentage: initialValues?.tax_percentage?.toString() || "10",
+      display_order: initialValues?.display_order?.toString() || "0",
       in_stock: initialValues?.in_stock !== undefined ? initialValues.in_stock : true,
     },
   });
