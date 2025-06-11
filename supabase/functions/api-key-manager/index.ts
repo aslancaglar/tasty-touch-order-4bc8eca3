@@ -26,7 +26,7 @@ serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
-    const { action, restaurantId, serviceName, keyName, apiKey } = await req.json()
+    const { action, restaurantId, serviceName, keyName, apiKey, rotationReason } = await req.json()
 
     switch (action) {
       case 'store': {
@@ -64,6 +64,22 @@ serve(async (req) => {
           p_service_name: serviceName,
           p_key_name: keyName || 'primary',
           p_new_api_key: apiKey
+        })
+
+        if (error) throw error
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      case 'rotate_with_audit': {
+        const { data, error } = await supabaseClient.rpc('rotate_api_key_with_audit', {
+          p_restaurant_id: restaurantId,
+          p_service_name: serviceName,
+          p_key_name: keyName || 'primary',
+          p_new_api_key: apiKey,
+          p_rotation_reason: rotationReason || 'manual'
         })
 
         if (error) throw error

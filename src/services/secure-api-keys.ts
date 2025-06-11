@@ -14,6 +14,18 @@ export interface ApiKeyRecord {
   rotation_interval_days: number | null;
 }
 
+export interface ApiKeyRotationLog {
+  id: string;
+  restaurant_id: string;
+  service_name: string;
+  key_name: string;
+  rotation_type: string;
+  old_key_hash: string | null;
+  rotation_reason: string | null;
+  rotated_by: string | null;
+  created_at: string;
+}
+
 class SecureApiKeyService {
   private async callApiKeyManager(action: string, payload: any) {
     const { data: { session } } = await supabase.auth.getSession();
@@ -71,13 +83,15 @@ class SecureApiKeyService {
     restaurantId: string, 
     serviceName: string, 
     newApiKey: string, 
-    keyName: string = 'primary'
+    keyName: string = 'primary',
+    rotationReason: string = 'manual'
   ): Promise<boolean> {
-    const result = await this.callApiKeyManager('rotate', {
+    const result = await this.callApiKeyManager('rotate_with_audit', {
       restaurantId,
       serviceName,
       keyName,
-      apiKey: newApiKey
+      apiKey: newApiKey,
+      rotationReason
     });
     return result.success;
   }
@@ -101,6 +115,24 @@ class SecureApiKeyService {
 
   async getKeysNeedingRotation(): Promise<any[]> {
     const { data, error } = await supabase.rpc('get_keys_needing_rotation');
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getRotationAuditLog(restaurantId: string): Promise<ApiKeyRotationLog[]> {
+    const { data, error } = await supabase
+      .from('api_key_rotation_log')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async forceRotateOverdueKeys(): Promise<any[]> {
+    const { data, error } = await supabase.rpc('force_rotate_overdue_keys');
     if (error) throw error;
     return data || [];
   }

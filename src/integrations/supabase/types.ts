@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      api_key_rotation_log: {
+        Row: {
+          created_at: string
+          id: string
+          key_name: string
+          old_key_hash: string | null
+          restaurant_id: string
+          rotated_by: string | null
+          rotation_reason: string | null
+          rotation_type: string
+          service_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_name: string
+          old_key_hash?: string | null
+          restaurant_id: string
+          rotated_by?: string | null
+          rotation_reason?: string | null
+          rotation_type: string
+          service_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_name?: string
+          old_key_hash?: string | null
+          restaurant_id?: string
+          rotated_by?: string | null
+          rotation_reason?: string | null
+          rotation_type?: string
+          service_name?: string
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string
@@ -859,6 +895,15 @@ export type Database = {
         Args: { source_restaurant_id: string }
         Returns: string
       }
+      force_rotate_overdue_keys: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          restaurant_id: string
+          service_name: string
+          key_name: string
+          status: string
+        }[]
+      }
       get_daily_order_count: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -943,6 +988,16 @@ export type Database = {
           p_service_name: string
           p_key_name: string
           p_new_api_key: string
+        }
+        Returns: boolean
+      }
+      rotate_api_key_with_audit: {
+        Args: {
+          p_restaurant_id: string
+          p_service_name: string
+          p_key_name: string
+          p_new_api_key: string
+          p_rotation_reason?: string
         }
         Returns: boolean
       }
