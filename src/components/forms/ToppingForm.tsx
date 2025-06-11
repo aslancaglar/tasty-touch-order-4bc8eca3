@@ -98,9 +98,9 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
     resolver: zodResolver(toppingSchema),
     defaultValues: {
       name: initialValues?.name || "",
-      price: initialValues?.price?.toString() || "0",
-      tax_percentage: initialValues?.tax_percentage?.toString() || "10",
-      display_order: initialValues?.display_order?.toString() || "0",
+      price: initialValues?.price ?? 0,
+      tax_percentage: initialValues?.tax_percentage ?? 10,
+      display_order: initialValues?.display_order ?? 0,
       in_stock: initialValues?.in_stock !== undefined ? initialValues.in_stock : true,
     },
   });
@@ -162,7 +162,9 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
                   min="0"
                   validationType="text"
                   required
-                  {...field} 
+                  {...field}
+                  value={field.value?.toString() || ""}
+                  onChange={(e) => field.onChange(e.target.value)}
                 />
               </FormControl>
               <FormMessage />
@@ -185,7 +187,9 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
                   max="100"
                   validationType="text"
                   required
-                  {...field} 
+                  {...field}
+                  value={field.value?.toString() || ""}
+                  onChange={(e) => field.onChange(e.target.value)}
                 />
               </FormControl>
               <FormMessage />
@@ -206,7 +210,9 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
                   min="0"
                   validationType="text"
                   required
-                  {...field} 
+                  {...field}
+                  value={field.value?.toString() || ""}
+                  onChange={(e) => field.onChange(e.target.value)}
                 />
               </FormControl>
               <FormMessage />
