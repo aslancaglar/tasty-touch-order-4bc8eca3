@@ -106,8 +106,16 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
   });
 
   const handleFormSubmit = (values: ToppingFormValues) => {
-    secureHandleSubmit({
+    // Convert string values to appropriate types before submitting
+    const convertedValues = {
       ...values,
+      price: typeof values.price === 'string' ? parseFloat(values.price) : values.price,
+      tax_percentage: typeof values.tax_percentage === 'string' ? parseFloat(values.tax_percentage) : values.tax_percentage,
+      display_order: typeof values.display_order === 'string' ? parseInt(values.display_order) : values.display_order,
+    };
+
+    secureHandleSubmit({
+      ...convertedValues,
       csrfToken,
     });
   };
