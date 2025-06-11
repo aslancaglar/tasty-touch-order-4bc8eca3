@@ -58,127 +58,63 @@ serve(async (req) => {
 
     switch (action) {
       case 'store': {
-        // Store the API key in Vault using service role
-        const { data: secretId, error: vaultError } = await supabaseClient
-          .from('vault.secrets')
-          .insert({
-            name: `${restaurantId}-${serviceName}-${keyName || 'primary'}`,
-            secret: apiKey
-          })
-          .select('id')
-          .single()
-
-        if (vaultError) {
-          console.error('Vault error:', vaultError)
-          throw new Error('Failed to store API key securely')
-        }
-
-        // Store the reference in our table
+        console.log('Storing API key for restaurant:', restaurantId, 'service:', serviceName)
+        
+        // Use the built-in store_encrypted_api_key function instead of manual vault operations
         const { data: keyRecord, error: keyError } = await supabaseClient
-          .from('restaurant_api_keys')
-          .upsert({
-            restaurant_id: restaurantId,
-            service_name: serviceName,
-            key_name: keyName || 'primary',
-            encrypted_key_id: secretId.id,
-            is_active: true,
-            last_rotated: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'restaurant_id,service_name,key_name'
+          .rpc('store_encrypted_api_key', {
+            p_restaurant_id: restaurantId,
+            p_service_name: serviceName,
+            p_key_name: keyName || 'primary',
+            p_api_key: apiKey
           })
-          .select('id')
-          .single()
 
         if (keyError) {
           console.error('Key storage error:', keyError)
-          throw new Error('Failed to store API key reference')
+          throw new Error('Failed to store API key: ' + keyError.message)
         }
 
-        return new Response(JSON.stringify({ success: true, keyId: keyRecord.id }), {
+        console.log('API key stored successfully with ID:', keyRecord)
+
+        return new Response(JSON.stringify({ success: true, keyId: keyRecord }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
 
       case 'retrieve': {
-        // Get the secret ID from our table
-        const { data: keyRecord, error: keyError } = await supabaseClient
-          .from('restaurant_api_keys')
-          .select('encrypted_key_id')
-          .eq('restaurant_id', restaurantId)
-          .eq('service_name', serviceName)
-          .eq('key_name', keyName || 'primary')
-          .eq('is_active', true)
-          .single()
+        // Use the built-in get_encrypted_api_key function
+        const { data: apiKeyValue, error: keyError } = await supabaseClient
+          .rpc('get_encrypted_api_key', {
+            p_restaurant_id: restaurantId,
+            p_service_name: serviceName,
+            p_key_name: keyName || 'primary'
+          })
 
-        if (keyError || !keyRecord) {
+        if (keyError) {
+          console.error('Key retrieval error:', keyError)
           return new Response(JSON.stringify({ success: true, apiKey: null }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           })
         }
 
-        // Retrieve the decrypted key from Vault
-        const { data: secret, error: secretError } = await supabaseClient
-          .from('vault.decrypted_secrets')
-          .select('decrypted_secret')
-          .eq('id', keyRecord.encrypted_key_id)
-          .single()
-
-        if (secretError) {
-          console.error('Secret retrieval error:', secretError)
-          throw new Error('Failed to retrieve API key')
-        }
-
-        return new Response(JSON.stringify({ success: true, apiKey: secret.decrypted_secret }), {
+        return new Response(JSON.stringify({ success: true, apiKey: apiKeyValue }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
 
       case 'rotate': {
-        // Get the current secret ID
-        const { data: keyRecord, error: keyError } = await supabaseClient
-          .from('restaurant_api_keys')
-          .select('encrypted_key_id')
-          .eq('restaurant_id', restaurantId)
-          .eq('service_name', serviceName)
-          .eq('key_name', keyName || 'primary')
-          .eq('is_active', true)
-          .single()
-
-        if (keyError || !keyRecord) {
-          throw new Error('API key not found for rotation')
-        }
-
-        // Create new secret in Vault
-        const { data: newSecret, error: newSecretError } = await supabaseClient
-          .from('vault.secrets')
-          .insert({
-            name: `${restaurantId}-${serviceName}-${keyName || 'primary'}-${Date.now()}`,
-            secret: apiKey
+        // Use the built-in rotate_api_key function
+        const { data: rotateResult, error: rotateError } = await supabaseClient
+          .rpc('rotate_api_key', {
+            p_restaurant_id: restaurantId,
+            p_service_name: serviceName,
+            p_key_name: keyName || 'primary',
+            p_new_api_key: apiKey
           })
-          .select('id')
-          .single()
 
-        if (newSecretError) {
-          console.error('New secret creation error:', newSecretError)
-          throw new Error('Failed to create new API key')
-        }
-
-        // Update the reference
-        const { error: updateError } = await supabaseClient
-          .from('restaurant_api_keys')
-          .update({
-            encrypted_key_id: newSecret.id,
-            updated_at: new Date().toISOString(),
-            last_rotated: new Date().toISOString()
-          })
-          .eq('restaurant_id', restaurantId)
-          .eq('service_name', serviceName)
-          .eq('key_name', keyName || 'primary')
-
-        if (updateError) {
-          console.error('Key update error:', updateError)
-          throw new Error('Failed to update API key reference')
+        if (rotateError) {
+          console.error('Key rotation error:', rotateError)
+          throw new Error('Failed to rotate API key: ' + rotateError.message)
         }
 
         return new Response(JSON.stringify({ success: true }), {
@@ -187,67 +123,20 @@ serve(async (req) => {
       }
 
       case 'rotate_with_audit': {
-        // Similar to rotate but with audit logging
-        const { data: keyRecord, error: keyError } = await supabaseClient
-          .from('restaurant_api_keys')
-          .select('encrypted_key_id')
-          .eq('restaurant_id', restaurantId)
-          .eq('service_name', serviceName)
-          .eq('key_name', keyName || 'primary')
-          .eq('is_active', true)
-          .single()
-
-        if (keyError || !keyRecord) {
-          throw new Error('API key not found for rotation')
-        }
-
-        // Create hash of old key for audit trail
-        const oldKeyHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(keyRecord.encrypted_key_id))
-        const hashArray = Array.from(new Uint8Array(oldKeyHash))
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-
-        // Create new secret in Vault
-        const { data: newSecret, error: newSecretError } = await supabaseClient
-          .from('vault.secrets')
-          .insert({
-            name: `${restaurantId}-${serviceName}-${keyName || 'primary'}-${Date.now()}`,
-            secret: apiKey
+        // Use the built-in rotate_api_key_with_audit function
+        const { data: rotateResult, error: rotateError } = await supabaseClient
+          .rpc('rotate_api_key_with_audit', {
+            p_restaurant_id: restaurantId,
+            p_service_name: serviceName,
+            p_key_name: keyName || 'primary',
+            p_new_api_key: apiKey,
+            p_rotation_reason: rotationReason || 'manual'
           })
-          .select('id')
-          .single()
 
-        if (newSecretError) {
-          throw new Error('Failed to create new API key')
+        if (rotateError) {
+          console.error('Key rotation error:', rotateError)
+          throw new Error('Failed to rotate API key: ' + rotateError.message)
         }
-
-        // Update the reference
-        const { error: updateError } = await supabaseClient
-          .from('restaurant_api_keys')
-          .update({
-            encrypted_key_id: newSecret.id,
-            updated_at: new Date().toISOString(),
-            last_rotated: new Date().toISOString()
-          })
-          .eq('restaurant_id', restaurantId)
-          .eq('service_name', serviceName)
-          .eq('key_name', keyName || 'primary')
-
-        if (updateError) {
-          throw new Error('Failed to update API key reference')
-        }
-
-        // Log the rotation
-        await supabaseClient
-          .from('api_key_rotation_log')
-          .insert({
-            restaurant_id: restaurantId,
-            service_name: serviceName,
-            key_name: keyName || 'primary',
-            rotation_type: 'manual',
-            old_key_hash: hashHex,
-            rotation_reason: rotationReason || 'manual',
-            rotated_by: user.id
-          })
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
