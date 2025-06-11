@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { validateInput, sanitizeInput } from '@/config/security';
+import { sanitizeInput } from '@/config/security';
 import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, AlertTriangle } from 'lucide-react';
