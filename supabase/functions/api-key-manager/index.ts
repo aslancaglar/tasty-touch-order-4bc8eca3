@@ -1,4 +1,5 @@
 
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -110,13 +111,14 @@ serve(async (req) => {
           throw new Error('API key and service name are required')
         }
         
-        // Use the built-in store_encrypted_api_key function
+        // Use the updated store_encrypted_api_key function with user_id parameter
         const { data: keyRecord, error: keyError } = await supabaseClient
           .rpc('store_encrypted_api_key', {
             p_restaurant_id: restaurantId,
             p_service_name: serviceName,
             p_key_name: keyName || 'primary',
-            p_api_key: apiKey
+            p_api_key: apiKey,
+            p_user_id: user.id
           })
 
         if (keyError) {
@@ -143,12 +145,13 @@ serve(async (req) => {
       case 'retrieve': {
         console.log('Retrieving API key for restaurant:', restaurantId, 'service:', serviceName)
         
-        // Use the built-in get_encrypted_api_key function
+        // Use the updated get_encrypted_api_key function with user_id parameter
         const { data: apiKeyValue, error: keyError } = await supabaseClient
           .rpc('get_encrypted_api_key', {
             p_restaurant_id: restaurantId,
             p_service_name: serviceName,
-            p_key_name: keyName || 'primary'
+            p_key_name: keyName || 'primary',
+            p_user_id: user.id
           })
 
         if (keyError) {
@@ -273,3 +276,4 @@ serve(async (req) => {
     )
   }
 })
+

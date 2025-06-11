@@ -915,11 +915,18 @@ export type Database = {
         Returns: number
       }
       get_encrypted_api_key: {
-        Args: {
-          p_restaurant_id: string
-          p_service_name: string
-          p_key_name?: string
-        }
+        Args:
+          | {
+              p_restaurant_id: string
+              p_service_name: string
+              p_key_name?: string
+            }
+          | {
+              p_restaurant_id: string
+              p_service_name: string
+              p_key_name?: string
+              p_user_id?: string
+            }
         Returns: string
       }
       get_keys_needing_rotation: {
@@ -1018,12 +1025,20 @@ export type Database = {
         Returns: boolean
       }
       store_encrypted_api_key: {
-        Args: {
-          p_restaurant_id: string
-          p_service_name: string
-          p_key_name: string
-          p_api_key: string
-        }
+        Args:
+          | {
+              p_restaurant_id: string
+              p_service_name: string
+              p_key_name: string
+              p_api_key: string
+            }
+          | {
+              p_restaurant_id: string
+              p_service_name: string
+              p_key_name: string
+              p_api_key: string
+              p_user_id?: string
+            }
         Returns: string
       }
     }
