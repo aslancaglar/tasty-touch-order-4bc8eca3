@@ -1,4 +1,3 @@
-
 // src/utils/receipt-templates.ts
 import { CartItem } from '@/types/database-types';
 import { SupportedLanguage } from '@/utils/language-utils';
@@ -585,4 +584,32 @@ ${t('receipt.thankYou')}
 `;
 
   return receipt;
+}
+
+export function generateReceiptContent(options: {
+  orderNumber: string;
+  cartItems: any[];
+  total: number;
+  restaurant: any;
+  orderType: any;
+  tableNumber?: string;
+  uiLanguage?: string;
+  currency?: string;
+}): string {
+  // Use the existing generatePlainTextReceipt function
+  const t = (key: string) => key; // Simple fallback translation
+  
+  return generatePlainTextReceipt(
+    options.cartItems,
+    options.restaurant,
+    options.orderType,
+    options.tableNumber,
+    options.orderNumber,
+    options.currency || "€",
+    options.total,
+    options.total * 0.9, // subtotal estimate
+    options.total * 0.1, // tax estimate
+    10, // tax rate
+    t
+  );
 }

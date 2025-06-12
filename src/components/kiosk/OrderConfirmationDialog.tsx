@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -215,7 +214,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
           <div id="order-receipt">
             <OrderReceipt
               orderNumber={orderNumber}
-              cartItems={cartItems}
+              cart={cartItems}
               total={total}
               restaurant={restaurant}
               orderType={orderType}
