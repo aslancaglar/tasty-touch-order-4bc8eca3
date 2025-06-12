@@ -6,16 +6,17 @@ import { Settings, Printer, Shield, BarChart } from "lucide-react";
 import PrintNodeIntegration from "./PrintNodeIntegration";
 import QZTrayIntegration from "./QZTrayIntegration";
 import PrintNodeDiagnostics from "./PrintNodeDiagnostics";
-import { SecurityDashboard } from "../security/SecurityDashboard";
+import SecurityDashboard from "../security/SecurityDashboard";
 
 interface SettingsTabProps {
   restaurant: {
     id: string;
     name: string;
   };
+  onRestaurantUpdated?: (updatedRestaurant: any) => void;
 }
 
-const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant }) => {
+const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onRestaurantUpdated }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -48,8 +49,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant }) => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <PrintNodeIntegration restaurant={restaurant} />
-              <QZTrayIntegration restaurant={restaurant} />
+              <PrintNodeIntegration restaurantId={restaurant.id} />
+              <QZTrayIntegration restaurantId={restaurant.id} />
             </CardContent>
           </Card>
         </TabsContent>
