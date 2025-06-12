@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { SUPABASE_URL } from "@/config/supabase";
 
@@ -22,7 +21,7 @@ class SecureApiKeyService {
         return { isOwner: false, isAdmin: false };
       }
 
-      // Check if user is admin
+      // Check if user is admin first - admins have access to everything
       const { data: profileData } = await supabase
         .from('profiles')
         .select('is_admin')
@@ -30,8 +29,14 @@ class SecureApiKeyService {
         .single();
 
       const isAdmin = profileData?.is_admin || false;
+      
+      // If user is admin, they automatically have access
+      if (isAdmin) {
+        console.log(`User is admin - granting full access`);
+        return { isOwner: true, isAdmin: true }; // Set isOwner to true for admins
+      }
 
-      // Check if user is restaurant owner
+      // Check if user is restaurant owner only if not admin
       const { data: ownerData } = await supabase
         .from('restaurant_owners')
         .select('id')
@@ -59,9 +64,12 @@ class SecureApiKeyService {
     // Check permissions before making the call
     const { isOwner, isAdmin } = await this.checkUserPermissions(payload.restaurantId);
     
-    if (!isOwner && !isAdmin) {
+    // Admin users have full access, regular users need to be restaurant owners
+    if (!isAdmin && !isOwner) {
       throw new Error('Insufficient permissions - must be restaurant owner or admin');
     }
+
+    console.log(`Making API key manager call - Admin: ${isAdmin}, Owner: ${isOwner}, Action: ${action}`);
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/api-key-manager`, {
       method: 'POST',
@@ -73,12 +81,21 @@ class SecureApiKeyService {
         action, 
         ...payload,
         adminAccess: isAdmin,
-        ownerAccess: isOwner
+        ownerAccess: isOwner || isAdmin // Admin users are treated as owners
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const errorText = await response.text();
+      console.error(`API key manager response error: ${response.status} - ${errorText}`);
+      
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { error: errorText || 'API key operation failed' };
+      }
+      
       throw new Error(error.error || 'API key operation failed');
     }
 

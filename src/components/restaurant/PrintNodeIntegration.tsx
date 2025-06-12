@@ -48,10 +48,18 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log("No user found");
+          return;
+        }
+
+        console.log("Checking admin status for user:", user.id);
+        
         const { data, error } = await supabase
           .from('profiles')
           .select('is_admin')
-          .eq('id', (await supabase.auth.getUser()).data.user?.id)
+          .eq('id', user.id)
           .single();
         
         if (error) {
@@ -59,8 +67,13 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           return;
         }
         
-        setIsAdmin(data?.is_admin || false);
-        console.log("User admin status:", data?.is_admin);
+        const adminStatus = data?.is_admin || false;
+        setIsAdmin(adminStatus);
+        console.log("User admin status:", adminStatus);
+        
+        if (adminStatus) {
+          console.log("User is confirmed admin - should have full API key access");
+        }
       } catch (error) {
         console.error("Error in admin check:", error);
       }
@@ -145,8 +158,13 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
 
     try {
       setIsFetching(true);
-      console.log("Starting API key save process");
+      console.log("=== API KEY SAVE DEBUG ===");
+      console.log("Restaurant ID:", restaurantId);
       console.log("User is admin:", isAdmin);
+      
+      // Get current user for debugging
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log("Current user ID:", user?.id);
       
       // First, test the API key by fetching printers
       console.log("Testing API key by fetching printers");
@@ -164,10 +182,16 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       console.log(`API key test successful - found ${printerData.length} printers`);
       
-      // Store API key securely in vault (now works for both admins and owners)
-      console.log("Storing API key securely");
-      await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
-      console.log("API key stored successfully in secure vault");
+      // Store API key securely in vault
+      console.log("Attempting to store API key securely...");
+      
+      try {
+        await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
+        console.log("API key stored successfully in secure vault");
+      } catch (storeError) {
+        console.error("Failed to store API key:", storeError);
+        throw storeError;
+      }
       
       // Update print config without the API key (remove plaintext storage)
       const printConfig: PrintConfig = {
@@ -207,27 +231,36 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           "PrintNode API key stored with enterprise-grade encryption",
       });
     } catch (error) {
-      console.error("Error saving API key:", error);
+      console.error("=== API KEY SAVE ERROR ===");
+      console.error("Full error object:", error);
+      console.error("Error message:", error?.message);
+      console.error("Error type:", typeof error);
+      
       const errorDetails = handleError(error, 'API key save');
       logSecurityEvent('API key save failed', { 
         restaurantId, 
         adminAccess: isAdmin,
+        userId: (await supabase.auth.getUser()).data.user?.id,
         ...errorDetails
       });
       
-      // Provide more specific error messages
+      // Provide detailed error messages for debugging
       let errorMessage = "Error saving API key";
       if (error instanceof Error) {
+        console.log("Error is instance of Error, message:", error.message);
+        
         if (error.message.includes('Insufficient permissions')) {
-          errorMessage = isAdmin ? 
-            "Error saving API key - please check your admin permissions" :
-            "You don't have permission to save API keys for this restaurant";
+          errorMessage = `Permission error: ${error.message}. Admin status: ${isAdmin}`;
         } else if (error.message.includes('User not authenticated')) {
-          errorMessage = "Please log in again to save API keys";
+          errorMessage = "Authentication error - please log out and log back in";
         } else {
-          errorMessage = `Error saving API key: ${error.message}`;
+          errorMessage = `Save failed: ${error.message}`;
         }
+      } else if (typeof error === 'string') {
+        errorMessage = `Save failed: ${error}`;
       }
+      
+      console.log("Final error message to show user:", errorMessage);
       
       toast({
         title: "Save Failed",
@@ -384,7 +417,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           },
           {
             id: "printer3",
-            name: "Printer 3",
+1 name: "Printer 3",
             description: "Bar",
             state: "offline",
             selected: false
