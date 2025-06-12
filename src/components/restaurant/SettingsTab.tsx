@@ -56,7 +56,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onRestaurantUpdat
         </TabsContent>
 
         <TabsContent value="security" className="space-y-6">
-          <SecurityDashboard restaurantId={restaurant.id} />
+          <SecurityDashboard />
         </TabsContent>
 
         <TabsContent value="diagnostics" className="space-y-6">
