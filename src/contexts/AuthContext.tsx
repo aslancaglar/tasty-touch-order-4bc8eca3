@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,28 +26,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
   const [lastAdminCheck, setLastAdminCheck] = useState<number>(0);
 
-  // Enhanced session validation with security logging
+  // Simplified session validation - only check expiry, not arbitrary age limits
   const validateSession = (currentSession: Session | null): boolean => {
     if (!currentSession) return false;
     
     const now = Date.now();
     const sessionTime = new Date(currentSession.expires_at || 0).getTime();
     
-    // Check if session is expired
+    // Only check if session is expired (with small buffer for refresh)
     if (sessionTime <= now + SECURITY_CONFIG.SESSION.REFRESH_THRESHOLD) {
       logSecurityEvent('Session expired', {
         expiresAt: currentSession.expires_at,
         timeToExpiry: sessionTime - now,
-        userId: currentSession.user?.id
-      });
-      return false;
-    }
-    
-    // Check for session age (prevent indefinite sessions)
-    const sessionAge = now - new Date(currentSession.user?.created_at || 0).getTime();
-    if (sessionAge > SECURITY_CONFIG.SESSION.MAX_DURATION_MS) {
-      logSecurityEvent('Session too old', {
-        sessionAge: sessionAge,
         userId: currentSession.user?.id
       });
       return false;
@@ -118,18 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         timestamp: new Date().toISOString()
       });
       
-      // Only validate session for existing sessions, not on sign-in events
-      if (currentSession && event !== 'SIGNED_IN' && !validateSession(currentSession)) {
-        logSecurityEvent('Invalid session detected during auth change', { 
-          event: event,
-          userId: currentSession?.user?.id 
-        });
-        // Force logout for invalid sessions
-        supabase.auth.signOut();
-        return;
-      }
-      
-      // Update session and user state
+      // Update session and user state immediately
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
@@ -142,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logSecurityEvent('User signed out', { 
           timestamp: new Date().toISOString() 
         });
+        return;
       }
       
       // Log sign-in events with enhanced details
@@ -152,6 +133,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           timestamp: new Date().toISOString(),
           provider: currentSession.user.app_metadata?.provider
         });
+      }
+      
+      // For token refresh events, don't validate session as it might be in transition
+      if (event === 'TOKEN_REFRESHED') {
+        console.log("Token refreshed successfully");
+        return;
+      }
+      
+      // Only validate session for existing sessions on specific events
+      if (currentSession && event === 'INITIAL_SESSION') {
+        if (!validateSession(currentSession)) {
+          logSecurityEvent('Invalid session detected during auth change', { 
+            event: event,
+            userId: currentSession?.user?.id 
+          });
+          // Force logout for invalid sessions
+          supabase.auth.signOut();
+          return;
+        }
       }
     };
     
@@ -175,6 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             setIsAdmin(false);
             setAdminCheckCompleted(true);
+            setLoading(false);
             return;
           }
           
@@ -212,14 +213,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Update admin status when user changes
+  // Simplified admin status effect - only check when user changes and we're not loading
   useEffect(() => {
     const updateAdminStatus = async () => {
-      if (user && !loading) {
+      if (user && !loading && !adminCheckCompleted) {
         console.log("User state changed, updating admin status for:", user.id);
         
         try {
-          setAdminCheckCompleted(false);
           const adminStatus = await checkAdminStatus(user.id);
           setIsAdmin(adminStatus);
         } finally {
@@ -229,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     
     updateAdminStatus();
-  }, [user, loading]);
+  }, [user, loading, adminCheckCompleted]);
 
   const signOut = async () => {
     try {
@@ -238,6 +238,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId: user?.id,
         timestamp: new Date().toISOString()
       });
+      
+      // Clear state immediately to prevent issues
+      setSession(null);
+      setUser(null);
+      setIsAdmin(false);
+      setLastAdminCheck(0);
+      setAdminCheckCompleted(true);
       
       // Use timeout to prevent deadlocks
       const { error } = await Promise.race([
@@ -250,14 +257,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         const errorDetails = handleError(error, 'Sign out');
         logSecurityEvent('Sign out failed', errorDetails);
-        throw error;
+        console.error("Sign out error:", error);
       }
-      
-      // Clear all state
-      setSession(null);
-      setUser(null);
-      setIsAdmin(false);
-      setLastAdminCheck(0);
       
       console.log("Sign out complete");
       logSecurityEvent('Sign out completed', {
@@ -266,12 +267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       const errorDetails = handleError(error, 'Sign out exception');
       logSecurityEvent('Sign out exception', errorDetails);
-      
-      // Clear state even on error
-      setSession(null);
-      setUser(null);
-      setIsAdmin(false);
-      setLastAdminCheck(0);
+      console.error("Sign out exception:", error);
     }
   };
 
