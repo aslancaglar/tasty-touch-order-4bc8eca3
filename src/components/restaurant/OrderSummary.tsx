@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import { generatePlainTextReceipt, getGroupedToppings, ToppingWithQuantity } fro
 import { secureApiKeyService } from "@/services/secure-api-keys";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import useCartManager from "@/hooks/useCartManager";
+import { useCartManager } from "@/hooks/useCartManager";
 
 const translations = {
   fr: {
@@ -92,7 +91,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   
   const { total, subtotal, tax } = calculateCartTotals(cart);
   
-  // Use the cart manager hook with correct parameters
+  // Use the cart manager hook
   const cartManager = useCartManager(cart, onCartUpdate);
 
   // Helper function to translate text
@@ -130,111 +129,90 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   };
   
   const handleConfirmOrder = async () => {
-    try {
-      // Place the order first
-      onPlaceOrder();
-      
-      // Automatically print the receipt if restaurant ID is available
-      if (restaurant?.id) {
-        await handleAutomaticPrinting();
-      }
-    } catch (error) {
-      console.error("[RestaurantOrderSummary] Error during order confirmation and printing:", error);
-      // Don't throw error - order was already placed successfully
-    }
-  };
-
-  const handleAutomaticPrinting = async () => {
-    if (!restaurant?.id) {
-      console.warn("[RestaurantOrderSummary] No restaurant ID available for automatic printing");
-      return;
-    }
-
-    try {
-      console.log("[RestaurantOrderSummary] Starting automatic printing process...");
-      
-      // Fetch print configuration
-      const { data: printConfig, error } = await supabase
-        .from('restaurant_print_config')
-        .select('configured_printers, browser_printing_enabled')
-        .eq('restaurant_id', restaurant.id)
-        .single();
+    onPlaceOrder();
+    if (restaurant?.id) {
+      try {
+        console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
         
-      if (error && error.code !== 'PGRST116') {
-        console.error("Error fetching print configuration:", error);
-        return;
-      }
-      
-      const shouldUseBrowserPrinting = 
-        !isMobile && 
-        (printConfig === null || printConfig.browser_printing_enabled !== false);
+        // Fetch print configuration (no longer includes api_key)
+        const { data: printConfig, error } = await supabase
+          .from('restaurant_print_config')
+          .select('configured_printers, browser_printing_enabled')
+          .eq('restaurant_id', restaurant.id)
+          .single();
+        if (error) {
+          console.error("Error fetching print configuration:", error);
+          return;
+        }
         
-      if (shouldUseBrowserPrinting) {
-        console.log("Using browser printing for receipt");
+        const shouldUseBrowserPrinting = 
+          !isMobile && 
+          (printConfig === null || printConfig.browser_printing_enabled !== false);
+        if (shouldUseBrowserPrinting) {
+          console.log("Using browser printing for receipt");
+          toast({
+            title: "Impression",
+            description: "Préparation de l'impression du reçu..."
+          });
+          setTimeout(() => {
+            try {
+              printReceipt('receipt-content');
+              console.log("Print receipt triggered successfully");
+            } catch (printError) {
+              console.error("Error during browser printing:", printError);
+              toast({
+                title: "Erreur d'impression",
+                description: "Impossible d'imprimer le reçu. Vérifiez les paramètres de votre navigateur.",
+                variant: "destructive"
+              });
+            }
+          }, 500);
+        } else {
+          console.log("Browser printing disabled for this device or restaurant");
+          if (isMobile) {
+            console.log("Browser printing disabled because this is a mobile or tablet device");
+          } else if (printConfig?.browser_printing_enabled === false) {
+            console.log("Browser printing disabled in restaurant settings");
+          }
+        }
+        
+        // Handle PrintNode printing using secure API key service
+        if (printConfig?.configured_printers) {
+          const printerArray = Array.isArray(printConfig.configured_printers) 
+            ? printConfig.configured_printers 
+            : [];
+          const printerIds = printerArray.map(id => String(id));
+          if (printerIds.length > 0) {
+            // Get API key securely
+            const apiKey = await secureApiKeyService.retrieveApiKey(restaurant.id, 'printnode');
+            if (apiKey) {
+              await sendReceiptToPrintNode(
+                apiKey,
+                printerIds,
+                {
+                  restaurant,
+                  cart,
+                  orderNumber,
+                  tableNumber,
+                  orderType,
+                  subtotal,
+                  tax,
+                  total,
+                  getFormattedOptions,
+                  getFormattedToppings
+                }
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error during receipt printing:", error);
         toast({
-          title: "Impression",
-          description: "Préparation de l'impression du reçu..."
+          title: "Erreur",
+          description: "Une erreur est survenue lors de l'impression",
+          variant: "destructive"
         });
-        
-        setTimeout(() => {
-          try {
-            printReceipt('receipt-content');
-            console.log("Print receipt triggered successfully");
-          } catch (printError) {
-            console.error("Error during browser printing:", printError);
-            toast({
-              title: "Erreur d'impression",
-              description: "Impossible d'imprimer le reçu. Vérifiez les paramètres de votre navigateur.",
-              variant: "destructive"
-            });
-          }
-        }, 500);
-      } else {
-        console.log("Browser printing disabled for this device or restaurant");
-        if (isMobile) {
-          console.log("Browser printing disabled because this is a mobile or tablet device");
-        } else if (printConfig?.browser_printing_enabled === false) {
-          console.log("Browser printing disabled in restaurant settings");
-        }
       }
-      
-      // Handle PrintNode printing using secure API key service
-      if (printConfig?.configured_printers) {
-        const printerArray = Array.isArray(printConfig.configured_printers) 
-          ? printConfig.configured_printers 
-          : [];
-        const printerIds = printerArray.map(id => String(id));
-        
-        if (printerIds.length > 0) {
-          // Get API key securely
-          const apiKey = await secureApiKeyService.retrieveApiKey(restaurant.id, 'printnode');
-          if (apiKey) {
-            await sendReceiptToPrintNode(
-              apiKey,
-              printerIds,
-              {
-                restaurant,
-                cart,
-                orderNumber,
-                tableNumber,
-                orderType,
-                subtotal,
-                tax,
-                total,
-                getFormattedOptions,
-                getFormattedToppings
-              }
-            );
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error during automatic printing:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue lors de l'impression",
-        variant: "destructive"
-      });
     }
   };
   

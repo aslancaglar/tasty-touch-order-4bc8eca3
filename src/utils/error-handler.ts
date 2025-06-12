@@ -10,13 +10,6 @@ export interface ErrorDetails {
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
-export interface PrintingErrorContext {
-  restaurantId?: string;
-  orderNumber?: string;
-  printerIds?: string[];
-  attemptedMethod?: 'printnode' | 'browser' | 'fallback';
-}
-
 export const handleError = (error: any, context: string = 'Unknown'): ErrorDetails => {
   const timestamp = new Date().toISOString();
   
@@ -54,11 +47,6 @@ export const handleError = (error: any, context: string = 'Unknown'): ErrorDetai
       error.message?.includes('authorization') ||
       error.message?.includes('permission')) {
     severity = 'high';
-  }
-
-  // Printing errors are typically low-medium severity (non-critical)
-  if (context.includes('Print') || context.includes('Receipt')) {
-    severity = error.message?.includes('timeout') ? 'medium' : 'low';
   }
   
   const errorDetails: ErrorDetails = {
@@ -115,71 +103,6 @@ export const handleApiKeyError = (error: any, context: string): ErrorDetails => 
     message: error?.message || 'API key operation failed',
     isApiKeyError: true
   }, `ApiKey:${context}`);
-};
-
-export const handlePrintingError = (
-  error: any, 
-  context: string, 
-  printContext?: PrintingErrorContext
-): ErrorDetails => {
-  const enhancedContext = printContext ? {
-    ...printContext,
-    originalContext: context
-  } : undefined;
-
-  return handleError({
-    ...error,
-    message: error?.message || 'Printing operation failed',
-    isPrintingError: true,
-    printingContext: enhancedContext
-  }, `Printing:${context}`);
-};
-
-// Enhanced error recovery utilities
-export const withFallback = async <T>(
-  primary: () => Promise<T>,
-  fallback: () => Promise<T>,
-  context: string
-): Promise<T> => {
-  try {
-    return await primary();
-  } catch (primaryError) {
-    console.warn(`[${context}] Primary method failed, trying fallback:`, primaryError.message);
-    
-    try {
-      return await fallback();
-    } catch (fallbackError) {
-      console.error(`[${context}] Both primary and fallback methods failed:`, {
-        primaryError: primaryError.message,
-        fallbackError: fallbackError.message
-      });
-      throw fallbackError;
-    }
-  }
-};
-
-export const withRetry = async <T>(
-  operation: () => Promise<T>,
-  maxAttempts: number = 3,
-  delayMs: number = 1000,
-  context: string = 'Operation'
-): Promise<T> => {
-  let lastError: any;
-  
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-      console.warn(`[${context}] Attempt ${attempt}/${maxAttempts} failed:`, error.message);
-      
-      if (attempt < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
-      }
-    }
-  }
-  
-  throw lastError;
 };
 
 // Export security logging function for backward compatibility

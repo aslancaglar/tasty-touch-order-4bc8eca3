@@ -1,273 +1,383 @@
 
-import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useEffect, useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Printer, AlertCircle, Info } from "lucide-react";
-import { CartItem } from "@/hooks/useCartManager";
-import { Restaurant, OrderType } from "@/types/database-types";
-import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { Check, Clock, Receipt, Printer } from "lucide-react";
+import { CartItem } from "@/types/database-types";
+import { calculateCartTotals } from "@/utils/price-utils";
 import { printReceipt } from "@/utils/print-utils";
+import { generatePlainTextReceipt } from "@/utils/receipt-templates";
+import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { supabase } from "@/integrations/supabase/client";
 import { printNodeService } from "@/services/printnode-service";
-import { generateReceiptContent } from "@/utils/receipt-templates";
 import OrderReceipt from "./OrderReceipt";
+import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
 interface OrderConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onNewOrder: () => void;
+  cart: CartItem[];
   orderNumber: string;
-  cartItems: CartItem[];
-  total: number;
-  restaurant: Restaurant;
-  orderType: OrderType;
-  tableNumber?: string;
-  uiLanguage?: SupportedLanguage;
-  currency?: string;
-}
-
-interface PrintingState {
-  isChecking: boolean;
-  isConfigured: boolean;
-  hasFallback: boolean;
-  message: string;
-  diagnostics?: any[];
+  restaurant: {
+    id?: string;
+    name: string;
+    location?: string;
+    currency?: string;
+  } | null;
+  orderType: "dine-in" | "takeaway" | null;
+  tableNumber: string | null;
+  uiLanguage: SupportedLanguage;
+  getFormattedOptions: (item: CartItem) => string;
+  getFormattedToppings: (item: CartItem) => string;
 }
 
 const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   isOpen,
   onClose,
-  onNewOrder,
+  cart,
   orderNumber,
-  cartItems,
-  total,
   restaurant,
   orderType,
   tableNumber,
-  uiLanguage = "fr",
-  currency = "EUR"
+  uiLanguage,
+  getFormattedOptions,
+  getFormattedToppings
 }) => {
   const { t } = useTranslation(uiLanguage);
-  const [printingState, setPrintingState] = useState<PrintingState>({
-    isChecking: false,
-    isConfigured: false,
-    hasFallback: true, // Default to having browser fallback
-    message: ''
-  });
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [countdown, setCountdown] = useState(10);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [hasPrinted, setHasPrinted] = useState(false);
+  const [printStatus, setPrintStatus] = useState<'idle' | 'printing' | 'success' | 'error'>('idle');
+  const { total, subtotal, tax } = calculateCartTotals(cart);
 
-  // Enhanced configuration check with better error handling
+  // Currency symbol helper
+  const CURRENCY_SYMBOLS: Record<string, string> = {
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    TRY: "₺",
+    JPY: "¥",
+    CAD: "$",
+    AUD: "$",
+    CHF: "Fr.",
+    CNY: "¥",
+    RUB: "₽"
+  };
+  const getCurrencySymbol = (currency: string = "EUR"): string => {
+    const code = currency.toUpperCase();
+    return CURRENCY_SYMBOLS[code] || code;
+  };
+
+  // Handle countdown and auto-close
   useEffect(() => {
-    if (isOpen && restaurant?.id) {
-      checkPrintingConfiguration();
+    if (!isOpen) return;
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Auto close after countdown
+    const closeTimer = setTimeout(() => {
+      onClose();
+    }, 10000);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(closeTimer);
+    };
+  }, [isOpen, onClose]);
+
+  // Handle printing when dialog opens
+  useEffect(() => {
+    if (isOpen && !hasPrinted && restaurant?.id) {
+      handlePrintReceipt();
     }
   }, [isOpen, restaurant?.id]);
-
-  const checkPrintingConfiguration = async () => {
-    if (!restaurant?.id) {
-      console.warn("[OrderConfirmation] No restaurant ID available for printing check");
-      setPrintingState({
-        isChecking: false,
-        isConfigured: false,
-        hasFallback: true,
-        message: 'Using browser printing as fallback'
-      });
-      return;
-    }
-
-    setPrintingState(prev => ({ ...prev, isChecking: true, message: 'Checking printing options...' }));
-
-    try {
-      console.log("[OrderConfirmation] Checking printing configuration for restaurant:", restaurant.id);
-      
-      // Use the new helper method for graceful checking
-      const printingOptions = await printNodeService.getAvailablePrintingOptions(restaurant.id);
-      
-      setPrintingState({
-        isChecking: false,
-        isConfigured: printingOptions.printNodeAvailable,
-        hasFallback: printingOptions.browserPrintingAvailable,
-        message: printingOptions.message
-      });
-
-      console.log("[OrderConfirmation] Printing options checked:", printingOptions);
-
-    } catch (error) {
-      console.error("[OrderConfirmation] Error checking printing configuration:", error);
-      
-      // Graceful fallback - don't let printing errors block the order confirmation
-      setPrintingState({
-        isChecking: false,
-        isConfigured: false,
-        hasFallback: true,
-        message: 'Using browser printing (configuration check failed)'
-      });
-    }
-  };
-
+  
   const handlePrintReceipt = async () => {
-    if (!restaurant?.id) {
-      console.error("[OrderConfirmation] Cannot print: No restaurant ID");
-      return;
-    }
-
+    if (!restaurant?.id || hasPrinted || isPrinting) return;
+    
     try {
-      console.log("[OrderConfirmation] Starting print process...");
+      setIsPrinting(true);
+      setPrintStatus('printing');
+      console.log(`[OrderConfirmation] Starting enhanced print process for order: ${orderNumber} in restaurant: ${restaurant.id}`);
+
+      // Enhanced PrintNode diagnostics before printing
+      console.log("[OrderConfirmation] Running PrintNode diagnostics...");
+      const diagnosticResult = await printNodeService.diagnoseConfiguration(restaurant.id);
       
-      // Try PrintNode first if configured
-      if (printingState.isConfigured) {
-        console.log("[OrderConfirmation] Attempting PrintNode printing...");
+      console.log("[OrderConfirmation] Diagnostic results:", {
+        success: diagnosticResult.success,
+        testCount: diagnosticResult.diagnostics.length,
+        failedTests: diagnosticResult.diagnostics.filter(d => !d.passed).map(d => d.test)
+      });
+
+      // Show diagnostic results in toast if there are issues
+      if (!diagnosticResult.success) {
+        const failedTests = diagnosticResult.diagnostics.filter(d => !d.passed);
+        console.warn("[OrderConfirmation] PrintNode diagnostics found issues:", failedTests);
         
-        try {
-          const receiptContent = generateReceiptContent({
-            orderNumber,
-            cartItems,
-            total,
-            restaurant,
-            orderType,
-            tableNumber,
-            uiLanguage,
-            currency
-          });
+        toast({
+          title: "PrintNode Configuration Issues",
+          description: `Found ${failedTests.length} configuration issues. Check settings.`,
+          variant: "destructive"
+        });
+      }
 
-          const printResults = await printNodeService.sendPrintJob({
-            restaurantId: restaurant.id,
-            printerIds: [], // Will be fetched from config
-            title: `Order ${orderNumber}`,
-            content: receiptContent
-          });
+      // Fetch print configuration with enhanced error handling
+      const { data: printConfig, error: configError } = await supabase
+        .from('restaurant_print_config')
+        .select('configured_printers, browser_printing_enabled')
+        .eq('restaurant_id', restaurant.id)
+        .single();
 
-          const successfulPrints = printResults.filter(r => r.success);
-          
-          if (successfulPrints.length > 0) {
-            console.log("[OrderConfirmation] PrintNode printing successful");
-            return;
-          } else {
-            console.warn("[OrderConfirmation] PrintNode printing failed, falling back to browser");
+      if (configError && configError.code !== 'PGRST116') {
+        console.error("[OrderConfirmation] Error fetching print configuration:", configError);
+        toast({
+          title: t("order.error"),
+          description: "Could not fetch print settings",
+          variant: "destructive"
+        });
+        setPrintStatus('error');
+        return;
+      }
+
+      console.log("[OrderConfirmation] Print configuration:", {
+        configFound: !!printConfig,
+        browserPrintingEnabled: printConfig?.browser_printing_enabled,
+        printerCount: Array.isArray(printConfig?.configured_printers) ? printConfig.configured_printers.length : 0
+      });
+
+      // Handle browser printing
+      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig?.browser_printing_enabled !== false);
+      if (shouldUseBrowserPrinting) {
+        console.log("[OrderConfirmation] Initiating browser printing...");
+        toast({
+          title: t("order.printing"),
+          description: t("order.printingPreparation")
+        });
+        
+        setTimeout(() => {
+          try {
+            printReceipt('receipt-content');
+            console.log("[OrderConfirmation] Browser print triggered successfully");
+            setPrintStatus('success');
+          } catch (printError) {
+            console.error("[OrderConfirmation] Browser printing error:", printError);
+            toast({
+              title: t("order.printError"),
+              description: "Browser printing failed",
+              variant: "destructive"
+            });
+            setPrintStatus('error');
           }
-        } catch (printNodeError) {
-          console.error("[OrderConfirmation] PrintNode error:", printNodeError);
-          console.log("[OrderConfirmation] Falling back to browser printing");
-        }
+        }, 500);
       }
 
-      // Fallback to browser printing
-      if (printingState.hasFallback) {
-        console.log("[OrderConfirmation] Using browser printing");
-        printReceipt('order-receipt');
+      // Enhanced PrintNode printing with comprehensive error handling
+      if (printConfig?.configured_printers && diagnosticResult.success) {
+        const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
+        const printerIds = printerArray.map(id => String(id));
+        
+        if (printerIds.length > 0) {
+          console.log(`[OrderConfirmation] Attempting PrintNode printing to ${printerIds.length} printer(s):`, printerIds);
+          
+          try {
+            // Generate receipt content
+            const receiptContent = generatePlainTextReceipt(
+              cart,
+              restaurant,
+              orderType,
+              tableNumber,
+              orderNumber,
+              restaurant?.currency?.toUpperCase() || 'EUR',
+              total,
+              subtotal,
+              tax,
+              10,
+              (key) => t(key)
+            );
+
+            console.log("[OrderConfirmation] Generated receipt content length:", receiptContent.length);
+
+            const printResults = await printNodeService.sendPrintJob({
+              printerIds,
+              title: `Order #${orderNumber}`,
+              content: receiptContent,
+              restaurantId: restaurant.id
+            });
+            
+            const successfulPrints = printResults.filter(r => r.success);
+            const failedPrints = printResults.filter(r => !r.success);
+            
+            console.log("[OrderConfirmation] Print results:", {
+              total: printResults.length,
+              successful: successfulPrints.length,
+              failed: failedPrints.length,
+              failures: failedPrints.map(f => ({ printer: f.printerId, error: f.error }))
+            });
+            
+            if (successfulPrints.length > 0) {
+              toast({
+                title: t("order.printing"),
+                description: `Successfully sent to ${successfulPrints.length} printer(s)`,
+              });
+              setPrintStatus('success');
+            }
+            
+            if (failedPrints.length > 0) {
+              console.error(`[OrderConfirmation] Failed to send to ${failedPrints.length} printers:`, failedPrints);
+              toast({
+                title: t("order.printError"),
+                description: `Failed to send to ${failedPrints.length} printer(s). Check PrintNode settings.`,
+                variant: "destructive"
+              });
+              if (successfulPrints.length === 0) {
+                setPrintStatus('error');
+              }
+            }
+            
+          } catch (printNodeError) {
+            console.error("[OrderConfirmation] PrintNode printing failed:", {
+              errorMessage: printNodeError.message,
+              errorType: printNodeError.constructor.name,
+              restaurantId: restaurant.id
+            });
+            toast({
+              title: t("order.printError"),
+              description: `PrintNode error: ${printNodeError.message}`,
+              variant: "destructive"
+            });
+            setPrintStatus('error');
+          }
+        } else {
+          console.log("[OrderConfirmation] No printers configured for PrintNode");
+          toast({
+            title: "No Printers Configured",
+            description: "PrintNode is set up but no printers are configured",
+            variant: "destructive"
+          });
+        }
+      } else if (printConfig?.configured_printers && !diagnosticResult.success) {
+        console.log("[OrderConfirmation] PrintNode printers configured but diagnostics failed");
+        toast({
+          title: "PrintNode Configuration Error",
+          description: "PrintNode has configuration issues. Check settings.",
+          variant: "destructive"
+        });
+        setPrintStatus('error');
       } else {
-        console.error("[OrderConfirmation] No printing options available");
+        console.log("[OrderConfirmation] PrintNode not configured or no printers available");
       }
+
+      setHasPrinted(true);
 
     } catch (error) {
-      console.error("[OrderConfirmation] Print error:", error);
-      // Don't show error to user - printing is not critical for order confirmation
+      console.error("[OrderConfirmation] Critical error during enhanced printing process:", {
+        errorMessage: error.message,
+        errorType: error.constructor.name,
+        restaurantId: restaurant.id,
+        orderNumber
+      });
+      toast({
+        title: t("order.error"),
+        description: "Critical printing error occurred",
+        variant: "destructive"
+      });
+      setPrintStatus('error');
+    } finally {
+      setIsPrinting(false);
     }
   };
-
-  const handleNewOrder = () => {
-    onNewOrder();
-    onClose();
-  };
-
-  const getPrintButtonText = () => {
-    if (printingState.isChecking) return t("checkingPrinting");
-    if (printingState.isConfigured) return t("printReceipt");
-    if (printingState.hasFallback) return t("printReceipt");
-    return t("printUnavailable");
-  };
-
-  const getPrintIcon = () => {
-    if (printingState.isChecking) return <Info className="h-4 w-4 animate-spin" />;
-    if (printingState.isConfigured) return <Printer className="h-4 w-4" />;
-    if (printingState.hasFallback) return <Printer className="h-4 w-4" />;
-    return <AlertCircle className="h-4 w-4" />;
-  };
-
-  const canPrint = !printingState.isChecking && (printingState.isConfigured || printingState.hasFallback);
-
-  // Helper functions for OrderReceipt component
-  const getFormattedOptions = (item: CartItem): string => {
-    if (!item.menuItem.options) return "";
-    return item.selectedOptions.flatMap(selectedOption => {
-      const option = item.menuItem.options?.find(o => o.id === selectedOption.optionId);
-      if (!option) return [];
-      return selectedOption.choiceIds.map(choiceId => {
-        const choice = option.choices.find(c => c.id === choiceId);
-        return choice ? choice.name : "";
-      });
-    }).filter(Boolean).join(", ");
-  };
-
-  const getFormattedToppings = (item: CartItem): string => {
-    if (!item.menuItem.toppingCategories) return "";
-    return item.selectedToppings.flatMap(selectedCategory => {
-      const category = item.menuItem.toppingCategories?.find(c => c.id === selectedCategory.categoryId);
-      if (!category) return [];
-      return selectedCategory.toppingIds.map(toppingId => {
-        const topping = category.toppings.find(t => t.id === toppingId);
-        return topping ? topping.name : "";
-      });
-    }).filter(Boolean).join(", ");
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-green-600 text-2xl">
-            <CheckCircle className="h-8 w-8" />
-            {t("orderConfirmed")}
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="flex-1 overflow-y-auto">
-          <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold mb-2">{t("orderNumber")}</h2>
-            <div className="bg-black text-white text-6xl font-mono py-4 px-6 rounded-lg inline-block">
-              {orderNumber}
-            </div>
+  
+  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="sm:max-w-md md:max-w-2xl rounded-lg overflow-hidden">
+        <div className="flex flex-col items-center text-center p-4 space-y-6">
+          {/* Order Confirmation Header */}
+          <div className="bg-green-100 rounded-full p-4 mb-2">
+            <Check className="h-12 w-12 text-green-600" />
           </div>
-
-          {/* Print status message */}
-          {printingState.message && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2 text-sm text-blue-700">
-                <Info className="h-4 w-4" />
-                {printingState.message}
+          
+          <h2 className="text-2xl font-bold text-green-800">
+            {t("orderConfirmation.title")}
+          </h2>
+          
+          {/* Order Details with Print Status */}
+          <div className="space-y-2 w-full">
+            <p className="flex items-center justify-center gap-2">
+              <Receipt className="h-5 w-5 text-gray-600" />
+              {t("orderConfirmation.ticketPrinted")}
+            </p>
+            <p className="flex items-center justify-center gap-2">
+              <Printer className={`h-5 w-5 ${
+                printStatus === 'success' ? 'text-green-600' : 
+                printStatus === 'error' ? 'text-red-600' : 
+                'text-gray-600'
+              }`} />
+              {printStatus === 'printing' && t("orderConfirmation.printing")}
+              {printStatus === 'success' && t("orderConfirmation.printed")}
+              {printStatus === 'error' && "Print Error - Check Settings"}
+              {printStatus === 'idle' && t("orderConfirmation.printed")}
+            </p>
+            <p>{t("orderConfirmation.preparation")}</p>
+          </div>
+          
+          {/* Payment Section */}
+          <div className="bg-blue-50 p-4 rounded-lg w-full">
+            <h3 className="font-bold text-blue-800 mb-2 text-3xl">
+              {t("orderConfirmation.payNow")}
+            </h3>
+            <p className="text-xl">{t("orderConfirmation.paymentInstructions")}</p>
+            
+            <div className="mt-4 space-y-2">
+              <div className="flex justify-between font-semibold">
+                <span>{t("orderConfirmation.total")}:</span>
+                <span>{total.toFixed(2)} {getCurrencySymbol(restaurant?.currency)}</span>
+              </div>
+              <div className="flex justify-between font-semibold">
+                <span>{t("orderConfirmation.orderNumber")}:</span>
+                <span>#{orderNumber}</span>
               </div>
             </div>
-          )}
-
-          <div id="order-receipt">
-            <OrderReceipt
-              orderNumber={orderNumber}
-              cart={cartItems}
-              restaurant={restaurant}
-              orderType={orderType}
-              tableNumber={tableNumber}
-              getFormattedOptions={getFormattedOptions}
-              getFormattedToppings={getFormattedToppings}
-              uiLanguage={uiLanguage}
-            />
+          </div>
+          
+          {/* Warning */}
+          <div className="bg-yellow-50 p-3 rounded-md w-full">
+            <p className="text-sm text-yellow-800">
+              {t("orderConfirmation.preparationWarning")}
+            </p>
+          </div>
+          
+          {/* Thank You Message */}
+          <p className="font-medium">{t("orderConfirmation.thankYou")}</p>
+          
+          {/* Countdown Timer */}
+          <div className="flex items-center text-gray-500 mt-2">
+            <Clock className="h-4 w-4 mr-1" />
+            <span>{t("orderConfirmation.redirecting")} {countdown}s</span>
           </div>
         </div>
-
-        <div className="flex-shrink-0 flex gap-3 pt-4 border-t">
-          <Button
-            onClick={handlePrintReceipt}
-            disabled={!canPrint}
-            variant="outline"
-            className="flex-1"
-          >
-            {getPrintIcon()}
-            {getPrintButtonText()}
-          </Button>
-          <Button onClick={handleNewOrder} className="flex-1">
-            {t("newOrder")}
-          </Button>
-        </div>
       </DialogContent>
-    </Dialog>
-  );
+
+      {/* Hidden Receipt Component for Printing */}
+      <OrderReceipt 
+        restaurant={restaurant} 
+        cart={cart} 
+        orderNumber={orderNumber} 
+        tableNumber={tableNumber} 
+        orderType={orderType} 
+        getFormattedOptions={getFormattedOptions} 
+        getFormattedToppings={getFormattedToppings} 
+        uiLanguage={uiLanguage} 
+      />
+    </Dialog>;
 };
 
 export default OrderConfirmationDialog;

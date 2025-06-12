@@ -1216,15 +1216,14 @@ const KioskView = () => {
       <OrderConfirmationDialog 
         isOpen={showConfirmationDialog}
         onClose={handleConfirmationClose}
-        onNewOrder={resetToWelcome}
-        cartItems={cart}
-        total={calculateCartTotal()}
+        cart={cart}
         orderNumber={confirmedOrderNumber}
         restaurant={restaurant}
         orderType={orderType}
         tableNumber={tableNumber}
         uiLanguage={uiLanguage}
-        currency={restaurant?.currency}
+        getFormattedOptions={getFormattedOptions}
+        getFormattedToppings={getFormattedToppings}
       />
     </div>
   </NetworkErrorBoundary>;
