@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { generatePlainTextReceipt } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
-import { kioskPrintService } from "@/services/kiosk-print-service";
+import { secureApiKeyService } from "@/services/secure-api-keys";
 import OrderReceipt from "./OrderReceipt";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 
@@ -54,7 +53,6 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   const [countdown, setCountdown] = useState(10);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrinted, setHasPrinted] = useState(false);
-  const [printStatus, setPrintStatus] = useState<'pending' | 'success' | 'partial' | 'failed'>('pending');
   const {
     total,
     subtotal,
@@ -105,167 +103,316 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   // Handle printing when dialog opens
   useEffect(() => {
     if (isOpen && !hasPrinted && restaurant?.id) {
-      console.log('[OrderConfirmationDialog] Dialog opened, starting print process');
       handlePrintReceipt();
     }
   }, [isOpen, restaurant?.id]);
   
   const handlePrintReceipt = async () => {
-    if (!restaurant?.id || hasPrinted || isPrinting) {
-      console.log('[OrderConfirmationDialog] Skipping print - conditions not met:', {
-        restaurantId: !!restaurant?.id,
-        hasPrinted,
-        isPrinting
-      });
-      return;
-    }
-    
+    if (!restaurant?.id || hasPrinted || isPrinting) return;
     try {
       setIsPrinting(true);
-      setPrintStatus('pending');
 
-      console.log('[OrderConfirmationDialog] Starting print process for:', {
-        restaurantId: restaurant.id,
-        orderNumber,
-        orderType,
-        tableNumber
-      });
-
-      // Fetch print configuration
+      // Fetch print configuration (no longer includes api_key)
       const {
         data: printConfig,
         error
       } = await supabase.from('restaurant_print_config').select('configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
-      
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-        console.error("[OrderConfirmationDialog] Error fetching print configuration:", error);
-        // Continue anyway - the service will create a default config
-      } else {
-        console.log('[OrderConfirmationDialog] Print config loaded:', printConfig);
+      if (error) {
+        console.error("Error fetching print configuration:", error);
+        setIsPrinting(false);
+        return;
       }
 
       // Handle browser printing
-      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig?.browser_printing_enabled !== false);
-      let browserPrintAttempted = false;
-
+      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
       if (shouldUseBrowserPrinting) {
-        console.log("[OrderConfirmationDialog] Using browser printing for receipt");
+        console.log("Using browser printing for receipt");
         toast({
           title: t("order.printing"),
           description: t("order.printingPreparation")
         });
-        
-        browserPrintAttempted = true;
         setTimeout(() => {
           try {
             printReceipt('receipt-content');
-            console.log("[OrderConfirmationDialog] Browser print triggered successfully");
+            console.log("Print receipt triggered successfully");
           } catch (printError) {
-            console.error("[OrderConfirmationDialog] Error during browser printing:", printError);
+            console.error("Error during browser printing:", printError);
+            toast({
+              title: t("order.printError"),
+              description: t("order.printErrorDesc"),
+              variant: "destructive"
+            });
           }
+          setIsPrinting(false);
+          setHasPrinted(true);
         }, 500);
-      }
-
-      // Handle PrintNode printing using kiosk service
-      let kioskPrintResult = null;
-      
-      // Generate receipt content for PrintNode
-      const receiptContent = generatePlainTextReceipt(
-        cart,
-        restaurant,
-        orderType,
-        tableNumber,
-        orderNumber,
-        restaurant?.currency?.toUpperCase() || 'EUR',
-        total,
-        subtotal,
-        tax,
-        10,
-        (key) => t(key)
-      );
-
-      console.log('[OrderConfirmationDialog] Generated receipt content length:', receiptContent.length);
-
-      // Always try kiosk service to get proper feedback
-      try {
-        console.log(`[OrderConfirmationDialog] Calling kiosk print service for restaurant ${restaurant.id}`);
-        
-        // Prepare printer IDs if configured
-        const printerIds = printConfig?.configured_printers && Array.isArray(printConfig.configured_printers)
-          ? printConfig.configured_printers.map(id => String(id))
-          : [];
-
-        console.log('[OrderConfirmationDialog] Using printer IDs:', printerIds);
-
-        // Use the kiosk print service
-        kioskPrintResult = await kioskPrintService.printReceipt({
-          restaurantId: restaurant.id,
-          orderNumber,
-          receiptContent,
-          printerIds
-        });
-
-        console.log('[OrderConfirmationDialog] Kiosk print result:', kioskPrintResult);
-
-      } catch (printError) {
-        console.error("[OrderConfirmationDialog] Error with kiosk print service:", printError);
-        kioskPrintResult = {
-          success: false,
-          results: [],
-          summary: { successful: 0, failed: 0, total: 0 },
-          message: printError instanceof Error ? printError.message : 'Unknown error'
-        };
-      }
-
-      // Determine overall print status
-      const kioskSuccess = kioskPrintResult?.success && kioskPrintResult.summary.successful > 0;
-      const kioskPartial = kioskPrintResult?.success && kioskPrintResult.summary.failed > 0;
-      
-      console.log('[OrderConfirmationDialog] Print status evaluation:', {
-        kioskSuccess,
-        kioskPartial,
-        browserPrintAttempted,
-        kioskMessage: kioskPrintResult?.message
-      });
-      
-      if (kioskSuccess && !kioskPartial) {
-        setPrintStatus('success');
-        toast({
-          title: "Impression réussie",
-          description: `Reçu envoyé à ${kioskPrintResult.summary.successful} imprimante(s)`,
-        });
-      } else if (kioskSuccess && kioskPartial) {
-        setPrintStatus('partial');
-        toast({
-          title: "Impression partielle",
-          description: `${kioskPrintResult.summary.successful} imprimante(s) réussie(s), ${kioskPrintResult.summary.failed} échec(s)`,
-          variant: "destructive"
-        });
-      } else if (browserPrintAttempted) {
-        setPrintStatus('success');
-        // Don't show additional toasts for browser printing
       } else {
-        setPrintStatus('failed');
-        const errorMessage = kioskPrintResult?.message || "Impossible d'imprimer le reçu";
-        console.error('[OrderConfirmationDialog] Print failed with message:', errorMessage);
-        toast({
-          title: "Erreur d'impression", 
-          description: errorMessage,
-          variant: "destructive"
-        });
+        console.log("Browser printing disabled for this device or restaurant");
       }
 
+      // Handle PrintNode printing (using secure API key service)
+      if (printConfig?.configured_printers) {
+        const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
+        const printerIds = printerArray.map(id => String(id));
+        if (printerIds.length > 0) {
+          try {
+            console.log(`[OrderConfirmation] Attempting to retrieve PrintNode API key for restaurant ${restaurant.id}`);
+            
+            // Get API key securely with improved error handling
+            const apiKey = await secureApiKeyService.retrieveApiKey(restaurant.id, 'printnode');
+            
+            if (apiKey) {
+              console.log('[OrderConfirmation] API key retrieved successfully, sending to PrintNode');
+              await sendReceiptToPrintNode(apiKey, printerIds, {
+                restaurant,
+                cart,
+                orderNumber,
+                tableNumber,
+                orderType,
+                subtotal,
+                tax,
+                total,
+                getFormattedOptions,
+                getFormattedToppings,
+                uiLanguage
+              });
+            } else {
+              console.warn("No PrintNode API key found for restaurant");
+              toast({
+                title: "Information",
+                description: "Clé API PrintNode non configurée",
+                variant: "default"
+              });
+            }
+          } catch (apiKeyError) {
+            console.error("Error retrieving PrintNode API key:", apiKeyError);
+            
+            // Handle different types of errors with appropriate user messages
+            let errorMessage = "Erreur lors de la récupération de la clé API";
+            if (apiKeyError instanceof Error) {
+              if (apiKeyError.message.includes('Authentication') || apiKeyError.message.includes('authentification')) {
+                errorMessage = "Erreur d'authentification. Veuillez vous reconnecter.";
+              } else if (apiKeyError.message.includes('Network')) {
+                errorMessage = "Erreur de réseau. Vérifiez votre connexion.";
+              } else if (apiKeyError.message.includes('permissions')) {
+                errorMessage = "Permissions insuffisantes pour accéder à la clé API";
+              }
+            }
+            
+            toast({
+              title: t("order.printError"),
+              description: errorMessage,
+              variant: "destructive"
+            });
+          }
+        }
+        setIsPrinting(false);
+        setHasPrinted(true);
+      }
     } catch (error) {
-      console.error("[OrderConfirmationDialog] Error during receipt printing:", error);
-      setPrintStatus('failed');
+      console.error("Error during receipt printing:", error);
       toast({
         title: t("order.error"),
         description: t("order.errorPrinting"),
         variant: "destructive"
       });
-    } finally {
       setIsPrinting(false);
-      setHasPrinted(true);
+    }
+  };
+
+  // Browser-compatible UTF-8 to base64 encoding
+  const encodeToBase64 = (text: string): string => {
+    try {
+      // Method 1: Try modern approach with TextEncoder (Chrome, modern Firefox)
+      if (typeof TextEncoder !== 'undefined') {
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(text);
+        const binaryString = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+        return btoa(binaryString);
+      }
+      
+      // Method 2: Fallback for older browsers - handle UTF-8 manually
+      const utf8Bytes = unescape(encodeURIComponent(text));
+      return btoa(utf8Bytes);
+    } catch (error) {
+      console.error("Error encoding to base64:", error);
+      // Method 3: Last resort - try direct btoa (may not work with special characters)
+      try {
+        return btoa(text);
+      } catch (fallbackError) {
+        console.error("Fallback encoding also failed:", fallbackError);
+        throw new Error("Unable to encode receipt content");
+      }
+    }
+  };
+  
+  const sendReceiptToPrintNode = async (apiKey: string, printerIds: string[], orderData: {
+    restaurant: typeof restaurant;
+    cart: CartItem[];
+    orderNumber: string;
+    tableNumber?: string | null;
+    orderType: "dine-in" | "takeaway" | null;
+    subtotal: number;
+    tax: number;
+    total: number;
+    getFormattedOptions: (item: CartItem) => string;
+    getFormattedToppings: (item: CartItem) => string;
+    uiLanguage?: SupportedLanguage;
+  }) => {
+    try {
+      console.log(`[PrintNode] Starting print job for order ${orderData.orderNumber}`);
+      console.log(`[PrintNode] Browser: ${navigator.userAgent}`);
+      
+      // Generate receipt content
+      const receiptContent = generatePlainTextReceipt(
+        orderData.cart,
+        orderData.restaurant,
+        orderData.orderType,
+        orderData.tableNumber,
+        orderData.orderNumber,
+        orderData.restaurant?.currency?.toUpperCase() || 'EUR',
+        orderData.total,
+        orderData.subtotal,
+        orderData.tax,
+        10,
+        (key) => t(key)
+      );
+
+      console.log(`[PrintNode] Receipt content length: ${receiptContent.length} characters`);
+      console.log(`[PrintNode] First 200 chars: ${receiptContent.substring(0, 200)}`);
+
+      // Encode content using browser-compatible method
+      let encodedContent: string;
+      try {
+        encodedContent = encodeToBase64(receiptContent);
+        console.log(`[PrintNode] Successfully encoded content, base64 length: ${encodedContent.length}`);
+      } catch (encodingError) {
+        console.error("[PrintNode] Encoding failed:", encodingError);
+        throw new Error(`Erreur d'encodage du reçu: ${encodingError.message}`);
+      }
+      
+      console.log(`[PrintNode] Sending receipt to ${printerIds.length} configured printers`);
+      
+      const printResults = [];
+      
+      for (const printerId of printerIds) {
+        console.log(`[PrintNode] Sending to printer ID: ${printerId}`);
+        
+        try {
+          // Prepare the print job payload
+          const printJobPayload = {
+            printer: parseInt(printerId, 10) || printerId,
+            title: `Order #${orderData.orderNumber}`,
+            contentType: "raw_base64",
+            content: encodedContent,
+            source: "Restaurant Kiosk"
+          };
+          
+          console.log(`[PrintNode] Print job payload for printer ${printerId}:`, {
+            ...printJobPayload,
+            content: `[BASE64 DATA - ${encodedContent.length} chars]`
+          });
+          
+          // Make secure API call with enhanced error handling
+          const response = await fetch('https://api.printnode.com/printjobs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Basic ${btoa(apiKey + ':')}`
+            },
+            body: JSON.stringify(printJobPayload)
+          });
+          
+          console.log(`[PrintNode] Response status for printer ${printerId}: ${response.status}`);
+          console.log(`[PrintNode] Response headers:`, Object.fromEntries(response.headers.entries()));
+          
+          // Read response text for better error handling
+          const responseText = await response.text();
+          console.log(`[PrintNode] Response text for printer ${printerId}:`, responseText);
+          
+          if (!response.ok) {
+            let errorMessage = `PrintNode API error (${response.status})`;
+            try {
+              const errorData = JSON.parse(responseText);
+              errorMessage = errorData.message || errorData.error || errorMessage;
+              console.error(`[PrintNode] API error details:`, errorData);
+            } catch (parseError) {
+              console.error(`[PrintNode] Could not parse error response:`, parseError);
+              errorMessage = `${errorMessage}: ${responseText}`;
+            }
+            
+            printResults.push({
+              printerId,
+              success: false,
+              error: errorMessage
+            });
+            
+            throw new Error(errorMessage);
+          } else {
+            console.log(`[PrintNode] Print job sent successfully to printer ${printerId}`);
+            
+            // Try to parse success response
+            try {
+              const successData = JSON.parse(responseText);
+              console.log(`[PrintNode] Success response data:`, successData);
+              printResults.push({
+                printerId,
+                success: true,
+                jobId: successData.id
+              });
+            } catch (parseError) {
+              console.log(`[PrintNode] Could not parse success response, but request was successful`);
+              printResults.push({
+                printerId,
+                success: true,
+                response: responseText
+              });
+            }
+          }
+        } catch (printerError) {
+          console.error(`[PrintNode] Error sending to printer ${printerId}:`, printerError);
+          printResults.push({
+            printerId,
+            success: false,
+            error: printerError.message
+          });
+          
+          // Continue to next printer instead of failing completely
+          continue;
+        }
+      }
+      
+      // Check if any printer succeeded
+      const successfulPrints = printResults.filter(result => result.success);
+      const failedPrints = printResults.filter(result => !result.success);
+      
+      console.log(`[PrintNode] Print summary: ${successfulPrints.length} successful, ${failedPrints.length} failed`);
+      
+      if (successfulPrints.length > 0) {
+        console.log(`[PrintNode] At least one printer succeeded`);
+        toast({
+          title: "Impression réussie",
+          description: `Reçu envoyé à ${successfulPrints.length} imprimante(s)`,
+        });
+      }
+      
+      if (failedPrints.length > 0) {
+        console.error(`[PrintNode] Some printers failed:`, failedPrints);
+        toast({
+          title: "Problème d'impression",
+          description: `${failedPrints.length} imprimante(s) ont échoué`,
+          variant: "destructive"
+        });
+      }
+      
+    } catch (error) {
+      console.error("[PrintNode] General error sending receipt to printer:", error);
+      toast({
+        title: "Erreur d'impression",
+        description: `Impossible d'imprimer: ${error.message}`,
+        variant: "destructive"
+      });
+      throw error;
     }
   };
   
@@ -288,22 +435,8 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
               {t("orderConfirmation.ticketPrinted")}
             </p>
             <p className="flex items-center justify-center gap-2">
-              <Printer className={`h-5 w-5 ${
-                printStatus === 'success' ? 'text-green-600' : 
-                printStatus === 'partial' ? 'text-yellow-600' :
-                printStatus === 'failed' ? 'text-red-600' : 'text-gray-600'
-              }`} />
-              {isPrinting ? (
-                t("orderConfirmation.printing")
-              ) : printStatus === 'success' ? (
-                'Impression réussie'
-              ) : printStatus === 'partial' ? (
-                'Impression partielle'
-              ) : printStatus === 'failed' ? (
-                'Échec d\'impression'
-              ) : (
-                t("orderConfirmation.printed")
-              )}
+              <Printer className="h-5 w-5 text-gray-600" />
+              {isPrinting ? t("orderConfirmation.printing") : t("orderConfirmation.printed")}
             </p>
             <p>{t("orderConfirmation.preparation")}</p>
           </div>

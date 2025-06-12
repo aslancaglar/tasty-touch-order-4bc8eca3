@@ -812,25 +812,12 @@ const KioskView = () => {
     
     try {
       setPlacingOrder(true);
-      
-      console.log('[KioskView] Creating order with:', {
-        restaurant_id: restaurant.id,
-        order_type: orderType,
-        table_number: tableNumber,
-        total: calculateCartTotal()
-      });
-      
       const order = await createOrder({
         restaurant_id: restaurant.id,
         status: 'pending',
         total: calculateCartTotal(),
-        customer_name: null,
-        order_type: orderType,
-        table_number: tableNumber
+        customer_name: null
       });
-      
-      console.log('[KioskView] Order created successfully:', order);
-      
       const orderItems = await createOrderItems(cart.map(item => ({
         order_id: order.id,
         menu_item_id: item.menuItem.id,
@@ -838,9 +825,6 @@ const KioskView = () => {
         price: item.itemPrice,
         special_instructions: item.specialInstructions || null
       })));
-      
-      console.log('[KioskView] Order items created:', orderItems.length);
-      
       const orderItemOptionsToCreate = [];
       const orderItemToppingsToCreate = [];
       for (let i = 0; i < cart.length; i++) {
@@ -870,9 +854,6 @@ const KioskView = () => {
       if (orderItemToppingsToCreate.length > 0) {
         await createOrderItemToppings(orderItemToppingsToCreate);
       }
-      
-      console.log('[KioskView] Order fully created and committed to database');
-      
       setOrderPlaced(true);
       
       // Get the order number - this will be a simple counter format (#390)
@@ -881,17 +862,16 @@ const KioskView = () => {
         .select('*', { count: 'exact', head: true })
         .eq('restaurant_id', restaurant.id);
       
-      const orderNumber = String(count || 1);
-      console.log('[KioskView] Order number assigned:', orderNumber);
+      setConfirmedOrderNumber(String(count || 1));
       
-      setConfirmedOrderNumber(orderNumber);
-      
-      // Show the confirmation dialog which will handle printing
+      // Show the confirmation dialog instead of immediately resetting
       setShowConfirmationDialog(true);
       setIsCartOpen(false);
       
+      // No need to reset immediately as the dialog will handle redirection
+      
     } catch (error) {
-      console.error("[KioskView] Error during order creation:", error);
+      console.error("Erreur lors de la commande:", error);
       toast({
         title: "Erreur",
         description: "Un problème est survenu lors de la commande. Veuillez réessayer.",

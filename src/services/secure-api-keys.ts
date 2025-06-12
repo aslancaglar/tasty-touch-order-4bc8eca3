@@ -34,133 +34,83 @@ export interface ApiKeyRotationAlert {
 }
 
 class SecureApiKeyService {
-  private async getValidSession() {
-    console.log('[SecureApiKeyService] Getting valid session...');
-    
-    // First, try to get the current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error('[SecureApiKeyService] Session error:', sessionError);
-      throw new Error(`Session retrieval failed: ${sessionError.message}`);
-    }
-    
-    if (!session) {
-      console.log('[SecureApiKeyService] No session found, user needs to log in');
-      throw new Error('No active session. Please log in again.');
-    }
-    
-    // Check if session is close to expiry (refresh if less than 5 minutes remaining)
-    const expiresAt = new Date(session.expires_at! * 1000);
-    const now = new Date();
-    const timeUntilExpiry = expiresAt.getTime() - now.getTime();
-    const fiveMinutesInMs = 5 * 60 * 1000;
-    
-    if (timeUntilExpiry < fiveMinutesInMs) {
-      console.log('[SecureApiKeyService] Session expiring soon, refreshing...');
-      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-      
-      if (refreshError) {
-        console.error('[SecureApiKeyService] Session refresh failed:', refreshError);
-        throw new Error('Session expired and refresh failed. Please log in again.');
-      }
-      
-      if (!refreshedSession) {
-        throw new Error('Session refresh returned null. Please log in again.');
-      }
-      
-      console.log('[SecureApiKeyService] Session refreshed successfully');
-      return refreshedSession;
-    }
-    
-    console.log('[SecureApiKeyService] Session is valid');
-    return session;
-  }
-
-  private async callApiKeyManager(action: string, payload: any, maxRetries: number = 2) {
+  private async callApiKeyManager(action: string, payload: any) {
     console.log(`[SecureApiKeyService] Calling API key manager with action: ${action}`);
     console.log(`[SecureApiKeyService] Payload:`, payload);
     
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`[SecureApiKeyService] Attempt ${attempt}/${maxRetries}`);
-        
-        const session = await this.getValidSession();
-        
-        if (!session?.access_token) {
-          throw new Error('No valid access token available');
-        }
-
-        console.log(`[SecureApiKeyService] Using session for user: ${session.user?.email}`);
-
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/api-key-manager`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ action, ...payload }),
-        });
-
-        console.log(`[SecureApiKeyService] Response status: ${response.status}`);
-
-        const responseText = await response.text();
-        console.log(`[SecureApiKeyService] Response text:`, responseText);
-
-        if (!response.ok) {
-          let errorMessage = 'API key operation failed';
-          try {
-            const errorData = JSON.parse(responseText);
-            errorMessage = errorData.error || errorMessage;
-            console.error('[SecureApiKeyService] Parsed error:', errorData);
-          } catch (parseError) {
-            console.error('[SecureApiKeyService] Failed to parse error response:', parseError);
-            errorMessage = `HTTP ${response.status}: ${responseText}`;
-          }
-          
-          // Check if it's an auth error and we should retry
-          if (response.status === 401 || response.status === 403) {
-            if (attempt < maxRetries) {
-              console.log('[SecureApiKeyService] Auth error, retrying with fresh session...');
-              // Force a session refresh on the next attempt
-              await supabase.auth.refreshSession();
-              continue;
-            }
-          }
-          
-          throw new Error(errorMessage);
-        }
-
-        try {
-          const result = JSON.parse(responseText);
-          console.log(`[SecureApiKeyService] Parsed result:`, result);
-          return result;
-        } catch (parseError) {
-          console.error('[SecureApiKeyService] Failed to parse success response:', parseError);
-          throw new Error('Invalid response format from server');
-        }
-      } catch (error) {
-        console.error(`[SecureApiKeyService] Attempt ${attempt} failed:`, error);
-        
-        if (attempt === maxRetries) {
-          if (error instanceof Error) {
-            // Provide user-friendly error messages
-            if (error.message.includes('Session') || error.message.includes('Auth')) {
-              throw new Error('Authentication session expired. Please refresh the page and try again.');
-            }
-            if (error.message.includes('Network') || error.message.includes('fetch')) {
-              throw new Error('Network error: Unable to connect to the server. Please check your connection.');
-            }
-          }
-          throw error;
-        }
-        
-        // Wait a bit before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      }
+    // Try to get the current session with retry logic
+    let session;
+    let sessionError;
+    
+    // First attempt - get current session
+    const sessionResult = await supabase.auth.getSession();
+    session = sessionResult.data.session;
+    sessionError = sessionResult.error;
+    
+    // If no session or error, try refreshing the session
+    if (!session || sessionError) {
+      console.log('[SecureApiKeyService] No valid session found, attempting refresh...');
+      const refreshResult = await supabase.auth.refreshSession();
+      session = refreshResult.data.session;
+      sessionError = refreshResult.error;
     }
     
-    throw new Error('Max retries exceeded');
+    if (sessionError) {
+      console.error('[SecureApiKeyService] Session error:', sessionError);
+      throw new Error(`Authentication error: ${sessionError.message}`);
+    }
+    
+    if (!session?.access_token) {
+      console.error('[SecureApiKeyService] No valid session found after refresh attempts');
+      throw new Error('User not authenticated - please log in again');
+    }
+
+    console.log(`[SecureApiKeyService] Session found, user: ${session.user?.email}`);
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/api-key-manager`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action, ...payload }),
+      });
+
+      console.log(`[SecureApiKeyService] Response status: ${response.status}`);
+      console.log(`[SecureApiKeyService] Response headers:`, Object.fromEntries(response.headers.entries()));
+
+      const responseText = await response.text();
+      console.log(`[SecureApiKeyService] Response text:`, responseText);
+
+      if (!response.ok) {
+        let errorMessage = 'API key operation failed';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+          console.error('[SecureApiKeyService] Parsed error:', errorData);
+        } catch (parseError) {
+          console.error('[SecureApiKeyService] Failed to parse error response:', parseError);
+          errorMessage = `HTTP ${response.status}: ${responseText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      try {
+        const result = JSON.parse(responseText);
+        console.log(`[SecureApiKeyService] Parsed result:`, result);
+        return result;
+      } catch (parseError) {
+        console.error('[SecureApiKeyService] Failed to parse success response:', parseError);
+        throw new Error('Invalid response format from server');
+      }
+    } catch (error) {
+      console.error('[SecureApiKeyService] Network or fetch error:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to the server');
+      }
+      throw error;
+    }
   }
 
   async storeApiKey(
@@ -219,6 +169,10 @@ class SecureApiKeyService {
       )) {
         console.log('[SecureApiKeyService] API key not found, returning null');
         return null;
+      }
+      // For authentication errors, throw a more user-friendly message
+      if (error instanceof Error && error.message.includes('Authentication')) {
+        throw new Error('Erreur d\'authentification lors de la récupération de la clé API');
       }
       throw error;
     }
