@@ -406,34 +406,36 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                                 <span style={{ paddingLeft: 6 }}>
                                   + {displayName}
                                 </span>
-                                {/* Topping quantity controls with bigger icons */}
-                                <div className="flex items-center space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity - 1)}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <Minus className="h-4 w-4" />
-                                  </Button>
-                                  <span className="w-6 text-center font-medium text-xs">{quantity}</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity + 1)}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <Plus className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => cartManager.removeToppingFromItem(item.id, category?.id || '', toppingRef?.id || '')}
-                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                                  >
-                                    <Trash className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                                {/* Topping quantity controls - only show if category allows multiple same topping */}
+                                {category?.allow_multiple_same_topping && (
+                                  <div className="flex items-center space-x-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity - 1)}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <span className="w-6 text-center font-medium text-xs">{quantity}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity + 1)}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => cartManager.removeToppingFromItem(item.id, category?.id || '', toppingRef?.id || '')}
+                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
                               </div>
                               <span>{totalPrice > 0 ? totalPrice.toFixed(2) + " €" : ""}</span>
                             </div>
