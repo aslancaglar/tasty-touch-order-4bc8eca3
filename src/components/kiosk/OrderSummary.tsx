@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,10 @@ import { getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templat
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import useCartManager from "@/hooks/useCartManager";
+import { printReceipt } from "@/utils/print-utils";
+import { printNodeService } from "@/services/printnode-service";
+import { generateReceiptContent } from "@/utils/receipt-templates";
+import { supabase } from "@/integrations/supabase/client";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -100,7 +105,103 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   }, [isOpen, cart]);
 
   const handleConfirmOrder = async () => {
-    onPlaceOrder();
+    try {
+      // Place the order first
+      onPlaceOrder();
+      
+      // Automatically print the receipt if restaurant ID is available
+      if (restaurant?.id) {
+        await handleAutomaticPrinting();
+      }
+    } catch (error) {
+      console.error("[OrderSummary] Error during order confirmation and printing:", error);
+      // Don't throw error - order was already placed successfully
+    }
+  };
+
+  const handleAutomaticPrinting = async () => {
+    if (!restaurant?.id) {
+      console.warn("[OrderSummary] No restaurant ID available for automatic printing");
+      return;
+    }
+
+    try {
+      console.log("[OrderSummary] Starting automatic printing process...");
+
+      // Get the next order number for the receipt
+      const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('restaurant_id', restaurant.id);
+      
+      const orderNumber = ((count || 0) + 1).toString();
+
+      // Check print configuration
+      const { data: printConfig } = await supabase
+        .from('restaurant_print_config')
+        .select('configured_printers, browser_printing_enabled')
+        .eq('restaurant_id', restaurant.id)
+        .single();
+
+      // Try PrintNode printing first if configured
+      if (printConfig?.configured_printers && Array.isArray(printConfig.configured_printers)) {
+        const printerIds = printConfig.configured_printers.map(id => String(id));
+        
+        if (printerIds.length > 0) {
+          console.log("[OrderSummary] Attempting PrintNode printing...");
+          
+          try {
+            const receiptContent = generateReceiptContent({
+              orderNumber,
+              cartItems: cart,
+              total,
+              restaurant,
+              orderType: "takeaway", // Default for kiosk
+              tableNumber: null,
+              uiLanguage,
+              currency: restaurant.currency || "EUR"
+            });
+
+            const printResults = await printNodeService.sendPrintJob({
+              restaurantId: restaurant.id,
+              printerIds,
+              title: `Order ${orderNumber}`,
+              content: receiptContent
+            });
+
+            const successfulPrints = printResults.filter(r => r.success);
+            if (successfulPrints.length > 0) {
+              console.log("[OrderSummary] PrintNode printing successful");
+              return; // Don't fallback to browser printing if PrintNode worked
+            }
+          } catch (printNodeError) {
+            console.error("[OrderSummary] PrintNode printing failed:", printNodeError);
+          }
+        }
+      }
+
+      // Fallback to browser printing if enabled (default enabled)
+      const browserPrintingEnabled = printConfig?.browser_printing_enabled !== false;
+      if (browserPrintingEnabled) {
+        console.log("[OrderSummary] Using browser printing fallback");
+        
+        // Wait a moment for the dialog to render the receipt content
+        setTimeout(() => {
+          try {
+            printReceipt('order-receipt');
+            console.log("[OrderSummary] Browser printing triggered successfully");
+          } catch (printError) {
+            console.error("[OrderSummary] Browser printing failed:", printError);
+          }
+        }, 500);
+      } else {
+        console.log("[OrderSummary] Browser printing is disabled");
+      }
+
+    } catch (error) {
+      console.error("[OrderSummary] Error during automatic printing:", error);
+      // Don't throw error - printing failure shouldn't affect order placement
+    }
   };
 
   // Helper to get topping name whether it's a string or ToppingWithQuantity
@@ -261,6 +362,50 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 )}
               </div>
             ))}
+          </div>
+
+          {/* Hidden receipt content for printing */}
+          <div id="order-receipt" style={{ display: 'none' }}>
+            <div className="receipt">
+              <div className="header">
+                <div className="logo">{restaurant?.name || 'Restaurant'}</div>
+                {restaurant?.location && <div>{restaurant.location}</div>}
+                <div>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</div>
+                <div className="order-number-container">
+                  <div className="order-number">ORDER: {Math.floor(Math.random() * 1000)}</div>
+                </div>
+              </div>
+              
+              <div className="divider"></div>
+              
+              {cart.map(item => (
+                <div key={item.id} className="item">
+                  <div>{item.quantity}x {item.menuItem.name}</div>
+                  <div>{(parseFloat(item.itemPrice.toString()) * item.quantity).toFixed(2)} {currencySymbol}</div>
+                </div>
+              ))}
+              
+              <div className="divider"></div>
+              
+              <div className="total-section">
+                <div className="total-line">
+                  <span>{t("order.subtotal")}:</span>
+                  <span>{subtotal.toFixed(2)} {currencySymbol}</span>
+                </div>
+                <div className="total-line">
+                  <span>{t("order.vatWithRate")}:</span>
+                  <span>{tax.toFixed(2)} {currencySymbol}</span>
+                </div>
+                <div className="total-line grand-total">
+                  <span>{t("order.totalTTC")}:</span>
+                  <span>{total.toFixed(2)} {currencySymbol}</span>
+                </div>
+              </div>
+              
+              <div className="footer">
+                <p>{t("order.thankYou") || "Thank you for your visit!"}</p>
+              </div>
+            </div>
           </div>
         </ScrollArea>
         
