@@ -49,8 +49,21 @@ const SecurityWrapper = () => {
 const App = () => {
   // Initialize cache config when the app starts
   useEffect(() => {
+    console.log("App component mounting");
     initializeCacheConfig();
   }, []);
+
+  // Add error boundary logging
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error("Global error caught:", event.error);
+    };
+    
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  console.log("App component rendering");
 
   return (
     <QueryClientProvider client={queryClient}>
