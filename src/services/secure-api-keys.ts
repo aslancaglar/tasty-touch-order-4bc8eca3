@@ -15,11 +15,52 @@ export interface ApiKeyRecord {
 }
 
 class SecureApiKeyService {
+  private async checkUserPermissions(restaurantId: string): Promise<{ isOwner: boolean; isAdmin: boolean }> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { isOwner: false, isAdmin: false };
+      }
+
+      // Check if user is admin
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+
+      const isAdmin = profileData?.is_admin || false;
+
+      // Check if user is restaurant owner
+      const { data: ownerData } = await supabase
+        .from('restaurant_owners')
+        .select('id')
+        .eq('restaurant_id', restaurantId)
+        .eq('user_id', user.id)
+        .single();
+
+      const isOwner = !!ownerData;
+
+      console.log(`User permissions - Admin: ${isAdmin}, Owner: ${isOwner}`);
+      return { isOwner, isAdmin };
+    } catch (error) {
+      console.error("Error checking user permissions:", error);
+      return { isOwner: false, isAdmin: false };
+    }
+  }
+
   private async callApiKeyManager(action: string, payload: any) {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.access_token) {
       throw new Error('User not authenticated');
+    }
+
+    // Check permissions before making the call
+    const { isOwner, isAdmin } = await this.checkUserPermissions(payload.restaurantId);
+    
+    if (!isOwner && !isAdmin) {
+      throw new Error('Insufficient permissions - must be restaurant owner or admin');
     }
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/api-key-manager`, {
@@ -28,7 +69,12 @@ class SecureApiKeyService {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ action, ...payload }),
+      body: JSON.stringify({ 
+        action, 
+        ...payload,
+        adminAccess: isAdmin,
+        ownerAccess: isOwner
+      }),
     });
 
     if (!response.ok) {

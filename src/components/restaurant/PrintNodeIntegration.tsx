@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,8 +40,34 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const [isMigrating, setIsMigrating] = useState(false);
   const [hasLegacyKey, setHasLegacyKey] = useState(false);
   const [securityStatus, setSecurityStatus] = useState<'secure' | 'legacy' | 'none'>('none');
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const { toast } = useToast();
+
+  // Check if current user is admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', (await supabase.auth.getUser()).data.user?.id)
+          .single();
+        
+        if (error) {
+          console.error("Error checking admin status:", error);
+          return;
+        }
+        
+        setIsAdmin(data?.is_admin || false);
+        console.log("User admin status:", data?.is_admin);
+      } catch (error) {
+        console.error("Error in admin check:", error);
+      }
+    };
+    
+    checkAdminStatus();
+  }, []);
 
   // Mask API key for display (show only last 4 characters)
   const maskApiKey = (key: string): string => {
@@ -121,6 +146,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     try {
       setIsFetching(true);
       console.log("Starting API key save process");
+      console.log("User is admin:", isAdmin);
       
       // First, test the API key by fetching printers
       console.log("Testing API key by fetching printers");
@@ -138,7 +164,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       console.log(`API key test successful - found ${printerData.length} printers`);
       
-      // Store API key securely in vault
+      // Store API key securely in vault (now works for both admins and owners)
       console.log("Storing API key securely");
       await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
       console.log("API key stored successfully in secure vault");
@@ -169,17 +195,23 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       setPrinters(printerData);
       setMaskedKey(maskApiKey(apiKey));
       
-      logSecurityEvent('PrintNode API key stored securely', { restaurantId });
+      logSecurityEvent('PrintNode API key stored securely', { 
+        restaurantId,
+        adminAccess: isAdmin 
+      });
       
       toast({
         title: "API Key Saved Successfully",
-        description: "PrintNode API key stored with enterprise-grade encryption",
+        description: isAdmin ? 
+          "PrintNode API key stored with enterprise-grade encryption (Admin Access)" :
+          "PrintNode API key stored with enterprise-grade encryption",
       });
     } catch (error) {
       console.error("Error saving API key:", error);
       const errorDetails = handleError(error, 'API key save');
       logSecurityEvent('API key save failed', { 
         restaurantId, 
+        adminAccess: isAdmin,
         ...errorDetails
       });
       
@@ -187,7 +219,9 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       let errorMessage = "Error saving API key";
       if (error instanceof Error) {
         if (error.message.includes('Insufficient permissions')) {
-          errorMessage = "You don't have permission to save API keys for this restaurant";
+          errorMessage = isAdmin ? 
+            "Error saving API key - please check your admin permissions" :
+            "You don't have permission to save API keys for this restaurant";
         } else if (error.message.includes('User not authenticated')) {
           errorMessage = "Please log in again to save API keys";
         } else {
@@ -225,7 +259,10 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       setHasLegacyKey(false);
       setSecurityStatus('secure');
       
-      logSecurityEvent('PrintNode API key migrated to secure storage', { restaurantId });
+      logSecurityEvent('PrintNode API key migrated to secure storage', { 
+        restaurantId,
+        adminAccess: isAdmin 
+      });
       
       toast({
         title: "Migration Complete",
@@ -235,7 +272,8 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       console.error("Error migrating API key:", error);
       const errorDetails = handleError(error, 'API key migration');
       logSecurityEvent('API key migration failed', { 
-        restaurantId, 
+        restaurantId,
+        adminAccess: isAdmin,
         ...errorDetails
       });
       toast({
@@ -434,6 +472,7 @@ If you can read this, printing
 is working correctly!
 
 Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
+Access Level: ${isAdmin ? 'ADMIN' : 'OWNER'}
 
 ==================================
         PRINT TEST PASSED
@@ -509,6 +548,11 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
               'Not Configured'
             )}
           </Badge>
+          {isAdmin && (
+            <Badge variant="secondary" className="text-xs">
+              Admin Access
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -584,6 +628,7 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
               <span className="block mt-1 text-green-600 flex items-center">
                 <Shield className="h-3 w-3 mr-1" />
                 Your API key is encrypted with enterprise-grade security
+                {isAdmin && " (Admin Access)"}
               </span>
             )}
           </p>
