@@ -41,6 +41,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const [hasLegacyKey, setHasLegacyKey] = useState(false);
   const [securityStatus, setSecurityStatus] = useState<'secure' | 'legacy' | 'none'>('none');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authError, setAuthError] = useState<string>("");
   
   const { toast } = useToast();
 
@@ -50,7 +51,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log("No user found");
+          setAuthError("Please log in to manage printer settings");
           return;
         }
 
@@ -64,18 +65,20 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         
         if (error) {
           console.error("Error checking admin status:", error);
+          if (error.code === 'PGRST116') {
+            setAuthError("User profile not found - please contact support");
+          }
           return;
         }
         
         const adminStatus = data?.is_admin || false;
         setIsAdmin(adminStatus);
         console.log("User admin status:", adminStatus);
+        setAuthError(""); // Clear any auth errors
         
-        if (adminStatus) {
-          console.log("User is confirmed admin - should have full API key access");
-        }
       } catch (error) {
         console.error("Error in admin check:", error);
+        setAuthError("Authentication error - please refresh and try again");
       }
     };
     
@@ -91,6 +94,11 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
 
   useEffect(() => {
     const checkApiKeyConfiguration = async () => {
+      if (authError) {
+        console.log("Skipping API key check due to auth error:", authError);
+        return;
+      }
+
       try {
         console.log("Checking API key configuration for restaurant:", restaurantId);
         
@@ -136,15 +144,20 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       } catch (error) {
         console.error("Error checking API key configuration:", error);
         const errorDetails = handleError(error, 'API key configuration check');
-        logSecurityEvent('API key configuration check failed', { 
-          restaurantId, 
-          ...errorDetails
-        });
+        
+        if (error instanceof Error && error.message.includes('Access denied')) {
+          setAuthError("Access denied: You need restaurant owner or admin permissions to view API keys");
+        } else {
+          logSecurityEvent('API key configuration check failed', { 
+            restaurantId, 
+            ...errorDetails
+          });
+        }
       }
     };
     
     checkApiKeyConfiguration();
-  }, [restaurantId]);
+  }, [restaurantId, authError]);
 
   const saveApiKey = async () => {
     if (!apiKey.trim()) {
@@ -161,10 +174,6 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       console.log("=== API KEY SAVE DEBUG ===");
       console.log("Restaurant ID:", restaurantId);
       console.log("User is admin:", isAdmin);
-      
-      // Get current user for debugging
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log("Current user ID:", user?.id);
       
       // First, test the API key by fetching printers
       console.log("Testing API key by fetching printers");
@@ -233,34 +242,25 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     } catch (error) {
       console.error("=== API KEY SAVE ERROR ===");
       console.error("Full error object:", error);
-      console.error("Error message:", error?.message);
-      console.error("Error type:", typeof error);
       
       const errorDetails = handleError(error, 'API key save');
       logSecurityEvent('API key save failed', { 
         restaurantId, 
         adminAccess: isAdmin,
-        userId: (await supabase.auth.getUser()).data.user?.id,
         ...errorDetails
       });
       
       // Provide detailed error messages for debugging
       let errorMessage = "Error saving API key";
       if (error instanceof Error) {
-        console.log("Error is instance of Error, message:", error.message);
-        
-        if (error.message.includes('Insufficient permissions')) {
-          errorMessage = `Permission error: ${error.message}. Admin status: ${isAdmin}`;
+        if (error.message.includes('Access denied')) {
+          errorMessage = `Access denied: You need restaurant owner or admin permissions to save API keys`;
         } else if (error.message.includes('User not authenticated')) {
           errorMessage = "Authentication error - please log out and log back in";
         } else {
           errorMessage = `Save failed: ${error.message}`;
         }
-      } else if (typeof error === 'string') {
-        errorMessage = `Save failed: ${error}`;
       }
-      
-      console.log("Final error message to show user:", errorMessage);
       
       toast({
         title: "Save Failed",
@@ -557,6 +557,32 @@ Access Level: ${isAdmin ? 'ADMIN' : 'OWNER'}
       setIsTesting({ ...isTesting, [printerId]: false });
     }
   };
+
+  // Show authentication error if present
+  if (authError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            PrintNode Integration
+            <Badge variant="destructive" className="text-xs">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Access Denied
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Authentication Required</AlertTitle>
+            <AlertDescription>
+              {authError}
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

@@ -1,6 +1,6 @@
 
--- Update the API key management functions to remove all permission checks
--- This matches what the migration intended but the functions still have old logic
+-- Restore proper permission checks to API key management functions
+-- Now that RLS policies are fixed, we can restore security to these functions
 
 CREATE OR REPLACE FUNCTION public.store_encrypted_api_key(
   p_restaurant_id UUID,
@@ -17,7 +17,10 @@ DECLARE
   secret_id UUID;
   key_record_id UUID;
 BEGIN
-  -- No permission checks - allow any authenticated user to store API keys
+  -- Restore proper permission checks
+  IF NOT (public.is_restaurant_owner_secure(p_restaurant_id) OR public.is_admin_secure()) THEN
+    RAISE EXCEPTION 'Insufficient permissions to store API key for this restaurant';
+  END IF;
   
   -- Store the API key in Vault
   SELECT vault.create_secret(p_api_key) INTO secret_id;
@@ -60,7 +63,10 @@ DECLARE
   secret_id UUID;
   decrypted_key TEXT;
 BEGIN
-  -- No permission checks - allow any authenticated user to retrieve API keys
+  -- Restore proper permission checks
+  IF NOT (public.is_restaurant_owner_secure(p_restaurant_id) OR public.is_admin_secure()) THEN
+    RAISE EXCEPTION 'Insufficient permissions to retrieve API key for this restaurant';
+  END IF;
   
   -- Get the secret ID from our table
   SELECT encrypted_key_id INTO secret_id
@@ -98,7 +104,10 @@ DECLARE
   old_secret_id UUID;
   new_secret_id UUID;
 BEGIN
-  -- No permission checks - allow any authenticated user to rotate API keys
+  -- Restore proper permission checks
+  IF NOT (public.is_restaurant_owner_secure(p_restaurant_id) OR public.is_admin_secure()) THEN
+    RAISE EXCEPTION 'Insufficient permissions to rotate API key for this restaurant';
+  END IF;
   
   -- Get the current secret ID
   SELECT encrypted_key_id INTO old_secret_id
