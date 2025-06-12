@@ -16,11 +16,16 @@ serve(async (req) => {
     console.log('=== Kiosk Print Service Request ===')
     console.log('Method:', req.method)
 
-    // Use service role key for secure operations
+    // Create client with service role for secure operations
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
+
+    // Get authorization header for user context
+    const authHeader = req.headers.get('Authorization')
+    const userToken = authHeader?.replace('Bearer ', '')
+    console.log('User token provided:', !!userToken)
 
     const requestBody = await req.json()
     console.log('Request body keys:', Object.keys(requestBody))
@@ -29,8 +34,12 @@ serve(async (req) => {
       restaurantId, 
       orderNumber, 
       receiptContent,
-      printerIds = []
+      printerIds = [],
+      userToken: bodyUserToken
     } = requestBody
+
+    // Use token from body if available, otherwise from header
+    const finalUserToken = bodyUserToken || userToken
 
     if (!restaurantId || !orderNumber || !receiptContent) {
       throw new Error('Restaurant ID, order number, and receipt content are required')
@@ -133,13 +142,28 @@ serve(async (req) => {
       })
     }
 
-    // Get the PrintNode API key securely
+    // Get restaurant owner for API key access
+    console.log('Looking up restaurant owner for API key access')
+    const { data: ownerData, error: ownerError } = await supabaseClient
+      .from('restaurant_owners')
+      .select('user_id')
+      .eq('restaurant_id', restaurantId)
+      .single()
+
+    if (ownerError || !ownerData) {
+      console.error('Restaurant owner lookup failed:', ownerError)
+      throw new Error('Restaurant owner not found')
+    }
+
+    console.log('Found restaurant owner:', ownerData.user_id)
+
+    // Get the PrintNode API key using the restaurant owner's user ID
     const { data: apiKeyValue, error: keyError } = await supabaseClient
       .rpc('get_encrypted_api_key', {
         p_restaurant_id: restaurantId,
         p_service_name: 'printnode',
         p_key_name: 'primary',
-        p_user_id: null
+        p_user_id: ownerData.user_id
       })
 
     if (keyError) {

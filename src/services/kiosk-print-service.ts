@@ -7,6 +7,7 @@ export interface KioskPrintRequest {
   orderNumber: string;
   receiptContent: string;
   printerIds?: string[];
+  userToken?: string; // Add user token for authentication
 }
 
 export interface KioskPrintResult {
@@ -68,20 +69,40 @@ class KioskPrintService {
     }
   }
 
+  private async getUserToken(): Promise<string | null> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token || null;
+    } catch (error) {
+      console.error('[KioskPrintService] Error getting user token:', error);
+      return null;
+    }
+  }
+
   async printReceipt(request: KioskPrintRequest): Promise<KioskPrintResult> {
-    console.log('[KioskPrintService] Printing receipt for order:', request.orderNumber);
+    console.log('[KioskPrintService] Starting print request for order:', request.orderNumber);
     
     try {
       // Ensure print configuration exists
       await this.ensurePrintConfigExists(request.restaurantId);
 
+      // Get user token for authentication
+      const userToken = await this.getUserToken();
+      
+      const requestWithAuth = {
+        ...request,
+        userToken
+      };
+
+      console.log('[KioskPrintService] Calling kiosk-print function with auth token:', !!userToken);
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/kiosk-print`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          'Authorization': `Bearer ${userToken || SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify(request),
+        body: JSON.stringify(requestWithAuth),
       });
 
       console.log(`[KioskPrintService] Response status: ${response.status}`);
