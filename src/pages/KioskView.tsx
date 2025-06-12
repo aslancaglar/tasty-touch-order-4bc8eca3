@@ -107,6 +107,11 @@ const KioskView = () => {
     return getTranslation(key, uiLanguage as SupportedLanguage);
   };
 
+  // Add the missing handleCartUpdate function
+  const handleCartUpdate = (newCart: CartItem[]) => {
+    setCart(newCart);
+  };
+
   // Enhanced connectivity monitoring
   useEffect(() => {
     const checkConnectivity = async () => {
