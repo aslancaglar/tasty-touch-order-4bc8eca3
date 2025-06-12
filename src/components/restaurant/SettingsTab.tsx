@@ -6,6 +6,7 @@ import { Settings, Printer, Shield, BarChart } from "lucide-react";
 import PrintNodeIntegration from "./PrintNodeIntegration";
 import QZTrayIntegration from "./QZTrayIntegration";
 import PrintNodeDiagnostics from "./PrintNodeDiagnostics";
+import BrowserPrintingSettings from "./BrowserPrintingSettings";
 import SecurityDashboard from "../security/SecurityDashboard";
 
 interface SettingsTabProps {
@@ -49,6 +50,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ restaurant, onRestaurantUpdat
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <BrowserPrintingSettings restaurantId={restaurant.id} />
               <PrintNodeIntegration restaurantId={restaurant.id} />
               <QZTrayIntegration restaurantId={restaurant.id} />
             </CardContent>
