@@ -1180,7 +1180,27 @@ const KioskView = () => {
       <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
         maxHeight: "60vh"
       }}>
-        <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} t={t} />
+        <Cart 
+          cart={cart} 
+          isOpen={isCartOpen} 
+          onToggleOpen={toggleCart} 
+          onUpdateQuantity={handleUpdateCartItemQuantity} 
+          onRemoveItem={handleRemoveCartItem} 
+          onClearCart={() => setCart([])} 
+          onCartUpdate={handleCartUpdate}
+          onPlaceOrder={handlePlaceOrder} 
+          placingOrder={placingOrder} 
+          orderPlaced={orderPlaced} 
+          calculateSubtotal={calculateSubtotal} 
+          calculateTax={calculateTax} 
+          getFormattedOptions={getFormattedOptions} 
+          getFormattedToppings={getFormattedToppings} 
+          restaurant={restaurant} 
+          orderType={orderType} 
+          tableNumber={tableNumber} 
+          uiLanguage={uiLanguage} 
+          t={t} 
+        />
       </div>
 
       {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}

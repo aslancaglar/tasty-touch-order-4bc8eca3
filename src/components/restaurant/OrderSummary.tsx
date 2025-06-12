@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, X, Minus, Plus } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import OrderReceipt from "@/components/kiosk/OrderReceipt";
 import { printReceipt } from "@/utils/print-utils";
@@ -13,6 +13,7 @@ import { generatePlainTextReceipt, getGroupedToppings, ToppingWithQuantity } fro
 import { secureApiKeyService } from "@/services/secure-api-keys";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCartManager } from "@/hooks/useCartManager";
 
 const translations = {
   fr: {
@@ -51,6 +52,7 @@ interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
   cart: CartItem[];
+  onCartUpdate: (newCart: CartItem[]) => void;
   onPlaceOrder: () => void;
   placingOrder: boolean;
   calculateSubtotal: () => number;
@@ -71,6 +73,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
   cart,
+  onCartUpdate,
   onPlaceOrder,
   placingOrder,
   calculateSubtotal,
@@ -87,6 +90,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const { toast } = useToast();
   
   const { total, subtotal, tax } = calculateCartTotals(cart);
+  
+  // Use the cart manager hook
+  const cartManager = useCartManager(cart, onCartUpdate);
 
   // Helper function to translate text
   const t = (key: keyof typeof translations["en"]) =>
@@ -330,10 +336,39 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           
           <div className="space-y-6 mb-6">
             {cart.map((item) => (
-              <div key={item.id} className="space-y-2">
-                <div className="flex justify-between">
-                  <div className="flex items-center">
-                    <span className="font-medium mr-2">{item.quantity}x</span>
+              <div key={item.id} className="space-y-2 border rounded-lg p-4 relative">
+                {/* Item remove button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => cartManager.removeItem(item.id)}
+                  className="absolute top-2 right-2 h-6 w-6 text-red-500 hover:text-red-700"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+
+                <div className="flex justify-between items-start pr-8">
+                  <div className="flex items-center space-x-2">
+                    {/* Quantity controls */}
+                    <div className="flex items-center space-x-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => cartManager.updateQuantity(item.id, item.quantity - 1)}
+                        className="h-6 w-6"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center font-medium">{item.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => cartManager.updateQuantity(item.id, item.quantity + 1)}
+                        className="h-6 w-6"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
                     <span className="font-medium">{item.menuItem.name}</span>
                   </div>
                   <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
@@ -348,31 +383,58 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                         <span>0.00 €</span>
                       </div>
                     ))}
-                    {/* Grouped toppings by category, show price if > 0 */}
+                    
+                    {/* Grouped toppings by category with individual removal */}
                     {getGroupedToppings(item).map((group, groupIdx) => (
                       <div key={`${item.id}-cat-summary-${groupIdx}`}>
                         <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
                           const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
                           
-                          // Get display name and quantity
                           const displayName = getToppingDisplayName(toppingObj);
                           const quantity = getToppingQuantity(toppingObj);
                           
                           const toppingRef = category?.toppings.find(t => t.name === displayName);
                           const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                          
-                          // Calculate total price based on quantity
                           const totalPrice = price * quantity;
                           
                           return (
-                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                              <span style={{ paddingLeft: 6 }}>
-                                {quantity > 1 ? `+ ${quantity}x ${displayName}` : `+ ${displayName}`}
-                              </span>
+                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between items-center group">
+                              <div className="flex items-center space-x-2">
+                                <span style={{ paddingLeft: 6 }}>
+                                  {quantity > 1 ? `+ ${quantity}x ${displayName}` : `+ ${displayName}`}
+                                </span>
+                                {/* Topping quantity controls */}
+                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity - 1)}
+                                    className="h-4 w-4 p-0"
+                                  >
+                                    <Minus className="h-2 w-2" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity + 1)}
+                                    className="h-4 w-4 p-0"
+                                  >
+                                    <Plus className="h-2 w-2" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => cartManager.removeToppingFromItem(item.id, category?.id || '', toppingRef?.id || '')}
+                                    className="h-4 w-4 p-0 text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="h-2 w-2" />
+                                  </Button>
+                                </div>
+                              </div>
                               <span>{totalPrice > 0 ? totalPrice.toFixed(2) + " €" : ""}</span>
                             </div>
-                          )
+                          );
                         })}
                       </div>
                     ))}
@@ -406,7 +468,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <Button 
             className="w-full bg-green-800 hover:bg-green-900 text-white py-6"
             onClick={handleConfirmOrder}
-            disabled={placingOrder}
+            disabled={placingOrder || cart.length === 0}
           >
             <Check className="mr-2 h-5 w-5" />
             {t("confirm")}
