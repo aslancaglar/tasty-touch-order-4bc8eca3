@@ -506,6 +506,9 @@ export const debugApiKeyService = {
     console.log(`[Debug] Testing API key retrieval for ${serviceName}...`);
     const key = await secureApiKeyService.retrieveApiKey(restaurantId, serviceName);
     console.log(`[Debug] Key retrieval result: ${key ? 'SUCCESS (key found)' : 'FAILED (no key)'}`);
+    if (!key) {
+      throw new Error(`No API key found for service ${serviceName}`);
+    }
   },
 
   async diagnoseEnvironment(): Promise<void> {

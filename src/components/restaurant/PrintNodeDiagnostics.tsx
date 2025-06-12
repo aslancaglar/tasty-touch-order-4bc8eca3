@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,23 +44,7 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
         });
       }
 
-      // Test 2: Secure API Key Service Health
-      try {
-        await debugApiKeyService.testConnection();
-        results.push({
-          category: "API Key Service",
-          status: "success", 
-          message: "Secure API Key Service is healthy"
-        });
-      } catch (error) {
-        results.push({
-          category: "API Key Service",
-          status: "error",
-          message: `API Key Service failed: ${error.message}`
-        });
-      }
-
-      // Test 3: PrintNode Configuration
+      // Test 2: PrintNode Configuration
       try {
         const config = await printNodeService.getConfiguration(restaurantId);
         if (config.isConfigured) {
@@ -92,7 +75,7 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
         });
       }
 
-      // Test 4: PrintNode Connection
+      // Test 3: PrintNode Connection
       try {
         const connectionTest = await printNodeService.testConnection(restaurantId);
         results.push({
@@ -109,7 +92,7 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
         });
       }
 
-      // Test 5: Database Print Configuration
+      // Test 4: Database Print Configuration
       try {
         const { supabase } = await import('@/integrations/supabase/client');
         const { data: printConfig, error } = await supabase
@@ -141,6 +124,22 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
           category: "Database Config",
           status: "error",
           message: `Database check failed: ${error.message}`
+        });
+      }
+
+      // Test 5: API Key Service Health (with restaurant context)
+      try {
+        const testResult = await debugApiKeyService.testRetrieveKey(restaurantId, 'printnode');
+        results.push({
+          category: "API Key Service",
+          status: "success", 
+          message: "Secure API Key Service is healthy and can retrieve keys"
+        });
+      } catch (error) {
+        results.push({
+          category: "API Key Service",
+          status: "error",
+          message: `API Key Service failed: ${error.message}`
         });
       }
 
