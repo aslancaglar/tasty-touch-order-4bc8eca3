@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -106,11 +107,29 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     try {
       setIsPrinting(true);
       setPrintStatus('printing');
-      console.log("Starting enhanced print process for order:", orderNumber);
+      console.log(`[OrderConfirmation] Starting enhanced print process for order: ${orderNumber} in restaurant: ${restaurant.id}`);
 
-      // Test PrintNode configuration first
-      const connectionTest = await printNodeService.testConnection(restaurant.id);
-      console.log("PrintNode connection test:", connectionTest);
+      // Enhanced PrintNode diagnostics before printing
+      console.log("[OrderConfirmation] Running PrintNode diagnostics...");
+      const diagnosticResult = await printNodeService.diagnoseConfiguration(restaurant.id);
+      
+      console.log("[OrderConfirmation] Diagnostic results:", {
+        success: diagnosticResult.success,
+        testCount: diagnosticResult.diagnostics.length,
+        failedTests: diagnosticResult.diagnostics.filter(d => !d.passed).map(d => d.test)
+      });
+
+      // Show diagnostic results in toast if there are issues
+      if (!diagnosticResult.success) {
+        const failedTests = diagnosticResult.diagnostics.filter(d => !d.passed);
+        console.warn("[OrderConfirmation] PrintNode diagnostics found issues:", failedTests);
+        
+        toast({
+          title: "PrintNode Configuration Issues",
+          description: `Found ${failedTests.length} configuration issues. Check settings.`,
+          variant: "destructive"
+        });
+      }
 
       // Fetch print configuration with enhanced error handling
       const { data: printConfig, error: configError } = await supabase
@@ -119,8 +138,8 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         .eq('restaurant_id', restaurant.id)
         .single();
 
-      if (configError && configError.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error("Error fetching print configuration:", configError);
+      if (configError && configError.code !== 'PGRST116') {
+        console.error("[OrderConfirmation] Error fetching print configuration:", configError);
         toast({
           title: t("order.error"),
           description: "Could not fetch print settings",
@@ -130,12 +149,16 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         return;
       }
 
-      console.log("Print configuration:", printConfig);
+      console.log("[OrderConfirmation] Print configuration:", {
+        configFound: !!printConfig,
+        browserPrintingEnabled: printConfig?.browser_printing_enabled,
+        printerCount: Array.isArray(printConfig?.configured_printers) ? printConfig.configured_printers.length : 0
+      });
 
       // Handle browser printing
       const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig?.browser_printing_enabled !== false);
       if (shouldUseBrowserPrinting) {
-        console.log("Using browser printing for receipt");
+        console.log("[OrderConfirmation] Initiating browser printing...");
         toast({
           title: t("order.printing"),
           description: t("order.printingPreparation")
@@ -144,10 +167,10 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         setTimeout(() => {
           try {
             printReceipt('receipt-content');
-            console.log("Browser print triggered successfully");
+            console.log("[OrderConfirmation] Browser print triggered successfully");
             setPrintStatus('success');
           } catch (printError) {
-            console.error("Browser printing error:", printError);
+            console.error("[OrderConfirmation] Browser printing error:", printError);
             toast({
               title: t("order.printError"),
               description: "Browser printing failed",
@@ -158,13 +181,13 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         }, 500);
       }
 
-      // Handle PrintNode printing with enhanced service
-      if (connectionTest.success && printConfig?.configured_printers) {
+      // Enhanced PrintNode printing with comprehensive error handling
+      if (printConfig?.configured_printers && diagnosticResult.success) {
         const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
         const printerIds = printerArray.map(id => String(id));
         
         if (printerIds.length > 0) {
-          console.log("Attempting PrintNode printing with enhanced service");
+          console.log(`[OrderConfirmation] Attempting PrintNode printing to ${printerIds.length} printer(s):`, printerIds);
           
           try {
             // Generate receipt content
@@ -182,6 +205,8 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
               (key) => t(key)
             );
 
+            console.log("[OrderConfirmation] Generated receipt content length:", receiptContent.length);
+
             const printResults = await printNodeService.sendPrintJob({
               printerIds,
               title: `Order #${orderNumber}`,
@@ -192,20 +217,26 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             const successfulPrints = printResults.filter(r => r.success);
             const failedPrints = printResults.filter(r => !r.success);
             
+            console.log("[OrderConfirmation] Print results:", {
+              total: printResults.length,
+              successful: successfulPrints.length,
+              failed: failedPrints.length,
+              failures: failedPrints.map(f => ({ printer: f.printerId, error: f.error }))
+            });
+            
             if (successfulPrints.length > 0) {
-              console.log(`Successfully sent to ${successfulPrints.length} printers`);
               toast({
                 title: t("order.printing"),
-                description: `Sent to ${successfulPrints.length} printer(s)`,
+                description: `Successfully sent to ${successfulPrints.length} printer(s)`,
               });
               setPrintStatus('success');
             }
             
             if (failedPrints.length > 0) {
-              console.error(`Failed to send to ${failedPrints.length} printers`);
+              console.error(`[OrderConfirmation] Failed to send to ${failedPrints.length} printers:`, failedPrints);
               toast({
                 title: t("order.printError"),
-                description: `Failed to send to ${failedPrints.length} printer(s)`,
+                description: `Failed to send to ${failedPrints.length} printer(s). Check PrintNode settings.`,
                 variant: "destructive"
               });
               if (successfulPrints.length === 0) {
@@ -214,7 +245,11 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             }
             
           } catch (printNodeError) {
-            console.error("PrintNode printing failed:", printNodeError);
+            console.error("[OrderConfirmation] PrintNode printing failed:", {
+              errorMessage: printNodeError.message,
+              errorType: printNodeError.constructor.name,
+              restaurantId: restaurant.id
+            });
             toast({
               title: t("order.printError"),
               description: `PrintNode error: ${printNodeError.message}`,
@@ -223,21 +258,34 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             setPrintStatus('error');
           }
         } else {
-          console.log("No printers configured for PrintNode");
+          console.log("[OrderConfirmation] No printers configured for PrintNode");
+          toast({
+            title: "No Printers Configured",
+            description: "PrintNode is set up but no printers are configured",
+            variant: "destructive"
+          });
         }
-      } else if (!connectionTest.success) {
-        console.log("PrintNode not configured or connection failed:", connectionTest.message);
+      } else if (printConfig?.configured_printers && !diagnosticResult.success) {
+        console.log("[OrderConfirmation] PrintNode printers configured but diagnostics failed");
         toast({
-          title: t("order.printError"),
-          description: connectionTest.message,
+          title: "PrintNode Configuration Error",
+          description: "PrintNode has configuration issues. Check settings.",
           variant: "destructive"
         });
+        setPrintStatus('error');
+      } else {
+        console.log("[OrderConfirmation] PrintNode not configured or no printers available");
       }
 
       setHasPrinted(true);
 
     } catch (error) {
-      console.error("Critical error during enhanced printing process:", error);
+      console.error("[OrderConfirmation] Critical error during enhanced printing process:", {
+        errorMessage: error.message,
+        errorType: error.constructor.name,
+        restaurantId: restaurant.id,
+        orderNumber
+      });
       toast({
         title: t("order.error"),
         description: "Critical printing error occurred",
@@ -275,7 +323,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
               }`} />
               {printStatus === 'printing' && t("orderConfirmation.printing")}
               {printStatus === 'success' && t("orderConfirmation.printed")}
-              {printStatus === 'error' && "Print Error"}
+              {printStatus === 'error' && "Print Error - Check Settings"}
               {printStatus === 'idle' && t("orderConfirmation.printed")}
             </p>
             <p>{t("orderConfirmation.preparation")}</p>

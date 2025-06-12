@@ -1,8 +1,9 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, AlertCircle, RefreshCw, Printer, Settings } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, RefreshCw, Printer, Settings, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { printNodeService } from "@/services/printnode-service";
 import { debugApiKeyService } from "@/services/secure-api-keys";
@@ -13,7 +14,7 @@ interface PrintNodeDiagnosticsProps {
 
 interface DiagnosticResult {
   category: string;
-  status: 'success' | 'warning' | 'error';
+  status: 'success' | 'warning' | 'error' | 'info';
   message: string;
   details?: any;
 }
@@ -28,13 +29,15 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
     const results: DiagnosticResult[] = [];
 
     try {
+      console.log(`[PrintNodeDiagnostics] Starting comprehensive diagnostics for restaurant: ${restaurantId}`);
+
       // Test 1: Environment check
       try {
         await debugApiKeyService.diagnoseEnvironment();
         results.push({
           category: "Environment",
           status: "success",
-          message: "Environment diagnostics completed"
+          message: "Environment and authentication validated"
         });
       } catch (error) {
         results.push({
@@ -44,38 +47,60 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
         });
       }
 
-      // Test 2: PrintNode Configuration
+      // Test 2: Restaurant Context Validation
       try {
-        const config = await printNodeService.getConfiguration(restaurantId);
-        if (config.isConfigured) {
-          results.push({
-            category: "PrintNode Config",
-            status: "success",
-            message: `Configured with ${config.printerIds.length} printer(s)`,
-            details: { printerIds: config.printerIds }
-          });
-        } else if (config.apiKey && config.printerIds.length === 0) {
-          results.push({
-            category: "PrintNode Config",
-            status: "warning",
-            message: "API key found but no printers configured"
-          });
-        } else if (!config.apiKey) {
-          results.push({
-            category: "PrintNode Config",
-            status: "error",
-            message: "No PrintNode API key configured"
-          });
-        }
+        const contextValidation = await debugApiKeyService.testRetrieveKey(restaurantId, 'printnode');
+        results.push({
+          category: "Restaurant Access",
+          status: "success",
+          message: "Restaurant access and permissions verified"
+        });
       } catch (error) {
         results.push({
-          category: "PrintNode Config",
+          category: "Restaurant Access",
           status: "error",
-          message: `Configuration check failed: ${error.message}`
+          message: `Access validation failed: ${error.message}`
         });
       }
 
-      // Test 3: PrintNode Connection
+      // Test 3: Enhanced PrintNode Configuration Check
+      try {
+        const diagnosticResult = await printNodeService.diagnoseConfiguration(restaurantId);
+        
+        // Add each diagnostic test as a separate result
+        diagnosticResult.diagnostics.forEach(diagnostic => {
+          results.push({
+            category: `PrintNode ${diagnostic.test}`,
+            status: diagnostic.passed ? "success" : "error",
+            message: diagnostic.message,
+            details: diagnostic.details
+          });
+        });
+
+        // Overall configuration status
+        if (diagnosticResult.success) {
+          results.push({
+            category: "PrintNode Configuration",
+            status: "success",
+            message: "PrintNode is fully configured and operational"
+          });
+        } else {
+          results.push({
+            category: "PrintNode Configuration",
+            status: "error",
+            message: "PrintNode configuration has issues that need attention"
+          });
+        }
+
+      } catch (error) {
+        results.push({
+          category: "PrintNode Configuration",
+          status: "error",
+          message: `Configuration diagnosis failed: ${error.message}`
+        });
+      }
+
+      // Test 4: PrintNode Connection Test
       try {
         const connectionTest = await printNodeService.testConnection(restaurantId);
         results.push({
@@ -92,7 +117,7 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
         });
       }
 
-      // Test 4: Database Print Configuration
+      // Test 5: Database Print Configuration
       try {
         const { supabase } = await import('@/integrations/supabase/client');
         const { data: printConfig, error } = await supabase
@@ -106,40 +131,46 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
         }
 
         if (printConfig) {
+          const printerCount = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers.length : 0;
           results.push({
-            category: "Database Config",
-            status: "success",
-            message: "Print configuration found in database",
-            details: printConfig
+            category: "Database Configuration",
+            status: printerCount > 0 ? "success" : "warning",
+            message: printerCount > 0 
+              ? `Print configuration found with ${printerCount} printer(s)` 
+              : "Print configuration found but no printers configured",
+            details: {
+              ...printConfig,
+              printerCount
+            }
           });
         } else {
           results.push({
-            category: "Database Config",
+            category: "Database Configuration",
             status: "warning",
             message: "No print configuration found in database"
           });
         }
       } catch (error) {
         results.push({
-          category: "Database Config",
+          category: "Database Configuration",
           status: "error",
           message: `Database check failed: ${error.message}`
         });
       }
 
-      // Test 5: API Key Service Health (with restaurant context)
+      // Test 6: API Key Service Detailed Analysis
       try {
-        const testResult = await debugApiKeyService.testRetrieveKey(restaurantId, 'printnode');
+        await debugApiKeyService.debugRestaurantApiKeys(restaurantId);
         results.push({
-          category: "API Key Service",
-          status: "success", 
-          message: "Secure API Key Service is healthy and can retrieve keys"
+          category: "API Key Analysis",
+          status: "info",
+          message: "Detailed API key analysis completed (check console for details)"
         });
       } catch (error) {
         results.push({
-          category: "API Key Service",
+          category: "API Key Analysis",
           status: "error",
-          message: `API Key Service failed: ${error.message}`
+          message: `API key analysis failed: ${error.message}`
         });
       }
 
@@ -182,6 +213,8 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
         return <AlertCircle className="h-5 w-5 text-yellow-600" />;
       case 'error':
         return <XCircle className="h-5 w-5 text-red-600" />;
+      case 'info':
+        return <Info className="h-5 w-5 text-blue-600" />;
     }
   };
 
@@ -189,7 +222,8 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
     const variants = {
       success: 'default' as const,
       warning: 'secondary' as const,
-      error: 'destructive' as const
+      error: 'destructive' as const,
+      info: 'outline' as const
     };
     
     return (
@@ -204,10 +238,10 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Settings className="h-5 w-5" />
-          PrintNode Diagnostics
+          Enhanced PrintNode Diagnostics
         </CardTitle>
         <CardDescription>
-          Test PrintNode configuration and troubleshoot issues
+          Comprehensive testing and troubleshooting for PrintNode configuration
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -219,12 +253,12 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
           {isRunning ? (
             <>
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              Running Diagnostics...
+              Running Comprehensive Diagnostics...
             </>
           ) : (
             <>
               <Printer className="h-4 w-4 mr-2" />
-              Run Diagnostics
+              Run Enhanced Diagnostics
             </>
           )}
         </Button>
@@ -259,6 +293,15 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {diagnostics.length > 0 && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Tip:</strong> Open your browser's developer console (F12) to see detailed logs 
+              that can help identify specific issues with PrintNode configuration.
+            </p>
           </div>
         )}
       </CardContent>
