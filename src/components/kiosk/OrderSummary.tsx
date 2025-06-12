@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check, X, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Check, Trash, Minus, Plus } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
@@ -146,19 +146,19 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 }}
                 className="space-y-2 border rounded-lg p-4 relative"
               >
-                {/* Item remove button */}
+                {/* Item remove button - always visible */}
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => cartManager.removeItem(item.id)}
                   className="absolute top-2 right-2 h-6 w-6 text-red-500 hover:text-red-700"
                 >
-                  <X className="h-4 w-4" />
+                  <Trash className="h-4 w-4" />
                 </Button>
 
                 <div className="flex justify-between items-start pr-8">
                   <div className="flex items-center space-x-2">
-                    {/* Quantity controls */}
+                    {/* Quantity controls - always visible */}
                     <div className="flex items-center space-x-1">
                       <Button
                         variant="outline"
@@ -208,13 +208,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                           const totalToppingPrice = price * quantity;
                           
                           return (
-                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between items-center group">
+                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between items-center">
                               <div className="flex items-center space-x-2">
                                 <span style={{ paddingLeft: 6 }}>
                                   {quantity > 1 ? `+ ${quantity}x ${displayName}` : `+ ${displayName}`}
                                 </span>
-                                {/* Topping quantity controls */}
-                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {/* Topping quantity controls - always visible */}
+                                <div className="flex items-center space-x-1">
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -237,7 +237,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                                     onClick={() => cartManager.removeToppingFromItem(item.id, category?.id || '', toppingRef?.id || '')}
                                     className="h-4 w-4 p-0 text-red-500 hover:text-red-700"
                                   >
-                                    <X className="h-2 w-2" />
+                                    <Trash className="h-2 w-2" />
                                   </Button>
                                 </div>
                               </div>
