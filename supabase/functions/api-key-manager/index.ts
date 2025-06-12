@@ -26,7 +26,9 @@ serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
-    const { action, restaurantId, serviceName, keyName, apiKey } = await req.json()
+    const { action, restaurantId, serviceName, keyName, apiKey, skipPermissionChecks } = await req.json()
+
+    console.log(`API Key Manager: ${action} - No permission checks (skipPermissionChecks: ${skipPermissionChecks})`)
 
     switch (action) {
       case 'store': {
