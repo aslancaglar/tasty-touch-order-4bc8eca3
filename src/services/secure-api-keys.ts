@@ -1,234 +1,262 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { SUPABASE_URL } from "@/config/supabase";
 
-export interface ApiKeyRecord {
-  id: string;
-  restaurant_id: string;
-  service_name: string;
-  key_name: string;
-  created_at: string;
-  updated_at: string;
-  last_rotated: string;
-  is_active: boolean;
-  rotation_interval_days: number | null;
+export type ServiceName = 'printnode' | 'stripe' | 'openai' | 'sendgrid';
+
+interface ApiKeyServiceInterface {
+  storeApiKey: (restaurantId: string, serviceName: ServiceName, apiKey: string, keyName?: string) => Promise<boolean>;
+  retrieveApiKey: (restaurantId: string, serviceName: ServiceName, keyName?: string) => Promise<string | null>;
+  deleteApiKey: (restaurantId: string, serviceName: ServiceName, keyName?: string) => Promise<boolean>;
+  rotateApiKey: (restaurantId: string, serviceName: ServiceName, newApiKey: string, keyName?: string) => Promise<boolean>;
+  listApiKeys: (restaurantId: string) => Promise<Array<{serviceName: string, keyName: string, createdAt: string}>>;
 }
 
-export interface ApiKeyRotationLog {
-  id: string;
-  restaurant_id: string;
-  service_name: string;
-  key_name: string;
-  rotation_type: string;
-  old_key_hash: string | null;
-  rotation_reason: string | null;
-  rotated_by: string | null;
-  created_at: string;
-}
+class SecureApiKeyService implements ApiKeyServiceInterface {
+  private readonly EDGE_FUNCTION_URL = `${supabase.supabaseUrl}/functions/v1/api-key-manager`;
 
-export interface ApiKeyRotationAlert {
-  restaurant_id: string;
-  service_name: string;
-  key_name: string;
-  days_since_rotation: number;
-  alert_level: 'OK' | 'INFO' | 'WARNING' | 'CRITICAL';
-}
-
-class SecureApiKeyService {
-  private async callApiKeyManager(action: string, payload: any) {
-    console.log(`[SecureApiKeyService] Calling API key manager with action: ${action}`);
-    console.log(`[SecureApiKeyService] Payload:`, payload);
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.access_token) {
-      console.error('[SecureApiKeyService] No session found');
-      throw new Error('User not authenticated');
-    }
-
-    console.log(`[SecureApiKeyService] Session found, user: ${session.user?.email}`);
-
+  private async makeSecureRequest(action: string, data: any): Promise<any> {
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/api-key-manager`, {
+      console.log(`[SecureApiKeyService] Making ${action} request:`, { ...data, apiKey: data.apiKey ? '[REDACTED]' : undefined });
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        console.error("[SecureApiKeyService] No valid session found");
+        throw new Error("Authentication required");
+      }
+
+      const response = await fetch(this.EDGE_FUNCTION_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ action, ...payload }),
+        body: JSON.stringify({
+          action,
+          ...data
+        })
       });
 
-      console.log(`[SecureApiKeyService] Response status: ${response.status}`);
-      console.log(`[SecureApiKeyService] Response headers:`, Object.fromEntries(response.headers.entries()));
-
-      const responseText = await response.text();
-      console.log(`[SecureApiKeyService] Response text:`, responseText);
-
       if (!response.ok) {
-        let errorMessage = 'API key operation failed';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.error || errorMessage;
-          console.error('[SecureApiKeyService] Parsed error:', errorData);
-        } catch (parseError) {
-          console.error('[SecureApiKeyService] Failed to parse error response:', parseError);
-          errorMessage = `HTTP ${response.status}: ${responseText}`;
+        const errorText = await response.text();
+        console.error(`[SecureApiKeyService] HTTP ${response.status}:`, errorText);
+        
+        if (response.status === 401) {
+          throw new Error("Authentication failed");
+        } else if (response.status === 403) {
+          throw new Error("Permission denied");
+        } else if (response.status >= 500) {
+          throw new Error("Server error occurred");
+        } else {
+          throw new Error(`Request failed: ${response.status} - ${errorText}`);
         }
-        throw new Error(errorMessage);
       }
 
-      try {
-        const result = JSON.parse(responseText);
-        console.log(`[SecureApiKeyService] Parsed result:`, result);
-        return result;
-      } catch (parseError) {
-        console.error('[SecureApiKeyService] Failed to parse success response:', parseError);
-        throw new Error('Invalid response format from server');
-      }
+      const result = await response.json();
+      console.log(`[SecureApiKeyService] ${action} request successful`);
+      return result;
+      
     } catch (error) {
-      console.error('[SecureApiKeyService] Network or fetch error:', error);
+      console.error(`[SecureApiKeyService] ${action} request failed:`, error);
+      
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Network error: Unable to connect to the server');
+        throw new Error("Network error - please check your connection");
       }
+      
       throw error;
     }
   }
 
-  async storeApiKey(
-    restaurantId: string, 
-    serviceName: string, 
-    apiKey: string, 
-    keyName: string = 'primary'
-  ): Promise<string> {
-    console.log(`[SecureApiKeyService] Storing API key for restaurant ${restaurantId}, service ${serviceName}`);
-    
-    if (!restaurantId || !serviceName || !apiKey) {
-      throw new Error('Restaurant ID, service name, and API key are required');
+  async storeApiKey(restaurantId: string, serviceName: ServiceName, apiKey: string, keyName: string = 'primary'): Promise<boolean> {
+    try {
+      console.log(`[SecureApiKeyService] Storing API key for restaurant ${restaurantId}, service ${serviceName}`);
+      
+      if (!restaurantId || !serviceName || !apiKey) {
+        console.error("[SecureApiKeyService] Missing required parameters for storing API key");
+        throw new Error("Missing required parameters");
+      }
+
+      if (apiKey.length < 10) {
+        console.error("[SecureApiKeyService] API key appears to be too short");
+        throw new Error("Invalid API key format");
+      }
+
+      await this.makeSecureRequest('store', {
+        restaurantId,
+        serviceName,
+        apiKey,
+        keyName
+      });
+
+      console.log(`[SecureApiKeyService] API key stored successfully for ${serviceName}`);
+      return true;
+      
+    } catch (error) {
+      console.error(`[SecureApiKeyService] Failed to store API key for ${serviceName}:`, error);
+      return false;
     }
+  }
 
-    const result = await this.callApiKeyManager('store', {
-      restaurantId,
-      serviceName,
-      keyName,
-      apiKey
-    });
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to store API key');
+  async retrieveApiKey(restaurantId: string, serviceName: ServiceName, keyName: string = 'primary'): Promise<string | null> {
+    try {
+      console.log(`[SecureApiKeyService] Retrieving API key for restaurant ${restaurantId}, service ${serviceName}`);
+      
+      if (!restaurantId || !serviceName) {
+        console.error("[SecureApiKeyService] Missing required parameters for retrieving API key");
+        return null;
+      }
+
+      const result = await this.makeSecureRequest('retrieve', {
+        restaurantId,
+        serviceName,
+        keyName
+      });
+
+      if (result?.apiKey) {
+        console.log(`[SecureApiKeyService] API key retrieved successfully for ${serviceName}`);
+        return result.apiKey;
+      } else {
+        console.log(`[SecureApiKeyService] No API key found for ${serviceName}`);
+        return null;
+      }
+      
+    } catch (error) {
+      console.error(`[SecureApiKeyService] Failed to retrieve API key for ${serviceName}:`, error);
+      
+      // Return null for retrieval failures to allow graceful degradation
+      return null;
     }
-    
-    return result.keyId;
   }
 
-  async retrieveApiKey(
-    restaurantId: string, 
-    serviceName: string, 
-    keyName: string = 'primary'
-  ): Promise<string | null> {
-    console.log(`[SecureApiKeyService] Retrieving API key for restaurant ${restaurantId}, service ${serviceName}`);
-    
-    if (!restaurantId || !serviceName) {
-      throw new Error('Restaurant ID and service name are required');
+  async deleteApiKey(restaurantId: string, serviceName: ServiceName, keyName: string = 'primary'): Promise<boolean> {
+    try {
+      console.log(`[SecureApiKeyService] Deleting API key for restaurant ${restaurantId}, service ${serviceName}`);
+      
+      if (!restaurantId || !serviceName) {
+        console.error("[SecureApiKeyService] Missing required parameters for deleting API key");
+        return false;
+      }
+
+      await this.makeSecureRequest('delete', {
+        restaurantId,
+        serviceName,
+        keyName
+      });
+
+      console.log(`[SecureApiKeyService] API key deleted successfully for ${serviceName}`);
+      return true;
+      
+    } catch (error) {
+      console.error(`[SecureApiKeyService] Failed to delete API key for ${serviceName}:`, error);
+      return false;
     }
-
-    const result = await this.callApiKeyManager('retrieve', {
-      restaurantId,
-      serviceName,
-      keyName
-    });
-    
-    return result.apiKey;
   }
 
-  async rotateApiKey(
-    restaurantId: string, 
-    serviceName: string, 
-    newApiKey: string, 
-    keyName: string = 'primary',
-    rotationReason: string = 'manual'
-  ): Promise<boolean> {
-    console.log(`[SecureApiKeyService] Rotating API key for restaurant ${restaurantId}, service ${serviceName}`);
-    
-    if (!restaurantId || !serviceName || !newApiKey) {
-      throw new Error('Restaurant ID, service name, and new API key are required');
+  async rotateApiKey(restaurantId: string, serviceName: ServiceName, newApiKey: string, keyName: string = 'primary'): Promise<boolean> {
+    try {
+      console.log(`[SecureApiKeyService] Rotating API key for restaurant ${restaurantId}, service ${serviceName}`);
+      
+      if (!restaurantId || !serviceName || !newApiKey) {
+        console.error("[SecureApiKeyService] Missing required parameters for rotating API key");
+        return false;
+      }
+
+      if (newApiKey.length < 10) {
+        console.error("[SecureApiKeyService] New API key appears to be too short");
+        throw new Error("Invalid new API key format");
+      }
+
+      await this.makeSecureRequest('rotate', {
+        restaurantId,
+        serviceName,
+        apiKey: newApiKey,
+        keyName
+      });
+
+      console.log(`[SecureApiKeyService] API key rotated successfully for ${serviceName}`);
+      return true;
+      
+    } catch (error) {
+      console.error(`[SecureApiKeyService] Failed to rotate API key for ${serviceName}:`, error);
+      return false;
     }
-
-    const result = await this.callApiKeyManager('rotate_with_audit', {
-      restaurantId,
-      serviceName,
-      keyName,
-      apiKey: newApiKey,
-      rotationReason
-    });
-    
-    return result.success;
   }
 
-  async migratePrintNodeKeys(): Promise<any> {
-    console.log('[SecureApiKeyService] Attempting migration of PrintNode keys');
-    
-    const result = await this.callApiKeyManager('migrate_printnode_keys', {});
-    return result.results;
-  }
+  async listApiKeys(restaurantId: string): Promise<Array<{serviceName: string, keyName: string, createdAt: string}>> {
+    try {
+      console.log(`[SecureApiKeyService] Listing API keys for restaurant ${restaurantId}`);
+      
+      if (!restaurantId) {
+        console.error("[SecureApiKeyService] Missing restaurant ID for listing API keys");
+        return [];
+      }
 
-  async getApiKeyRecords(restaurantId: string): Promise<ApiKeyRecord[]> {
-    const { data, error } = await supabase
-      .from('restaurant_api_keys')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('is_active', true)
-      .order('service_name', { ascending: true });
+      const result = await this.makeSecureRequest('list', {
+        restaurantId
+      });
 
-    if (error) throw error;
-    return data || [];
-  }
-
-  async getKeysNeedingRotation(): Promise<any[]> {
-    const { data, error } = await supabase.rpc('get_keys_needing_rotation');
-    if (error) throw error;
-    return data || [];
-  }
-
-  async getKeysNeedingRotationAlerts(restaurantId?: string): Promise<ApiKeyRotationAlert[]> {
-    const { data, error } = await supabase.rpc('get_keys_needing_rotation_alerts');
-    if (error) throw error;
-    
-    let alerts = data || [];
-    if (restaurantId) {
-      alerts = alerts.filter((alert: any) => alert.restaurant_id === restaurantId);
+      if (result?.keys && Array.isArray(result.keys)) {
+        console.log(`[SecureApiKeyService] Found ${result.keys.length} API keys`);
+        return result.keys;
+      } else {
+        console.log("[SecureApiKeyService] No API keys found");
+        return [];
+      }
+      
+    } catch (error) {
+      console.error(`[SecureApiKeyService] Failed to list API keys:`, error);
+      return [];
     }
-    
-    return alerts.map((alert: any): ApiKeyRotationAlert => ({
-      restaurant_id: alert.restaurant_id,
-      service_name: alert.service_name,
-      key_name: alert.key_name,
-      days_since_rotation: alert.days_since_rotation,
-      alert_level: alert.alert_level as 'OK' | 'INFO' | 'WARNING' | 'CRITICAL'
-    }));
   }
 
-  async getRotationAuditLog(restaurantId: string): Promise<ApiKeyRotationLog[]> {
-    const { data, error } = await supabase
-      .from('api_key_rotation_log')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .order('created_at', { ascending: false })
-      .limit(50);
+  // Health check method for debugging
+  async healthCheck(): Promise<boolean> {
+    try {
+      console.log("[SecureApiKeyService] Performing health check");
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        console.error("[SecureApiKeyService] Health check failed - no session");
+        return false;
+      }
 
-    if (error) throw error;
-    return data || [];
-  }
+      const response = await fetch(this.EDGE_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'health'
+        })
+      });
 
-  async forceRotateOverdueKeys(): Promise<any[]> {
-    const { data, error } = await supabase.rpc('force_rotate_overdue_keys');
-    if (error) throw error;
-    return data || [];
-  }
-
-  async autoDeactivateOverdueKeys(): Promise<any[]> {
-    const { data, error } = await supabase.rpc('auto_deactivate_overdue_keys');
-    if (error) throw error;
-    return data || [];
+      const isHealthy = response.ok;
+      console.log(`[SecureApiKeyService] Health check result: ${isHealthy ? 'HEALTHY' : 'UNHEALTHY'}`);
+      return isHealthy;
+      
+    } catch (error) {
+      console.error("[SecureApiKeyService] Health check failed:", error);
+      return false;
+    }
   }
 }
 
+// Export singleton instance
 export const secureApiKeyService = new SecureApiKeyService();
+
+// Export additional utilities for debugging
+export const debugApiKeyService = {
+  async testConnection(): Promise<void> {
+    console.log("[Debug] Testing SecureApiKeyService connection...");
+    const isHealthy = await secureApiKeyService.healthCheck();
+    console.log(`[Debug] Service health: ${isHealthy ? 'OK' : 'FAILED'}`);
+  },
+  
+  async testRetrieveKey(restaurantId: string, serviceName: ServiceName): Promise<void> {
+    console.log(`[Debug] Testing API key retrieval for ${serviceName}...`);
+    const key = await secureApiKeyService.retrieveApiKey(restaurantId, serviceName);
+    console.log(`[Debug] Key retrieval result: ${key ? 'SUCCESS (key found)' : 'FAILED (no key)'}`);
+  }
+};

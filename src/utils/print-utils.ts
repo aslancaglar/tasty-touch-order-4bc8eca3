@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 /**
@@ -53,48 +54,55 @@ let lastPrintTime = 0;
 const PRINT_DEBOUNCE_MS = 1000; // 1 second debounce
 
 /**
- * Prints the content of a specified element for a thermal printer
- * Enhanced with improved error handling and offline detection
+ * Enhanced print receipt function with comprehensive error handling
  * @param elementId The ID of the element to print
  */
 export const printReceipt = (elementId: string) => {
   // Prevent double-printing by implementing debounce
   const now = Date.now();
   if (now - lastPrintTime < PRINT_DEBOUNCE_MS) {
-    console.log("Print request ignored - too soon after previous print");
+    console.log("[PrintUtils] Print request ignored - too soon after previous print");
     return;
   }
   lastPrintTime = now;
   
   // Check if we're offline
   if (!navigator.onLine) {
-    console.error("Cannot print - device is offline");
+    console.error("[PrintUtils] Cannot print - device is offline");
     throw new Error("Cannot print while offline");
   }
   
-  console.log(`Attempting to print element with ID: ${elementId}`, {
-    isMobileDevice: /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(navigator.userAgent.toLowerCase())
+  console.log(`[PrintUtils] Starting print process for element: ${elementId}`, {
+    isMobileDevice: /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(navigator.userAgent.toLowerCase()),
+    userAgent: navigator.userAgent,
+    timestamp: new Date().toISOString()
   });
   
   const printContent = document.getElementById(elementId);
   if (!printContent) {
-    console.error(`Element with ID '${elementId}' not found`);
+    console.error(`[PrintUtils] Element with ID '${elementId}' not found`);
     throw new Error(`Print element '${elementId}' not found`);
   }
 
   // Create a hidden iframe for printing
   try {
+    console.log("[PrintUtils] Creating iframe for printing...");
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
+    iframe.style.position = 'absolute';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '-9999px';
     document.body.appendChild(iframe);
     
-    console.log("Created iframe for printing");
+    console.log("[PrintUtils] Iframe created successfully");
     
     // Setup print-specific styles for 80mm thermal printer (typically 302px wide)
     const iframeDoc = iframe.contentDocument;
     if (!iframeDoc) {
       throw new Error("Could not access iframe document");
     }
+    
+    console.log("[PrintUtils] Writing content to iframe...");
     
     iframeDoc.write(`
       <html>
@@ -179,6 +187,10 @@ export const printReceipt = (elementId: string) => {
                 background-color: white;
                 color: black;
               }
+              @page {
+                margin: 0;
+                size: 80mm auto;
+              }
             }
           </style>
         </head>
@@ -189,34 +201,112 @@ export const printReceipt = (elementId: string) => {
     `);
     
     iframeDoc.close();
+    console.log("[PrintUtils] Content written to iframe successfully");
     
     // Wait for resources to load before printing
     const iframeWindow = iframe.contentWindow;
     if (iframeWindow) {
-      console.log("Preparing to print...");
+      console.log("[PrintUtils] Preparing to open print dialog...");
+      
+      // Enhanced print timing with multiple fallbacks
       setTimeout(() => {
         try {
-          console.log("Opening print dialog...");
+          console.log("[PrintUtils] Opening print dialog...");
           iframeWindow.focus();
+          
+          // Try to detect if print was cancelled
+          const printPromise = new Promise<void>((resolve, reject) => {
+            // Set up event listeners for print completion
+            const beforePrint = () => {
+              console.log("[PrintUtils] Print dialog opened");
+            };
+            const afterPrint = () => {
+              console.log("[PrintUtils] Print dialog closed");
+              cleanup();
+              resolve();
+            };
+            const cleanup = () => {
+              iframeWindow.removeEventListener('beforeprint', beforePrint);
+              iframeWindow.removeEventListener('afterprint', afterPrint);
+            };
+            
+            iframeWindow.addEventListener('beforeprint', beforePrint);
+            iframeWindow.addEventListener('afterprint', afterPrint);
+            
+            // Fallback timeout
+            setTimeout(() => {
+              console.log("[PrintUtils] Print timeout reached");
+              cleanup();
+              resolve();
+            }, 30000);
+          });
+          
+          // Trigger print
           iframeWindow.print();
-          console.log("Print dialog opened");
-        } catch (error) {
-          console.error("Error opening print dialog");
+          
+          // Wait for print completion
+          printPromise.finally(() => {
+            console.log("[PrintUtils] Cleaning up print iframe...");
+            setTimeout(() => {
+              try {
+                if (iframe.parentNode) {
+                  document.body.removeChild(iframe);
+                  console.log("[PrintUtils] Print iframe removed from DOM");
+                }
+              } catch (cleanupError) {
+                console.warn("[PrintUtils] Error during iframe cleanup:", cleanupError);
+              }
+            }, 1000);
+          });
+          
+        } catch (printError) {
+          console.error("[PrintUtils] Error during print process:", printError);
           throw new Error("Failed to open print dialog");
         }
-        
-        // Remove the iframe after printing is done or canceled
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-          console.log("Print iframe removed from DOM");
-        }, 1000);
       }, 500);
+      
     } else {
-      console.error("Failed to access iframe window");
-      throw new Error("Failed to access iframe window");
+      console.error("[PrintUtils] Failed to access iframe window");
+      throw new Error("Failed to access iframe window for printing");
     }
+    
   } catch (error) {
-    console.error("Print error");
+    console.error("[PrintUtils] Critical error in print process:", error);
+    
+    // Clean up iframe if it exists
+    try {
+      const existingIframes = document.querySelectorAll('iframe[style*="display: none"]');
+      existingIframes.forEach(iframe => {
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+      });
+    } catch (cleanupError) {
+      console.warn("[PrintUtils] Error during error cleanup:", cleanupError);
+    }
+    
     throw error; // Re-throw for handling at call site
   }
+};
+
+/**
+ * Enhanced print health check function
+ */
+export const printHealthCheck = (): { status: string; details: any } => {
+  const details = {
+    online: navigator.onLine,
+    userAgent: navigator.userAgent,
+    isMobile: /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(navigator.userAgent.toLowerCase()),
+    printSupported: typeof window.print === 'function',
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log("[PrintUtils] Print health check:", details);
+  
+  let status = 'healthy';
+  if (!details.online) status = 'offline';
+  if (!details.printSupported) status = 'unsupported';
+  if (details.isMobile) status = 'mobile-limited';
+  
+  return { status, details };
 };
