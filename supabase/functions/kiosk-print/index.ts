@@ -62,12 +62,13 @@ serve(async (req) => {
       throw new Error('Print configuration not found')
     }
 
-    // Get the PrintNode API key securely
+    // Get the PrintNode API key securely using the corrected function call
     const { data: apiKeyValue, error: keyError } = await supabaseClient
       .rpc('get_encrypted_api_key', {
         p_restaurant_id: restaurantId,
         p_service_name: 'printnode',
-        p_key_name: 'primary'
+        p_key_name: 'primary',
+        p_user_id: null  // Add this parameter to match the function signature
       })
 
     if (keyError) {

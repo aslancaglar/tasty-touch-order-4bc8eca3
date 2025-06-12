@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { secureApiKeyService } from "@/services/secure-api-keys";
 import { logSecurityEvent } from "@/utils/error-handler";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Printer {
   id: string;
@@ -42,8 +42,10 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const [hasLegacyKey, setHasLegacyKey] = useState(false);
   const [securityStatus, setSecurityStatus] = useState<'secure' | 'legacy' | 'none'>('none');
   const [errorDetails, setErrorDetails] = useState<string>("");
+  const [isRetrying, setIsRetrying] = useState(false);
   
   const { toast } = useToast();
+  const { user, session, loading: authLoading } = useAuth();
 
   // Mask API key for display (show only last 4 characters)
   const maskApiKey = (key: string): string => {
@@ -52,7 +54,15 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     return "•".repeat(key.length - 4) + key.slice(-4);
   };
 
+  // Check if user is authenticated and ready
+  const isAuthReady = !authLoading && user && session;
+
   useEffect(() => {
+    if (!isAuthReady) {
+      console.log('[PrintNodeIntegration] Waiting for authentication...');
+      return;
+    }
+
     const checkApiKeyConfiguration = async () => {
       try {
         console.log('[PrintNodeIntegration] Checking API key configuration for restaurant:', restaurantId);
@@ -79,8 +89,14 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         setErrorDetails(errorMessage);
         
-        // Don't show toast for normal "no key found" scenarios
-        if (!errorMessage.includes('not found') && !errorMessage.includes('not authenticated')) {
+        // Show user-friendly error messages
+        if (errorMessage.includes('Authentication') || errorMessage.includes('session')) {
+          toast({
+            title: "Authentication Error",
+            description: "Your session has expired. Please refresh the page and try again.",
+            variant: "destructive"
+          });
+        } else if (!errorMessage.includes('not found')) {
           toast({
             title: "Configuration Error",
             description: errorMessage,
@@ -98,9 +114,50 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     if (restaurantId) {
       checkApiKeyConfiguration();
     }
-  }, [restaurantId, toast]);
+  }, [restaurantId, isAuthReady, toast]);
+
+  const retryOperation = async (operation: () => Promise<void>) => {
+    setIsRetrying(true);
+    setErrorDetails("");
+    
+    try {
+      await operation();
+      toast({
+        title: "Success",
+        description: "Operation completed successfully",
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setErrorDetails(errorMessage);
+      
+      if (errorMessage.includes('Authentication') || errorMessage.includes('session')) {
+        toast({
+          title: "Authentication Error", 
+          description: "Please refresh the page and try again.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Operation Failed",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   const saveApiKey = async () => {
+    if (!isAuthReady) {
+      toast({
+        title: "Authentication Required",
+        description: "Please make sure you are logged in and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!apiKey.trim()) {
       toast({
         title: "Error",
@@ -110,21 +167,14 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       return;
     }
 
-    try {
+    await retryOperation(async () => {
       setIsFetching(true);
-      setErrorDetails("");
       
       console.log('[PrintNodeIntegration] Testing API key with PrintNode API');
       const printerData = await fetchPrintersFromAPI(apiKey);
       
       if (printerData.length === 0) {
-        toast({
-          title: "API Key Invalid",
-          description: "Unable to retrieve printers with this API key. Please verify the key is correct.",
-          variant: "destructive"
-        });
-        setIsFetching(false);
-        return;
+        throw new Error("Unable to retrieve printers with this API key. Please verify the key is correct.");
       }
       
       console.log('[PrintNodeIntegration] API key validated, storing securely');
@@ -162,24 +212,9 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         title: "API Key Saved Securely",
         description: "PrintNode API key stored with enterprise-grade encryption",
       });
-    } catch (error) {
-      console.error("[PrintNodeIntegration] Error saving configuration:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setErrorDetails(errorMessage);
       
-      logSecurityEvent('API key save failed', { 
-        restaurantId, 
-        error: errorMessage
-      });
-      
-      toast({
-        title: "Error Saving API Key",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
       setIsFetching(false);
-    }
+    });
   };
 
   const migrateLegacyKey = async () => {
@@ -438,6 +473,54 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
     }
   };
 
+  // Show loading state while auth is loading
+  if (authLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            PrintNode Integration
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show authentication required message
+  if (!isAuthReady) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">PrintNode Integration</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Authentication Required</AlertTitle>
+            <AlertDescription>
+              Please make sure you are logged in to configure PrintNode integration.
+              <br />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={() => window.location.reload()}
+              >
+                Refresh Page
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -459,9 +542,19 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
             <AlertDescription>
               {errorDetails}
               <br />
-              <small className="text-muted-foreground mt-2 block">
-                Please check your authentication status or contact support if the issue persists.
-              </small>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={() => retryOperation(async () => {
+                  // Retry the configuration check
+                  window.location.reload();
+                })}
+                disabled={isRetrying}
+              >
+                {isRetrying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                Retry
+              </Button>
             </AlertDescription>
           </Alert>
         )}
@@ -520,7 +613,7 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
               />
               <Button 
                 onClick={saveApiKey}
-                disabled={isFetching || !apiKey}
+                disabled={isFetching || !apiKey || !isAuthReady}
                 className="bg-kiosk-primary"
               >
                 {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
@@ -550,7 +643,7 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
                 variant="outline" 
                 size="sm" 
                 onClick={() => fetchPrinters()}
-                disabled={isFetching}
+                disabled={isFetching || !isAuthReady}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
                 Refresh
@@ -602,7 +695,7 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
                       variant="outline" 
                       size="sm"
                       onClick={() => testPrinter(printer.id)}
-                      disabled={isTesting[printer.id] || printer.state === 'offline'}
+                      disabled={isTesting[printer.id] || printer.state === 'offline' || !isAuthReady}
                     >
                       {isTesting[printer.id] ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
