@@ -209,31 +209,39 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                           const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
                           const totalToppingPrice = price * quantity;
                           
+                          // Check if this category allows multiple same topping
+                          const allowsMultiple = category?.allow_multiple_same_topping === true;
+                          
                           return (
                             <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between items-center">
                               <div className="flex items-center space-x-3">
                                 <span style={{ paddingLeft: 6 }}>
                                   + {displayName}
                                 </span>
-                                {/* Topping quantity controls with bigger icons */}
+                                {/* Topping quantity controls - only show if category allows multiple */}
                                 <div className="flex items-center space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity - 1)}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <Minus className="h-4 w-4" />
-                                  </Button>
-                                  <span className="w-6 text-center font-medium text-xs">{quantity}</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity + 1)}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <Plus className="h-4 w-4" />
-                                  </Button>
+                                  {allowsMultiple && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity - 1)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <Minus className="h-4 w-4" />
+                                      </Button>
+                                      <span className="w-6 text-center font-medium text-xs">{quantity}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity + 1)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  {/* Delete button - always visible */}
                                   <Button
                                     variant="ghost"
                                     size="icon"
