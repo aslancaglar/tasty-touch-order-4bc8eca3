@@ -55,9 +55,9 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           .from('restaurant_print_config')
           .select('api_key, configured_printers')
           .eq('restaurant_id', restaurantId)
-          .single();
+          .maybeSingle();
         
-        if (error && error.code !== 'PGRST116') {
+        if (error) {
           console.error('[PrintNodeIntegration] Error fetching print config:', error);
           return;
         }
@@ -159,9 +159,9 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         .from('restaurant_print_config')
         .select('configured_printers')
         .eq('restaurant_id', restaurantId)
-        .single();
+        .maybeSingle();
       
-      if (configError && configError.code !== 'PGRST116') {
+      if (configError) {
         throw configError;
       }
       

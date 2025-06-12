@@ -617,6 +617,7 @@ export type Database = {
       }
       restaurant_print_config: {
         Row: {
+          api_key: string | null
           browser_printing_enabled: boolean | null
           configured_printers: Json | null
           created_at: string | null
@@ -626,6 +627,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          api_key?: string | null
           browser_printing_enabled?: boolean | null
           configured_printers?: Json | null
           created_at?: string | null
@@ -635,6 +637,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          api_key?: string | null
           browser_printing_enabled?: boolean | null
           configured_printers?: Json | null
           created_at?: string | null

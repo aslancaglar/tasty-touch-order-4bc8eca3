@@ -109,7 +109,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         .from('restaurant_print_config')
         .select('configured_printers, browser_printing_enabled, api_key')
         .eq('restaurant_id', restaurant.id)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error("Error fetching print configuration:", error);
@@ -118,7 +118,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       }
 
       // Handle browser printing
-      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
+      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig?.browser_printing_enabled !== false);
       if (shouldUseBrowserPrinting) {
         console.log("Using browser printing for receipt");
         toast({
