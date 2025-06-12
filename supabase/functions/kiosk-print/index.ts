@@ -38,7 +38,7 @@ serve(async (req) => {
 
     console.log('Processing print request for restaurant:', restaurantId, 'order:', orderNumber)
 
-    // Validate that the restaurant exists and has print configuration
+    // Validate that the restaurant exists
     const { data: restaurant, error: restaurantError } = await supabaseClient
       .from('restaurants')
       .select('id, name')
@@ -50,25 +50,96 @@ serve(async (req) => {
       throw new Error('Invalid restaurant')
     }
 
-    // Get print configuration
-    const { data: printConfig, error: printConfigError } = await supabaseClient
+    // Get or create print configuration
+    let { data: printConfig, error: printConfigError } = await supabaseClient
       .from('restaurant_print_config')
-      .select('configured_printers')
+      .select('configured_printers, browser_printing_enabled')
       .eq('restaurant_id', restaurantId)
-      .single()
+      .maybeSingle()
 
-    if (printConfigError) {
+    // If no config exists, create a default one
+    if (!printConfig && !printConfigError) {
+      console.log('Creating default print configuration for restaurant:', restaurantId)
+      const { data: newConfig, error: createError } = await supabaseClient
+        .from('restaurant_print_config')
+        .insert({
+          restaurant_id: restaurantId,
+          configured_printers: [],
+          browser_printing_enabled: true
+        })
+        .select('configured_printers, browser_printing_enabled')
+        .single()
+
+      if (createError) {
+        console.error('Error creating print configuration:', createError)
+        throw new Error('Failed to create print configuration')
+      }
+
+      printConfig = newConfig
+    } else if (printConfigError) {
       console.error('Print configuration error:', printConfigError)
       throw new Error('Print configuration not found')
     }
 
-    // Get the PrintNode API key securely using the corrected function call
+    // Ensure configured_printers is an array
+    if (!printConfig.configured_printers || !Array.isArray(printConfig.configured_printers)) {
+      console.log('Fixing malformed configured_printers for restaurant:', restaurantId)
+      const { error: fixError } = await supabaseClient
+        .from('restaurant_print_config')
+        .update({ configured_printers: [] })
+        .eq('restaurant_id', restaurantId)
+
+      if (fixError) {
+        console.error('Error fixing configured_printers:', fixError)
+      }
+      
+      printConfig.configured_printers = []
+    }
+
+    // Check if we have any way to print (either browser printing or configured printers)
+    const hasBrowserPrinting = printConfig.browser_printing_enabled !== false
+    const hasConfiguredPrinters = printConfig.configured_printers.length > 0
+    
+    if (!hasBrowserPrinting && !hasConfiguredPrinters) {
+      console.log('No printing methods available for restaurant:', restaurantId)
+      return new Response(JSON.stringify({
+        success: false,
+        results: [],
+        summary: {
+          successful: 0,
+          failed: 0,
+          total: 0
+        },
+        message: 'No printing methods configured. Please configure printers or enable browser printing.'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // If no PrintNode printers are configured, return success with message
+    if (!hasConfiguredPrinters) {
+      console.log('No PrintNode printers configured, relying on browser printing')
+      return new Response(JSON.stringify({
+        success: true,
+        results: [],
+        summary: {
+          successful: 0,
+          failed: 0,
+          total: 0
+        },
+        message: 'Receipt will be printed using browser printing (no PrintNode printers configured)'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Get the PrintNode API key securely
     const { data: apiKeyValue, error: keyError } = await supabaseClient
       .rpc('get_encrypted_api_key', {
         p_restaurant_id: restaurantId,
         p_service_name: 'printnode',
         p_key_name: 'primary',
-        p_user_id: null  // Add this parameter to match the function signature
+        p_user_id: null
       })
 
     if (keyError) {
@@ -92,7 +163,19 @@ serve(async (req) => {
     }
 
     if (!targetPrinters.length) {
-      throw new Error('No printers configured')
+      console.log('No target printers specified, but API key is available')
+      return new Response(JSON.stringify({
+        success: true,
+        results: [],
+        summary: {
+          successful: 0,
+          failed: 0,
+          total: 0
+        },
+        message: 'PrintNode configured but no printers selected. Please configure printers in restaurant settings.'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     console.log(`Sending to ${targetPrinters.length} printers:`, targetPrinters)

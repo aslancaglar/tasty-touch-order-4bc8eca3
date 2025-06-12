@@ -183,21 +183,51 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       const keyId = await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
       console.log('[PrintNodeIntegration] API key stored with ID:', keyId);
       
-      // Update print config (no longer includes api_key)
-      const printConfig: PrintConfig = {
-        restaurant_id: restaurantId,
-        configured_printers: []
-      };
-
-      const { error } = await supabase
+      // Ensure print config exists and is properly initialized
+      const { data: existingConfig, error: fetchConfigError } = await supabase
         .from('restaurant_print_config')
-        .upsert(printConfig, {
-          onConflict: 'restaurant_id'
-        });
-      
-      if (error) {
-        console.error('[PrintNodeIntegration] Error updating print config:', error);
-        throw new Error(`Failed to update print configuration: ${error.message}`);
+        .select('id, configured_printers')
+        .eq('restaurant_id', restaurantId)
+        .maybeSingle();
+
+      if (fetchConfigError) {
+        console.error('[PrintNodeIntegration] Error fetching print config:', fetchConfigError);
+        throw new Error(`Failed to check print configuration: ${fetchConfigError.message}`);
+      }
+
+      if (!existingConfig) {
+        // Create new print config
+        const { error: insertError } = await supabase
+          .from('restaurant_print_config')
+          .insert({
+            restaurant_id: restaurantId,
+            configured_printers: [],
+            browser_printing_enabled: true
+          });
+        
+        if (insertError) {
+          console.error('[PrintNodeIntegration] Error creating print config:', insertError);
+          throw new Error(`Failed to create print configuration: ${insertError.message}`);
+        }
+      } else {
+        // Ensure existing config has proper structure
+        const updates: any = {};
+        
+        if (!existingConfig.configured_printers || !Array.isArray(existingConfig.configured_printers)) {
+          updates.configured_printers = [];
+        }
+
+        if (Object.keys(updates).length > 0) {
+          const { error: updateError } = await supabase
+            .from('restaurant_print_config')
+            .update(updates)
+            .eq('restaurant_id', restaurantId);
+          
+          if (updateError) {
+            console.error('[PrintNodeIntegration] Error updating print config:', updateError);
+            throw new Error(`Failed to update print configuration: ${updateError.message}`);
+          }
+        }
       }
       
       setIsConfigured(true);

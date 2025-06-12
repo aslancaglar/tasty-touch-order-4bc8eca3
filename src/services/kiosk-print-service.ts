@@ -22,13 +22,59 @@ export interface KioskPrintResult {
     failed: number;
     total: number;
   };
+  message?: string;
 }
 
 class KioskPrintService {
+  private async ensurePrintConfigExists(restaurantId: string): Promise<void> {
+    console.log('[KioskPrintService] Ensuring print config exists for restaurant:', restaurantId);
+    
+    const { data: existingConfig, error: fetchError } = await supabase
+      .from('restaurant_print_config')
+      .select('id, configured_printers')
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[KioskPrintService] Error fetching print config:', fetchError);
+      throw new Error('Failed to check print configuration');
+    }
+
+    if (!existingConfig) {
+      console.log('[KioskPrintService] Creating default print config');
+      const { error: insertError } = await supabase
+        .from('restaurant_print_config')
+        .insert({
+          restaurant_id: restaurantId,
+          configured_printers: [],
+          browser_printing_enabled: true
+        });
+
+      if (insertError) {
+        console.error('[KioskPrintService] Error creating print config:', insertError);
+        throw new Error('Failed to create print configuration');
+      }
+    } else if (!existingConfig.configured_printers || !Array.isArray(existingConfig.configured_printers)) {
+      console.log('[KioskPrintService] Fixing malformed configured_printers');
+      const { error: updateError } = await supabase
+        .from('restaurant_print_config')
+        .update({ configured_printers: [] })
+        .eq('restaurant_id', restaurantId);
+
+      if (updateError) {
+        console.error('[KioskPrintService] Error updating print config:', updateError);
+        throw new Error('Failed to update print configuration');
+      }
+    }
+  }
+
   async printReceipt(request: KioskPrintRequest): Promise<KioskPrintResult> {
     console.log('[KioskPrintService] Printing receipt for order:', request.orderNumber);
     
     try {
+      // Ensure print configuration exists
+      await this.ensurePrintConfigExists(request.restaurantId);
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/kiosk-print`, {
         method: 'POST',
         headers: {
@@ -60,7 +106,18 @@ class KioskPrintService {
       return result;
     } catch (error) {
       console.error('[KioskPrintService] Print error:', error);
-      throw error;
+      
+      // Return a structured error result instead of throwing
+      return {
+        success: false,
+        results: [],
+        summary: {
+          successful: 0,
+          failed: 0,
+          total: 0
+        },
+        message: error instanceof Error ? error.message : 'Unknown print service error'
+      };
     }
   }
 }

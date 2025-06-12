@@ -54,6 +54,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   const [countdown, setCountdown] = useState(10);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrinted, setHasPrinted] = useState(false);
+  const [printStatus, setPrintStatus] = useState<'pending' | 'success' | 'partial' | 'failed'>('pending');
   const {
     total,
     subtotal,
@@ -112,49 +113,46 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     if (!restaurant?.id || hasPrinted || isPrinting) return;
     try {
       setIsPrinting(true);
+      setPrintStatus('pending');
 
       // Fetch print configuration
       const {
         data: printConfig,
         error
       } = await supabase.from('restaurant_print_config').select('configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
-      if (error) {
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
         console.error("Error fetching print configuration:", error);
-        setIsPrinting(false);
-        return;
+        // Continue anyway - the service will create a default config
       }
 
       // Handle browser printing
-      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
+      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig?.browser_printing_enabled !== false);
+      let browserPrintAttempted = false;
+
       if (shouldUseBrowserPrinting) {
         console.log("Using browser printing for receipt");
         toast({
           title: t("order.printing"),
           description: t("order.printingPreparation")
         });
+        
+        browserPrintAttempted = true;
         setTimeout(() => {
           try {
             printReceipt('receipt-content');
             console.log("Print receipt triggered successfully");
           } catch (printError) {
             console.error("Error during browser printing:", printError);
-            toast({
-              title: t("order.printError"),
-              description: t("order.printErrorDesc"),
-              variant: "destructive"
-            });
           }
-          setIsPrinting(false);
-          setHasPrinted(true);
         }, 500);
-      } else {
-        console.log("Browser printing disabled for this device or restaurant");
       }
 
       // Handle PrintNode printing using new kiosk service
-      if (printConfig?.configured_printers) {
-        const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
-        const printerIds = printerArray.map(id => String(id));
+      let kioskPrintResult = null;
+      if (printConfig?.configured_printers && Array.isArray(printConfig.configured_printers)) {
+        const printerIds = printConfig.configured_printers.map(id => String(id));
+        
         if (printerIds.length > 0) {
           try {
             console.log(`[OrderConfirmation] Using kiosk print service for restaurant ${restaurant.id}`);
@@ -175,57 +173,93 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             );
 
             // Use the new kiosk print service
-            const printResult = await kioskPrintService.printReceipt({
+            kioskPrintResult = await kioskPrintService.printReceipt({
               restaurantId: restaurant.id,
               orderNumber,
               receiptContent,
               printerIds
             });
 
-            if (printResult.success && printResult.summary.successful > 0) {
-              console.log('[OrderConfirmation] Kiosk printing successful');
-              toast({
-                title: "Impression réussie",
-                description: `Reçu envoyé à ${printResult.summary.successful} imprimante(s)`,
-              });
-            } else {
-              console.error('[OrderConfirmation] All printers failed:', printResult);
-              toast({
-                title: "Erreur d'impression",
-                description: "Impossible d'imprimer le reçu",
-                variant: "destructive"
-              });
-            }
+            console.log('[OrderConfirmation] Kiosk print result:', kioskPrintResult);
+
           } catch (printError) {
             console.error("Error with kiosk print service:", printError);
-            
-            let errorMessage = "Erreur lors de l'impression";
-            if (printError instanceof Error) {
-              if (printError.message.includes('not configured')) {
-                errorMessage = "Service d'impression non configuré";
-              } else if (printError.message.includes('Network')) {
-                errorMessage = "Erreur de réseau lors de l'impression";
-              }
-            }
-            
-            toast({
-              title: t("order.printError"),
-              description: errorMessage,
-              variant: "destructive"
-            });
+            kioskPrintResult = {
+              success: false,
+              results: [],
+              summary: { successful: 0, failed: 0, total: 0 },
+              message: printError instanceof Error ? printError.message : 'Unknown error'
+            };
           }
         }
-        setIsPrinting(false);
-        setHasPrinted(true);
+      } else {
+        // No printers configured, attempt kiosk service anyway to get proper feedback
+        try {
+          const receiptContent = generatePlainTextReceipt(
+            cart,
+            restaurant,
+            orderType,
+            tableNumber,
+            orderNumber,
+            restaurant?.currency?.toUpperCase() || 'EUR',
+            total,
+            subtotal,
+            tax,
+            10,
+            (key) => t(key)
+          );
+
+          kioskPrintResult = await kioskPrintService.printReceipt({
+            restaurantId: restaurant.id,
+            orderNumber,
+            receiptContent
+          });
+        } catch (printError) {
+          console.error("Error checking kiosk print service:", printError);
+        }
       }
+
+      // Determine overall print status
+      const kioskSuccess = kioskPrintResult?.success && kioskPrintResult.summary.successful > 0;
+      const kioskPartial = kioskPrintResult?.success && kioskPrintResult.summary.failed > 0;
+      
+      if (kioskSuccess && !kioskPartial) {
+        setPrintStatus('success');
+        toast({
+          title: "Impression réussie",
+          description: `Reçu envoyé à ${kioskPrintResult.summary.successful} imprimante(s)`,
+        });
+      } else if (kioskSuccess && kioskPartial) {
+        setPrintStatus('partial');
+        toast({
+          title: "Impression partielle",
+          description: `${kioskPrintResult.summary.successful} imprimante(s) réussie(s), ${kioskPrintResult.summary.failed} échec(s)`,
+          variant: "destructive"
+        });
+      } else if (browserPrintAttempted) {
+        setPrintStatus('success');
+        // Don't show additional toasts for browser printing
+      } else {
+        setPrintStatus('failed');
+        const errorMessage = kioskPrintResult?.message || "Impossible d'imprimer le reçu";
+        toast({
+          title: "Erreur d'impression", 
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
+
     } catch (error) {
       console.error("Error during receipt printing:", error);
+      setPrintStatus('failed');
       toast({
         title: t("order.error"),
         description: t("order.errorPrinting"),
         variant: "destructive"
       });
+    } finally {
       setIsPrinting(false);
+      setHasPrinted(true);
     }
   };
   
@@ -248,8 +282,22 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
               {t("orderConfirmation.ticketPrinted")}
             </p>
             <p className="flex items-center justify-center gap-2">
-              <Printer className="h-5 w-5 text-gray-600" />
-              {isPrinting ? t("orderConfirmation.printing") : t("orderConfirmation.printed")}
+              <Printer className={`h-5 w-5 ${
+                printStatus === 'success' ? 'text-green-600' : 
+                printStatus === 'partial' ? 'text-yellow-600' :
+                printStatus === 'failed' ? 'text-red-600' : 'text-gray-600'
+              }`} />
+              {isPrinting ? (
+                t("orderConfirmation.printing")
+              ) : printStatus === 'success' ? (
+                'Impression réussie'
+              ) : printStatus === 'partial' ? (
+                'Impression partielle'
+              ) : printStatus === 'failed' ? (
+                'Échec d\'impression'
+              ) : (
+                t("orderConfirmation.printed")
+              )}
             </p>
             <p>{t("orderConfirmation.preparation")}</p>
           </div>
