@@ -3,12 +3,13 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Trash, Minus, Plus } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCartManager } from "@/hooks/useCartManager";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -31,6 +32,7 @@ interface OrderSummaryProps {
   isOpen: boolean;
   onClose: () => void;
   cart: CartItem[];
+  onCartUpdate: (newCart: CartItem[]) => void;
   onPlaceOrder: () => void;
   placingOrder: boolean;
   calculateSubtotal: () => number;
@@ -52,6 +54,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   isOpen,
   onClose,
   cart,
+  onCartUpdate,
   onPlaceOrder,
   placingOrder,
   getFormattedOptions,
@@ -61,15 +64,12 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   },
   uiLanguage = "fr"
 }) => {
-  const {
-    t
-  } = useTranslation(uiLanguage);
-  const {
-    total,
-    subtotal,
-    tax
-  } = calculateCartTotals(cart);
+  const { t } = useTranslation(uiLanguage);
+  const { total, subtotal, tax } = calculateCartTotals(cart);
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
+
+  // Use the cart manager hook
+  const cartManager = useCartManager(cart, onCartUpdate);
 
   // State for animating items
   const [visibleItems, setVisibleItems] = useState<{ [key: string]: boolean }>({});
@@ -101,7 +101,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   }, [isOpen, cart]);
 
   const handleConfirmOrder = async () => {
-    // Simply call onPlaceOrder and let the parent component handle the rest
     onPlaceOrder();
   };
 
@@ -121,7 +120,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     return 1;
   };
 
-  return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
+  return (
+    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-2xl md:max-w-2xl p-0 overflow-hidden flex flex-col max-h-[85vh]">
         {/* Fixed Header */}
         <div className="p-4 border-b flex items-center space-x-2 flex-shrink-0">
@@ -131,69 +131,142 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           <h2 className="text-xl font-bold">{t("order.summary")}</h2>
         </div>
         
-        {/* Scrollable Content Area - Now only contains items */}
+        {/* Scrollable Content Area */}
         <ScrollArea className="flex-grow overflow-auto p-6">
           <h3 className="font-bold text-lg mb-4">{t("order.items")}</h3>
           
           <div className="space-y-6 mb-6">
-            {cart.map(item => <div 
+            {cart.map(item => (
+              <div 
                 key={item.id} 
                 style={{ 
                   opacity: visibleItems[item.id] ? 1 : 0, 
                   transform: visibleItems[item.id] ? 'translateY(0)' : 'translateY(10px)',
                   transition: 'opacity 300ms ease, transform 300ms ease'
                 }}
-                className="space-y-2"
+                className="space-y-2 border rounded-lg p-4 relative"
               >
-                <div className="flex justify-between">
-                  <div className="flex items-center">
-                    <span className="font-medium mr-2">{item.quantity}x</span>
+                {/* Item remove button - always visible */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => cartManager.removeItem(item.id)}
+                  className="absolute top-2 right-2 h-6 w-6 text-red-500 hover:text-red-700"
+                >
+                  <Trash className="h-4 w-4" />
+                </Button>
+
+                <div className="flex justify-between items-start pr-8">
+                  <div className="flex-1">
                     <span className="font-medium">{item.menuItem.name}</span>
                   </div>
-                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
+                  <div className="flex items-center space-x-4">
+                    {/* Quantity controls moved to right side */}
+                    <div className="flex items-center space-x-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => cartManager.updateQuantity(item.id, item.quantity - 1)}
+                        className="h-6 w-6"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center font-medium">{item.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => cartManager.updateQuantity(item.id, item.quantity + 1)}
+                        className="h-6 w-6"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
+                  </div>
                 </div>
                 
-                {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && <div className="pl-6 space-y-1 text-sm text-gray-600">
+                {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && (
+                  <div className="pl-6 space-y-1 text-sm text-gray-600">
                     {/* Options */}
-                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => <div key={`${item.id}-option-${idx}`} className="flex justify-between">
+                    {getFormattedOptions(item).split(', ').filter(Boolean).map((option, idx) => (
+                      <div key={`${item.id}-option-${idx}`} className="flex justify-between">
                         <span>+ {option}</span>
                         <span>0.00 {currencySymbol}</span>
-                      </div>)}
-                    {/* Grouped toppings by category, show price if > 0 */}
-                    {getGroupedToppings(item).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
-                        <div style={{
-                  fontWeight: 500,
-                  paddingLeft: 0
-                }}>{group.category}:</div>
+                      </div>
+                    ))}
+                    
+                    {/* Grouped toppings by category with individual removal */}
+                    {getGroupedToppings(item).map((group, groupIdx) => (
+                      <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                        <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
-                  const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
-                  
-                  // Get display name and quantity whether it's a string or object
-                  const displayName = getToppingDisplayName(toppingObj);
-                  const quantity = getToppingQuantity(toppingObj);
-                  
-                  const toppingRef = category?.toppings.find(t => t.name === displayName);
-                  const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
-                  
-                  // Calculate total price for this topping (price * quantity)
-                  const totalToppingPrice = price * quantity;
-                  
-                  return <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between">
-                              <span style={{ paddingLeft: 6 }}>
-                                {quantity > 1 ? `+ ${quantity}x ${displayName}` : `+ ${displayName}`}
-                              </span>
+                          const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                          
+                          const displayName = getToppingDisplayName(toppingObj);
+                          const quantity = getToppingQuantity(toppingObj);
+                          
+                          const toppingRef = category?.toppings.find(t => t.name === displayName);
+                          const price = toppingRef ? parseFloat(toppingRef.price?.toString() ?? "0") : 0;
+                          const totalToppingPrice = price * quantity;
+                          
+                          // Check if this category allows multiple same topping
+                          const allowsMultiple = category?.allow_multiple_same_topping === true;
+                          
+                          return (
+                            <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between items-center">
+                              <div className="flex items-center space-x-3">
+                                <span style={{ paddingLeft: 6 }}>
+                                  + {displayName}
+                                </span>
+                                {/* Topping quantity controls - only show if category allows multiple */}
+                                <div className="flex items-center space-x-1">
+                                  {allowsMultiple && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity - 1)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <Minus className="h-4 w-4" />
+                                      </Button>
+                                      <span className="w-6 text-center font-medium text-xs">{quantity}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity + 1)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  {/* Delete button - always visible */}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => cartManager.removeToppingFromItem(item.id, category?.id || '', toppingRef?.id || '')}
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
                               <span>{totalToppingPrice > 0 ? totalToppingPrice.toFixed(2) + " " + currencySymbol : ""}</span>
-                            </div>;
-                })}
-                      </div>)}
-                  </div>}
-              </div>)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </ScrollArea>
         
-        {/* Fixed Footer - Now includes totals and confirm button */}
+        {/* Fixed Footer */}
         <div className="p-4 bg-gray-50 border-t flex-shrink-0">
-          {/* Totals section */}
           <div className="space-y-2 mb-4">
             <div className="flex justify-between text-gray-600">
               <span>{t("order.subtotal")}:</span>
@@ -210,10 +283,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
           </div>
           
-          {/* Confirm button with inline style animation for Firefox compatibility */}
           <Button 
             onClick={handleConfirmOrder} 
-            disabled={placingOrder} 
+            disabled={placingOrder || cart.length === 0} 
             style={{
               opacity: isOpen ? 1 : 0,
               transform: isOpen ? 'translateY(0)' : 'translateY(20px)',
@@ -226,7 +298,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           </Button>
         </div>
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 };
 
 export default OrderSummary;

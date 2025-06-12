@@ -40,6 +40,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const [isMigrating, setIsMigrating] = useState(false);
   const [hasLegacyKey, setHasLegacyKey] = useState(false);
   const [securityStatus, setSecurityStatus] = useState<'secure' | 'legacy' | 'none'>('none');
+  const [errorDetails, setErrorDetails] = useState<string>("");
   
   const { toast } = useToast();
 
@@ -53,10 +54,13 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   useEffect(() => {
     const checkApiKeyConfiguration = async () => {
       try {
+        console.log('[PrintNodeIntegration] Checking API key configuration for restaurant:', restaurantId);
+        
         // Check for encrypted key first
         const encryptedKey = await secureApiKeyService.retrieveApiKey(restaurantId, 'printnode');
         
         if (encryptedKey) {
+          console.log('[PrintNodeIntegration] Found encrypted API key');
           setApiKey(encryptedKey);
           setMaskedKey(maskApiKey(encryptedKey));
           setIsConfigured(true);
@@ -66,32 +70,11 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           return;
         }
 
-        // Check for legacy plaintext key
-        const { data, error } = await supabase
-          .from('restaurant_print_config')
-          .select('api_key')
-          .eq('restaurant_id', restaurantId)
-          .single();
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching print config:", error);
-          return;
-        }
-        
-        if (data?.api_key) {
-          setHasLegacyKey(true);
-          setSecurityStatus('legacy');
-          setApiKey(data.api_key);
-          setMaskedKey(maskApiKey(data.api_key));
-          setIsConfigured(true);
-          logSecurityEvent('Legacy PrintNode API key detected', { 
-            restaurantId,
-            securityRisk: 'plaintext_storage'
-          });
-          fetchPrinters(data.api_key);
-        }
+        console.log('[PrintNodeIntegration] No API key found');
+        setSecurityStatus('none');
       } catch (error) {
-        console.error("Error checking API key configuration:", error);
+        console.error("[PrintNodeIntegration] Error checking API key configuration:", error);
+        setErrorDetails(error instanceof Error ? error.message : 'Unknown error');
         logSecurityEvent('API key configuration check failed', { 
           restaurantId, 
           error: error instanceof Error ? error.message : 'Unknown error'
@@ -99,7 +82,9 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       }
     };
     
-    checkApiKeyConfiguration();
+    if (restaurantId) {
+      checkApiKeyConfiguration();
+    }
   }, [restaurantId]);
 
   const saveApiKey = async () => {
@@ -114,23 +99,28 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
 
     try {
       setIsFetching(true);
+      setErrorDetails("");
       
+      console.log('[PrintNodeIntegration] Testing API key with PrintNode API');
       const printerData = await fetchPrintersFromAPI(apiKey);
       
       if (printerData.length === 0) {
         toast({
           title: "API Key Invalid",
-          description: "Unable to retrieve printers with this API key",
+          description: "Unable to retrieve printers with this API key. Please verify the key is correct.",
           variant: "destructive"
         });
         setIsFetching(false);
         return;
       }
       
-      // Store API key securely in vault
-      await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
+      console.log('[PrintNodeIntegration] API key validated, storing securely');
       
-      // Update print config without the API key
+      // Store API key securely in vault
+      const keyId = await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
+      console.log('[PrintNodeIntegration] API key stored with ID:', keyId);
+      
+      // Update print config (no longer includes api_key)
       const printConfig: PrintConfig = {
         restaurant_id: restaurantId,
         configured_printers: []
@@ -143,7 +133,8 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         });
       
       if (error) {
-        throw error;
+        console.error('[PrintNodeIntegration] Error updating print config:', error);
+        throw new Error(`Failed to update print configuration: ${error.message}`);
       }
       
       setIsConfigured(true);
@@ -159,14 +150,18 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         description: "PrintNode API key stored with enterprise-grade encryption",
       });
     } catch (error) {
-      console.error("Error saving configuration:", error);
+      console.error("[PrintNodeIntegration] Error saving configuration:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setErrorDetails(errorMessage);
+      
       logSecurityEvent('API key save failed', { 
         restaurantId, 
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage
       });
+      
       toast({
-        title: "Error",
-        description: "Error saving API key",
+        title: "Error Saving API Key",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -180,12 +175,6 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       // Store the current key securely
       await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
-      
-      // Clear the plaintext key
-      await supabase
-        .from('restaurant_print_config')
-        .update({ api_key: null })
-        .eq('restaurant_id', restaurantId);
       
       setHasLegacyKey(false);
       setSecurityStatus('secure');
@@ -450,6 +439,20 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {errorDetails && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Configuration Error</AlertTitle>
+            <AlertDescription>
+              {errorDetails}
+              <br />
+              <small className="text-muted-foreground mt-2 block">
+                Check the console logs for more details or contact support if the issue persists.
+              </small>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {hasLegacyKey && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -485,6 +488,7 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
                   setIsConfigured(false);
                   setApiKey("");
                   setHasLegacyKey(false);
+                  setErrorDetails("");
                 }}
               >
                 Change

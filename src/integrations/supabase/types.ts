@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      api_key_rotation_log: {
+        Row: {
+          created_at: string
+          id: string
+          key_name: string
+          old_key_hash: string | null
+          restaurant_id: string
+          rotated_by: string | null
+          rotation_reason: string | null
+          rotation_type: string
+          service_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_name: string
+          old_key_hash?: string | null
+          restaurant_id: string
+          rotated_by?: string | null
+          rotation_reason?: string | null
+          rotation_type: string
+          service_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_name?: string
+          old_key_hash?: string | null
+          restaurant_id?: string
+          rotated_by?: string | null
+          rotation_reason?: string | null
+          rotation_type?: string
+          service_name?: string
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string
@@ -581,7 +617,6 @@ export type Database = {
       }
       restaurant_print_config: {
         Row: {
-          api_key: string | null
           browser_printing_enabled: boolean | null
           configured_printers: Json | null
           created_at: string | null
@@ -591,7 +626,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          api_key?: string | null
           browser_printing_enabled?: boolean | null
           configured_printers?: Json | null
           created_at?: string | null
@@ -601,7 +635,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          api_key?: string | null
           browser_printing_enabled?: boolean | null
           configured_printers?: Json | null
           created_at?: string | null
@@ -855,20 +888,45 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_deactivate_overdue_keys: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          restaurant_id: string
+          service_name: string
+          key_name: string
+          action_taken: string
+        }[]
+      }
       duplicate_restaurant: {
         Args: { source_restaurant_id: string }
         Returns: string
+      }
+      force_rotate_overdue_keys: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          restaurant_id: string
+          service_name: string
+          key_name: string
+          status: string
+        }[]
       }
       get_daily_order_count: {
         Args: Record<PropertyKey, never>
         Returns: number
       }
       get_encrypted_api_key: {
-        Args: {
-          p_restaurant_id: string
-          p_service_name: string
-          p_key_name?: string
-        }
+        Args:
+          | {
+              p_restaurant_id: string
+              p_service_name: string
+              p_key_name?: string
+            }
+          | {
+              p_restaurant_id: string
+              p_service_name: string
+              p_key_name?: string
+              p_user_id?: string
+            }
         Returns: string
       }
       get_keys_needing_rotation: {
@@ -878,6 +936,16 @@ export type Database = {
           service_name: string
           key_name: string
           days_since_rotation: number
+        }[]
+      }
+      get_keys_needing_rotation_alerts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          restaurant_id: string
+          service_name: string
+          key_name: string
+          days_since_rotation: number
+          alert_level: string
         }[]
       }
       get_monthly_order_count: {
@@ -946,13 +1014,31 @@ export type Database = {
         }
         Returns: boolean
       }
-      store_encrypted_api_key: {
+      rotate_api_key_with_audit: {
         Args: {
           p_restaurant_id: string
           p_service_name: string
           p_key_name: string
-          p_api_key: string
+          p_new_api_key: string
+          p_rotation_reason?: string
         }
+        Returns: boolean
+      }
+      store_encrypted_api_key: {
+        Args:
+          | {
+              p_restaurant_id: string
+              p_service_name: string
+              p_key_name: string
+              p_api_key: string
+            }
+          | {
+              p_restaurant_id: string
+              p_service_name: string
+              p_key_name: string
+              p_api_key: string
+              p_user_id?: string
+            }
         Returns: string
       }
     }
