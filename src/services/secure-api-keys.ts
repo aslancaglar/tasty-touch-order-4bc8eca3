@@ -3,6 +3,40 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type ServiceName = 'printnode' | 'stripe' | 'openai' | 'sendgrid';
 
+// Add missing type definitions
+export interface ApiKeyRecord {
+  id: string;
+  restaurant_id: string;
+  service_name: string;
+  key_name: string;
+  encrypted_key_id: string;
+  last_rotated: string;
+  rotation_interval_days: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiKeyRotationAlert {
+  restaurant_id: string;
+  service_name: string;
+  key_name: string;
+  days_since_rotation: number;
+  alert_level: 'OK' | 'INFO' | 'WARNING' | 'CRITICAL';
+}
+
+export interface ApiKeyRotationLog {
+  id: string;
+  restaurant_id: string;
+  service_name: string;
+  key_name: string;
+  rotation_type: string;
+  rotation_reason: string | null;
+  old_key_hash: string | null;
+  rotated_by: string | null;
+  created_at: string;
+}
+
 interface ApiKeyServiceInterface {
   storeApiKey: (restaurantId: string, serviceName: ServiceName, apiKey: string, keyName?: string) => Promise<boolean>;
   retrieveApiKey: (restaurantId: string, serviceName: ServiceName, keyName?: string) => Promise<string | null>;
@@ -12,7 +46,12 @@ interface ApiKeyServiceInterface {
 }
 
 class SecureApiKeyService implements ApiKeyServiceInterface {
-  private readonly EDGE_FUNCTION_URL = `${supabase.supabaseUrl}/functions/v1/api-key-manager`;
+  private readonly EDGE_FUNCTION_URL: string;
+
+  constructor() {
+    // Fix the supabaseUrl access issue by using the public URL from config
+    this.EDGE_FUNCTION_URL = `https://yifimiqeybttmbhuplaq.supabase.co/functions/v1/api-key-manager`;
+  }
 
   private async makeSecureRequest(action: string, data: any): Promise<any> {
     try {
@@ -205,6 +244,189 @@ class SecureApiKeyService implements ApiKeyServiceInterface {
       
     } catch (error) {
       console.error(`[SecureApiKeyService] Failed to list API keys:`, error);
+      return [];
+    }
+  }
+
+  // Add missing methods for the security components
+  async getApiKeyRecords(restaurantId: string): Promise<ApiKeyRecord[]> {
+    try {
+      const { data, error } = await supabase
+        .from('restaurant_api_keys')
+        .select('*')
+        .eq('restaurant_id', restaurantId);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching API key records:', error);
+      return [];
+    }
+  }
+
+  async getKeysNeedingRotation(): Promise<ApiKeyRecord[]> {
+    try {
+      const { data, error } = await supabase
+        .from('restaurant_api_keys')
+        .select('*')
+        .not('rotation_interval_days', 'is', null);
+
+      if (error) throw error;
+      
+      // Filter keys that need rotation based on interval
+      const now = new Date();
+      return (data || []).filter(key => {
+        if (!key.rotation_interval_days) return false;
+        const lastRotated = new Date(key.last_rotated);
+        const daysSinceRotation = Math.floor((now.getTime() - lastRotated.getTime()) / (1000 * 60 * 60 * 24));
+        return daysSinceRotation >= key.rotation_interval_days;
+      });
+    } catch (error) {
+      console.error('Error fetching keys needing rotation:', error);
+      return [];
+    }
+  }
+
+  async getKeysNeedingRotationAlerts(restaurantId?: string): Promise<ApiKeyRotationAlert[]> {
+    try {
+      let query = supabase
+        .from('restaurant_api_keys')
+        .select('*')
+        .not('rotation_interval_days', 'is', null);
+
+      if (restaurantId) {
+        query = query.eq('restaurant_id', restaurantId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const now = new Date();
+      return (data || []).map(key => {
+        const lastRotated = new Date(key.last_rotated);
+        const daysSinceRotation = Math.floor((now.getTime() - lastRotated.getTime()) / (1000 * 60 * 60 * 24));
+        
+        let alertLevel: ApiKeyRotationAlert['alert_level'] = 'OK';
+        if (key.rotation_interval_days) {
+          const threshold80 = key.rotation_interval_days * 0.8;
+          const threshold100 = key.rotation_interval_days;
+          const threshold200 = key.rotation_interval_days * 2;
+
+          if (daysSinceRotation >= threshold200) {
+            alertLevel = 'CRITICAL';
+          } else if (daysSinceRotation >= threshold100) {
+            alertLevel = 'WARNING';
+          } else if (daysSinceRotation >= threshold80) {
+            alertLevel = 'INFO';
+          }
+        }
+
+        return {
+          restaurant_id: key.restaurant_id,
+          service_name: key.service_name,
+          key_name: key.key_name,
+          days_since_rotation: daysSinceRotation,
+          alert_level: alertLevel
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching rotation alerts:', error);
+      return [];
+    }
+  }
+
+  async getRotationAuditLog(restaurantId: string): Promise<ApiKeyRotationLog[]> {
+    try {
+      const { data, error } = await supabase
+        .from('api_key_rotation_log')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching rotation audit log:', error);
+      return [];
+    }
+  }
+
+  async forceRotateOverdueKeys(): Promise<Array<{serviceName: string, keyName: string, status: string}>> {
+    try {
+      // This would be implemented to force rotate overdue keys
+      // For now, return empty array as placeholder
+      console.log('[SecureApiKeyService] Force rotation check - placeholder implementation');
+      return [];
+    } catch (error) {
+      console.error('Error in force rotation:', error);
+      return [];
+    }
+  }
+
+  async autoDeactivateOverdueKeys(): Promise<Array<{serviceName: string, keyName: string, status: string}>> {
+    try {
+      const overdueKeys = await this.getKeysNeedingRotationAlerts();
+      const criticalKeys = overdueKeys.filter(key => key.alert_level === 'CRITICAL');
+      
+      // Deactivate critical keys
+      const results = [];
+      for (const key of criticalKeys) {
+        try {
+          const { error } = await supabase
+            .from('restaurant_api_keys')
+            .update({ is_active: false })
+            .eq('restaurant_id', key.restaurant_id)
+            .eq('service_name', key.service_name)
+            .eq('key_name', key.key_name);
+
+          if (!error) {
+            results.push({
+              serviceName: key.service_name,
+              keyName: key.key_name,
+              status: 'DEACTIVATED'
+            });
+          }
+        } catch (error) {
+          console.error(`Error deactivating key ${key.service_name}:`, error);
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Error in auto-deactivation:', error);
+      return [];
+    }
+  }
+
+  async migratePrintNodeKeys(): Promise<Array<{serviceName: string, success: boolean}>> {
+    try {
+      // Migrate legacy PrintNode keys from printer_settings table
+      const { data: printerSettings, error } = await supabase
+        .from('printer_settings')
+        .select('*');
+
+      if (error) throw error;
+
+      const results = [];
+      for (const setting of printerSettings || []) {
+        if (setting.printnode_api_key && setting.restaurant_id) {
+          try {
+            const success = await this.storeApiKey(
+              setting.restaurant_id,
+              'printnode',
+              setting.printnode_api_key,
+              'primary'
+            );
+            results.push({ serviceName: 'printnode', success });
+          } catch (error) {
+            results.push({ serviceName: 'printnode', success: false });
+          }
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Error migrating PrintNode keys:', error);
       return [];
     }
   }
