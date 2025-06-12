@@ -417,7 +417,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
           },
           {
             id: "printer3",
-1 name: "Printer 3",
+            name: "Printer 3",
             description: "Bar",
             state: "offline",
             selected: false
