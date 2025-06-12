@@ -22,7 +22,7 @@ class SecureApiKeyService {
       throw new Error('User not authenticated');
     }
 
-    console.log(`Making API key manager call - Action: ${action} (No permission checks)`);
+    console.log(`Making API key manager call - Action: ${action}`);
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/api-key-manager`, {
       method: 'POST',
@@ -32,8 +32,7 @@ class SecureApiKeyService {
       },
       body: JSON.stringify({ 
         action, 
-        ...payload,
-        skipPermissionChecks: true
+        ...payload
       }),
     });
 

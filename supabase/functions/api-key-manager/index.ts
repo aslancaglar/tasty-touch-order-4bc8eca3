@@ -26,9 +26,9 @@ serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
-    const { action, restaurantId, serviceName, keyName, apiKey, skipPermissionChecks } = await req.json()
+    const { action, restaurantId, serviceName, keyName, apiKey } = await req.json()
 
-    console.log(`API Key Manager: ${action} - No permission checks (skipPermissionChecks: ${skipPermissionChecks})`)
+    console.log(`API Key Manager: ${action} for user ${user.id}`)
 
     switch (action) {
       case 'store': {
@@ -39,7 +39,10 @@ serve(async (req) => {
           p_api_key: apiKey
         })
 
-        if (error) throw error
+        if (error) {
+          console.error('Store API key error:', error)
+          throw error
+        }
 
         return new Response(JSON.stringify({ success: true, keyId: data }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -53,7 +56,10 @@ serve(async (req) => {
           p_key_name: keyName || 'primary'
         })
 
-        if (error) throw error
+        if (error) {
+          console.error('Retrieve API key error:', error)
+          throw error
+        }
 
         return new Response(JSON.stringify({ success: true, apiKey: data }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -68,7 +74,10 @@ serve(async (req) => {
           p_new_api_key: apiKey
         })
 
-        if (error) throw error
+        if (error) {
+          console.error('Rotate API key error:', error)
+          throw error
+        }
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
