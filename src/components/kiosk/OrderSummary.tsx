@@ -157,8 +157,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 </Button>
 
                 <div className="flex justify-between items-start pr-8">
-                  <div className="flex items-center space-x-2">
-                    {/* Quantity controls - always visible */}
+                  <div className="flex-1">
+                    <span className="font-medium">{item.menuItem.name}</span>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    {/* Quantity controls moved to right side */}
                     <div className="flex items-center space-x-1">
                       <Button
                         variant="outline"
@@ -178,9 +181,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
-                    <span className="font-medium">{item.menuItem.name}</span>
+                    <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                   </div>
-                  <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
                 
                 {(getFormattedOptions(item) || item.selectedToppings?.length > 0) && (
@@ -209,35 +211,36 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                           
                           return (
                             <div key={`${item.id}-cat-summary-${groupIdx}-topping-${topIdx}`} className="flex justify-between items-center">
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-3">
                                 <span style={{ paddingLeft: 6 }}>
-                                  {quantity > 1 ? `+ ${quantity}x ${displayName}` : `+ ${displayName}`}
+                                  + {displayName}
                                 </span>
-                                {/* Topping quantity controls - always visible */}
+                                {/* Topping quantity controls with bigger icons */}
                                 <div className="flex items-center space-x-1">
                                   <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity - 1)}
-                                    className="h-4 w-4 p-0"
+                                    className="h-6 w-6 p-0"
                                   >
-                                    <Minus className="h-2 w-2" />
+                                    <Minus className="h-4 w-4" />
                                   </Button>
+                                  <span className="w-6 text-center font-medium text-xs">{quantity}</span>
                                   <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => cartManager.updateToppingQuantity(item.id, category?.id || '', toppingRef?.id || '', quantity + 1)}
-                                    className="h-4 w-4 p-0"
+                                    className="h-6 w-6 p-0"
                                   >
-                                    <Plus className="h-2 w-2" />
+                                    <Plus className="h-4 w-4" />
                                   </Button>
                                   <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => cartManager.removeToppingFromItem(item.id, category?.id || '', toppingRef?.id || '')}
-                                    className="h-4 w-4 p-0 text-red-500 hover:text-red-700"
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                                   >
-                                    <Trash className="h-2 w-2" />
+                                    <Trash className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </div>
