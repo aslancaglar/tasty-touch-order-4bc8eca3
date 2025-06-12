@@ -67,7 +67,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const { total, subtotal, tax } = calculateCartTotals(cart);
   const currencySymbol = getCurrencySymbol(restaurant?.currency || "EUR");
 
-  // Use the cart manager hook
+  // Use the cart manager hook with correct parameters
   const cartManager = useCartManager(cart, onCartUpdate);
 
   // State for animating items

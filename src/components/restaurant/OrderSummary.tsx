@@ -13,7 +13,7 @@ import { generatePlainTextReceipt, getGroupedToppings, ToppingWithQuantity } fro
 import { secureApiKeyService } from "@/services/secure-api-keys";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useCartManager } from "@/hooks/useCartManager";
+import useCartManager from "@/hooks/useCartManager";
 
 const translations = {
   fr: {
@@ -91,7 +91,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   
   const { total, subtotal, tax } = calculateCartTotals(cart);
   
-  // Use the cart manager hook
+  // Use the cart manager hook with correct parameters
   const cartManager = useCartManager(cart, onCartUpdate);
 
   // Helper function to translate text
