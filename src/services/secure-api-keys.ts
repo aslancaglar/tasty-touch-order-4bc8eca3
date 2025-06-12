@@ -38,11 +38,16 @@ class SecureApiKeyService {
     console.log(`[SecureApiKeyService] Calling API key manager with action: ${action}`);
     console.log(`[SecureApiKeyService] Payload:`, payload);
     
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('[SecureApiKeyService] Session error:', sessionError);
+      throw new Error(`Authentication error: ${sessionError.message}`);
+    }
     
     if (!session?.access_token) {
       console.error('[SecureApiKeyService] No session found');
-      throw new Error('User not authenticated');
+      throw new Error('User not authenticated - please log in again');
     }
 
     console.log(`[SecureApiKeyService] Session found, user: ${session.user?.email}`);
@@ -130,13 +135,23 @@ class SecureApiKeyService {
       throw new Error('Restaurant ID and service name are required');
     }
 
-    const result = await this.callApiKeyManager('retrieve', {
-      restaurantId,
-      serviceName,
-      keyName
-    });
-    
-    return result.apiKey;
+    try {
+      const result = await this.callApiKeyManager('retrieve', {
+        restaurantId,
+        serviceName,
+        keyName
+      });
+      
+      console.log(`[SecureApiKeyService] Retrieve result:`, result);
+      return result.apiKey;
+    } catch (error) {
+      console.error(`[SecureApiKeyService] Error retrieving API key:`, error);
+      // Return null instead of throwing error for non-existent keys
+      if (error instanceof Error && error.message.includes('not found')) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async rotateApiKey(

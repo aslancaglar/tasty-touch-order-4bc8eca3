@@ -1,5 +1,3 @@
-
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -145,17 +143,38 @@ serve(async (req) => {
       case 'retrieve': {
         console.log('Retrieving API key for restaurant:', restaurantId, 'service:', serviceName)
         
-        // Use the updated get_encrypted_api_key function with user_id parameter
-        const { data: apiKeyValue, error: keyError } = await supabaseClient
-          .rpc('get_encrypted_api_key', {
-            p_restaurant_id: restaurantId,
-            p_service_name: serviceName,
-            p_key_name: keyName || 'primary',
-            p_user_id: user.id
-          })
+        try {
+          // Use the updated get_encrypted_api_key function with user_id parameter
+          const { data: apiKeyValue, error: keyError } = await supabaseClient
+            .rpc('get_encrypted_api_key', {
+              p_restaurant_id: restaurantId,
+              p_service_name: serviceName,
+              p_key_name: keyName || 'primary',
+              p_user_id: user.id
+            })
 
-        if (keyError) {
-          console.error('Key retrieval error:', keyError)
+          if (keyError) {
+            console.error('Key retrieval error:', keyError)
+            // Return null instead of throwing error for non-existent keys
+            return new Response(JSON.stringify({ 
+              success: true, 
+              apiKey: null,
+              message: 'API key not found'
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+          }
+
+          console.log('API key retrieved successfully')
+
+          return new Response(JSON.stringify({ 
+            success: true, 
+            apiKey: apiKeyValue 
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        } catch (retrieveError) {
+          console.error('Unexpected error during key retrieval:', retrieveError)
           return new Response(JSON.stringify({ 
             success: true, 
             apiKey: null,
@@ -164,15 +183,6 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           })
         }
-
-        console.log('API key retrieved successfully')
-
-        return new Response(JSON.stringify({ 
-          success: true, 
-          apiKey: apiKeyValue 
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
       }
 
       case 'rotate': {
@@ -276,4 +286,3 @@ serve(async (req) => {
     )
   }
 })
-

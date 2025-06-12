@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     const checkApiKeyConfiguration = async () => {
       try {
         console.log('[PrintNodeIntegration] Checking API key configuration for restaurant:', restaurantId);
+        setErrorDetails(""); // Clear previous errors
         
         // Check for encrypted key first
         const encryptedKey = await secureApiKeyService.retrieveApiKey(restaurantId, 'printnode');
@@ -74,10 +76,21 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         setSecurityStatus('none');
       } catch (error) {
         console.error("[PrintNodeIntegration] Error checking API key configuration:", error);
-        setErrorDetails(error instanceof Error ? error.message : 'Unknown error');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setErrorDetails(errorMessage);
+        
+        // Don't show toast for normal "no key found" scenarios
+        if (!errorMessage.includes('not found') && !errorMessage.includes('not authenticated')) {
+          toast({
+            title: "Configuration Error",
+            description: errorMessage,
+            variant: "destructive"
+          });
+        }
+        
         logSecurityEvent('API key configuration check failed', { 
           restaurantId, 
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: errorMessage
         });
       }
     };
@@ -85,7 +98,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     if (restaurantId) {
       checkApiKeyConfiguration();
     }
-  }, [restaurantId]);
+  }, [restaurantId, toast]);
 
   const saveApiKey = async () => {
     if (!apiKey.trim()) {
@@ -447,7 +460,7 @@ Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
               {errorDetails}
               <br />
               <small className="text-muted-foreground mt-2 block">
-                Check the console logs for more details or contact support if the issue persists.
+                Please check your authentication status or contact support if the issue persists.
               </small>
             </AlertDescription>
           </Alert>
