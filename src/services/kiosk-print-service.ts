@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { SUPABASE_URL } from "@/config/supabase";
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "@/config/supabase";
 
 export interface KioskPrintRequest {
   restaurantId: string;
@@ -33,7 +33,7 @@ class KioskPrintService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify(request),
       });
