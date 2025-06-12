@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { MenuItem, Option, ToppingCategory } from '@/types/database-types';
+import { MenuItem, OptionChoice, ToppingCategory } from '@/types/database-types';
 
 export interface CartItem {
   id: string;
@@ -32,7 +33,7 @@ const useCartManager = ({ restaurantId }: UseCartManagerProps = {}) => {
     localStorage.setItem(`cart-${restaurantId}`, JSON.stringify(cart));
   }, [cart, restaurantId]);
 
-  const addToCart = useCallback((menuItem: MenuItem, quantity: number = 1, selectedOptions: Option[] = [], selectedToppings: ToppingCategory[] = [], specialInstructions: string = "") => {
+  const addToCart = useCallback((menuItem: MenuItem, quantity: number = 1, selectedOptions: OptionChoice[] = [], selectedToppings: ToppingCategory[] = [], specialInstructions: string = "") => {
     const newItem: CartItem = {
       id: uuidv4(),
       menuItem: menuItem,

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useCartManager } from "@/hooks/useCartManager";
+import useCartManager from "@/hooks/useCartManager";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",

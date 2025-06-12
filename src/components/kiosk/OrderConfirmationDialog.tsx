@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -183,6 +184,31 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
 
   const canPrint = !printingState.isChecking && (printingState.isConfigured || printingState.hasFallback);
 
+  // Helper functions for OrderReceipt component
+  const getFormattedOptions = (item: CartItem): string => {
+    if (!item.menuItem.options) return "";
+    return item.selectedOptions.flatMap(selectedOption => {
+      const option = item.menuItem.options?.find(o => o.id === selectedOption.optionId);
+      if (!option) return [];
+      return selectedOption.choiceIds.map(choiceId => {
+        const choice = option.choices.find(c => c.id === choiceId);
+        return choice ? choice.name : "";
+      });
+    }).filter(Boolean).join(", ");
+  };
+
+  const getFormattedToppings = (item: CartItem): string => {
+    if (!item.menuItem.toppingCategories) return "";
+    return item.selectedToppings.flatMap(selectedCategory => {
+      const category = item.menuItem.toppingCategories?.find(c => c.id === selectedCategory.categoryId);
+      if (!category) return [];
+      return selectedCategory.toppingIds.map(toppingId => {
+        const topping = category.toppings.find(t => t.id === toppingId);
+        return topping ? topping.name : "";
+      });
+    }).filter(Boolean).join(", ");
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -215,12 +241,12 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             <OrderReceipt
               orderNumber={orderNumber}
               cart={cartItems}
-              total={total}
               restaurant={restaurant}
               orderType={orderType}
               tableNumber={tableNumber}
+              getFormattedOptions={getFormattedOptions}
+              getFormattedToppings={getFormattedToppings}
               uiLanguage={uiLanguage}
-              currency={currency}
             />
           </div>
         </div>
