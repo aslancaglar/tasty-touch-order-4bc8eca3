@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -157,9 +156,13 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         const printerIds = printerArray.map(id => String(id));
         if (printerIds.length > 0) {
           try {
-            // Get API key securely
+            console.log(`[OrderConfirmation] Attempting to retrieve PrintNode API key for restaurant ${restaurant.id}`);
+            
+            // Get API key securely with improved error handling
             const apiKey = await secureApiKeyService.retrieveApiKey(restaurant.id, 'printnode');
+            
             if (apiKey) {
+              console.log('[OrderConfirmation] API key retrieved successfully, sending to PrintNode');
               await sendReceiptToPrintNode(apiKey, printerIds, {
                 restaurant,
                 cart,
@@ -174,18 +177,31 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
                 uiLanguage
               });
             } else {
-              console.error("No PrintNode API key found for restaurant");
+              console.warn("No PrintNode API key found for restaurant");
               toast({
-                title: t("order.printError"),
+                title: "Information",
                 description: "Clé API PrintNode non configurée",
-                variant: "destructive"
+                variant: "default"
               });
             }
           } catch (apiKeyError) {
             console.error("Error retrieving PrintNode API key:", apiKeyError);
+            
+            // Handle different types of errors with appropriate user messages
+            let errorMessage = "Erreur lors de la récupération de la clé API";
+            if (apiKeyError instanceof Error) {
+              if (apiKeyError.message.includes('Authentication') || apiKeyError.message.includes('authentification')) {
+                errorMessage = "Erreur d'authentification. Veuillez vous reconnecter.";
+              } else if (apiKeyError.message.includes('Network')) {
+                errorMessage = "Erreur de réseau. Vérifiez votre connexion.";
+              } else if (apiKeyError.message.includes('permissions')) {
+                errorMessage = "Permissions insuffisantes pour accéder à la clé API";
+              }
+            }
+            
             toast({
               title: t("order.printError"),
-              description: "Erreur lors de la récupération de la clé API",
+              description: errorMessage,
               variant: "destructive"
             });
           }

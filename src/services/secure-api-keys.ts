@@ -38,7 +38,22 @@ class SecureApiKeyService {
     console.log(`[SecureApiKeyService] Calling API key manager with action: ${action}`);
     console.log(`[SecureApiKeyService] Payload:`, payload);
     
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // Try to get the current session with retry logic
+    let session;
+    let sessionError;
+    
+    // First attempt - get current session
+    const sessionResult = await supabase.auth.getSession();
+    session = sessionResult.data.session;
+    sessionError = sessionResult.error;
+    
+    // If no session or error, try refreshing the session
+    if (!session || sessionError) {
+      console.log('[SecureApiKeyService] No valid session found, attempting refresh...');
+      const refreshResult = await supabase.auth.refreshSession();
+      session = refreshResult.data.session;
+      sessionError = refreshResult.error;
+    }
     
     if (sessionError) {
       console.error('[SecureApiKeyService] Session error:', sessionError);
@@ -46,7 +61,7 @@ class SecureApiKeyService {
     }
     
     if (!session?.access_token) {
-      console.error('[SecureApiKeyService] No session found');
+      console.error('[SecureApiKeyService] No valid session found after refresh attempts');
       throw new Error('User not authenticated - please log in again');
     }
 
@@ -147,8 +162,17 @@ class SecureApiKeyService {
     } catch (error) {
       console.error(`[SecureApiKeyService] Error retrieving API key:`, error);
       // Return null instead of throwing error for non-existent keys
-      if (error instanceof Error && error.message.includes('not found')) {
+      if (error instanceof Error && (
+        error.message.includes('not found') || 
+        error.message.includes('API key not found') ||
+        error.message.includes('No API key found')
+      )) {
+        console.log('[SecureApiKeyService] API key not found, returning null');
         return null;
+      }
+      // For authentication errors, throw a more user-friendly message
+      if (error instanceof Error && error.message.includes('Authentication')) {
+        throw new Error('Erreur d\'authentification lors de la récupération de la clé API');
       }
       throw error;
     }
