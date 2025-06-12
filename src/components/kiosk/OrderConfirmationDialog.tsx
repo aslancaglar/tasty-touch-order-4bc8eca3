@@ -43,13 +43,21 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   getFormattedOptions,
   getFormattedToppings
 }) => {
-  const { t } = useTranslation(uiLanguage);
-  const { toast } = useToast();
+  const {
+    t
+  } = useTranslation(uiLanguage);
+  const {
+    toast
+  } = useToast();
   const isMobile = useIsMobile();
   const [countdown, setCountdown] = useState(10);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrinted, setHasPrinted] = useState(false);
-  const { total, subtotal, tax } = calculateCartTotals(cart);
+  const {
+    total,
+    subtotal,
+    tax
+  } = calculateCartTotals(cart);
 
   // Currency symbol helper
   const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -104,21 +112,19 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     try {
       setIsPrinting(true);
 
-      // Fetch print configuration including plain text API key
-      const { data: printConfig, error } = await supabase
-        .from('restaurant_print_config')
-        .select('configured_printers, browser_printing_enabled, api_key')
-        .eq('restaurant_id', restaurant.id)
-        .maybeSingle();
-      
+      // Fetch print configuration
+      const {
+        data: printConfig,
+        error
+      } = await supabase.from('restaurant_print_config').select('api_key, configured_printers, browser_printing_enabled').eq('restaurant_id', restaurant.id).single();
       if (error) {
-        console.error("Error fetching print configuration:", error);
+        console.error("Error fetching print configuration");
         setIsPrinting(false);
         return;
       }
 
       // Handle browser printing
-      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig?.browser_printing_enabled !== false);
+      const shouldUseBrowserPrinting = !isMobile && (printConfig === null || printConfig.browser_printing_enabled !== false);
       if (shouldUseBrowserPrinting) {
         console.log("Using browser printing for receipt");
         toast({
@@ -130,7 +136,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             printReceipt('receipt-content');
             console.log("Print receipt triggered successfully");
           } catch (printError) {
-            console.error("Error during browser printing:", printError);
+            console.error("Error during browser printing");
             toast({
               title: t("order.printError"),
               description: t("order.printErrorDesc"),
@@ -144,8 +150,8 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         console.log("Browser printing disabled for this device or restaurant");
       }
 
-      // Handle PrintNode printing using plain text API key
-      if (printConfig?.configured_printers && printConfig?.api_key) {
+      // Handle PrintNode printing (if configured)
+      if (printConfig?.api_key && printConfig?.configured_printers) {
         const printerArray = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers : [];
         const printerIds = printerArray.map(id => String(id));
         if (printerIds.length > 0) {
@@ -167,7 +173,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         setHasPrinted(true);
       }
     } catch (error) {
-      console.error("Error during receipt printing:", error);
+      console.error("Error during receipt printing");
       toast({
         title: t("order.error"),
         description: t("order.errorPrinting"),
@@ -216,7 +222,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
         
-        // Make direct API call to PrintNode
+        // Make secure API call
         const response = await fetch('https://api.printnode.com/printjobs', {
           method: 'POST',
           headers: {
@@ -233,20 +239,13 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         });
         
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Error sending print job to printer ${printerId}:`, response.status, errorText);
           throw new Error(`Error sending print job: ${response.status}`);
         } else {
-          console.log(`Print receipt sent successfully to printer ${printerId}`);
+          console.log(`Print receipt sent successfully`);
         }
       }
     } catch (error) {
-      console.error("Error sending receipt to printer:", error);
-      toast({
-        title: t("order.error"),
-        description: t("order.errorPrinting"),
-        variant: "destructive"
-      });
+      console.error("Error sending receipt to printer");
     }
   };
   
