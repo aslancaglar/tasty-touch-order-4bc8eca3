@@ -3,232 +3,109 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, AlertCircle, RefreshCw, Printer, Settings, Info } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { printNodeService } from "@/services/printnode-service";
-import { debugApiKeyService } from "@/services/secure-api-keys";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { 
+  Stethoscope, 
+  CheckCircle, 
+  XCircle, 
+  AlertTriangle, 
+  ChevronDown, 
+  ChevronRight,
+  RefreshCw,
+  Info,
+  Wifi,
+  Key,
+  Printer,
+  Shield,
+  Database
+} from "lucide-react";
+import { printNodeService, DiagnosticResult, DiagnosticResponse } from "@/services/printnode-service";
+import { toast } from "@/hooks/use-toast";
 
 interface PrintNodeDiagnosticsProps {
   restaurantId: string;
 }
 
-interface DiagnosticResult {
-  category: string;
-  status: 'success' | 'warning' | 'error' | 'info';
-  message: string;
-  details?: any;
-}
-
-export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ restaurantId }) => {
-  const { toast } = useToast();
-  const [diagnostics, setDiagnostics] = useState<DiagnosticResult[]>([]);
+const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ restaurantId }) => {
   const [isRunning, setIsRunning] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticResponse | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const runDiagnostics = async () => {
     setIsRunning(true);
-    const results: DiagnosticResult[] = [];
-
+    setDiagnostics(null);
+    
     try {
-      console.log(`[PrintNodeDiagnostics] Starting comprehensive diagnostics for restaurant: ${restaurantId}`);
-
-      // Test 1: Environment check
-      try {
-        await debugApiKeyService.diagnoseEnvironment();
-        results.push({
-          category: "Environment",
-          status: "success",
-          message: "Environment and authentication validated"
-        });
-      } catch (error) {
-        results.push({
-          category: "Environment", 
-          status: "error",
-          message: `Environment check failed: ${error.message}`
-        });
-      }
-
-      // Test 2: Restaurant Context Validation
-      try {
-        const contextValidation = await debugApiKeyService.testRetrieveKey(restaurantId, 'printnode');
-        results.push({
-          category: "Restaurant Access",
-          status: "success",
-          message: "Restaurant access and permissions verified"
-        });
-      } catch (error) {
-        results.push({
-          category: "Restaurant Access",
-          status: "error",
-          message: `Access validation failed: ${error.message}`
-        });
-      }
-
-      // Test 3: Enhanced PrintNode Configuration Check
-      try {
-        const diagnosticResult = await printNodeService.diagnoseConfiguration(restaurantId);
-        
-        // Add each diagnostic test as a separate result
-        diagnosticResult.diagnostics.forEach(diagnostic => {
-          results.push({
-            category: `PrintNode ${diagnostic.test}`,
-            status: diagnostic.passed ? "success" : "error",
-            message: diagnostic.message,
-            details: diagnostic.details
-          });
-        });
-
-        // Overall configuration status
-        if (diagnosticResult.success) {
-          results.push({
-            category: "PrintNode Configuration",
-            status: "success",
-            message: "PrintNode is fully configured and operational"
-          });
-        } else {
-          results.push({
-            category: "PrintNode Configuration",
-            status: "error",
-            message: "PrintNode configuration has issues that need attention"
-          });
-        }
-
-      } catch (error) {
-        results.push({
-          category: "PrintNode Configuration",
-          status: "error",
-          message: `Configuration diagnosis failed: ${error.message}`
-        });
-      }
-
-      // Test 4: PrintNode Connection Test
-      try {
-        const connectionTest = await printNodeService.testConnection(restaurantId);
-        results.push({
-          category: "PrintNode Connection",
-          status: connectionTest.success ? "success" : "error",
-          message: connectionTest.message,
-          details: connectionTest.details
-        });
-      } catch (error) {
-        results.push({
-          category: "PrintNode Connection",
-          status: "error",
-          message: `Connection test failed: ${error.message}`
-        });
-      }
-
-      // Test 5: Database Print Configuration
-      try {
-        const { supabase } = await import('@/integrations/supabase/client');
-        const { data: printConfig, error } = await supabase
-          .from('restaurant_print_config')
-          .select('*')
-          .eq('restaurant_id', restaurantId)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          throw error;
-        }
-
-        if (printConfig) {
-          const printerCount = Array.isArray(printConfig.configured_printers) ? printConfig.configured_printers.length : 0;
-          results.push({
-            category: "Database Configuration",
-            status: printerCount > 0 ? "success" : "warning",
-            message: printerCount > 0 
-              ? `Print configuration found with ${printerCount} printer(s)` 
-              : "Print configuration found but no printers configured",
-            details: {
-              ...printConfig,
-              printerCount
-            }
-          });
-        } else {
-          results.push({
-            category: "Database Configuration",
-            status: "warning",
-            message: "No print configuration found in database"
-          });
-        }
-      } catch (error) {
-        results.push({
-          category: "Database Configuration",
-          status: "error",
-          message: `Database check failed: ${error.message}`
-        });
-      }
-
-      // Test 6: API Key Service Detailed Analysis
-      try {
-        await debugApiKeyService.debugRestaurantApiKeys(restaurantId);
-        results.push({
-          category: "API Key Analysis",
-          status: "info",
-          message: "Detailed API key analysis completed (check console for details)"
-        });
-      } catch (error) {
-        results.push({
-          category: "API Key Analysis",
-          status: "error",
-          message: `API key analysis failed: ${error.message}`
-        });
-      }
-
-      setDiagnostics(results);
-
-      // Show summary toast
-      const errorCount = results.filter(r => r.status === 'error').length;
-      const warningCount = results.filter(r => r.status === 'warning').length;
-
-      if (errorCount === 0 && warningCount === 0) {
+      console.log("[PrintNodeDiagnostics] Starting comprehensive diagnostics...");
+      const result = await printNodeService.diagnoseConfiguration(restaurantId);
+      setDiagnostics(result);
+      
+      if (result.success) {
         toast({
           title: "Diagnostics Complete",
           description: "All systems are working correctly",
         });
       } else {
         toast({
-          title: "Diagnostics Complete",
-          description: `Found ${errorCount} errors and ${warningCount} warnings`,
-          variant: errorCount > 0 ? "destructive" : "default"
+          title: "Issues Detected",
+          description: "Some problems were found. Check the details below.",
+          variant: "destructive",
         });
       }
-
     } catch (error) {
-      console.error("Diagnostics failed:", error);
+      console.error("[PrintNodeDiagnostics] Diagnostic error:", error);
       toast({
-        title: "Diagnostics Failed",
-        description: error.message,
-        variant: "destructive"
+        title: "Diagnostic Failed",
+        description: "Unable to complete system diagnostics",
+        variant: "destructive",
       });
     } finally {
       setIsRunning(false);
     }
   };
 
-  const getStatusIcon = (status: DiagnosticResult['status']) => {
-    switch (status) {
-      case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case 'warning':
-        return <AlertCircle className="h-5 w-5 text-yellow-600" />;
-      case 'error':
-        return <XCircle className="h-5 w-5 text-red-600" />;
-      case 'info':
-        return <Info className="h-5 w-5 text-blue-600" />;
+  const toggleExpanded = (testName: string) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(testName)) {
+      newExpanded.delete(testName);
+    } else {
+      newExpanded.add(testName);
+    }
+    setExpandedItems(newExpanded);
+  };
+
+  const getTestIcon = (test: DiagnosticResult) => {
+    const iconClass = "h-4 w-4";
+    
+    switch (test.test) {
+      case "Restaurant ID Validation":
+        return <Database className={iconClass} />;
+      case "Authentication Context":
+        return <Shield className={iconClass} />;
+      case "API Key Retrieval":
+      case "API Key Validation":
+        return <Key className={iconClass} />;
+      case "Printer Configuration":
+        return <Printer className={iconClass} />;
+      case "Network Connectivity":
+        return <Wifi className={iconClass} />;
+      default:
+        return <Info className={iconClass} />;
     }
   };
 
-  const getStatusBadge = (status: DiagnosticResult['status']) => {
-    const variants = {
-      success: 'default' as const,
-      warning: 'secondary' as const,
-      error: 'destructive' as const,
-      info: 'outline' as const
-    };
-    
+  const getStatusIcon = (passed: boolean) => {
+    return passed ? (
+      <CheckCircle className="h-4 w-4 text-green-600" />
+    ) : (
+      <XCircle className="h-4 w-4 text-red-600" />
+    );
+  };
+
+  const getStatusBadge = (passed: boolean) => {
     return (
-      <Badge variant={variants[status]} className="ml-auto">
-        {status.toUpperCase()}
+      <Badge variant={passed ? "default" : "destructive"} className="ml-2">
+        {passed ? "PASS" : "FAIL"}
       </Badge>
     );
   };
@@ -237,71 +114,145 @@ export const PrintNodeDiagnostics: React.FC<PrintNodeDiagnosticsProps> = ({ rest
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Settings className="h-5 w-5" />
-          Enhanced PrintNode Diagnostics
+          <Stethoscope className="h-5 w-5" />
+          PrintNode System Diagnostics
         </CardTitle>
         <CardDescription>
-          Comprehensive testing and troubleshooting for PrintNode configuration
+          Run comprehensive tests to identify and troubleshoot printing issues
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button 
-          onClick={runDiagnostics} 
-          disabled={isRunning}
-          className="w-full"
-        >
-          {isRunning ? (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              Running Comprehensive Diagnostics...
-            </>
-          ) : (
-            <>
-              <Printer className="h-4 w-4 mr-2" />
-              Run Enhanced Diagnostics
-            </>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={runDiagnostics} 
+            disabled={isRunning}
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRunning ? 'animate-spin' : ''}`} />
+            {isRunning ? 'Running Diagnostics...' : 'Run Full Diagnostics'}
+          </Button>
+          
+          {diagnostics?.context && (
+            <div className="text-sm text-muted-foreground">
+              Last run: {new Date(diagnostics.context.timestamp).toLocaleTimeString()}
+            </div>
           )}
-        </Button>
+        </div>
 
-        {diagnostics.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="font-semibold">Diagnostic Results</h3>
-            {diagnostics.map((result, index) => (
-              <div 
-                key={index}
-                className="flex items-start gap-3 p-3 border rounded-lg"
-              >
-                {getStatusIcon(result.status)}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">{result.category}</h4>
-                    {getStatusBadge(result.status)}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {result.message}
-                  </p>
-                  {result.details && (
-                    <details className="mt-2">
-                      <summary className="text-xs text-muted-foreground cursor-pointer">
-                        Show Details
-                      </summary>
-                      <pre className="text-xs bg-gray-50 p-2 rounded mt-1 overflow-auto">
-                        {JSON.stringify(result.details, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              </div>
-            ))}
+        {isRunning && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Running comprehensive system checks...
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>• Validating restaurant context</div>
+              <div>• Checking authentication</div>
+              <div>• Testing API key retrieval</div>
+              <div>• Validating with PrintNode</div>
+              <div>• Checking printer configuration</div>
+              <div>• Testing network connectivity</div>
+            </div>
           </div>
         )}
 
-        {diagnostics.length > 0 && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Tip:</strong> Open your browser's developer console (F12) to see detailed logs 
-              that can help identify specific issues with PrintNode configuration.
-            </p>
+        {diagnostics && (
+          <div className="space-y-4">
+            {/* Overall Status */}
+            <div className={`p-4 rounded-lg border-2 ${
+              diagnostics.success 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                {diagnostics.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                )}
+                <span className="font-medium">
+                  {diagnostics.success 
+                    ? 'All Systems Operational' 
+                    : 'Issues Detected'
+                  }
+                </span>
+                <Badge variant={diagnostics.success ? "default" : "destructive"}>
+                  {diagnostics.diagnostics.filter(d => d.passed).length}/{diagnostics.diagnostics.length} Tests Passed
+                </Badge>
+              </div>
+            </div>
+
+            {/* System Context */}
+            {diagnostics.context && (
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="text-sm font-medium mb-2">System Context</div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <div>Restaurant ID: {diagnostics.context.restaurantId}</div>
+                  <div>Environment: {diagnostics.context.isDevelopment ? 'Development' : 'Production'}</div>
+                  <div>Timestamp: {new Date(diagnostics.context.timestamp).toLocaleString()}</div>
+                  <div>User Agent: {diagnostics.context.userAgent.substring(0, 50)}...</div>
+                </div>
+              </div>
+            )}
+
+            {/* Diagnostic Results */}
+            <div className="space-y-2">
+              <h4 className="font-medium">Detailed Test Results</h4>
+              {diagnostics.diagnostics.map((test, index) => (
+                <Collapsible key={index}>
+                  <CollapsibleTrigger 
+                    className="w-full"
+                    onClick={() => toggleExpanded(test.test)}
+                  >
+                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        {getTestIcon(test)}
+                        <span className="font-medium">{test.test}</span>
+                        {getStatusIcon(test.passed)}
+                        {getStatusBadge(test.passed)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          {test.message}
+                        </span>
+                        {expandedItems.has(test.test) ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    {test.details && (
+                      <div className="p-3 mt-1 bg-gray-50 rounded-lg border">
+                        <div className="text-sm font-medium mb-2">Technical Details</div>
+                        <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                          {JSON.stringify(test.details, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+            </div>
+
+            {/* Recommendations */}
+            {!diagnostics.success && (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <span className="font-medium text-yellow-800">Recommended Actions</span>
+                </div>
+                <ul className="text-sm text-yellow-700 space-y-1">
+                  {diagnostics.diagnostics
+                    .filter(d => !d.passed)
+                    .map((test, index) => (
+                      <li key={index}>• {test.message}</li>
+                    ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

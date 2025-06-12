@@ -1,5 +1,6 @@
 
 import { secureApiKeyService } from "./secure-api-keys";
+import { handleError, handleNetworkError, handleApiKeyError } from "@/utils/error-handler";
 
 export interface PrintNodeConfig {
   apiKey: string;
@@ -21,8 +22,27 @@ export interface PrintJobResult {
   error?: string;
 }
 
+export interface DiagnosticResult {
+  test: string;
+  passed: boolean;
+  message: string;
+  details?: any;
+}
+
+export interface DiagnosticResponse {
+  success: boolean;
+  diagnostics: DiagnosticResult[];
+  context?: {
+    restaurantId: string;
+    timestamp: string;
+    userAgent: string;
+    isDevelopment: boolean;
+  };
+}
+
 class PrintNodeService {
   private readonly API_BASE_URL = 'https://api.printnode.com';
+  private readonly isDevelopment = import.meta.env.DEV;
 
   async getConfiguration(restaurantId: string): Promise<PrintNodeConfig> {
     try {
@@ -334,112 +354,297 @@ class PrintNodeService {
     }
   }
 
-  // Enhanced diagnostic method
-  async diagnoseConfiguration(restaurantId: string): Promise<{ 
-    success: boolean; 
-    diagnostics: Array<{ test: string; passed: boolean; message: string; details?: any }> 
-  }> {
-    const diagnostics = [];
+  // Enhanced diagnostic method with comprehensive error handling
+  async diagnoseConfiguration(restaurantId: string): Promise<DiagnosticResponse> {
+    const diagnostics: DiagnosticResult[] = [];
     let overallSuccess = true;
+
+    console.log(`[PrintNodeService] Starting comprehensive diagnostics for restaurant: ${restaurantId}`);
 
     try {
       // Test 1: Restaurant ID validation
       if (!restaurantId) {
         diagnostics.push({
-          test: "Restaurant ID",
+          test: "Restaurant ID Validation",
           passed: false,
-          message: "No restaurant ID provided"
+          message: "No restaurant ID provided - this is a critical error in the order flow"
         });
         overallSuccess = false;
       } else {
         diagnostics.push({
-          test: "Restaurant ID",
+          test: "Restaurant ID Validation",
           passed: true,
-          message: "Restaurant ID provided",
+          message: "Restaurant ID provided successfully",
           details: { restaurantId }
         });
       }
 
-      // Test 2: API Key retrieval
+      // Test 2: Authentication context check
       try {
+        const { data: { session } } = await import('@/integrations/supabase/client').then(module => 
+          module.supabase.auth.getSession()
+        );
+        
+        diagnostics.push({
+          test: "Authentication Context",
+          passed: !!session,
+          message: session ? "User session active" : "No user session found",
+          details: { 
+            hasSession: !!session, 
+            userId: session?.user?.id,
+            isDevelopment: this.isDevelopment
+          }
+        });
+
+        if (!session && !this.isDevelopment) {
+          console.warn("[PrintNodeService] No authentication session - this may cause permission issues");
+        }
+      } catch (authError) {
+        diagnostics.push({
+          test: "Authentication Context",
+          passed: false,
+          message: `Authentication check failed: ${authError.message}`
+        });
+        console.error("[PrintNodeService] Authentication context error:", authError);
+      }
+
+      // Test 3: API Key retrieval with enhanced error handling
+      try {
+        console.log("[PrintNodeService] Testing API key retrieval...");
         const apiKey = await secureApiKeyService.retrieveApiKey(restaurantId, 'printnode');
+        
         if (apiKey) {
           diagnostics.push({
             test: "API Key Retrieval",
             passed: true,
-            message: "API key retrieved successfully",
-            details: { keyLength: apiKey.length, keyPrefix: apiKey.substring(0, 8) + '...' }
+            message: "API key retrieved successfully from secure storage",
+            details: { 
+              keyLength: apiKey.length, 
+              keyPrefix: apiKey.substring(0, 8) + '...',
+              secureStorage: true
+            }
           });
 
-          // Test 3: API Key validation
-          const isValid = await this.validateApiKey(apiKey);
-          diagnostics.push({
-            test: "API Key Validation",
-            passed: isValid,
-            message: isValid ? "API key is valid" : "API key is invalid or expired"
-          });
-          if (!isValid) overallSuccess = false;
+          // Test 4: API Key validation with PrintNode
+          console.log("[PrintNodeService] Validating API key with PrintNode...");
+          try {
+            const isValid = await this.validateApiKey(apiKey);
+            diagnostics.push({
+              test: "API Key Validation",
+              passed: isValid,
+              message: isValid ? "API key is valid with PrintNode servers" : "API key is invalid or expired",
+              details: { isValid, testedWith: "PrintNode API" }
+            });
+            if (!isValid) overallSuccess = false;
+          } catch (validationError) {
+            diagnostics.push({
+              test: "API Key Validation",
+              passed: false,
+              message: `API key validation failed: ${validationError.message}`,
+              details: { error: validationError.message }
+            });
+            overallSuccess = false;
+          }
 
         } else {
           diagnostics.push({
             test: "API Key Retrieval",
             passed: false,
-            message: "No API key found in secure storage"
+            message: "No API key found in secure storage - PrintNode not configured"
           });
           overallSuccess = false;
         }
-      } catch (error) {
+      } catch (keyError) {
         diagnostics.push({
           test: "API Key Retrieval",
           passed: false,
-          message: `API key retrieval failed: ${error.message}`
+          message: `API key retrieval failed: ${keyError.message}`,
+          details: { error: keyError.message, errorType: keyError.constructor.name }
         });
         overallSuccess = false;
+        console.error("[PrintNodeService] API key retrieval error:", keyError);
       }
 
-      // Test 4: Printer configuration
+      // Test 5: Printer configuration with fallback handling
       try {
-        const { data: printConfig } = await import('@/integrations/supabase/client').then(module => 
+        console.log("[PrintNodeService] Testing printer configuration...");
+        const { data: printConfig, error: configError } = await import('@/integrations/supabase/client').then(module => 
           module.supabase
             .from('restaurant_print_config')
-            .select('configured_printers')
+            .select('configured_printers, browser_printing_enabled')
             .eq('restaurant_id', restaurantId)
             .single()
         );
 
-        const printerIds = Array.isArray(printConfig?.configured_printers) 
-          ? printConfig.configured_printers.map(id => String(id))
-          : [];
+        if (configError && configError.code !== 'PGRST116') {
+          diagnostics.push({
+            test: "Printer Configuration",
+            passed: false,
+            message: `Database error retrieving printer config: ${configError.message}`,
+            details: { error: configError }
+          });
+          overallSuccess = false;
+        } else {
+          const printerIds = Array.isArray(printConfig?.configured_printers) 
+            ? printConfig.configured_printers.map(id => String(id))
+            : [];
 
-        diagnostics.push({
-          test: "Printer Configuration",
-          passed: printerIds.length > 0,
-          message: printerIds.length > 0 
-            ? `${printerIds.length} printer(s) configured` 
-            : "No printers configured",
-          details: { printerIds }
-        });
+          const hasPrinters = printerIds.length > 0;
+          const browserPrintingEnabled = printConfig?.browser_printing_enabled ?? true;
 
-        if (printerIds.length === 0) overallSuccess = false;
+          diagnostics.push({
+            test: "Printer Configuration",
+            passed: hasPrinters || browserPrintingEnabled,
+            message: hasPrinters 
+              ? `${printerIds.length} printer(s) configured` 
+              : browserPrintingEnabled 
+                ? "No PrintNode printers configured, but browser printing is available"
+                : "No printing options configured",
+            details: { 
+              printerIds, 
+              printerCount: printerIds.length,
+              browserPrintingEnabled,
+              hasAnyPrintingOption: hasPrinters || browserPrintingEnabled
+            }
+          });
 
-      } catch (error) {
+          if (!hasPrinters && !browserPrintingEnabled) {
+            overallSuccess = false;
+          }
+        }
+      } catch (printerError) {
         diagnostics.push({
           test: "Printer Configuration",
           passed: false,
-          message: `Failed to check printer configuration: ${error.message}`
+          message: `Failed to check printer configuration: ${printerError.message}`,
+          details: { error: printerError.message }
         });
         overallSuccess = false;
+        console.error("[PrintNodeService] Printer configuration error:", printerError);
       }
 
-      return { success: overallSuccess, diagnostics };
+      // Test 6: Network connectivity
+      try {
+        console.log("[PrintNodeService] Testing network connectivity...");
+        const networkTest = await Promise.race([
+          fetch('https://httpbin.org/get', { method: 'GET' }),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Network timeout')), 5000)
+          )
+        ]);
+
+        diagnostics.push({
+          test: "Network Connectivity",
+          passed: networkTest.ok,
+          message: networkTest.ok ? "Network connectivity is working" : "Network connectivity issues detected",
+          details: { status: networkTest.status, online: navigator?.onLine }
+        });
+
+        if (!networkTest.ok) {
+          console.warn("[PrintNodeService] Network connectivity issues detected");
+        }
+      } catch (networkError) {
+        diagnostics.push({
+          test: "Network Connectivity",
+          passed: false,
+          message: `Network test failed: ${networkError.message}`,
+          details: { error: networkError.message, online: navigator?.onLine }
+        });
+        console.warn("[PrintNodeService] Network test failed:", networkError);
+      }
+
+      const response: DiagnosticResponse = { 
+        success: overallSuccess, 
+        diagnostics,
+        context: {
+          restaurantId,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator?.userAgent || 'Unknown',
+          isDevelopment: this.isDevelopment
+        }
+      };
+
+      console.log(`[PrintNodeService] Diagnostics completed:`, {
+        overallSuccess,
+        testsRun: diagnostics.length,
+        testsPassed: diagnostics.filter(d => d.passed).length,
+        testsFailed: diagnostics.filter(d => !d.passed).length
+      });
+
+      return response;
 
     } catch (error) {
+      console.error("[PrintNodeService] Critical error during diagnostics:", error);
+      
       diagnostics.push({
         test: "Overall Diagnosis",
         passed: false,
-        message: `Diagnosis failed: ${error.message}`
+        message: `Diagnosis failed with critical error: ${error.message}`,
+        details: { error: error.message, errorType: error.constructor.name }
       });
-      return { success: false, diagnostics };
+      
+      return { 
+        success: false, 
+        diagnostics,
+        context: {
+          restaurantId,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator?.userAgent || 'Unknown',
+          isDevelopment: this.isDevelopment
+        }
+      };
+    }
+  }
+
+  // Helper method for graceful degradation
+  async getAvailablePrintingOptions(restaurantId: string): Promise<{
+    printNodeAvailable: boolean;
+    browserPrintingAvailable: boolean;
+    recommendedMethod: 'printnode' | 'browser' | 'none';
+    message: string;
+  }> {
+    try {
+      const config = await this.getConfiguration(restaurantId);
+      const hasPrintNodeConfig = config.isConfigured;
+      
+      // Check browser printing setting
+      const { data: printConfig } = await import('@/integrations/supabase/client').then(module => 
+        module.supabase
+          .from('restaurant_print_config')
+          .select('browser_printing_enabled')
+          .eq('restaurant_id', restaurantId)
+          .single()
+      );
+      
+      const browserPrintingEnabled = printConfig?.browser_printing_enabled ?? true;
+      
+      let recommendedMethod: 'printnode' | 'browser' | 'none' = 'none';
+      let message = '';
+      
+      if (hasPrintNodeConfig) {
+        recommendedMethod = 'printnode';
+        message = 'PrintNode is configured and available';
+      } else if (browserPrintingEnabled) {
+        recommendedMethod = 'browser';
+        message = 'Browser printing is available as fallback';
+      } else {
+        message = 'No printing options are configured';
+      }
+      
+      return {
+        printNodeAvailable: hasPrintNodeConfig,
+        browserPrintingAvailable: browserPrintingEnabled,
+        recommendedMethod,
+        message
+      };
+    } catch (error) {
+      console.error("[PrintNodeService] Error checking printing options:", error);
+      return {
+        printNodeAvailable: false,
+        browserPrintingAvailable: true, // Default fallback
+        recommendedMethod: 'browser',
+        message: 'Using browser printing as safe fallback'
+      };
     }
   }
 }
