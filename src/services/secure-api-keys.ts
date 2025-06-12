@@ -1,5 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_URL } from "@/config/supabase";
 
 export type ServiceName = 'printnode' | 'stripe' | 'openai' | 'sendgrid';
 
@@ -49,8 +49,8 @@ class SecureApiKeyService implements ApiKeyServiceInterface {
   private readonly EDGE_FUNCTION_URL: string;
 
   constructor() {
-    // Fix the supabaseUrl access issue by using the public URL from config
-    this.EDGE_FUNCTION_URL = `https://yifimiqeybttmbhuplaq.supabase.co/functions/v1/api-key-manager`;
+    // Use dynamic URL from config instead of hardcoded
+    this.EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/api-key-manager`;
   }
 
   private async makeSecureRequest(action: string, data: any): Promise<any> {
@@ -63,6 +63,8 @@ class SecureApiKeyService implements ApiKeyServiceInterface {
         console.error("[SecureApiKeyService] No valid session found");
         throw new Error("Authentication required");
       }
+
+      console.log(`[SecureApiKeyService] Using edge function URL: ${this.EDGE_FUNCTION_URL}`);
 
       const response = await fetch(this.EDGE_FUNCTION_URL, {
         method: 'POST',
@@ -431,16 +433,23 @@ class SecureApiKeyService implements ApiKeyServiceInterface {
     }
   }
 
-  // Health check method for debugging
-  async healthCheck(): Promise<boolean> {
+  // Enhanced health check method with better diagnostics
+  async healthCheck(): Promise<{ isHealthy: boolean; details: any }> {
     try {
-      console.log("[SecureApiKeyService] Performing health check");
+      console.log("[SecureApiKeyService] Performing comprehensive health check");
       
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
         console.error("[SecureApiKeyService] Health check failed - no session");
-        return false;
+        return { 
+          isHealthy: false, 
+          details: { 
+            error: "No authentication session",
+            edgeFunctionUrl: this.EDGE_FUNCTION_URL,
+            timestamp: new Date().toISOString()
+          }
+        };
       }
 
       const response = await fetch(this.EDGE_FUNCTION_URL, {
@@ -455,12 +464,29 @@ class SecureApiKeyService implements ApiKeyServiceInterface {
       });
 
       const isHealthy = response.ok;
-      console.log(`[SecureApiKeyService] Health check result: ${isHealthy ? 'HEALTHY' : 'UNHEALTHY'}`);
-      return isHealthy;
+      const responseText = await response.text();
+      
+      const details = {
+        status: response.status,
+        statusText: response.statusText,
+        edgeFunctionUrl: this.EDGE_FUNCTION_URL,
+        response: responseText,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log(`[SecureApiKeyService] Health check result: ${isHealthy ? 'HEALTHY' : 'UNHEALTHY'}`, details);
+      return { isHealthy, details };
       
     } catch (error) {
       console.error("[SecureApiKeyService] Health check failed:", error);
-      return false;
+      return { 
+        isHealthy: false, 
+        details: { 
+          error: error.message,
+          edgeFunctionUrl: this.EDGE_FUNCTION_URL,
+          timestamp: new Date().toISOString()
+        }
+      };
     }
   }
 }
@@ -468,17 +494,28 @@ class SecureApiKeyService implements ApiKeyServiceInterface {
 // Export singleton instance
 export const secureApiKeyService = new SecureApiKeyService();
 
-// Export additional utilities for debugging
+// Enhanced debugging utilities
 export const debugApiKeyService = {
   async testConnection(): Promise<void> {
     console.log("[Debug] Testing SecureApiKeyService connection...");
-    const isHealthy = await secureApiKeyService.healthCheck();
-    console.log(`[Debug] Service health: ${isHealthy ? 'OK' : 'FAILED'}`);
+    const { isHealthy, details } = await secureApiKeyService.healthCheck();
+    console.log(`[Debug] Service health: ${isHealthy ? 'OK' : 'FAILED'}`, details);
   },
   
   async testRetrieveKey(restaurantId: string, serviceName: ServiceName): Promise<void> {
     console.log(`[Debug] Testing API key retrieval for ${serviceName}...`);
     const key = await secureApiKeyService.retrieveApiKey(restaurantId, serviceName);
     console.log(`[Debug] Key retrieval result: ${key ? 'SUCCESS (key found)' : 'FAILED (no key)'}`);
+  },
+
+  async diagnoseEnvironment(): Promise<void> {
+    console.log("[Debug] Environment diagnostics:");
+    console.log("- Current URL:", window.location.href);
+    console.log("- SUPABASE_URL:", SUPABASE_URL);
+    console.log("- User Agent:", navigator.userAgent);
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log("- Session exists:", !!session);
+    console.log("- Session valid:", !!(session?.access_token));
   }
 };
