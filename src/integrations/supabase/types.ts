@@ -913,6 +913,10 @@ export type Database = {
         Args: { category_uuid: string }
         Returns: string
       }
+      get_restaurant_from_menu_item: {
+        Args: { item_uuid: string }
+        Returns: string
+      }
       get_restaurant_from_order: {
         Args: { order_uuid: string }
         Returns: string
