@@ -1,4 +1,3 @@
-
 import { 
   getRestaurantBySlug, 
   getMenuForRestaurant,
@@ -75,6 +74,27 @@ const shouldThrottleRefresh = (): boolean => {
   }
   
   return false;
+};
+
+// Export the simple functions that KioskView expects
+export const getRestaurantData = async (restaurantSlug: string) => {
+  const restaurant = await getRestaurantBySlug(restaurantSlug);
+  if (!restaurant) {
+    throw new Error(`Restaurant not found: ${restaurantSlug}`);
+  }
+
+  const categories = await getMenuForRestaurant(restaurant.id);
+  const menuItems = categories.flatMap(category => category.items);
+
+  return {
+    restaurant,
+    categories,
+    menuItems
+  };
+};
+
+export const preloadImages = async (imageUrls: string[], onProgress?: (progress: number) => void) => {
+  return precacheImages(imageUrls);
 };
 
 // Main preloader function - REVISED to fetch first, then clear cache only on success

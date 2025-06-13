@@ -4,19 +4,19 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 const INACTIVITY_TIMEOUT = 60000; // 60 seconds
 const DIALOG_TIMEOUT = 10000; // 10 seconds
 
-export const useInactivityTimer = (onReset: () => void) => {
-  const [showDialog, setShowDialog] = useState(false);
+export const useInactivityTimer = (onReset?: () => void) => {
+  const [showInactivityDialog, setShowInactivityDialog] = useState(false);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const dialogTimeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const inactiveRef = useRef<boolean>(false);
 
   const resetTimer = useCallback(() => {
     // Only reset the timer if the dialog is not showing
-    if (!showDialog) {
+    if (!showInactivityDialog) {
       setLastActivity(Date.now());
       inactiveRef.current = false;
     }
-  }, [showDialog]);
+  }, [showInactivityDialog]);
 
   const handleContinue = useCallback(() => {
     // Clear the auto-reset timeout when user clicks continue
@@ -25,7 +25,7 @@ export const useInactivityTimer = (onReset: () => void) => {
       dialogTimeoutIdRef.current = null;
     }
     setLastActivity(Date.now());
-    setShowDialog(false);
+    setShowInactivityDialog(false);
     inactiveRef.current = false;
   }, []);
 
@@ -35,9 +35,11 @@ export const useInactivityTimer = (onReset: () => void) => {
       clearTimeout(dialogTimeoutIdRef.current);
       dialogTimeoutIdRef.current = null;
     }
-    setShowDialog(false);
+    setShowInactivityDialog(false);
     inactiveRef.current = false;
-    onReset();
+    if (onReset) {
+      onReset();
+    }
   }, [onReset]);
 
   // Called when we want to perform a complete reset of the timer
@@ -46,7 +48,7 @@ export const useInactivityTimer = (onReset: () => void) => {
       clearTimeout(dialogTimeoutIdRef.current);
       dialogTimeoutIdRef.current = null;
     }
-    setShowDialog(false);
+    setShowInactivityDialog(false);
     setLastActivity(Date.now());
     inactiveRef.current = false;
   }, []);
@@ -62,7 +64,7 @@ export const useInactivityTimer = (onReset: () => void) => {
 
     const handleActivity = () => {
       // Only register activity if dialog is not showing
-      if (!showDialog) {
+      if (!showInactivityDialog) {
         resetTimer();
       }
     };
@@ -75,9 +77,9 @@ export const useInactivityTimer = (onReset: () => void) => {
       const now = Date.now();
       const timeSinceLastActivity = now - lastActivity;
 
-      if (!showDialog && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+      if (!showInactivityDialog && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
         console.log("Inactivity detected, showing dialog");
-        setShowDialog(true);
+        setShowInactivityDialog(true);
         
         // Set timer to auto-reset after dialog timeout
         if (dialogTimeoutIdRef.current) {
@@ -86,9 +88,11 @@ export const useInactivityTimer = (onReset: () => void) => {
         
         dialogTimeoutIdRef.current = setTimeout(() => {
           console.log("Auto-closing dialog after timeout - redirecting to welcome page");
-          setShowDialog(false);
+          setShowInactivityDialog(false);
           inactiveRef.current = true;
-          onReset(); // Reset to welcome page after timeout
+          if (onReset) {
+            onReset(); // Reset to welcome page after timeout
+          }
         }, DIALOG_TIMEOUT);
       }
     }, 1000);
@@ -102,12 +106,13 @@ export const useInactivityTimer = (onReset: () => void) => {
         clearTimeout(dialogTimeoutIdRef.current);
       }
     };
-  }, [lastActivity, showDialog, onReset, resetTimer]);
+  }, [lastActivity, showInactivityDialog, onReset, resetTimer]);
 
   return {
-    showDialog,
+    showInactivityDialog,
+    resetTimer,
     handleContinue,
-    handleCancel,
+    handleCancel: handleCancel,
     fullReset
   };
 };

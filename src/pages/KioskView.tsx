@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Dispatch, SetStateAction } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CartItem, Restaurant, MenuCategory, MenuItemWithOptions } from "@/types/database-types";
@@ -56,8 +56,8 @@ const KioskView: React.FC = () => {
   const uiLanguage = (restaurant?.ui_language as SupportedLanguage) || 'fr';
   const { t } = useTranslation(uiLanguage);
 
-  // Inactivity timer
-  const { showInactivityDialog, resetTimer, handleContinue } = useInactivityTimer();
+  // Inactivity timer - pass the reset function
+  const { showInactivityDialog, resetTimer, handleContinue } = useInactivityTimer(handleBackToWelcome);
 
   // Data fetching and effects
   // Data fetching
@@ -415,7 +415,6 @@ const KioskView: React.FC = () => {
   // Show preloading screen if not complete
   if (!preloadingComplete) {
     return <PreloadingScreen 
-      progress={preloadingProgress} 
       uiLanguage={uiLanguage}
     />;
   }
@@ -426,7 +425,7 @@ const KioskView: React.FC = () => {
       {showWelcome && (
         <WelcomePage
           restaurant={restaurant}
-          onStartOrder={handleStartOrder}
+          onStart={handleStartOrder}
           uiLanguage={uiLanguage}
         />
       )}
@@ -434,8 +433,9 @@ const KioskView: React.FC = () => {
       {/* Order type selection */}
       {showOrderTypeSelection && (
         <OrderTypeSelection
+          isOpen={showOrderTypeSelection}
+          onClose={() => setShowOrderTypeSelection(false)}
           onSelectOrderType={handleOrderTypeSelected}
-          onBack={handleBackToWelcome}
           uiLanguage={uiLanguage}
         />
       )}
@@ -443,10 +443,9 @@ const KioskView: React.FC = () => {
       {/* Table selection */}
       {showTableSelection && restaurant && (
         <TableSelection
-          restaurantId={restaurant.id}
-          onSelectTable={handleTableSelected}
-          onBack={() => setShowOrderTypeSelection(true)}
-          uiLanguage={uiLanguage}
+          isOpen={showTableSelection}
+          onClose={() => setShowTableSelection(false)}
+          onSelect={handleTableSelected}
         />
       )}
 
@@ -455,7 +454,6 @@ const KioskView: React.FC = () => {
         <>
           <KioskHeader
             restaurant={restaurant}
-            onBack={handleBackToWelcome}
             orderType={orderType}
             tableNumber={tableNumber}
             uiLanguage={uiLanguage}
@@ -466,14 +464,12 @@ const KioskView: React.FC = () => {
               <div className="flex-1">
                 <MenuCategoryList
                   categories={categories}
-                  selectedCategory={selectedCategory}
                   onCategorySelect={setSelectedCategory}
                   uiLanguage={uiLanguage}
                 />
 
                 <MenuItemGrid
                   items={menuItems}
-                  selectedCategory={selectedCategory}
                   onItemClick={handleItemClick}
                   uiLanguage={uiLanguage}
                 />
@@ -483,11 +479,11 @@ const KioskView: React.FC = () => {
 
           {/* Floating cart button */}
           <CartButton
-            cart={cart}
-            onOpenCart={() => setShowOrderSummary(true)}
-            calculateSubtotal={calculateSubtotal}
-            restaurant={restaurant}
+            itemCount={cart.length}
+            total={calculateSubtotal()}
+            onClick={() => setShowOrderSummary(true)}
             uiLanguage={uiLanguage}
+            currency={restaurant?.currency}
           />
         </>
       )}
@@ -536,8 +532,8 @@ const KioskView: React.FC = () => {
       <InactivityDialog
         isOpen={showInactivityDialog}
         onContinue={handleContinue}
-        onRestart={handleBackToWelcome}
-        uiLanguage={uiLanguage}
+        onCancel={handleBackToWelcome}
+        t={t}
       />
     </div>
   );
