@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, Dispatch, SetStateAction } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,7 @@ import CartButton from "@/components/kiosk/CartButton";
 import OrderTypeSelection from "@/components/kiosk/OrderTypeSelection";
 import TableSelection from "@/components/kiosk/TableSelection";
 import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
-import { getRestaurantData, preloadImages } from "@/utils/data-preloader";
+import { getRestaurantData, preloadImages, preloadAllRestaurantData } from "@/utils/data-preloader";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -51,6 +52,18 @@ const KioskView: React.FC = () => {
   // Preloading state
   const [preloadingComplete, setPreloadingComplete] = useState(false);
   const [preloadingProgress, setPreloadingProgress] = useState(0);
+
+  // Define handleBackToWelcome before using it in the inactivity timer
+  const handleBackToWelcome = useCallback(() => {
+    console.log("Returning to welcome screen");
+    setShowWelcome(true);
+    setShowOrderTypeSelection(false);
+    setShowTableSelection(false);
+    clearCart();
+    setOrderType(null);
+    setTableNumber(null);
+    setSelectedCategory(null);
+  }, []);
 
   // Get UI language and translation function
   const uiLanguage = (restaurant?.ui_language as SupportedLanguage) || 'fr';
@@ -160,17 +173,6 @@ const KioskView: React.FC = () => {
     console.log("Table selected:", table);
     setTableNumber(table);
     setShowTableSelection(false);
-  };
-
-  const handleBackToWelcome = () => {
-    console.log("Returning to welcome screen");
-    setShowWelcome(true);
-    setShowOrderTypeSelection(false);
-    setShowTableSelection(false);
-    clearCart();
-    setOrderType(null);
-    setTableNumber(null);
-    setSelectedCategory(null);
   };
 
   // Order placement with enhanced logging
@@ -415,6 +417,13 @@ const KioskView: React.FC = () => {
   // Show preloading screen if not complete
   if (!preloadingComplete) {
     return <PreloadingScreen 
+      state={{
+        isLoading: true,
+        progress: preloadingProgress,
+        stage: 'images',
+        error: null,
+        restaurantData: restaurant
+      }}
       uiLanguage={uiLanguage}
     />;
   }
@@ -456,7 +465,7 @@ const KioskView: React.FC = () => {
             restaurant={restaurant}
             orderType={orderType}
             tableNumber={tableNumber}
-            uiLanguage={uiLanguage}
+            t={t}
           />
 
           <div className="container mx-auto px-4 py-6">
@@ -464,8 +473,8 @@ const KioskView: React.FC = () => {
               <div className="flex-1">
                 <MenuCategoryList
                   categories={categories}
-                  onCategorySelect={setSelectedCategory}
-                  uiLanguage={uiLanguage}
+                  activeCategory={selectedCategory}
+                  setActiveCategory={setSelectedCategory}
                 />
 
                 <MenuItemGrid
