@@ -1,12 +1,12 @@
 
 import React from "react";
 import { Clock, Database } from "lucide-react";
-import { Restaurant } from "@/types/database-types";
+import { Restaurant, OrderType } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
 
 interface KioskHeaderProps {
   restaurant: Restaurant;
-  orderType: "dine-in" | "takeaway" | null;
+  orderType: OrderType;
   tableNumber: string | null;
   t: (key: string) => string;
   onRefresh?: () => void;
