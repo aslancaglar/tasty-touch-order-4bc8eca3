@@ -50,7 +50,7 @@ const App = () => {
             <Toaster />
             <Sonner />
             
-            {/* Security Monitoring - now inside AuthProvider */}
+            {/* Security Monitoring */}
             <SecurityMonitor />
             
             {/* Network Status */}
