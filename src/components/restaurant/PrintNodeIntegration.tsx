@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { secureApiKeyService } from "@/services/secure-api-keys";
-import { logSecurityEvent, handleError } from "@/utils/error-handler";
+import { logSecurityEvent } from "@/utils/error-handler";
 
 interface Printer {
   id: string;
@@ -40,50 +40,8 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const [isMigrating, setIsMigrating] = useState(false);
   const [hasLegacyKey, setHasLegacyKey] = useState(false);
   const [securityStatus, setSecurityStatus] = useState<'secure' | 'legacy' | 'none'>('none');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [authError, setAuthError] = useState<string>("");
   
   const { toast } = useToast();
-
-  // Check if current user is admin
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setAuthError("Please log in to manage printer settings");
-          return;
-        }
-
-        console.log("Checking admin status for user:", user.id);
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
-        
-        if (error) {
-          console.error("Error checking admin status:", error);
-          if (error.code === 'PGRST116') {
-            setAuthError("User profile not found - please contact support");
-          }
-          return;
-        }
-        
-        const adminStatus = data?.is_admin || false;
-        setIsAdmin(adminStatus);
-        console.log("User admin status:", adminStatus);
-        setAuthError(""); // Clear any auth errors
-        
-      } catch (error) {
-        console.error("Error in admin check:", error);
-        setAuthError("Authentication error - please refresh and try again");
-      }
-    };
-    
-    checkAdminStatus();
-  }, []);
 
   // Mask API key for display (show only last 4 characters)
   const maskApiKey = (key: string): string => {
@@ -94,19 +52,11 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
 
   useEffect(() => {
     const checkApiKeyConfiguration = async () => {
-      if (authError) {
-        console.log("Skipping API key check due to auth error:", authError);
-        return;
-      }
-
       try {
-        console.log("Checking API key configuration for restaurant:", restaurantId);
-        
         // Check for encrypted key first
         const encryptedKey = await secureApiKeyService.retrieveApiKey(restaurantId, 'printnode');
         
         if (encryptedKey) {
-          console.log("Found encrypted API key");
           setApiKey(encryptedKey);
           setMaskedKey(maskApiKey(encryptedKey));
           setIsConfigured(true);
@@ -129,7 +79,6 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         }
         
         if (data?.api_key) {
-          console.log("Found legacy plaintext API key");
           setHasLegacyKey(true);
           setSecurityStatus('legacy');
           setApiKey(data.api_key);
@@ -143,21 +92,15 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         }
       } catch (error) {
         console.error("Error checking API key configuration:", error);
-        const errorDetails = handleError(error, 'API key configuration check');
-        
-        if (error instanceof Error && error.message.includes('Access denied')) {
-          setAuthError("Access denied: You need restaurant owner or admin permissions to view API keys");
-        } else {
-          logSecurityEvent('API key configuration check failed', { 
-            restaurantId, 
-            ...errorDetails
-          });
-        }
+        logSecurityEvent('API key configuration check failed', { 
+          restaurantId, 
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     };
     
     checkApiKeyConfiguration();
-  }, [restaurantId, authError]);
+  }, [restaurantId]);
 
   const saveApiKey = async () => {
     if (!apiKey.trim()) {
@@ -171,44 +114,28 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
 
     try {
       setIsFetching(true);
-      console.log("=== API KEY SAVE DEBUG ===");
-      console.log("Restaurant ID:", restaurantId);
-      console.log("User is admin:", isAdmin);
       
-      // First, test the API key by fetching printers
-      console.log("Testing API key by fetching printers");
       const printerData = await fetchPrintersFromAPI(apiKey);
       
       if (printerData.length === 0) {
-        console.log("API key test failed - no printers returned");
         toast({
           title: "API Key Invalid",
-          description: "Unable to retrieve printers with this API key. Please check your API key and try again.",
+          description: "Unable to retrieve printers with this API key",
           variant: "destructive"
         });
+        setIsFetching(false);
         return;
       }
       
-      console.log(`API key test successful - found ${printerData.length} printers`);
-      
       // Store API key securely in vault
-      console.log("Attempting to store API key securely...");
+      await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
       
-      try {
-        await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
-        console.log("API key stored successfully in secure vault");
-      } catch (storeError) {
-        console.error("Failed to store API key:", storeError);
-        throw storeError;
-      }
-      
-      // Update print config without the API key (remove plaintext storage)
+      // Update print config without the API key
       const printConfig: PrintConfig = {
         restaurant_id: restaurantId,
         configured_printers: []
       };
 
-      console.log("Updating print config");
       const { error } = await supabase
         .from('restaurant_print_config')
         .upsert(printConfig, {
@@ -216,11 +143,8 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         });
       
       if (error) {
-        console.error("Error updating print config:", error);
         throw error;
       }
-      
-      console.log("Print config updated successfully");
       
       setIsConfigured(true);
       setSecurityStatus('secure');
@@ -228,43 +152,21 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       setPrinters(printerData);
       setMaskedKey(maskApiKey(apiKey));
       
-      logSecurityEvent('PrintNode API key stored securely', { 
-        restaurantId,
-        adminAccess: isAdmin 
-      });
+      logSecurityEvent('PrintNode API key stored securely', { restaurantId });
       
       toast({
-        title: "API Key Saved Successfully",
-        description: isAdmin ? 
-          "PrintNode API key stored with enterprise-grade encryption (Admin Access)" :
-          "PrintNode API key stored with enterprise-grade encryption",
+        title: "API Key Saved Securely",
+        description: "PrintNode API key stored with enterprise-grade encryption",
       });
     } catch (error) {
-      console.error("=== API KEY SAVE ERROR ===");
-      console.error("Full error object:", error);
-      
-      const errorDetails = handleError(error, 'API key save');
+      console.error("Error saving configuration:", error);
       logSecurityEvent('API key save failed', { 
         restaurantId, 
-        adminAccess: isAdmin,
-        ...errorDetails
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
-      
-      // Provide detailed error messages for debugging
-      let errorMessage = "Error saving API key";
-      if (error instanceof Error) {
-        if (error.message.includes('Access denied')) {
-          errorMessage = `Access denied: You need restaurant owner or admin permissions to save API keys`;
-        } else if (error.message.includes('User not authenticated')) {
-          errorMessage = "Authentication error - please log out and log back in";
-        } else {
-          errorMessage = `Save failed: ${error.message}`;
-        }
-      }
-      
       toast({
-        title: "Save Failed",
-        description: errorMessage,
+        title: "Error",
+        description: "Error saving API key",
         variant: "destructive"
       });
     } finally {
@@ -275,11 +177,9 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const migrateLegacyKey = async () => {
     try {
       setIsMigrating(true);
-      console.log("Starting legacy key migration");
       
       // Store the current key securely
       await secureApiKeyService.storeApiKey(restaurantId, 'printnode', apiKey);
-      console.log("Legacy key migrated to secure storage");
       
       // Clear the plaintext key
       await supabase
@@ -287,15 +187,10 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         .update({ api_key: null })
         .eq('restaurant_id', restaurantId);
       
-      console.log("Plaintext key cleared from database");
-      
       setHasLegacyKey(false);
       setSecurityStatus('secure');
       
-      logSecurityEvent('PrintNode API key migrated to secure storage', { 
-        restaurantId,
-        adminAccess: isAdmin 
-      });
+      logSecurityEvent('PrintNode API key migrated to secure storage', { restaurantId });
       
       toast({
         title: "Migration Complete",
@@ -303,11 +198,9 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       });
     } catch (error) {
       console.error("Error migrating API key:", error);
-      const errorDetails = handleError(error, 'API key migration');
       logSecurityEvent('API key migration failed', { 
-        restaurantId,
-        adminAccess: isAdmin,
-        ...errorDetails
+        restaurantId, 
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
       toast({
         title: "Migration Failed",
@@ -322,10 +215,8 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
   const fetchPrinters = async (key = apiKey) => {
     try {
       setIsFetching(true);
-      console.log("Fetching printers from API");
       
       const printerData = await fetchPrintersFromAPI(key);
-      console.log(`Fetched ${printerData.length} printers`);
       
       const { data: configData, error: configError } = await supabase
         .from('restaurant_print_config')
@@ -347,15 +238,14 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       setPrinters(printersWithSelection);
       
       toast({
-        title: "Printers Updated",
-        description: `${printerData.length} printers retrieved successfully`,
+        title: "Printers Fetched",
+        description: `${printerData.length} printers retrieved`,
       });
     } catch (error) {
       console.error("Error fetching printer data:", error);
-      const errorDetails = handleError(error, 'Fetch printers');
       toast({
         title: "Error",
-        description: "Error fetching printers: " + errorDetails.message,
+        description: "Error fetching printers",
         variant: "destructive"
       });
     } finally {
@@ -365,12 +255,10 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
 
   const fetchPrintersFromAPI = async (key: string): Promise<Printer[]> => {
     if (!key || key.length < 10) {
-      console.log("Invalid API key provided");
       return [];
     }
     
     try {
-      console.log("Making API call to PrintNode");
       // Make secure API call to PrintNode
       const response = await fetch('https://api.printnode.com/printers', {
         headers: {
@@ -378,14 +266,11 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         }
       });
       
-      console.log(`PrintNode API response status: ${response.status}`);
-      
       if (!response.ok) {
-        throw new Error(`PrintNode API error: ${response.status} ${response.statusText}`);
+        throw new Error(`API error: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log("PrintNode API response received:", data.length, "printers");
       
       return data.map((printer: any) => ({
         id: printer.id.toString(),
@@ -395,7 +280,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         selected: false
       }));
     } catch (error) {
-      console.error("Error calling PrintNode API:", error);
+      console.error("Error calling API:", error);
       
       // Fallback to mock data during development or when API fails
       if (process.env.NODE_ENV === 'development') {
@@ -425,7 +310,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         ];
       }
       
-      throw error;
+      return [];
     }
   };
 
@@ -457,14 +342,13 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       toast({
         title: "Printers Updated",
-        description: "Printer configuration updated successfully",
+        description: "Printer configuration updated",
       });
     } catch (error) {
       console.error("Error saving printer selection:", error);
-      const errorDetails = handleError(error, 'Save printer selection');
       toast({
         title: "Error",
-        description: "Error saving printer selection: " + errorDetails.message,
+        description: "Error saving printer selection",
         variant: "destructive"
       });
     }
@@ -487,7 +371,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       // Get the current API key securely
       const currentApiKey = await secureApiKeyService.retrieveApiKey(restaurantId, 'printnode');
       if (!currentApiKey) {
-        throw new Error("API key not found - please reconfigure");
+        throw new Error("API key not found");
       }
       
       // Create a test receipt in plain text format for thermal printer
@@ -505,7 +389,6 @@ If you can read this, printing
 is working correctly!
 
 Security Status: ${securityStatus === 'secure' ? 'ENCRYPTED' : 'LEGACY'}
-Access Level: ${isAdmin ? 'ADMIN' : 'OWNER'}
 
 ==================================
         PRINT TEST PASSED
@@ -534,55 +417,24 @@ Access Level: ${isAdmin ? 'ADMIN' : 'OWNER'}
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Print job failed:", response.status, errorText);
-        throw new Error(`Print job failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Error sending print job: ${response.status}`);
       }
-      
-      const result = await response.json();
-      console.log("Print job sent successfully:", result);
       
       toast({
         title: "Test Print Sent",
-        description: `Test print sent successfully to ${printer.name}`,
+        description: `Test print sent to ${printer.name}`,
       });
     } catch (error) {
       console.error("Error testing printer:", error);
-      const errorDetails = handleError(error, 'Test printer');
       toast({
-        title: "Print Test Failed",
-        description: errorDetails.message,
+        title: "Error",
+        description: "Error sending test print: " + (error instanceof Error ? error.message : "Unknown error"),
         variant: "destructive"
       });
     } finally {
       setIsTesting({ ...isTesting, [printerId]: false });
     }
   };
-
-  // Show authentication error if present
-  if (authError) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            PrintNode Integration
-            <Badge variant="destructive" className="text-xs">
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              Access Denied
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Authentication Required</AlertTitle>
-            <AlertDescription>
-              {authError}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>
@@ -593,25 +445,8 @@ Access Level: ${isAdmin ? 'ADMIN' : 'OWNER'}
             variant={securityStatus === 'secure' ? 'default' : securityStatus === 'legacy' ? 'destructive' : 'outline'}
             className="text-xs"
           >
-            {securityStatus === 'secure' ? (
-              <>
-                <Shield className="h-3 w-3 mr-1" />
-                Secure
-              </>
-            ) : securityStatus === 'legacy' ? (
-              <>
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Legacy
-              </>
-            ) : (
-              'Not Configured'
-            )}
+            {securityStatus === 'secure' ? <Shield className="h-3 w-3 mr-1" /> : securityStatus === 'legacy' ? <AlertTriangle className="h-3 w-3 mr-1" /> : 'Not Configured'}
           </Badge>
-          {isAdmin && (
-            <Badge variant="secondary" className="text-xs">
-              Admin Access
-            </Badge>
-          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -650,8 +485,6 @@ Access Level: ${isAdmin ? 'ADMIN' : 'OWNER'}
                   setIsConfigured(false);
                   setApiKey("");
                   setHasLegacyKey(false);
-                  setPrinters([]);
-                  setSecurityStatus('none');
                 }}
               >
                 Change
@@ -687,7 +520,6 @@ Access Level: ${isAdmin ? 'ADMIN' : 'OWNER'}
               <span className="block mt-1 text-green-600 flex items-center">
                 <Shield className="h-3 w-3 mr-1" />
                 Your API key is encrypted with enterprise-grade security
-                {isAdmin && " (Admin Access)"}
               </span>
             )}
           </p>
@@ -768,9 +600,6 @@ Access Level: ${isAdmin ? 'ADMIN' : 'OWNER'}
             ) : (
               <div className="text-center py-6 border rounded-md">
                 <p className="text-muted-foreground">No printers found</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Make sure your PrintNode client is running and printers are connected
-                </p>
               </div>
             )}
           </div>

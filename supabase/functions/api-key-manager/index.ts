@@ -28,8 +28,6 @@ serve(async (req) => {
 
     const { action, restaurantId, serviceName, keyName, apiKey } = await req.json()
 
-    console.log(`API Key Manager: ${action} for user ${user.id}`)
-
     switch (action) {
       case 'store': {
         const { data, error } = await supabaseClient.rpc('store_encrypted_api_key', {
@@ -39,10 +37,7 @@ serve(async (req) => {
           p_api_key: apiKey
         })
 
-        if (error) {
-          console.error('Store API key error:', error)
-          throw error
-        }
+        if (error) throw error
 
         return new Response(JSON.stringify({ success: true, keyId: data }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -56,10 +51,7 @@ serve(async (req) => {
           p_key_name: keyName || 'primary'
         })
 
-        if (error) {
-          console.error('Retrieve API key error:', error)
-          throw error
-        }
+        if (error) throw error
 
         return new Response(JSON.stringify({ success: true, apiKey: data }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -74,10 +66,7 @@ serve(async (req) => {
           p_new_api_key: apiKey
         })
 
-        if (error) {
-          console.error('Rotate API key error:', error)
-          throw error
-        }
+        if (error) throw error
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

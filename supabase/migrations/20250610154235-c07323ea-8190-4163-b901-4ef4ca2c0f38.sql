@@ -17,33 +17,48 @@ CREATE TABLE IF NOT EXISTS public.restaurant_api_keys (
 -- Enable RLS on the API keys table
 ALTER TABLE public.restaurant_api_keys ENABLE ROW LEVEL SECURITY;
 
--- Create policies for API keys table - Allow all authenticated users
-CREATE POLICY "Anyone can view restaurant API keys" 
+-- Create policies for API keys table
+CREATE POLICY "Owners can view their restaurant API keys" 
 ON public.restaurant_api_keys 
 FOR SELECT 
 TO authenticated
-USING (true);
+USING (
+  public.is_restaurant_owner_secure(restaurant_id) 
+  OR public.is_admin_secure()
+);
 
-CREATE POLICY "Anyone can create API keys for restaurants" 
+CREATE POLICY "Owners can create API keys for their restaurants" 
 ON public.restaurant_api_keys 
 FOR INSERT 
 TO authenticated
-WITH CHECK (true);
+WITH CHECK (
+  public.is_restaurant_owner_secure(restaurant_id) 
+  OR public.is_admin_secure()
+);
 
-CREATE POLICY "Anyone can update restaurant API keys" 
+CREATE POLICY "Owners can update their restaurant API keys" 
 ON public.restaurant_api_keys 
 FOR UPDATE 
 TO authenticated
-USING (true)
-WITH CHECK (true);
+USING (
+  public.is_restaurant_owner_secure(restaurant_id) 
+  OR public.is_admin_secure()
+)
+WITH CHECK (
+  public.is_restaurant_owner_secure(restaurant_id) 
+  OR public.is_admin_secure()
+);
 
-CREATE POLICY "Anyone can delete restaurant API keys" 
+CREATE POLICY "Owners can delete their restaurant API keys" 
 ON public.restaurant_api_keys 
 FOR DELETE 
 TO authenticated
-USING (true);
+USING (
+  public.is_restaurant_owner_secure(restaurant_id) 
+  OR public.is_admin_secure()
+);
 
--- Create a secure function to store API keys in Vault - Remove permission checks
+-- Create a secure function to store API keys in Vault
 CREATE OR REPLACE FUNCTION public.store_encrypted_api_key(
   p_restaurant_id UUID,
   p_service_name TEXT,
@@ -59,7 +74,10 @@ DECLARE
   secret_id UUID;
   key_record_id UUID;
 BEGIN
-  -- No permission checks - allow anyone to store API keys
+  -- Check if user has permission to manage this restaurant
+  IF NOT (public.is_restaurant_owner_secure(p_restaurant_id) OR public.is_admin_secure()) THEN
+    RAISE EXCEPTION 'Insufficient permissions to store API key';
+  END IF;
   
   -- Store the API key in Vault
   SELECT vault.create_secret(p_api_key) INTO secret_id;
@@ -88,7 +106,7 @@ BEGIN
 END;
 $$;
 
--- Create a secure function to retrieve API keys from Vault - Remove permission checks
+-- Create a secure function to retrieve API keys from Vault
 CREATE OR REPLACE FUNCTION public.get_encrypted_api_key(
   p_restaurant_id UUID,
   p_service_name TEXT,
@@ -103,7 +121,10 @@ DECLARE
   secret_id UUID;
   decrypted_key TEXT;
 BEGIN
-  -- No permission checks - allow anyone to retrieve API keys
+  -- Check if user has permission to access this restaurant's keys
+  IF NOT (public.is_restaurant_owner_secure(p_restaurant_id) OR public.is_admin_secure()) THEN
+    RAISE EXCEPTION 'Insufficient permissions to retrieve API key';
+  END IF;
   
   -- Get the secret ID from our table
   SELECT encrypted_key_id INTO secret_id
@@ -126,7 +147,7 @@ BEGIN
 END;
 $$;
 
--- Create a function to rotate API keys - Remove permission checks
+-- Create a function to rotate API keys
 CREATE OR REPLACE FUNCTION public.rotate_api_key(
   p_restaurant_id UUID,
   p_service_name TEXT,
@@ -142,7 +163,10 @@ DECLARE
   old_secret_id UUID;
   new_secret_id UUID;
 BEGIN
-  -- No permission checks - allow anyone to rotate API keys
+  -- Check permissions
+  IF NOT (public.is_restaurant_owner_secure(p_restaurant_id) OR public.is_admin_secure()) THEN
+    RAISE EXCEPTION 'Insufficient permissions to rotate API key';
+  END IF;
   
   -- Get the current secret ID
   SELECT encrypted_key_id INTO old_secret_id
@@ -175,7 +199,7 @@ BEGIN
 END;
 $$;
 
--- Create a function to check if keys need rotation - Remove permission checks
+-- Create a function to check if keys need rotation
 CREATE OR REPLACE FUNCTION public.get_keys_needing_rotation()
 RETURNS TABLE (
   restaurant_id UUID,
@@ -197,7 +221,11 @@ BEGIN
   FROM public.restaurant_api_keys rak
   WHERE rak.is_active = true
     AND (rak.rotation_interval_days IS NOT NULL)
-    AND (now() - rak.last_rotated) > INTERVAL '1 day' * rak.rotation_interval_days;
+    AND (now() - rak.last_rotated) > INTERVAL '1 day' * rak.rotation_interval_days
+    AND (
+      public.is_restaurant_owner_secure(rak.restaurant_id) 
+      OR public.is_admin_secure()
+    );
 END;
 $$;
 
