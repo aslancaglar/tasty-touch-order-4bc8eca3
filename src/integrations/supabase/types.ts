@@ -501,45 +501,6 @@ export type Database = {
         }
         Relationships: []
       }
-      restaurant_api_keys: {
-        Row: {
-          created_at: string
-          encrypted_key_id: string
-          id: string
-          is_active: boolean
-          key_name: string
-          last_rotated: string | null
-          restaurant_id: string
-          rotation_interval_days: number | null
-          service_name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          encrypted_key_id: string
-          id?: string
-          is_active?: boolean
-          key_name: string
-          last_rotated?: string | null
-          restaurant_id: string
-          rotation_interval_days?: number | null
-          service_name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          encrypted_key_id?: string
-          id?: string
-          is_active?: boolean
-          key_name?: string
-          last_rotated?: string | null
-          restaurant_id?: string
-          rotation_interval_days?: number | null
-          service_name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       restaurant_owners: {
         Row: {
           created_at: string
@@ -863,23 +824,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
-      get_encrypted_api_key: {
-        Args: {
-          p_restaurant_id: string
-          p_service_name: string
-          p_key_name?: string
-        }
-        Returns: string
-      }
-      get_keys_needing_rotation: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          restaurant_id: string
-          service_name: string
-          key_name: string
-          days_since_rotation: number
-        }[]
-      }
       get_monthly_order_count: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -909,22 +853,6 @@ export type Database = {
         Args: { limit_count: number }
         Returns: Json
       }
-      get_restaurant_from_category: {
-        Args: { category_uuid: string }
-        Returns: string
-      }
-      get_restaurant_from_order: {
-        Args: { order_uuid: string }
-        Returns: string
-      }
-      get_restaurant_from_topping_category: {
-        Args: { category_uuid: string }
-        Returns: string
-      }
-      is_admin_secure: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       is_menu_item_available_now: {
         Args: { item_id: string }
         Returns: boolean
@@ -932,28 +860,6 @@ export type Database = {
       is_restaurant_owner: {
         Args: { restaurant_uuid: string }
         Returns: boolean
-      }
-      is_restaurant_owner_secure: {
-        Args: { restaurant_uuid: string }
-        Returns: boolean
-      }
-      rotate_api_key: {
-        Args: {
-          p_restaurant_id: string
-          p_service_name: string
-          p_key_name: string
-          p_new_api_key: string
-        }
-        Returns: boolean
-      }
-      store_encrypted_api_key: {
-        Args: {
-          p_restaurant_id: string
-          p_service_name: string
-          p_key_name: string
-          p_api_key: string
-        }
-        Returns: string
       }
     }
     Enums: {

@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
@@ -15,44 +16,16 @@ import {
 } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
-import { SecureInput } from "@/components/ui/secure-input";
-import { useSecureForm } from "@/hooks/useSecureForm";
-import { validateAndSanitizeInput, validateNumericInput } from "@/utils/input-validation";
 
-// Enhanced schema with security validation
+// Define the form schema with validation
 const formSchema = z.object({
-  name: z.string()
-    .min(1, "Name is required")
-    .max(255, "Name must not exceed 255 characters")
-    .refine((val) => {
-      try {
-        validateAndSanitizeInput(val, 'name', true);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "Invalid characters detected in name"),
-  description: z.string()
-    .optional()
-    .refine((val) => {
-      if (!val) return true;
-      try {
-        validateAndSanitizeInput(val, 'description', false);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "Invalid characters detected in description"),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
   icon: z.string().optional(),
-  display_order: z.string()
-    .refine((val) => {
-      try {
-        validateNumericInput(val, 0, undefined, false);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "Display order must be a valid positive number"),
+  display_order: z.string().refine(
+    (val) => !isNaN(Number(val)),
+    { message: "Display order must be a number" }
+  ),
 });
 
 interface CategoryFormProps {
@@ -64,20 +37,7 @@ interface CategoryFormProps {
 const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps) => {
   const [iconUrl, setIconUrl] = useState<string | undefined>(initialValues?.icon || undefined);
 
-  const { csrfToken, handleSubmit: secureHandleSubmit } = useSecureForm({
-    schema: {
-      name: { type: 'name', required: true },
-      description: { type: 'description', required: false },
-      display_order: { type: 'number', required: true, min: 0, allowDecimals: false },
-    },
-    onSubmit: async (validatedData) => {
-      onSubmit({
-        ...validatedData,
-        icon: iconUrl,
-      });
-    },
-  });
-
+  // Initialize the form with default values
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -88,30 +48,23 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
     },
   });
 
-  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
-    secureHandleSubmit({
+  // Handle form submission
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    onSubmit({
       ...values,
       icon: iconUrl,
-      csrfToken,
     });
   };
 
+  // Handle image upload
   const handleIconUpload = (url: string) => {
-    try {
-      validateAndSanitizeInput(url, 'url');
-      setIconUrl(url);
-      form.setValue("icon", url);
-    } catch (error) {
-      console.error("Invalid image URL:", error);
-    }
+    setIconUrl(url);
+    form.setValue("icon", url);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-        {/* CSRF Token */}
-        <input type="hidden" name="csrfToken" value={csrfToken} />
-        
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -119,12 +72,7 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
             <FormItem>
               <FormLabel>Name</FormLabel>
               <FormControl>
-                <SecureInput 
-                  placeholder="Category name" 
-                  validationType="name"
-                  required
-                  {...field} 
-                />
+                <Input placeholder="Category name" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -138,12 +86,7 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="Category description (optional)" 
-                  className="resize-none"
-                  maxLength={5000}
-                  {...field} 
-                />
+                <Textarea placeholder="Category description (optional)" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -157,11 +100,9 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
             <FormItem>
               <FormLabel>Display Order</FormLabel>
               <FormControl>
-                <SecureInput 
+                <Input 
                   placeholder="Display order (e.g. 1, 2, 3)" 
-                  type="number"
-                  validationType="text"
-                  required
+                  type="number" 
                   {...field} 
                 />
               </FormControl>

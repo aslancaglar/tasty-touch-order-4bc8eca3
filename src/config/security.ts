@@ -1,197 +1,173 @@
 
+// Enhanced security configuration and constants
+
 export const SECURITY_CONFIG = {
-  // Rate limiting configuration
-  RATE_LIMITING: {
-    MAX_REQUESTS_PER_MINUTE: 60,
-    MAX_LOGIN_ATTEMPTS: 5,
-    LOCKOUT_DURATION_MINUTES: 15,
+  // File upload security
+  UPLOAD: {
+    MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+    ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
+    ALLOWED_EXTENSIONS: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    MAX_FILENAME_LENGTH: 100,
   },
   
-  // Session security configuration
+  // Session security - improved validation timing
   SESSION: {
     REFRESH_THRESHOLD: 5 * 60 * 1000, // 5 minutes before expiry
-    MAX_DURATION_MS: 24 * 60 * 60 * 1000, // 24 hours
+    MAX_DURATION: 24 * 60 * 60 * 1000, // 24 hours (matches DB function)
     ADMIN_CHECK_CACHE: 5 * 60 * 1000, // 5 minutes
+    VALIDATION_INTERVAL: 60 * 1000, // 1 minute validation check
+    FRESH_SESSION_GRACE_PERIOD: 2 * 60 * 1000, // 2 minutes grace for fresh sessions
   },
   
-  // Security monitoring configuration
-  MONITORING: {
-    ENABLED: true,
-    LOG_SECURITY_EVENTS: true,
-    ALERT_THRESHOLD_HIGH: 10,
-    ALERT_THRESHOLD_CRITICAL: 20,
-    LOG_RETENTION_HOURS: 24,
+  // Rate limiting
+  RATE_LIMIT: {
+    MAX_REQUESTS_PER_MINUTE: 100,
+    WINDOW_SIZE: 60 * 1000, // 1 minute
+    MAX_LOGIN_ATTEMPTS: 5,
+    LOGIN_LOCKOUT_DURATION: 15 * 60 * 1000, // 15 minutes
   },
   
-  // Input validation settings
-  VALIDATION: {
-    MAX_INPUT_LENGTH: 10000,
-    ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
-    MAX_FILE_SIZE_MB: 10,
-  },
-  
-  // Input length limits
+  // Input validation
   INPUT: {
-    MAX_TEXT_LENGTH: 10000,
-    MAX_NAME_LENGTH: 255,
+    MAX_TEXT_LENGTH: 1000,
     MAX_DESCRIPTION_LENGTH: 5000,
+    MAX_NAME_LENGTH: 255,
   },
   
-  // Network security
-  NETWORK: {
-    TIMEOUT_MS: 30000,
-    MAX_RETRIES: 3,
-  }
-};
+  // Content Security Policy directives
+  CSP: {
+    DEFAULT_SRC: ["'self'"],
+    SCRIPT_SRC: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+    STYLE_SRC: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    IMG_SRC: ["'self'", "data:", "https:", "blob:"],
+    FONT_SRC: ["'self'", "https://fonts.gstatic.com"],
+    CONNECT_SRC: ["'self'", "https://*.supabase.co"],
+  },
 
-// Security patterns for validation
+  // Audit log configuration
+  AUDIT: {
+    ENABLED: true,
+    SENSITIVE_TABLES: ['restaurants', 'menu_items', 'orders', 'profiles'],
+    MAX_LOG_AGE_DAYS: 90,
+  }
+} as const;
+
+// Security headers that should be implemented server-side
+export const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+} as const;
+
+// Suspicious patterns for security monitoring
 export const SECURITY_PATTERNS = {
   XSS: [
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    /javascript:/gi,
-    /on\w+\s*=/gi,
-    /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
+    /<script/i,
+    /javascript:/i,
+    /vbscript:/i,
+    /onload=/i,
+    /onerror=/i,
+    /onclick=/i,
+    /onmouseover=/i,
   ],
   SQL_INJECTION: [
-    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE)\b)|(\-\-)|(\;)/gi,
-    /(\s|^)(OR|AND)\s+[\w'"=\s]+(\s|$)/gi,
+    /union\s+select/i,
+    /drop\s+table/i,
+    /insert\s+into/i,
+    /delete\s+from/i,
+    /update\s+set/i,
   ],
   PATH_TRAVERSAL: [
-    /\.\.[\\/]/g,
-    /[\\/]\.\.[\\/]/g,
+    /\.\.\//,
+    /\.\.\\/,
+    /%2e%2e%2f/i,
+    /%2e%2e%5c/i,
   ],
-};
+} as const;
 
-// Rate limiting store
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-// Security event logging
-export const logSecurityEvent = (event: string, details: Record<string, any> = {}) => {
-  if (!SECURITY_CONFIG.MONITORING.LOG_SECURITY_EVENTS) return;
+// RLS policy validation helpers
+export const RLS_HELPERS = {
+  // Check if user can access restaurant data
+  canAccessRestaurant: (restaurantId: string, userRole: 'admin' | 'owner' | null): boolean => {
+    if (!userRole) return false; // Public access only for kiosk views
+    return userRole === 'admin' || userRole === 'owner';
+  },
   
-  const timestamp = new Date().toISOString();
-  console.log(`[SECURITY] ${timestamp}: ${event}`, details);
-  
-  // Store in session storage for development monitoring
-  if (typeof window !== 'undefined') {
-    try {
-      const events = JSON.parse(sessionStorage.getItem('security_events') || '[]');
-      events.push({ timestamp, event, details });
-      
-      // Keep only last 100 events
-      if (events.length > 100) {
-        events.splice(0, events.length - 100);
-      }
-      
-      sessionStorage.setItem('security_events', JSON.stringify(events));
-    } catch (error) {
-      console.warn('Could not store security event:', error);
-    }
+  // Validate operation permissions
+  canPerformOperation: (operation: 'read' | 'write' | 'delete', userRole: 'admin' | 'owner' | null): boolean => {
+    if (!userRole) return operation === 'read'; // Public can only read
+    if (userRole === 'admin') return true; // Admins can do everything
+    return operation !== 'delete'; // Owners can read and write but not delete
   }
-};
+} as const;
 
-// Rate limiting function
-export const checkRateLimit = (identifier: string, maxRequests?: number): boolean => {
-  const now = Date.now();
-  const windowMs = 60 * 1000; // 1 minute window
-  const limit = maxRequests || SECURITY_CONFIG.RATE_LIMITING.MAX_REQUESTS_PER_MINUTE;
+// Security validation functions
+export const validateInput = (input: string, type: 'text' | 'name' | 'description' = 'text'): boolean => {
+  if (typeof input !== 'string') return false;
   
-  const entry = rateLimitStore.get(identifier);
+  const maxLength = {
+    text: SECURITY_CONFIG.INPUT.MAX_TEXT_LENGTH,
+    name: SECURITY_CONFIG.INPUT.MAX_NAME_LENGTH,
+    description: SECURITY_CONFIG.INPUT.MAX_DESCRIPTION_LENGTH,
+  }[type];
   
-  if (!entry || now > entry.resetTime) {
-    // New window or expired entry
-    rateLimitStore.set(identifier, {
-      count: 1,
-      resetTime: now + windowMs
-    });
-    return true;
-  }
+  if (input.length > maxLength) return false;
   
-  if (entry.count >= limit) {
-    logSecurityEvent('Rate limit exceeded', { 
-      identifier, 
-      attempts: entry.count,
-      limit 
-    });
-    return false;
-  }
-  
-  entry.count++;
-  return true;
-};
-
-// Input sanitization
-export const sanitizeInput = (input: string): string => {
-  if (!input || typeof input !== 'string') return '';
-  
-  // Basic XSS prevention
-  return input
-    .replace(/[<>]/g, '') // Remove potential HTML tags
-    .substring(0, SECURITY_CONFIG.VALIDATION.MAX_INPUT_LENGTH)
-    .trim();
-};
-
-// Basic input validation function
-export const validateInput = (input: string, type: string = 'text'): boolean => {
-  if (!input) return false;
-  
-  // Check for security patterns
+  // Check for suspicious patterns
   for (const pattern of SECURITY_PATTERNS.XSS) {
     if (pattern.test(input)) return false;
   }
   
-  for (const pattern of SECURITY_PATTERNS.SQL_INJECTION) {
-    if (pattern.test(input)) return false;
-  }
-  
-  for (const pattern of SECURITY_PATTERNS.PATH_TRAVERSAL) {
-    if (pattern.test(input)) return false;
-  }
-  
   return true;
 };
 
-// Validate file uploads
-export const validateFileUpload = (file: File): { valid: boolean; error?: string } => {
-  if (!SECURITY_CONFIG.VALIDATION.ALLOWED_FILE_TYPES.includes(file.type)) {
-    return { valid: false, error: 'File type not allowed' };
-  }
-  
-  if (file.size > SECURITY_CONFIG.VALIDATION.MAX_FILE_SIZE_MB * 1024 * 1024) {
-    return { valid: false, error: 'File size too large' };
-  }
-  
-  return { valid: true };
+export const sanitizeInput = (input: string): string => {
+  return input
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/[<>'"]/g, '') // Remove potentially dangerous characters
+    .trim();
 };
 
-// Network request wrapper with security features
-export const secureNetworkRequest = async (
-  url: string, 
-  options: RequestInit = {}
-): Promise<Response> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(), 
-    SECURITY_CONFIG.NETWORK.TIMEOUT_MS
-  );
-  
+// Enhanced session validation with better timestamp handling
+export const validateSessionSecurity = async (): Promise<boolean> => {
   try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    const currentTime = Date.now();
+    const sessionStart = parseInt(localStorage.getItem('session_start') || '0');
     
-    clearTimeout(timeoutId);
-    return response;
+    if (!sessionStart) {
+      return false;
+    }
+    
+    // Check if session is within reasonable duration
+    const sessionAge = currentTime - sessionStart;
+    if (sessionAge > SECURITY_CONFIG.SESSION.MAX_DURATION) {
+      return false;
+    }
+    
+    return true;
   } catch (error) {
-    clearTimeout(timeoutId);
-    logSecurityEvent('Network request failed', { url, error: error.message });
-    throw error;
+    console.error('Session validation error:', error);
+    return false;
   }
 };
 
-export default SECURITY_CONFIG;
+// Enhanced error logging for security events
+export const logSecurityEvent = (event: string, details: Record<string, any> = {}): void => {
+  const securityLog = {
+    timestamp: new Date().toISOString(),
+    event,
+    details,
+    userAgent: navigator.userAgent,
+    url: window.location.href,
+  };
+  
+  console.warn('Security Event:', securityLog);
+  
+  // In production, this should send to your security monitoring system
+  if (process.env.NODE_ENV === 'production') {
+    // TODO: Send to security monitoring service
+  }
+};

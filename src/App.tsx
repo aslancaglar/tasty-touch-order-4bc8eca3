@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NetworkStatus } from "@/components/ui/network-status";
@@ -36,16 +36,6 @@ import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
 import OwnerLogin from "./pages/OwnerLogin";
 import Index from "./pages/Index";
 
-// Component to handle security monitoring based on current route
-const SecurityWrapper = () => {
-  const location = useLocation();
-  
-  // Check if current route is a kiosk route
-  const isKioskRoute = location.pathname.startsWith('/r/');
-  
-  return <SecurityMonitor disabled={isKioskRoute} />;
-};
-
 const App = () => {
   // Initialize cache config when the app starts
   useEffect(() => {
@@ -60,8 +50,8 @@ const App = () => {
             <Toaster />
             <Sonner />
             
-            {/* Security Monitoring - disabled on kiosk routes */}
-            <SecurityWrapper />
+            {/* Security Monitoring - now inside AuthProvider */}
+            <SecurityMonitor />
             
             {/* Network Status */}
             <div className="fixed bottom-4 right-4 z-50">

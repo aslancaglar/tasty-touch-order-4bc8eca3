@@ -1,93 +1,149 @@
 
-import { logSecurityEvent } from "@/config/security";
+// Centralized error handling utilities for security and consistency
 
 export interface ErrorDetails {
-  message: string;
   code?: string;
-  details?: any;
-  context?: string;
-  timestamp: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  context?: Record<string, any>;
+  timestamp?: string;
+  userId?: string;
 }
 
-export const handleError = (error: any, context: string = 'Unknown'): ErrorDetails => {
-  const timestamp = new Date().toISOString();
+export class SecurityError extends Error {
+  code: string;
+  context: Record<string, any>;
   
-  // Determine error severity
-  let severity: 'low' | 'medium' | 'high' | 'critical' = 'medium';
-  
-  if (error?.code) {
-    // Database/Auth errors are typically higher severity
-    if (error.code.startsWith('PGRST') || error.code.includes('auth')) {
-      severity = 'high';
-    }
-    
-    // RLS violations are now properly secured - these should be rare
-    if (error.message?.includes('row-level security') || 
-        error.message?.includes('insufficient_privilege')) {
-      severity = 'critical';
-      logSecurityEvent('CRITICAL: RLS policy violation detected', {
-        error: error.message,
-        context,
-        code: error.code
-      });
-    }
+  constructor(message: string, code: string = 'SECURITY_ERROR', context: Record<string, any> = {}) {
+    super(message);
+    this.name = 'SecurityError';
+    this.code = code;
+    this.context = context;
   }
+}
+
+export class ValidationError extends Error {
+  code: string;
+  field?: string;
   
-  // Network/timeout errors are usually medium severity
-  if (error.message?.includes('timeout') || 
-      error.message?.includes('network') ||
-      error.message?.includes('fetch')) {
-    severity = 'medium';
+  constructor(message: string, field?: string) {
+    super(message);
+    this.name = 'ValidationError';
+    this.code = 'VALIDATION_ERROR';
+    this.field = field;
   }
-  
-  const errorDetails: ErrorDetails = {
-    message: error?.message || 'Unknown error occurred',
-    code: error?.code || error?.status?.toString(),
-    details: error?.details || error?.hint,
-    context,
-    timestamp,
-    severity
+}
+
+// Security event logging
+export const logSecurityEvent = (event: string, details: Record<string, any> = {}) => {
+  const logEntry = {
+    event,
+    timestamp: new Date().toISOString(),
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+    url: typeof window !== 'undefined' ? window.location.href : 'unknown',
+    ...details
   };
   
-  // Log security events for high/critical errors
-  if (severity === 'high' || severity === 'critical') {
-    logSecurityEvent(`${severity.toUpperCase()} error in ${context}`, {
-      ...errorDetails,
-      userAgent: navigator?.userAgent,
-      url: window?.location?.href
+  console.warn(`[Security Event] ${event}`, logEntry);
+  
+  // In production, you might want to send this to a monitoring service
+  if (process.env.NODE_ENV === 'production') {
+    // Example: Send to monitoring service
+    // monitoringService.logSecurityEvent(logEntry);
+  }
+};
+
+// Standardized error handling
+export const handleError = (error: unknown, context: string = 'Unknown'): ErrorDetails => {
+  const timestamp = new Date().toISOString();
+  
+  if (error instanceof SecurityError) {
+    logSecurityEvent(`Security Error in ${context}`, {
+      code: error.code,
+      message: error.message,
+      context: error.context
     });
+    
+    return {
+      code: error.code,
+      message: 'A security issue was detected. Please try again.',
+      timestamp,
+      context: { originalContext: context }
+    };
   }
   
-  // Console logging for development
-  console.error(`[${severity.toUpperCase()}] Error in ${context}:`, errorDetails);
+  if (error instanceof ValidationError) {
+    return {
+      code: error.code,
+      message: error.message,
+      timestamp,
+      context: { field: error.field, originalContext: context }
+    };
+  }
   
-  return errorDetails;
+  if (error instanceof Error) {
+    console.error(`[Error] ${context}:`, error);
+    
+    return {
+      code: 'GENERIC_ERROR',
+      message: error.message || 'An unexpected error occurred',
+      timestamp,
+      context: { originalContext: context }
+    };
+  }
+  
+  // Unknown error type
+  console.error(`[Unknown Error] ${context}:`, error);
+  
+  return {
+    code: 'UNKNOWN_ERROR',
+    message: 'An unexpected error occurred',
+    timestamp,
+    context: { originalContext: context, originalError: String(error) }
+  };
 };
 
-export const handleNetworkError = (error: any, context: string): ErrorDetails => {
-  return handleError({
-    ...error,
-    message: error?.message || 'Network connection failed',
-    isNetworkError: true
-  }, `Network:${context}`);
+// Input sanitization utilities
+export const sanitizeInput = (input: string, maxLength: number = 1000): string => {
+  if (typeof input !== 'string') {
+    throw new ValidationError('Input must be a string');
+  }
+  
+  return input
+    .trim()
+    .substring(0, maxLength)
+    .replace(/[<>]/g, ''); // Basic XSS prevention
 };
 
-export const handleAuthError = (error: any, context: string): ErrorDetails => {
-  return handleError({
-    ...error,
-    message: error?.message || 'Authentication failed',
-    isAuthError: true
-  }, `Auth:${context}`);
+// Safe JSON parsing
+export const safeJsonParse = <T>(jsonString: string, fallback: T): T => {
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    logSecurityEvent('JSON Parse Error', { error: String(error) });
+    return fallback;
+  }
 };
 
-export const handleDatabaseError = (error: any, context: string): ErrorDetails => {
-  return handleError({
-    ...error,
-    message: error?.message || 'Database operation failed',
-    isDatabaseError: true
-  }, `Database:${context}`);
-};
+// Rate limiting helper (simple client-side implementation)
+class RateLimiter {
+  private attempts: Map<string, number[]> = new Map();
+  
+  isAllowed(key: string, maxAttempts: number = 5, windowMs: number = 60000): boolean {
+    const now = Date.now();
+    const attempts = this.attempts.get(key) || [];
+    
+    // Remove old attempts outside the time window
+    const recentAttempts = attempts.filter(time => now - time < windowMs);
+    
+    if (recentAttempts.length >= maxAttempts) {
+      logSecurityEvent('Rate limit exceeded', { key, attempts: recentAttempts.length });
+      return false;
+    }
+    
+    recentAttempts.push(now);
+    this.attempts.set(key, recentAttempts);
+    return true;
+  }
+}
 
-// Export security logging function for backward compatibility
-export { logSecurityEvent };
+export const rateLimiter = new RateLimiter();

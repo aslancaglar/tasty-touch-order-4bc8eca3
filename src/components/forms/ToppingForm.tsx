@@ -1,54 +1,24 @@
 
 import { useState } from "react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { SecureInput } from "@/components/ui/secure-input";
-import { useSecureForm } from "@/hooks/useSecureForm";
-import { validateAndSanitizeInput, validateNumericInput } from "@/utils/input-validation";
 
 const toppingSchema = z.object({
-  name: z.string()
-    .min(1, "Nom du complément requis")
-    .max(255, "Le nom ne doit pas dépasser 255 caractères")
-    .refine((val) => {
-      try {
-        validateAndSanitizeInput(val, 'name', true);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "Caractères invalides détectés dans le nom"),
-  price: z.string()
-    .refine((val) => {
-      try {
-        validateNumericInput(val, 0, 999999, true);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "Le prix doit être un nombre valide supérieur ou égal à 0"),
-  tax_percentage: z.string()
-    .refine((val) => {
-      try {
-        validateNumericInput(val, 0, 100, true);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "La TVA doit être un pourcentage entre 0 et 100"),
-  display_order: z.string()
-    .refine((val) => {
-      try {
-        validateNumericInput(val, 0, undefined, false);
-        return true;
-      } catch {
-        return false;
-      }
-    }, "L'ordre d'affichage doit être un nombre valide supérieur ou égal à 0"),
+  name: z.string().min(1, "Nom du complément requis"),
+  price: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
+    message: "Le prix doit être un nombre valide supérieur ou égal à 0",
+  }),
+  tax_percentage: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100, {
+    message: "La TVA doit être un pourcentage entre 0 et 100",
+  }),
+  display_order: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
+    message: "L'ordre d'affichage doit être un nombre valide supérieur ou égal à 0",
+  }),
   in_stock: z.boolean().default(true),
 });
 
@@ -73,21 +43,6 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
                         currency === "GBP" ? "£" : 
                         currency;
 
-  const { csrfToken, handleSubmit: secureHandleSubmit } = useSecureForm({
-    schema: {
-      name: { type: 'name', required: true },
-      price: { type: 'number', required: true, min: 0, max: 999999, allowDecimals: true },
-      tax_percentage: { type: 'number', required: true, min: 0, max: 100, allowDecimals: true },
-      display_order: { type: 'number', required: true, min: 0, allowDecimals: false },
-    },
-    onSubmit: async (validatedData) => {
-      onSubmit({
-        ...validatedData,
-        in_stock: form.getValues('in_stock'),
-      });
-    },
-  });
-
   const form = useForm<ToppingFormValues>({
     resolver: zodResolver(toppingSchema),
     defaultValues: {
@@ -99,19 +54,13 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
     },
   });
 
-  const handleFormSubmit = (values: ToppingFormValues) => {
-    secureHandleSubmit({
-      ...values,
-      csrfToken,
-    });
+  const handleSubmit = (values: ToppingFormValues) => {
+    onSubmit(values);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-        {/* CSRF Token */}
-        <input type="hidden" name="csrfToken" value={csrfToken} />
-        
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -119,12 +68,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
             <FormItem>
               <FormLabel>Nom du complément</FormLabel>
               <FormControl>
-                <SecureInput 
-                  placeholder="ex: Fromage Cheddar, Tomates" 
-                  validationType="name"
-                  required
-                  {...field} 
-                />
+                <Input placeholder="ex: Fromage Cheddar, Tomates" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -138,15 +82,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
             <FormItem>
               <FormLabel>Prix TTC ({currencySymbol})</FormLabel>
               <FormControl>
-                <SecureInput 
-                  placeholder="0.75" 
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  validationType="text"
-                  required
-                  {...field} 
-                />
+                <Input placeholder="0.75" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -160,16 +96,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
             <FormItem>
               <FormLabel>TVA (%)</FormLabel>
               <FormControl>
-                <SecureInput 
-                  placeholder="10" 
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  validationType="text"
-                  required
-                  {...field} 
-                />
+                <Input placeholder="10" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -183,14 +110,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
             <FormItem>
               <FormLabel>Ordre d'affichage</FormLabel>
               <FormControl>
-                <SecureInput 
-                  placeholder="0" 
-                  type="number" 
-                  min="0"
-                  validationType="text"
-                  required
-                  {...field} 
-                />
+                <Input placeholder="0" type="number" min="0" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
