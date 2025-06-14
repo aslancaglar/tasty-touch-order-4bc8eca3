@@ -820,6 +820,10 @@ export type Database = {
         Args: { source_restaurant_id: string }
         Returns: string
       }
+      get_current_user_admin_status: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       get_daily_order_count: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -859,6 +863,10 @@ export type Database = {
       }
       is_restaurant_owner: {
         Args: { restaurant_uuid: string }
+        Returns: boolean
+      }
+      is_restaurant_owner_of_order: {
+        Args: { order_id: string }
         Returns: boolean
       }
     }
