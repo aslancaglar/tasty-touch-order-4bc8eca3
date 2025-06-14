@@ -857,6 +857,10 @@ export type Database = {
         Args: { limit_count: number }
         Returns: Json
       }
+      get_user_restaurant_ids: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
       is_menu_item_available_now: {
         Args: { item_id: string }
         Returns: boolean
