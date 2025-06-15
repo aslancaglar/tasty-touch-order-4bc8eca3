@@ -139,63 +139,8 @@ const SecurityMonitor = () => {
     setThreats(prev => prev.filter(t => t.timestamp !== timestamp));
   };
 
-  // Only show security alerts in development or when there are actual threats
-  // Hide the "Development Mode" badge in production or when there are no active threats
-  if (process.env.NODE_ENV === 'production' && threats.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="fixed bottom-4 left-4 z-50 space-y-2 max-w-sm">
-      {/* Network Status */}
-      {!isOnline && (
-        <Alert variant="warning">
-          <WifiOff className="h-4 w-4" />
-          <AlertTitle>Offline</AlertTitle>
-          <AlertDescription>
-            You're currently offline. Some features may not work.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Security Threats */}
-      {threats.map((threat) => (
-        <Alert 
-          key={threat.timestamp}
-          variant={threat.severity === 'high' ? 'destructive' : 'warning'}
-          className="cursor-pointer"
-          onClick={() => dismissThreat(threat.timestamp)}
-        >
-          {threat.severity === 'high' ? (
-            <AlertTriangle className="h-4 w-4" />
-          ) : (
-            <Shield className="h-4 w-4" />
-          )}
-          <AlertTitle>
-            Security Alert ({threat.severity.toUpperCase()})
-          </AlertTitle>
-          <AlertDescription>
-            {threat.message}
-            <br />
-            <small className="text-xs opacity-75">
-              Click to dismiss • {new Date(threat.timestamp).toLocaleTimeString()}
-            </small>
-          </AlertDescription>
-        </Alert>
-      ))}
-
-      {/* Development Mode Indicator - only show when there are active threats */}
-      {process.env.NODE_ENV === 'development' && threats.length > 0 && (
-        <Alert>
-          <Shield className="h-4 w-4" />
-          <AlertTitle>Development Mode</AlertTitle>
-          <AlertDescription>
-            Security monitoring is active.
-          </AlertDescription>
-        </Alert>
-      )}
-    </div>
-  );
+  // Hide all security alerts - return null to not render anything
+  return null;
 };
 
 export default SecurityMonitor;
