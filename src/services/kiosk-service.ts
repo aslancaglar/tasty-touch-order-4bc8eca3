@@ -9,6 +9,7 @@ import {
   OrderItem, 
   OrderItemOption,
   OrderStatus,
+  OrderType,
   ToppingCategory,
   Topping
 } from "@/types/database-types";
@@ -413,7 +414,8 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
 
   return data ? {
     ...data,
-    status: data.status as OrderStatus
+    status: data.status as OrderStatus,
+    order_type: data.order_type as OrderType
   } : null;
 };
 
@@ -431,7 +433,8 @@ export const getOrdersByRestaurantId = async (restaurantId: string): Promise<Ord
 
   return data.map(order => ({
     ...order,
-    status: order.status as OrderStatus
+    status: order.status as OrderStatus,
+    order_type: order.order_type as OrderType
   }));
 };
 
@@ -450,7 +453,8 @@ export const updateOrderStatus = async (id: string, status: OrderStatus): Promis
 
   return {
     ...data,
-    status: data.status as OrderStatus
+    status: data.status as OrderStatus,
+    order_type: data.order_type as OrderType
   };
 };
 
