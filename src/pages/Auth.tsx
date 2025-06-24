@@ -77,7 +77,7 @@ const Auth = () => {
         
         toast({
           title: "Login successful",
-          description: "Welcome back to TastyTouch admin dashboard!"
+          description: "Welcome back to QimboKiosk admin dashboard!"
         });
         
         if (profileData?.is_admin) {
