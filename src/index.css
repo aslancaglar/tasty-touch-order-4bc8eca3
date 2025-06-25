@@ -31,7 +31,7 @@
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
-    --input: 0 0% 50%;
+    --input: 214.3 31.8% 91.4%;
     --ring: 265 83.3% 57.8%;
 
     --radius: 0.75rem;
@@ -63,7 +63,7 @@
     --destructive-foreground: 210 40% 98%;
     
     --border: 217.2 32.6% 17.5%;
-    --input: 0 0% 60%;
+    --input: 217.2 32.6% 17.5%;
     --ring: 265 83.3% 57.8%;
   }
 }
@@ -341,7 +341,7 @@
   }
 
   .form-input {
-    @apply px-4 py-2 bg-gray-50 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-kiosk-primary/50 focus:border-kiosk-primary w-full;
+    @apply px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-kiosk-primary/50 focus:border-kiosk-primary w-full;
   }
 
   .btn-primary {
@@ -354,20 +354,6 @@
 
   .menu-item {
     @apply p-4 rounded-lg bg-white shadow-sm border border-gray-100 transition-all hover:shadow-md;
-  }
-
-  /* Enhanced input styling for better visibility in dialogs */
-  input[type="text"], 
-  input[type="number"], 
-  textarea {
-    border: 2px solid hsl(var(--input)) !important;
-  }
-  
-  input[type="text"]:focus, 
-  input[type="number"]:focus, 
-  textarea:focus {
-    border-color: hsl(var(--primary)) !important;
-    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
   }
 }
 
