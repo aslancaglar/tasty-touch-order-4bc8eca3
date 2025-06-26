@@ -26,8 +26,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
   
   const mountedRef = useRef(true);
+  const initializingRef = useRef(false);
 
-  // Simplified admin check function
+  // Simplified admin check function with better error handling
   const checkAdminStatus = useCallback(async (userId: string): Promise<boolean> => {
     if (!userId || !mountedRef.current) return false;
     
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthError(null);
     setLoading(true);
     setAdminCheckCompleted(false);
+    initializingRef.current = false;
     
     try {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
@@ -100,10 +102,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     mountedRef.current = true;
+    
+    // Prevent multiple initializations
+    if (initializingRef.current) {
+      console.log("AuthProvider already initializing, skipping...");
+      return;
+    }
+    
+    initializingRef.current = true;
     console.log("AuthProvider initializing...");
     
     let authSubscription: any = null;
-    
+    let timeoutId: NodeJS.Timeout;
+
+    // Add timeout protection
+    const authTimeout = setTimeout(() => {
+      if (mountedRef.current && loading) {
+        console.warn("Auth initialization timeout, forcing completion");
+        setAuthError("Authentication timeout. Please try refreshing the page.");
+        setLoading(false);
+        setAdminCheckCompleted(true);
+      }
+    }, 10000); // 10 second timeout
+
     // Handle auth state changes
     const handleAuthChange = async (event: string, currentSession: Session | null) => {
       if (!mountedRef.current) return;
@@ -219,6 +240,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAdminCheckCompleted(true);
           setLoading(false);
         }
+      } finally {
+        clearTimeout(authTimeout);
       }
     };
 
@@ -228,12 +251,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       console.log("Cleaning up AuthProvider...");
       mountedRef.current = false;
+      initializingRef.current = false;
+      
+      clearTimeout(authTimeout);
       
       if (authSubscription) {
         authSubscription.unsubscribe();
       }
     };
-  }, [checkAdminStatus]);
+  }, []); // Removed checkAdminStatus from dependencies to break the loop
 
   const signOut = async () => {
     try {
