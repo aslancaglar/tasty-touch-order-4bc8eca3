@@ -2,16 +2,14 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./Dashboard";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { setCachingEnabled, setCachingEnabledForAdmin } from "@/services/cache-service";
 import { useEffect } from "react";
 import { isOnline } from "@/utils/service-worker";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const { user, isAdmin, adminCheckCompleted, authError, retryAuth } = useAuth();
+  const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
   const { toast } = useToast();
 
   // Ensure caching is properly set when the admin dashboard loads
@@ -39,29 +37,11 @@ const Index = () => {
     };
   }, [toast]);
 
-  // Show error state with retry option
-  if (authError) {
-    console.log("Index: Showing error state");
+  // Display loading state until both authentication and admin check are complete
+  if (loading || !adminCheckCompleted) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 p-4">
-        <div className="max-w-md w-full">
-          <Alert className="border-red-200 bg-red-50">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <AlertTitle className="text-red-800">Authentication Error</AlertTitle>
-            <AlertDescription className="text-red-700 mb-4">
-              {authError}
-            </AlertDescription>
-            <div className="flex gap-2">
-              <Button onClick={retryAuth} variant="outline" size="sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-              <Button onClick={() => window.location.reload()} variant="outline" size="sm">
-                Refresh Page
-              </Button>
-            </div>
-          </Alert>
-        </div>
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-700" />
       </div>
     );
   }

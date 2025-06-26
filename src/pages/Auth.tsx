@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +14,6 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { user, isAdmin, loading: authLoading, adminCheckCompleted } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,16 +25,16 @@ const Auth = () => {
     const checkSession = async () => {
       try {
         console.log("Checking for existing session...");
-        
-        // Wait for auth context to complete its checks
-        if (authLoading || !adminCheckCompleted) {
-          return;
-        }
-        
-        if (user) {
-          console.log("Valid session found, checking admin status...");
-          
-          if (isAdmin) {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          console.log("Session found, checking admin status...");
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', data.session.user.id)
+            .single();
+            
+          if (profileData?.is_admin) {
             console.log("Admin user detected, redirecting to admin dashboard");
             navigate("/");
           } else {
@@ -45,14 +43,13 @@ const Auth = () => {
           }
         }
       } catch (error) {
-        console.error("Error checking session:", error);
+        console.error("Error checking session");
       } finally {
         setCheckingSession(false);
       }
     };
-    
     checkSession();
-  }, [navigate, user, isAdmin, authLoading, adminCheckCompleted]);
+  }, [navigate]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,19 +62,34 @@ const Auth = () => {
         email: sanitizedEmail,
         password: password // Password doesn't need sanitization as it's used directly for auth
       });
-      
       if (error) {
         throw error;
       }
       
-      toast({
-        title: "Login successful",
-        description: "Welcome back to QimboKiosk!"
-      });
-      
-      // Navigation will be handled by the auth context and useEffect above
+      // After successful login, check if user is admin
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', userData.user.id)
+          .single();
+        
+        toast({
+          title: "Login successful",
+          description: "Welcome back to QimboKiosk admin dashboard!"
+        });
+        
+        if (profileData?.is_admin) {
+          console.log("Admin user login detected, redirecting to admin dashboard");
+          navigate("/");
+        } else {
+          console.log("Regular user login detected, redirecting to owner dashboard");
+          navigate("/owner");
+        }
+      }
     } catch (error: any) {
-      console.error("Login failed:", error);
+      console.error("Login failed");
       toast({
         title: "Login failed",
         description: error.message || "An error occurred during login",
@@ -93,15 +105,10 @@ const Auth = () => {
   };
 
   // Don't render form until we've checked session status
-  if (checkingSession || authLoading || !adminCheckCompleted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
-        </div>
-      </div>
-    );
+  if (checkingSession) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+      </div>;
   }
   
   return (
@@ -144,17 +151,13 @@ const Auth = () => {
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <span className="flex items-center gap-1">
+              {loading ? <span className="flex items-center gap-1">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   Logging in...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
+                </span> : <span className="flex items-center gap-2">
                   <LogIn className="h-4 w-4" />
                   Login
-                </span>
-              )}
+                </span>}
             </Button>
           </CardFooter>
         </form>
