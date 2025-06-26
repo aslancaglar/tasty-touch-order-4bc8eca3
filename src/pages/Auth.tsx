@@ -23,12 +23,10 @@ const Auth = () => {
 
   // Redirect authenticated users to their appropriate dashboard
   useEffect(() => {
-    if (loading || !adminCheckCompleted) {
-      console.log("Auth page: Still loading or admin check not completed", { loading, adminCheckCompleted });
-      return;
-    }
+    console.log("Auth page effect:", { user: !!user, loading, adminCheckCompleted, isAdmin });
     
-    if (user) {
+    // Only redirect if we have a user and admin check is completed
+    if (user && adminCheckCompleted && !loading) {
       console.log("Auth page: User is authenticated, redirecting...", { isAdmin });
       const redirectPath = isAdmin ? "/" : "/owner";
       console.log("Redirecting to:", redirectPath);
@@ -55,15 +53,14 @@ const Auth = () => {
         throw error;
       }
       
-      console.log("Login successful, waiting for auth state change...");
+      console.log("Login successful - auth state will handle redirect");
       
       toast({
         title: "Login successful",
         description: "Welcome back to QimboKiosk!"
       });
       
-      // Don't set loading to false here - let the auth state change handle it
-      // The useEffect will handle the redirect when the auth state updates
+      // Don't set loading to false - let auth state handle everything
       
     } catch (error: any) {
       console.error("Login failed:", error);
@@ -81,8 +78,8 @@ const Auth = () => {
   };
 
   // Show loading while auth is being processed
-  if (loading || !adminCheckCompleted) {
-    console.log("Auth page: Showing loading state", { loading, adminCheckCompleted });
+  if (loading) {
+    console.log("Auth page: Showing loading state");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="text-center">
@@ -93,7 +90,7 @@ const Auth = () => {
     );
   }
 
-  // Don't show the form if user is already authenticated (they'll be redirected)
+  // Don't show the form if user is already authenticated
   if (user) {
     console.log("Auth page: User authenticated, showing redirect message");
     return (

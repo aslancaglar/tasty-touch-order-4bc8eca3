@@ -21,13 +21,13 @@ const Index = () => {
   // If no user is authenticated, redirect to auth page
   if (!user) {
     console.log("No authenticated user, redirecting to auth");
-    return <Navigate to="/auth" />;
+    return <Navigate to="/auth" replace />;
   }
 
   // If user is not an admin, redirect to owner page
-  if (user && isAdmin === false) {
+  if (isAdmin === false) {
     console.log("User is not an admin, redirecting to owner page");
-    return <Navigate to="/owner" />;
+    return <Navigate to="/owner" replace />;
   }
 
   // User is admin, render Dashboard

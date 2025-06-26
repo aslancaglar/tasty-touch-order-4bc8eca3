@@ -21,8 +21,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Check admin status
+  // Check admin status - simplified version
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
     
@@ -49,6 +50,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Handle auth state updates - unified function
+  const handleAuthState = async (currentSession: Session | null, source: string) => {
+    console.log(`Auth state update from ${source}:`, currentSession?.user?.id || 'no user');
+    
+    if (!currentSession?.user) {
+      console.log("No session/user - setting defaults");
+      setSession(null);
+      setUser(null);
+      setIsAdmin(false);
+      setAdminCheckCompleted(true);
+      setLoading(false);
+      return;
+    }
+
+    // Set session and user immediately
+    setSession(currentSession);
+    setUser(currentSession.user);
+    
+    // Check admin status
+    try {
+      setAdminCheckCompleted(false);
+      const adminStatus = await checkAdminStatus(currentSession.user.id);
+      console.log(`Admin status from ${source}:`, adminStatus);
+      
+      setIsAdmin(adminStatus);
+      setAdminCheckCompleted(true);
+    } catch (error) {
+      console.error(`Error checking admin status from ${source}:`, error);
+      setIsAdmin(false);
+      setAdminCheckCompleted(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Initialize authentication state
   useEffect(() => {
     console.log("Initializing AuthProvider...");
@@ -57,38 +93,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const initializeAuth = async () => {
       try {
+        // Set up auth state change listener FIRST
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, currentSession) => {
+            if (!isMounted || !isInitialized) return;
+            
+            console.log("Auth state change event:", event, currentSession?.user?.id);
+            
+            if (event === 'SIGNED_OUT') {
+              setSession(null);
+              setUser(null);
+              setIsAdmin(false);
+              setAdminCheckCompleted(true);
+              setLoading(false);
+              logSecurityEvent('User signed out', { event, timestamp: new Date().toISOString() });
+              return;
+            }
+
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              await handleAuthState(currentSession, `auth-event-${event}`);
+              
+              if (event === 'SIGNED_IN') {
+                logSecurityEvent('User signed in', { 
+                  userId: currentSession?.user?.id,
+                  timestamp: new Date().toISOString()
+                });
+              }
+            }
+          }
+        );
+
         // Get current session
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (!isMounted) return;
         
-        if (currentSession?.user) {
-          console.log("Valid session found during initialization");
-          setSession(currentSession);
-          setUser(currentSession.user);
-          
-          // Check admin status
-          try {
-            const adminStatus = await checkAdminStatus(currentSession.user.id);
-            if (isMounted) {
-              setIsAdmin(adminStatus);
-              setAdminCheckCompleted(true);
-              console.log("Admin check completed during initialization:", adminStatus);
-            }
-          } catch (error) {
-            console.error("Error during admin status check in initialization:", error);
-            if (isMounted) {
-              setIsAdmin(false);
-              setAdminCheckCompleted(true);
-            }
-          }
-        } else {
-          console.log("No valid session found during initialization");
-          setSession(null);
-          setUser(null);
-          setIsAdmin(false);
-          setAdminCheckCompleted(true);
-        }
+        console.log("Initial session check:", currentSession?.user?.id || 'no session');
+        
+        // Mark as initialized before handling auth state
+        setIsInitialized(true);
+        
+        // Handle the current session
+        await handleAuthState(currentSession, 'initialization');
+
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
         console.error("Auth initialization error:", error);
         if (isMounted) {
@@ -96,74 +146,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setIsAdmin(false);
           setAdminCheckCompleted(true);
-        }
-      } finally {
-        if (isMounted) {
           setLoading(false);
+          setIsInitialized(true);
         }
       }
     };
 
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        if (!isMounted) return;
-        
-        console.log("Auth state change:", event, currentSession?.user?.id);
-        
-        if (event === 'SIGNED_OUT' || !currentSession?.user) {
-          console.log("User signed out or no session");
-          setSession(null);
-          setUser(null);
-          setIsAdmin(false);
-          setAdminCheckCompleted(true);
-          setLoading(false);
-          logSecurityEvent('User signed out', { event, timestamp: new Date().toISOString() });
-          return;
-        }
-
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          console.log("User signed in or token refreshed");
-          setSession(currentSession);
-          setUser(currentSession.user);
-          
-          // Reset admin check state
-          setAdminCheckCompleted(false);
-          
-          // Check admin status
-          try {
-            const adminStatus = await checkAdminStatus(currentSession.user.id);
-            if (isMounted) {
-              console.log("Setting admin status after auth change:", adminStatus);
-              setIsAdmin(adminStatus);
-              setAdminCheckCompleted(true);
-            }
-          } catch (error) {
-            console.error("Error checking admin status after auth change:", error);
-            if (isMounted) {
-              setIsAdmin(false);
-              setAdminCheckCompleted(true);
-            }
-          }
-          
-          if (event === 'SIGNED_IN') {
-            logSecurityEvent('User signed in', { 
-              userId: currentSession.user.id,
-              timestamp: new Date().toISOString()
-            });
-          }
-        }
-        
-        setLoading(false);
-      }
-    );
-
-    // Initialize
     initializeAuth();
 
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
     };
   }, []);
 
