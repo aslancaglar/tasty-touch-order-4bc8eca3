@@ -25,13 +25,14 @@ const Auth = () => {
     const checkSession = async () => {
       try {
         console.log("Checking for existing session...");
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          console.log("Session found, checking admin status...");
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log("Valid session found, checking admin status...");
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('is_admin')
-            .eq('id', data.session.user.id)
+            .eq('id', session.user.id)
             .single();
             
           if (profileData?.is_admin) {
@@ -43,7 +44,7 @@ const Auth = () => {
           }
         }
       } catch (error) {
-        console.error("Error checking session");
+        console.error("Error checking session:", error);
       } finally {
         setCheckingSession(false);
       }
@@ -62,6 +63,7 @@ const Auth = () => {
         email: sanitizedEmail,
         password: password // Password doesn't need sanitization as it's used directly for auth
       });
+      
       if (error) {
         throw error;
       }
@@ -89,7 +91,7 @@ const Auth = () => {
         }
       }
     } catch (error: any) {
-      console.error("Login failed");
+      console.error("Login failed:", error);
       toast({
         title: "Login failed",
         description: error.message || "An error occurred during login",
@@ -106,9 +108,11 @@ const Auth = () => {
 
   // Don't render form until we've checked session status
   if (checkingSession) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-      </div>;
+      </div>
+    );
   }
   
   return (
@@ -151,13 +155,17 @@ const Auth = () => {
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <span className="flex items-center gap-1">
+              {loading ? (
+                <span className="flex items-center gap-1">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   Logging in...
-                </span> : <span className="flex items-center gap-2">
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
                   <LogIn className="h-4 w-4" />
                   Login
-                </span>}
+                </span>
+              )}
             </Button>
           </CardFooter>
         </form>
