@@ -22,9 +22,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
 
-  // Check admin status - simplified version
+  // Cache admin status to avoid repeated checks
+  const [adminStatusCache, setAdminStatusCache] = useState<{ [key: string]: boolean }>({});
+
+  // Check admin status with caching and error handling
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
+    
+    // Check cache first
+    if (adminStatusCache[userId] !== undefined) {
+      console.log("Admin status from cache:", adminStatusCache[userId]);
+      return adminStatusCache[userId];
+    }
     
     try {
       console.log("Checking admin status for user:", userId);
@@ -37,50 +46,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) {
         console.warn("Admin check failed:", error.message);
+        // Cache false result to avoid repeated failed requests
+        setAdminStatusCache(prev => ({ ...prev, [userId]: false }));
         return false;
       }
       
       const adminStatus = data?.is_admin || false;
       console.log("Admin status retrieved:", adminStatus);
+      
+      // Cache the result
+      setAdminStatusCache(prev => ({ ...prev, [userId]: adminStatus }));
       return adminStatus;
     } catch (error) {
       console.error("Admin check exception:", error);
+      // Cache false result for exceptions too
+      setAdminStatusCache(prev => ({ ...prev, [userId]: false }));
       return false;
-    }
-  };
-
-  // Handle auth state updates - unified function
-  const handleAuthState = async (currentSession: Session | null, source: string) => {
-    console.log(`Auth state update from ${source}:`, currentSession?.user?.id || 'no user');
-    
-    if (!currentSession?.user) {
-      console.log("No session/user - setting defaults");
-      setSession(null);
-      setUser(null);
-      setIsAdmin(false);
-      setAdminCheckCompleted(true);
-      setLoading(false);
-      return;
-    }
-
-    // Set session and user immediately
-    setSession(currentSession);
-    setUser(currentSession.user);
-    
-    // Check admin status
-    try {
-      setAdminCheckCompleted(false);
-      const adminStatus = await checkAdminStatus(currentSession.user.id);
-      console.log(`Admin status from ${source}:`, adminStatus);
-      
-      setIsAdmin(adminStatus);
-      setAdminCheckCompleted(true);
-    } catch (error) {
-      console.error(`Error checking admin status from ${source}:`, error);
-      setIsAdmin(false);
-      setAdminCheckCompleted(true);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -89,32 +70,106 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log("Initializing AuthProvider...");
     
     let isMounted = true;
+    let initializationTimeout: NodeJS.Timeout;
     
     const initializeAuth = async () => {
       try {
-        // Set up auth state change listener FIRST
+        // Set timeout to prevent indefinite loading
+        initializationTimeout = setTimeout(() => {
+          if (isMounted && loading) {
+            console.warn("Auth initialization timeout - setting loading to false");
+            setLoading(false);
+            setAdminCheckCompleted(true);
+          }
+        }, 10000); // 10 second timeout
+
+        // Get current session first
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        console.log("Initial session:", currentSession?.user?.id || 'no session');
+        
+        // Set initial state immediately
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          // Check admin status for existing session
+          try {
+            setAdminCheckCompleted(false);
+            const adminStatus = await checkAdminStatus(currentSession.user.id);
+            if (isMounted) {
+              setIsAdmin(adminStatus);
+              setAdminCheckCompleted(true);
+            }
+          } catch (error) {
+            console.error("Error checking initial admin status:", error);
+            if (isMounted) {
+              setIsAdmin(false);
+              setAdminCheckCompleted(true);
+            }
+          }
+        } else {
+          // No user, set defaults
+          setIsAdmin(false);
+          setAdminCheckCompleted(true);
+        }
+        
+        if (isMounted) {
+          setLoading(false);
+        }
+
+        // Set up auth state change listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, currentSession) => {
+          async (event, newSession) => {
             if (!isMounted) return;
             
-            console.log("Auth state change event:", event, currentSession?.user?.id);
+            console.log("Auth state change:", event, newSession?.user?.id || 'no user');
             
-            if (event === 'SIGNED_OUT') {
+            // Handle sign out
+            if (event === 'SIGNED_OUT' || !newSession?.user) {
               setSession(null);
               setUser(null);
               setIsAdmin(false);
               setAdminCheckCompleted(true);
               setLoading(false);
-              logSecurityEvent('User signed out', { event, timestamp: new Date().toISOString() });
+              
+              if (event === 'SIGNED_OUT') {
+                logSecurityEvent('User signed out', { 
+                  event, 
+                  timestamp: new Date().toISOString() 
+                });
+              }
               return;
             }
 
+            // Handle sign in or token refresh
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-              await handleAuthState(currentSession, `auth-event-${event}`);
+              setSession(newSession);
+              setUser(newSession.user);
+              
+              // Check admin status for new session
+              try {
+                setAdminCheckCompleted(false);
+                const adminStatus = await checkAdminStatus(newSession.user.id);
+                if (isMounted) {
+                  setIsAdmin(adminStatus);
+                  setAdminCheckCompleted(true);
+                  setLoading(false);
+                }
+              } catch (error) {
+                console.error("Error checking admin status on auth change:", error);
+                if (isMounted) {
+                  setIsAdmin(false);
+                  setAdminCheckCompleted(true);
+                  setLoading(false);
+                }
+              }
               
               if (event === 'SIGNED_IN') {
                 logSecurityEvent('User signed in', { 
-                  userId: currentSession?.user?.id,
+                  userId: newSession.user.id,
                   timestamp: new Date().toISOString()
                 });
               }
@@ -122,18 +177,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
 
-        // Get current session
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-        
-        console.log("Initial session check:", currentSession?.user?.id || 'no session');
-        
-        // Handle the current session immediately
-        await handleAuthState(currentSession, 'initialization');
-
         return () => {
           subscription.unsubscribe();
+          if (initializationTimeout) {
+            clearTimeout(initializationTimeout);
+          }
         };
       } catch (error) {
         console.error("Auth initialization error:", error);
@@ -151,6 +199,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false;
+      if (initializationTimeout) {
+        clearTimeout(initializationTimeout);
+      }
     };
   }, []);
 
@@ -161,6 +212,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId: user?.id,
         timestamp: new Date().toISOString()
       });
+      
+      // Clear admin status cache
+      setAdminStatusCache({});
       
       const { error } = await supabase.auth.signOut();
       
