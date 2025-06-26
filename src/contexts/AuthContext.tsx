@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       const adminStatus = data?.is_admin || false;
-      console.log("Admin status:", adminStatus);
+      console.log("Admin status retrieved:", adminStatus);
       return adminStatus;
     } catch (error) {
       console.error("Admin check exception:", error);
@@ -73,15 +73,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (isMounted) {
               setIsAdmin(adminStatus);
               setAdminCheckCompleted(true);
+              console.log("Admin check completed during initialization:", adminStatus);
             }
           } catch (error) {
+            console.error("Error during admin status check in initialization:", error);
             if (isMounted) {
               setIsAdmin(false);
               setAdminCheckCompleted(true);
             }
           }
         } else {
-          console.log("No valid session found");
+          console.log("No valid session found during initialization");
           setSession(null);
           setUser(null);
           setIsAdmin(false);
@@ -125,16 +127,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(currentSession);
           setUser(currentSession.user);
           
+          // Reset admin check state
+          setAdminCheckCompleted(false);
+          
           // Check admin status
           try {
             const adminStatus = await checkAdminStatus(currentSession.user.id);
             if (isMounted) {
-              console.log("Setting admin status:", adminStatus);
+              console.log("Setting admin status after auth change:", adminStatus);
               setIsAdmin(adminStatus);
               setAdminCheckCompleted(true);
             }
           } catch (error) {
-            console.error("Error checking admin status:", error);
+            console.error("Error checking admin status after auth change:", error);
             if (isMounted) {
               setIsAdmin(false);
               setAdminCheckCompleted(true);

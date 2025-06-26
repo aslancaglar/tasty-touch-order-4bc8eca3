@@ -23,15 +23,16 @@ const Auth = () => {
 
   // Redirect authenticated users to their appropriate dashboard
   useEffect(() => {
-    if (loading || !adminCheckCompleted) return;
+    if (loading || !adminCheckCompleted) {
+      console.log("Auth page: Still loading or admin check not completed", { loading, adminCheckCompleted });
+      return;
+    }
     
     if (user) {
       console.log("Auth page: User is authenticated, redirecting...", { isAdmin });
-      if (isAdmin) {
-        navigate("/", { replace: true });
-      } else {
-        navigate("/owner", { replace: true });
-      }
+      const redirectPath = isAdmin ? "/" : "/owner";
+      console.log("Redirecting to:", redirectPath);
+      navigate(redirectPath, { replace: true });
     }
   }, [user, isAdmin, loading, adminCheckCompleted, navigate]);
   
@@ -42,21 +43,27 @@ const Auth = () => {
     try {
       const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
       
+      console.log("Attempting login for:", sanitizedEmail);
+      
       const { error } = await supabase.auth.signInWithPassword({
         email: sanitizedEmail,
         password: password
       });
       
       if (error) {
+        console.error("Login error:", error);
         throw error;
       }
+      
+      console.log("Login successful, waiting for auth state change...");
       
       toast({
         title: "Login successful",
         description: "Welcome back to QimboKiosk!"
       });
       
-      // Don't manually redirect here - let the useEffect handle it
+      // Don't set loading to false here - let the auth state change handle it
+      // The useEffect will handle the redirect when the auth state updates
       
     } catch (error: any) {
       console.error("Login failed:", error);
@@ -75,18 +82,26 @@ const Auth = () => {
 
   // Show loading while auth is being processed
   if (loading || !adminCheckCompleted) {
+    console.log("Auth page: Showing loading state", { loading, adminCheckCompleted });
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
       </div>
     );
   }
 
   // Don't show the form if user is already authenticated (they'll be redirected)
   if (user) {
+    console.log("Auth page: User authenticated, showing redirect message");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting to dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -116,6 +131,7 @@ const Auth = () => {
                   required 
                   pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
                   title="Please enter a valid email address"
+                  disabled={loginLoading}
                 />
               </div>
             </div>
@@ -128,6 +144,7 @@ const Auth = () => {
                   size="icon" 
                   className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground" 
                   onClick={togglePasswordVisibility}
+                  disabled={loginLoading}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
@@ -139,6 +156,7 @@ const Auth = () => {
                   onChange={e => setPassword(e.target.value)} 
                   className="pr-10" 
                   required 
+                  disabled={loginLoading}
                 />
               </div>
             </div>
