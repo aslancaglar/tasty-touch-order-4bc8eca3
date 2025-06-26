@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user, isAdmin, loading: authLoading, adminCheckCompleted } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,17 +27,16 @@ const Auth = () => {
     const checkSession = async () => {
       try {
         console.log("Checking for existing session...");
-        const { data: { session } } = await supabase.auth.getSession();
         
-        if (session) {
+        // Wait for auth context to complete its checks
+        if (authLoading || !adminCheckCompleted) {
+          return;
+        }
+        
+        if (user) {
           console.log("Valid session found, checking admin status...");
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (profileData?.is_admin) {
+          
+          if (isAdmin) {
             console.log("Admin user detected, redirecting to admin dashboard");
             navigate("/");
           } else {
@@ -49,8 +50,9 @@ const Auth = () => {
         setCheckingSession(false);
       }
     };
+    
     checkSession();
-  }, [navigate]);
+  }, [navigate, user, isAdmin, authLoading, adminCheckCompleted]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,28 +70,12 @@ const Auth = () => {
         throw error;
       }
       
-      // After successful login, check if user is admin
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData?.user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', userData.user.id)
-          .single();
-        
-        toast({
-          title: "Login successful",
-          description: "Welcome back to QimboKiosk admin dashboard!"
-        });
-        
-        if (profileData?.is_admin) {
-          console.log("Admin user login detected, redirecting to admin dashboard");
-          navigate("/");
-        } else {
-          console.log("Regular user login detected, redirecting to owner dashboard");
-          navigate("/owner");
-        }
-      }
+      toast({
+        title: "Login successful",
+        description: "Welcome back to QimboKiosk!"
+      });
+      
+      // Navigation will be handled by the auth context and useEffect above
     } catch (error: any) {
       console.error("Login failed:", error);
       toast({
@@ -107,10 +93,13 @@ const Auth = () => {
   };
 
   // Don't render form until we've checked session status
-  if (checkingSession) {
+  if (checkingSession || authLoading || !adminCheckCompleted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
       </div>
     );
   }
