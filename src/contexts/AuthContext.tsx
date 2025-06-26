@@ -21,14 +21,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start as false, only set to true when actually loading
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   
   const mountedRef = useRef(true);
-  const initializingRef = useRef(false);
+  const initializedRef = useRef(false);
 
-  // Simplified admin check function with better error handling
+  // Simplified admin check function
   const checkAdminStatus = useCallback(async (userId: string): Promise<boolean> => {
     if (!userId || !mountedRef.current) return false;
     
@@ -65,7 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthError(null);
     setLoading(true);
     setAdminCheckCompleted(false);
-    initializingRef.current = false;
     
     try {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
@@ -103,29 +102,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     mountedRef.current = true;
     
-    // Prevent multiple initializations
-    if (initializingRef.current) {
-      console.log("AuthProvider already initializing, skipping...");
+    // Only initialize once
+    if (initializedRef.current) {
+      console.log("AuthProvider already initialized, skipping...");
       return;
     }
     
-    initializingRef.current = true;
+    initializedRef.current = true;
     console.log("AuthProvider initializing...");
     
     let authSubscription: any = null;
-    let timeoutId: NodeJS.Timeout;
 
-    // Add timeout protection
-    const authTimeout = setTimeout(() => {
-      if (mountedRef.current && loading) {
-        console.warn("Auth initialization timeout, forcing completion");
-        setAuthError("Authentication timeout. Please try refreshing the page.");
-        setLoading(false);
-        setAdminCheckCompleted(true);
-      }
-    }, 10000); // 10 second timeout
-
-    // Handle auth state changes
+    // Handle auth state changes - simplified without extra loading states
     const handleAuthChange = async (event: string, currentSession: Session | null) => {
       if (!mountedRef.current) return;
       
@@ -137,7 +125,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setIsAdmin(false);
         setAdminCheckCompleted(true);
-        setLoading(false);
         logSecurityEvent('User signed out', { timestamp: new Date().toISOString() });
         return;
       }
@@ -145,7 +132,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentSession?.user) {
         setSession(currentSession);
         setUser(currentSession.user);
-        setAdminCheckCompleted(false);
         
         if (event === 'SIGNED_IN') {
           logSecurityEvent('User signed in', { 
@@ -154,19 +140,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
         
+        // Check admin status without showing loading state
         try {
           const adminStatus = await checkAdminStatus(currentSession.user.id);
           if (mountedRef.current) {
             setIsAdmin(adminStatus);
             setAdminCheckCompleted(true);
-            setLoading(false);
           }
         } catch (error) {
           console.error("Error checking admin status:", error);
           if (mountedRef.current) {
             setIsAdmin(false);
             setAdminCheckCompleted(true);
-            setLoading(false);
           }
         }
       } else {
@@ -174,7 +159,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setIsAdmin(false);
         setAdminCheckCompleted(true);
-        setLoading(false);
       }
     };
 
@@ -182,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
     authSubscription = subscription;
 
-    // Get initial session
+    // Get initial session - no loading state needed
     const initializeAuth = async () => {
       try {
         console.log("Getting initial session...");
@@ -197,7 +181,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setIsAdmin(false);
           setAdminCheckCompleted(true);
-          setLoading(false);
           return;
         }
 
@@ -226,10 +209,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAdmin(false);
           setAdminCheckCompleted(true);
         }
-        
-        if (mountedRef.current) {
-          setLoading(false);
-        }
       } catch (error) {
         console.error("Session initialization error:", error);
         if (mountedRef.current) {
@@ -238,10 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setIsAdmin(false);
           setAdminCheckCompleted(true);
-          setLoading(false);
         }
-      } finally {
-        clearTimeout(authTimeout);
       }
     };
 
@@ -251,15 +227,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       console.log("Cleaning up AuthProvider...");
       mountedRef.current = false;
-      initializingRef.current = false;
-      
-      clearTimeout(authTimeout);
+      initializedRef.current = false;
       
       if (authSubscription) {
         authSubscription.unsubscribe();
       }
     };
-  }, []); // Removed checkAdminStatus from dependencies to break the loop
+  }, []);
 
   const signOut = async () => {
     try {

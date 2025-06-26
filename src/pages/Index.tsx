@@ -2,7 +2,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./Dashboard";
-import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { setCachingEnabled, setCachingEnabledForAdmin } from "@/services/cache-service";
 import { useEffect } from "react";
 import { isOnline } from "@/utils/service-worker";
@@ -11,7 +11,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const { user, loading, isAdmin, adminCheckCompleted, authError, retryAuth } = useAuth();
+  const { user, isAdmin, adminCheckCompleted, authError, retryAuth } = useAuth();
   const { toast } = useToast();
 
   // Ensure caching is properly set when the admin dashboard loads
@@ -40,7 +40,7 @@ const Index = () => {
   }, [toast]);
 
   // Show error state with retry option
-  if (authError && !loading) {
+  if (authError) {
     console.log("Index: Showing error state");
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 p-4">
@@ -61,18 +61,6 @@ const Index = () => {
               </Button>
             </div>
           </Alert>
-        </div>
-      </div>
-    );
-  }
-
-  // Display loading state until both authentication and admin check are complete
-  if (loading || !adminCheckCompleted) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading admin dashboard...</p>
         </div>
       </div>
     );
