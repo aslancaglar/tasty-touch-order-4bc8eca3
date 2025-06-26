@@ -21,7 +21,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   // Check admin status - simplified version
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
@@ -96,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Set up auth state change listener FIRST
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, currentSession) => {
-            if (!isMounted || !isInitialized) return;
+            if (!isMounted) return;
             
             console.log("Auth state change event:", event, currentSession?.user?.id);
             
@@ -130,10 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         console.log("Initial session check:", currentSession?.user?.id || 'no session');
         
-        // Mark as initialized before handling auth state
-        setIsInitialized(true);
-        
-        // Handle the current session
+        // Handle the current session immediately
         await handleAuthState(currentSession, 'initialization');
 
         return () => {
@@ -147,7 +143,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAdmin(false);
           setAdminCheckCompleted(true);
           setLoading(false);
-          setIsInitialized(true);
         }
       }
     };
