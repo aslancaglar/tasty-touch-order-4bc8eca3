@@ -24,72 +24,66 @@ const Auth = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        console.log("Checking for existing session...");
+        console.log("Auth page: Checking for existing session...");
         const { data } = await supabase.auth.getSession();
+        
         if (data.session) {
-          console.log("Session found, checking admin status...");
+          console.log("Auth page: Session found, checking admin status...");
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('is_admin')
             .eq('id', data.session.user.id)
             .single();
             
-          if (profileData?.is_admin) {
-            console.log("Admin user detected, redirecting to admin dashboard");
-            navigate("/");
+          if (!profileError && profileData) {
+            if (profileData.is_admin) {
+              console.log("Auth page: Admin user detected, redirecting to admin dashboard");
+              navigate("/");
+            } else {
+              console.log("Auth page: Regular user detected, redirecting to owner dashboard");
+              navigate("/owner");
+            }
           } else {
-            console.log("Regular user detected, redirecting to owner dashboard");
+            console.log("Auth page: Could not determine user type, redirecting to owner dashboard");
             navigate("/owner");
           }
+        } else {
+          console.log("Auth page: No session found");
         }
       } catch (error) {
-        console.error("Error checking session");
+        console.error("Auth page: Error checking session:", error);
       } finally {
         setCheckingSession(false);
       }
     };
+    
     checkSession();
   }, [navigate]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
     try {
-      // Sanitize user inputs before sending to authentication
       const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
       
       const { error } = await supabase.auth.signInWithPassword({
         email: sanitizedEmail,
-        password: password // Password doesn't need sanitization as it's used directly for auth
+        password: password
       });
+      
       if (error) {
         throw error;
       }
       
-      // After successful login, check if user is admin
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData?.user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', userData.user.id)
-          .single();
-        
-        toast({
-          title: "Login successful",
-          description: "Welcome back to QimboKiosk admin dashboard!"
-        });
-        
-        if (profileData?.is_admin) {
-          console.log("Admin user login detected, redirecting to admin dashboard");
-          navigate("/");
-        } else {
-          console.log("Regular user login detected, redirecting to owner dashboard");
-          navigate("/owner");
-        }
-      }
+      // Let the auth state change handler handle the redirect
+      toast({
+        title: "Login successful",
+        description: "Welcome back to QimboKiosk!"
+      });
+      
     } catch (error: any) {
-      console.error("Login failed");
+      console.error("Login failed:", error);
       toast({
         title: "Login failed",
         description: error.message || "An error occurred during login",
@@ -104,11 +98,12 @@ const Auth = () => {
     setShowPassword(!showPassword);
   };
 
-  // Don't render form until we've checked session status
   if (checkingSession) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-      </div>;
+      </div>
+    );
   }
   
   return (
@@ -142,22 +137,40 @@ const Auth = () => {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground" onClick={togglePasswordVisibility}>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground" 
+                  onClick={togglePasswordVisibility}
+                >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
-                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="pr-10" required />
+                <Input 
+                  id="password" 
+                  type={showPassword ? "text" : "password"} 
+                  placeholder="••••••••" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  className="pr-10" 
+                  required 
+                />
               </div>
             </div>
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <span className="flex items-center gap-1">
+              {loading ? (
+                <span className="flex items-center gap-1">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   Logging in...
-                </span> : <span className="flex items-center gap-2">
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
                   <LogIn className="h-4 w-4" />
                   Login
-                </span>}
+                </span>
+              )}
             </Button>
           </CardFooter>
         </form>

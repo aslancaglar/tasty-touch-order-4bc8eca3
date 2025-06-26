@@ -1,14 +1,11 @@
 
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useEffect } from "react";
-import { Loader2, ShieldOff } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
-  // Added property to allow admins to still access owner routes when needed
   allowAdminAccess?: boolean;
 }
 
@@ -19,14 +16,15 @@ const ProtectedRoute = ({
 }: ProtectedRouteProps) => {
   const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
   const location = useLocation();
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [securityFailure, setSecurityFailure] = useState(false);
 
-  // Clear any previous errors when dependencies change
-  useEffect(() => {
-    setAuthError(null);
-    setSecurityFailure(false);
-  }, [user, isAdmin]);
+  console.log("ProtectedRoute:", { 
+    user: !!user, 
+    loading, 
+    isAdmin, 
+    adminCheckCompleted, 
+    requireAdmin,
+    pathname: location.pathname 
+  });
 
   // Show loading spinner while authentication is being checked
   if (loading || !adminCheckCompleted) {
@@ -40,25 +38,9 @@ const ProtectedRoute = ({
     );
   }
 
-  // Show security error if verification failed but user is logged in
-  if (securityFailure && user) {
-    return (
-      <div className="flex h-screen items-center justify-center p-4">
-        <Alert variant="destructive" className="max-w-lg">
-          <ShieldOff className="h-4 w-4" />
-          <AlertTitle>Security Verification Failed</AlertTitle>
-          <AlertDescription>
-            {authError || "There was a problem verifying your permissions. Please try logging out and back in."}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   // Redirect to login if not authenticated
   if (!user) {
     console.log("ProtectedRoute: No user, redirecting to /auth");
-    // Save the location they were trying to access for redirect after login
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
@@ -68,14 +50,13 @@ const ProtectedRoute = ({
     return <Navigate to="/owner" replace />;
   }
 
-  // Handle owner routes for admin users - only redirect if specifically 
-  // requested to not allow admin access and we're on the specific owner path
+  // Handle owner routes for admin users
   if (isAdmin && location.pathname === '/owner' && !allowAdminAccess) {
     console.log("Admin user detected on owner route, redirecting to admin dashboard");
     return <Navigate to="/" replace />;
   }
 
-  console.log("ProtectedRoute: Access granted", { requireAdmin, isAdmin });
+  console.log("ProtectedRoute: Access granted");
   return <>{children}</>;
 };
 
