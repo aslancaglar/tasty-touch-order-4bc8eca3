@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,55 +15,29 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
 
-  // Check if user is already logged in
+  // Redirect authenticated users to their appropriate dashboard
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        console.log("Auth page: Checking for existing session...");
-        const { data } = await supabase.auth.getSession();
-        
-        if (data.session) {
-          console.log("Auth page: Session found, checking admin status...");
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', data.session.user.id)
-            .single();
-            
-          if (!profileError && profileData) {
-            if (profileData.is_admin) {
-              console.log("Auth page: Admin user detected, redirecting to admin dashboard");
-              navigate("/");
-            } else {
-              console.log("Auth page: Regular user detected, redirecting to owner dashboard");
-              navigate("/owner");
-            }
-          } else {
-            console.log("Auth page: Could not determine user type, redirecting to owner dashboard");
-            navigate("/owner");
-          }
-        } else {
-          console.log("Auth page: No session found");
-        }
-      } catch (error) {
-        console.error("Auth page: Error checking session:", error);
-      } finally {
-        setCheckingSession(false);
-      }
-    };
+    if (loading || !adminCheckCompleted) return;
     
-    checkSession();
-  }, [navigate]);
+    if (user) {
+      console.log("Auth page: User is authenticated, redirecting...", { isAdmin });
+      if (isAdmin) {
+        navigate("/", { replace: true });
+      } else {
+        navigate("/owner", { replace: true });
+      }
+    }
+  }, [user, isAdmin, loading, adminCheckCompleted, navigate]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setLoginLoading(true);
     
     try {
       const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
@@ -76,11 +51,12 @@ const Auth = () => {
         throw error;
       }
       
-      // Let the auth state change handler handle the redirect
       toast({
         title: "Login successful",
         description: "Welcome back to QimboKiosk!"
       });
+      
+      // Don't manually redirect here - let the useEffect handle it
       
     } catch (error: any) {
       console.error("Login failed:", error);
@@ -89,8 +65,7 @@ const Auth = () => {
         description: error.message || "An error occurred during login",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
+      setLoginLoading(false);
     }
   };
 
@@ -98,7 +73,17 @@ const Auth = () => {
     setShowPassword(!showPassword);
   };
 
-  if (checkingSession) {
+  // Show loading while auth is being processed
+  if (loading || !adminCheckCompleted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  // Don't show the form if user is already authenticated (they'll be redirected)
+  if (user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
@@ -159,8 +144,8 @@ const Auth = () => {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
+            <Button type="submit" className="w-full" disabled={loginLoading}>
+              {loginLoading ? (
                 <span className="flex items-center gap-1">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   Logging in...

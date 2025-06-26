@@ -22,12 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
 
-  // Simple session validation - only check if session exists
-  const isValidSession = (currentSession: Session | null): boolean => {
-    return currentSession !== null;
-  };
-
-  // Check admin status without caching complexity
+  // Check admin status
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
     
@@ -67,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (!isMounted) return;
         
-        if (currentSession && isValidSession(currentSession)) {
+        if (currentSession?.user) {
           console.log("Valid session found during initialization");
           setSession(currentSession);
           setUser(currentSession.user);
@@ -112,9 +107,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, currentSession) => {
         if (!isMounted) return;
         
-        console.log("Auth state change:", event);
+        console.log("Auth state change:", event, currentSession?.user?.id);
         
-        if (event === 'SIGNED_OUT' || !currentSession) {
+        if (event === 'SIGNED_OUT' || !currentSession?.user) {
+          console.log("User signed out or no session");
           setSession(null);
           setUser(null);
           setIsAdmin(false);
@@ -125,33 +121,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (isValidSession(currentSession)) {
-            setSession(currentSession);
-            setUser(currentSession.user);
-            
-            // Check admin status in background
-            setTimeout(async () => {
-              if (!isMounted) return;
-              try {
-                const adminStatus = await checkAdminStatus(currentSession.user.id);
-                if (isMounted) {
-                  setIsAdmin(adminStatus);
-                  setAdminCheckCompleted(true);
-                }
-              } catch (error) {
-                if (isMounted) {
-                  setIsAdmin(false);
-                  setAdminCheckCompleted(true);
-                }
-              }
-            }, 0);
-            
-            if (event === 'SIGNED_IN') {
-              logSecurityEvent('User signed in', { 
-                userId: currentSession.user.id,
-                timestamp: new Date().toISOString()
-              });
+          console.log("User signed in or token refreshed");
+          setSession(currentSession);
+          setUser(currentSession.user);
+          
+          // Check admin status
+          try {
+            const adminStatus = await checkAdminStatus(currentSession.user.id);
+            if (isMounted) {
+              console.log("Setting admin status:", adminStatus);
+              setIsAdmin(adminStatus);
+              setAdminCheckCompleted(true);
             }
+          } catch (error) {
+            console.error("Error checking admin status:", error);
+            if (isMounted) {
+              setIsAdmin(false);
+              setAdminCheckCompleted(true);
+            }
+          }
+          
+          if (event === 'SIGNED_IN') {
+            logSecurityEvent('User signed in', { 
+              userId: currentSession.user.id,
+              timestamp: new Date().toISOString()
+            });
           }
         }
         
@@ -183,21 +177,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       
-      // Clear state
-      setSession(null);
-      setUser(null);
-      setIsAdmin(false);
-      setAdminCheckCompleted(true);
-      
       console.log("Sign out complete");
     } catch (error) {
       console.error("Sign out exception:", error);
-      
-      // Clear state even on error
-      setSession(null);
-      setUser(null);
-      setIsAdmin(false);
-      setAdminCheckCompleted(true);
+      throw error;
     }
   };
 
