@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,38 +13,35 @@ import DOMPurify from 'dompurify';
 
 const Auth = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
-  const { user, loading, isAdmin, adminCheckCompleted, refreshAuth } = useAuth();
+  const { user, loading, isAdmin, refreshAuth } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showRefreshButton, setShowRefreshButton] = useState(false);
 
-  // Show refresh button after 10 seconds if still loading
+  // Show refresh button after 8 seconds if still loading
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (loading || !adminCheckCompleted) {
+      if (loading) {
         setShowRefreshButton(true);
       }
-    }, 10000);
+    }, 8000);
 
     return () => clearTimeout(timer);
-  }, [loading, adminCheckCompleted]);
+  }, [loading]);
 
-  // Redirect authenticated users to their appropriate dashboard
+  // Redirect authenticated users
   useEffect(() => {
-    console.log("Auth page effect:", { user: !!user, loading, adminCheckCompleted, isAdmin });
+    console.log("Auth page effect:", { user: !!user, loading, isAdmin });
     
-    // Only redirect if we have a user and admin check is completed
-    if (user && adminCheckCompleted && !loading) {
-      console.log("Auth page: User is authenticated, redirecting...", { isAdmin });
+    if (user && !loading) {
+      console.log("Auth page: User authenticated, redirecting", { isAdmin });
       const redirectPath = isAdmin ? "/" : "/owner";
-      console.log("Redirecting to:", redirectPath);
       navigate(redirectPath, { replace: true });
     }
-  }, [user, isAdmin, loading, adminCheckCompleted, navigate]);
+  }, [user, isAdmin, loading, navigate]);
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,14 +62,12 @@ const Auth = () => {
         throw error;
       }
       
-      console.log("Login successful - auth state will handle redirect");
+      console.log("Login successful");
       
       toast({
         title: "Login successful",
         description: "Welcome back to QimboKiosk!"
       });
-      
-      // Don't set loading to false - let auth state handle everything
       
     } catch (error: any) {
       console.error("Login failed:", error);
@@ -96,14 +91,12 @@ const Auth = () => {
       await refreshAuth();
     } catch (error) {
       console.error("Manual refresh failed:", error);
-      // Show refresh button again if it fails
       setTimeout(() => setShowRefreshButton(true), 2000);
     }
   };
 
   // Show loading while auth is being processed
   if (loading) {
-    console.log("Auth page: Showing loading state");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="text-center space-y-4">
@@ -119,7 +112,7 @@ const Auth = () => {
                 className="flex items-center gap-2"
               >
                 <RefreshCw className="h-4 w-4" />
-                Refresh Authentication
+                Refresh
               </Button>
             </div>
           )}
@@ -130,12 +123,11 @@ const Auth = () => {
 
   // Don't show the form if user is already authenticated
   if (user) {
-    console.log("Auth page: User authenticated, showing redirect message");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting to dashboard...</p>
+          <p className="mt-4 text-gray-600">Redirecting...</p>
         </div>
       </div>
     );
@@ -164,8 +156,6 @@ const Auth = () => {
                   onChange={e => setEmail(e.target.value)} 
                   className="pl-10" 
                   required 
-                  pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
-                  title="Please enter a valid email address"
                   disabled={loginLoading}
                 />
               </div>
