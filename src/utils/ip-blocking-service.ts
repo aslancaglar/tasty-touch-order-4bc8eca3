@@ -1,261 +1,304 @@
-
 import { SECURITY_CONFIG } from '@/config/security';
 import { logSecurityEvent } from '@/utils/error-handler';
+import { enhancedAuditLogger } from '@/components/security/AuditLogger';
 
-interface IPViolation {
-  ip: string;
-  violations: number;
+interface ViolationRecord {
+  timestamp: number;
+  type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  details: Record<string, any>;
+}
+
+interface IPBlockData {
+  violations: ViolationRecord[];
+  blockedUntil: number;
+  requestCounts: { [key: string]: { count: number; window: number } };
+  permanentBan: boolean;
   firstViolation: number;
-  lastViolation: number;
-  blockedUntil?: number;
-  violationTypes: string[];
 }
 
-interface RateLimitInfo {
-  ip: string;
-  requests: number;
-  windowStart: number;
-  blocked: boolean;
-}
+class EnhancedIPBlockingService {
+  private ipData: Map<string, IPBlockData> = new Map();
+  private cleanupInterval: NodeJS.Timeout;
 
-class IPBlockingService {
-  private static instance: IPBlockingService;
-  private violations: Map<string, IPViolation> = new Map();
-  private rateLimits: Map<string, RateLimitInfo> = new Map();
-  private cleanupTimer: NodeJS.Timeout | null = null;
+  constructor() {
+    // Clean up old data every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupOldData();
+    }, 5 * 60 * 1000);
 
-  static getInstance(): IPBlockingService {
-    if (!IPBlockingService.instance) {
-      IPBlockingService.instance = new IPBlockingService();
-    }
-    return IPBlockingService.instance;
-  }
-
-  private constructor() {
-    this.startCleanupTimer();
+    // Load data from localStorage on initialization
     this.loadFromStorage();
-  }
-
-  private startCleanupTimer() {
-    // Clean up expired blocks every hour
-    this.cleanupTimer = setInterval(() => {
-      this.cleanupExpiredBlocks();
-    }, 60 * 60 * 1000);
-  }
-
-  private getClientIP(): string {
-    // In a real environment, this would come from server headers
-    // For now, we'll use a placeholder
-    return 'client-ip-placeholder';
-  }
-
-  private saveToStorage() {
-    try {
-      localStorage.setItem('ip-violations', JSON.stringify(Array.from(this.violations.entries())));
-      localStorage.setItem('rate-limits', JSON.stringify(Array.from(this.rateLimits.entries())));
-    } catch (error) {
-      console.warn('Could not save IP blocking data to storage:', error);
-    }
   }
 
   private loadFromStorage() {
     try {
-      const violationsData = localStorage.getItem('ip-violations');
-      const rateLimitsData = localStorage.getItem('rate-limits');
-
-      if (violationsData) {
-        this.violations = new Map(JSON.parse(violationsData));
-      }
-
-      if (rateLimitsData) {
-        this.rateLimits = new Map(JSON.parse(rateLimitsData));
+      const stored = localStorage.getItem('ip_blocking_data');
+      if (stored) {
+        const data = JSON.parse(stored);
+        this.ipData = new Map(Object.entries(data));
       }
     } catch (error) {
-      console.warn('Could not load IP blocking data from storage:', error);
+      console.warn('Failed to load IP blocking data from storage:', error);
     }
   }
 
-  private cleanupExpiredBlocks() {
-    const now = Date.now();
-    let cleaned = false;
-
-    // Clean up expired violations
-    for (const [ip, violation] of this.violations.entries()) {
-      if (violation.blockedUntil && violation.blockedUntil < now) {
-        this.violations.delete(ip);
-        cleaned = true;
-        logSecurityEvent('IP block expired', { ip, violation });
-      }
-    }
-
-    // Clean up old rate limit windows
-    for (const [ip, rateLimit] of this.rateLimits.entries()) {
-      if (now - rateLimit.windowStart >= SECURITY_CONFIG.RATE_LIMIT.WINDOW_SIZE) {
-        this.rateLimits.delete(ip);
-        cleaned = true;
-      }
-    }
-
-    if (cleaned) {
-      this.saveToStorage();
+  private saveToStorage() {
+    try {
+      const data = Object.fromEntries(this.ipData);
+      localStorage.setItem('ip_blocking_data', JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save IP blocking data to storage:', error);
     }
   }
 
-  isIPBlocked(ip?: string): boolean {
-    const clientIP = ip || this.getClientIP();
-    const violation = this.violations.get(clientIP);
-    
-    if (!violation) return false;
-    
-    const now = Date.now();
-    
-    // Check if block has expired
-    if (violation.blockedUntil && violation.blockedUntil < now) {
-      this.violations.delete(clientIP);
-      this.saveToStorage();
-      return false;
-    }
-    
-    return violation.violations >= SECURITY_CONFIG.IP_BLOCKING.MAX_VIOLATIONS_PER_IP;
+  private getClientIdentifier(): string {
+    // In a real implementation, this would be the actual IP address from server
+    // For client-side demo, we'll use a browser fingerprint
+    return 'client_' + (
+      navigator.userAgent + 
+      navigator.language + 
+      screen.width + 
+      screen.height + 
+      new Date().getTimezoneOffset()
+    ).split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0).toString();
   }
 
-  recordViolation(violationType: string, details: Record<string, any> = {}, ip?: string) {
-    const clientIP = ip || this.getClientIP();
-    const now = Date.now();
+  private getIPData(ip?: string): IPBlockData {
+    const identifier = ip || this.getClientIdentifier();
     
-    if (this.isIPBlocked(clientIP)) {
-      logSecurityEvent('Blocked IP attempted access', { ip: clientIP, violationType, details });
-      return;
-    }
-    
-    const existing = this.violations.get(clientIP);
-    
-    if (existing) {
-      // Check if violation is within the window
-      if (now - existing.firstViolation <= SECURITY_CONFIG.IP_BLOCKING.VIOLATION_WINDOW) {
-        existing.violations++;
-        existing.lastViolation = now;
-        existing.violationTypes.push(violationType);
-        
-        // Block if threshold exceeded
-        if (existing.violations >= SECURITY_CONFIG.IP_BLOCKING.MAX_VIOLATIONS_PER_IP) {
-          existing.blockedUntil = now + SECURITY_CONFIG.IP_BLOCKING.BLOCK_DURATION;
-          logSecurityEvent('IP blocked due to repeated violations', {
-            ip: clientIP,
-            violations: existing.violations,
-            violationTypes: existing.violationTypes,
-            blockDuration: SECURITY_CONFIG.IP_BLOCKING.BLOCK_DURATION,
-          });
-        }
-      } else {
-        // Reset violation count for new window
-        existing.violations = 1;
-        existing.firstViolation = now;
-        existing.lastViolation = now;
-        existing.violationTypes = [violationType];
-        delete existing.blockedUntil;
-      }
-    } else {
-      // First violation
-      this.violations.set(clientIP, {
-        ip: clientIP,
-        violations: 1,
-        firstViolation: now,
-        lastViolation: now,
-        violationTypes: [violationType],
+    if (!this.ipData.has(identifier)) {
+      this.ipData.set(identifier, {
+        violations: [],
+        blockedUntil: 0,
+        requestCounts: {},
+        permanentBan: false,
+        firstViolation: 0,
       });
     }
     
-    this.saveToStorage();
+    return this.ipData.get(identifier)!;
+  }
+
+  checkRateLimit(operation: string, maxRequests: number, windowMs: number, ip?: string): boolean {
+    const identifier = ip || this.getClientIdentifier();
+    const ipData = this.getIPData(identifier);
+    const now = Date.now();
+
+    // Check if permanently banned
+    if (ipData.permanentBan) {
+      this.logViolation('permanent_ban_access_attempt', { operation }, 'critical', identifier);
+      return false;
+    }
+
+    // Check if currently blocked
+    if (ipData.blockedUntil > now) {
+      this.logViolation('blocked_ip_access_attempt', { 
+        operation, 
+        blocked_until: new Date(ipData.blockedUntil).toISOString() 
+      }, 'high', identifier);
+      return false;
+    }
+
+    // Check rate limit for this operation
+    const requestKey = `${operation}_${Math.floor(now / windowMs)}`;
     
-    logSecurityEvent('Security violation recorded', {
-      ip: clientIP,
-      violationType,
-      totalViolations: this.violations.get(clientIP)?.violations,
-      details,
+    if (!ipData.requestCounts[requestKey]) {
+      ipData.requestCounts[requestKey] = { count: 0, window: now };
+    }
+
+    const requestData = ipData.requestCounts[requestKey];
+    
+    // Clean up old request counts
+    Object.keys(ipData.requestCounts).forEach(key => {
+      if (now - ipData.requestCounts[key].window > windowMs) {
+        delete ipData.requestCounts[key];
+      }
     });
-  }
 
-  checkRateLimit(identifier: string, maxRequests: number = SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS_PER_MINUTE, windowSize: number = SECURITY_CONFIG.RATE_LIMIT.WINDOW_SIZE, ip?: string): boolean {
-    const clientIP = ip || this.getClientIP();
-    const key = `${clientIP}-${identifier}`;
-    
-    if (this.isIPBlocked(clientIP)) {
+    if (requestData.count >= maxRequests) {
+      this.recordViolation('rate_limit_exceeded', {
+        operation,
+        request_count: requestData.count,
+        max_requests: maxRequests,
+        window_ms: windowMs,
+      }, 'medium', identifier);
       return false;
     }
-    
-    const now = Date.now();
-    const existing = this.rateLimits.get(key);
-    
-    if (existing) {
-      // Reset window if expired
-      if (now - existing.windowStart >= windowSize) {
-        existing.requests = 1;
-        existing.windowStart = now;
-        existing.blocked = false;
-      } else if (existing.requests >= maxRequests) {
-        if (!existing.blocked) {
-          existing.blocked = true;
-          this.recordViolation('rate_limit_exceeded', {
-            identifier,
-            requests: existing.requests,
-            maxRequests,
-            windowSize,
-          }, clientIP);
-        }
-        return false;
-      } else {
-        existing.requests++;
-      }
-    } else {
-      this.rateLimits.set(key, {
-        ip: clientIP,
-        requests: 1,
-        windowStart: now,
-        blocked: false,
-      });
-    }
-    
+
+    requestData.count++;
     this.saveToStorage();
     return true;
   }
 
-  getViolationInfo(ip?: string): IPViolation | null {
-    const clientIP = ip || this.getClientIP();
-    return this.violations.get(clientIP) || null;
-  }
-
-  // Manual block/unblock methods for admin use
-  blockIP(ip: string, duration: number = SECURITY_CONFIG.IP_BLOCKING.BLOCK_DURATION, reason: string = 'Manual block') {
+  recordViolation(type: string, details: Record<string, any>, severity: 'low' | 'medium' | 'high' | 'critical' = 'medium', ip?: string) {
+    const identifier = ip || this.getClientIdentifier();
+    const ipData = this.getIPData(identifier);
     const now = Date.now();
-    this.violations.set(ip, {
-      ip,
-      violations: SECURITY_CONFIG.IP_BLOCKING.MAX_VIOLATIONS_PER_IP,
-      firstViolation: now,
-      lastViolation: now,
-      blockedUntil: now + duration,
-      violationTypes: [reason],
-    });
+
+    const violation: ViolationRecord = {
+      timestamp: now,
+      type,
+      severity,
+      details,
+    };
+
+    ipData.violations.push(violation);
     
+    if (ipData.firstViolation === 0) {
+      ipData.firstViolation = now;
+    }
+
+    // Clean up old violations (keep only within violation window)
+    const violationWindow = SECURITY_CONFIG.IP_BLOCKING.VIOLATION_WINDOW;
+    ipData.violations = ipData.violations.filter(v => 
+      now - v.timestamp < violationWindow
+    );
+
+    // Check for blocking conditions
+    const recentViolations = ipData.violations.filter(v => 
+      now - v.timestamp < violationWindow
+    );
+
+    const criticalViolations = recentViolations.filter(v => v.severity === 'critical').length;
+    const highViolations = recentViolations.filter(v => v.severity === 'high').length;
+    const totalViolations = recentViolations.length;
+
+    // Immediate permanent ban for critical violations
+    if (criticalViolations >= 1) {
+      ipData.permanentBan = true;
+      this.logViolation('permanent_ban_applied', { 
+        reason: 'critical_violation',
+        violation_count: criticalViolations,
+        violation_details: details 
+      }, 'critical', identifier);
+    }
+    // Permanent ban for repeated high-severity violations
+    else if (highViolations >= 3) {
+      ipData.permanentBan = true;
+      this.logViolation('permanent_ban_applied', { 
+        reason: 'repeated_high_violations',
+        violation_count: highViolations 
+      }, 'critical', identifier);
+    }
+    // Temporary block for moderate violations
+    else if (totalViolations >= SECURITY_CONFIG.IP_BLOCKING.MAX_VIOLATIONS_PER_IP) {
+      const blockDuration = this.calculateBlockDuration(recentViolations);
+      ipData.blockedUntil = now + blockDuration;
+      
+      this.logViolation('temporary_block_applied', { 
+        duration_ms: blockDuration,
+        violation_count: totalViolations,
+        block_until: new Date(ipData.blockedUntil).toISOString()
+      }, 'high', identifier);
+    }
+
+    // Log the violation
+    this.logViolation(type, details, severity, identifier);
     this.saveToStorage();
-    
-    logSecurityEvent('IP manually blocked', { ip, duration, reason });
   }
 
-  unblockIP(ip: string, reason: string = 'Manual unblock') {
-    this.violations.delete(ip);
-    this.rateLimits.delete(ip);
-    this.saveToStorage();
+  private calculateBlockDuration(violations: ViolationRecord[]): number {
+    const baseBlockDuration = SECURITY_CONFIG.IP_BLOCKING.BLOCK_DURATION;
+    const highSeverityCount = violations.filter(v => v.severity === 'high').length;
+    const mediumSeverityCount = violations.filter(v => v.severity === 'medium').length;
     
-    logSecurityEvent('IP manually unblocked', { ip, reason });
+    // Escalate block duration based on severity
+    let multiplier = 1;
+    multiplier += highSeverityCount * 2; // Double for each high-severity violation
+    multiplier += mediumSeverityCount * 0.5; // Half for each medium-severity violation
+    
+    return Math.min(baseBlockDuration * multiplier, 7 * 24 * 60 * 60 * 1000); // Max 7 days
+  }
+
+  private async logViolation(type: string, details: Record<string, any>, severity: 'low' | 'medium' | 'high' | 'critical', identifier: string) {
+    // Log to audit system
+    await enhancedAuditLogger.logSecurityViolation(type, {
+      ip_identifier: identifier,
+      ...details,
+    });
+
+    // Log to security monitoring
+    await logSecurityEvent(`IP Blocking: ${type}`, {
+      ip_identifier: identifier,
+      severity,
+      ...details,
+    });
+  }
+
+  isIPBlocked(ip?: string): boolean {
+    const identifier = ip || this.getClientIdentifier();
+    const ipData = this.getIPData(identifier);
+    const now = Date.now();
+
+    if (ipData.permanentBan) {
+      return true;
+    }
+
+    return ipData.blockedUntil > now;
+  }
+
+  getBlockStatus(ip?: string): { blocked: boolean; until?: Date; permanent: boolean; reason?: string } {
+    const identifier = ip || this.getClientIdentifier();
+    const ipData = this.getIPData(identifier);
+    const now = Date.now();
+
+    if (ipData.permanentBan) {
+      return { blocked: true, permanent: true, reason: 'Permanent ban due to security violations' };
+    }
+
+    if (ipData.blockedUntil > now) {
+      return { 
+        blocked: true, 
+        until: new Date(ipData.blockedUntil), 
+        permanent: false,
+        reason: 'Temporary block due to security violations'
+      };
+    }
+
+    return { blocked: false, permanent: false };
+  }
+
+  private cleanupOldData() {
+    const now = Date.now();
+    const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+    for (const [identifier, data] of this.ipData.entries()) {
+      // Don't cleanup permanently banned IPs
+      if (data.permanentBan) continue;
+
+      // Remove if no recent activity and not blocked
+      const lastActivity = Math.max(
+        data.firstViolation,
+        data.violations.length > 0 ? Math.max(...data.violations.map(v => v.timestamp)) : 0,
+        data.blockedUntil
+      );
+
+      if (now - lastActivity > maxAge) {
+        this.ipData.delete(identifier);
+      }
+    }
+
+    this.saveToStorage();
   }
 
   destroy() {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-      this.cleanupTimer = null;
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
     }
+    this.saveToStorage();
   }
 }
 
-export const ipBlockingService = IPBlockingService.getInstance();
+// Create singleton instance
+export const ipBlockingService = new EnhancedIPBlockingService();
+
+// Clean up on page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    ipBlockingService.destroy();
+  });
+}
