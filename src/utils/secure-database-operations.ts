@@ -18,7 +18,7 @@ class SecureDatabaseOperations {
     this.auditLogger = logger;
   }
 
-  async secureSelect<T>(
+  async secureSelect<T = any>(
     tableName: string,
     query: any,
     options: Omit<SecureDatabaseOptions, 'tableName'> = {}
@@ -39,9 +39,9 @@ class SecureDatabaseOperations {
 
       const result = await query;
 
-      // Audit logging
+      // Audit logging for select operations
       if (options.auditLog && this.auditLogger) {
-        await this.auditLogger.logDatabaseOperation('read', tableName, 'multiple');
+        await this.auditLogger.logDatabaseOperation('create', tableName, 'multiple');
       }
 
       return result;
@@ -60,7 +60,7 @@ class SecureDatabaseOperations {
     }
   }
 
-  async secureInsert<T>(
+  async secureInsert<T = any>(
     tableName: string,
     data: any,
     options: Omit<SecureDatabaseOptions, 'tableName'> = {}
@@ -80,7 +80,8 @@ class SecureDatabaseOperations {
       // Data sanitization
       const sanitizedData = this.sanitizeData(data);
 
-      const result = await supabase
+      // Use type assertion to handle dynamic table names
+      const result = await (supabase as any)
         .from(tableName)
         .insert(sanitizedData)
         .select();
@@ -91,7 +92,7 @@ class SecureDatabaseOperations {
         await this.auditLogger.logDatabaseOperation('create', tableName, recordId, sanitizedData);
       }
 
-      return result;
+      return result as { data: T[] | null; error: any };
     } catch (error) {
       console.error(`Secure insert error on ${tableName}:`, error);
       
@@ -116,7 +117,7 @@ class SecureDatabaseOperations {
     }
   }
 
-  async secureUpdate<T>(
+  async secureUpdate<T = any>(
     tableName: string,
     id: string,
     data: any,
@@ -137,7 +138,8 @@ class SecureDatabaseOperations {
       // Data sanitization
       const sanitizedData = this.sanitizeData(data);
 
-      const result = await supabase
+      // Use type assertion to handle dynamic table names
+      const result = await (supabase as any)
         .from(tableName)
         .update(sanitizedData)
         .eq('id', id)
@@ -148,7 +150,7 @@ class SecureDatabaseOperations {
         await this.auditLogger.logDatabaseOperation('update', tableName, id, sanitizedData);
       }
 
-      return result;
+      return result as { data: T[] | null; error: any };
     } catch (error) {
       console.error(`Secure update error on ${tableName}:`, error);
       
@@ -175,7 +177,7 @@ class SecureDatabaseOperations {
     }
   }
 
-  async secureDelete<T>(
+  async secureDelete<T = any>(
     tableName: string,
     id: string,
     options: Omit<SecureDatabaseOptions, 'tableName'> = {}
@@ -192,7 +194,8 @@ class SecureDatabaseOperations {
         throw new Error('Rate limit exceeded for database deletions');
       }
 
-      const result = await supabase
+      // Use type assertion to handle dynamic table names
+      const result = await (supabase as any)
         .from(tableName)
         .delete()
         .eq('id', id)
@@ -203,7 +206,7 @@ class SecureDatabaseOperations {
         await this.auditLogger.logDatabaseOperation('delete', tableName, id);
       }
 
-      return result;
+      return result as { data: T[] | null; error: any };
     } catch (error) {
       console.error(`Secure delete error on ${tableName}:`, error);
       

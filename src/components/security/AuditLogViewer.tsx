@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +65,23 @@ const AuditLogViewer = () => {
         return;
       }
 
-      setLogs(data || []);
+      // Transform the data to match our AuditLog interface
+      const transformedLogs: AuditLog[] = (data || []).map(log => ({
+        id: log.id,
+        event_type: log.event_type,
+        user_id: log.user_id,
+        resource_type: log.resource_type,
+        resource_id: log.resource_id,
+        action: log.action,
+        details: log.details,
+        severity: log.severity,
+        ip_address: log.ip_address as string | null,
+        user_agent: log.user_agent,
+        session_id: log.session_id,
+        created_at: log.created_at,
+      }));
+
+      setLogs(transformedLogs);
     } catch (error) {
       console.error('Error loading audit logs:', error);
     }
