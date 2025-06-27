@@ -2,12 +2,14 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./Dashboard";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
+  const { user, loading, isAdmin, adminCheckCompleted, refreshAuth } = useAuth();
   const [routingDecision, setRoutingDecision] = useState<string | null>(null);
+  const [showRefreshButton, setShowRefreshButton] = useState(false);
 
   console.log("Index render:", { 
     user: !!user, 
@@ -16,6 +18,17 @@ const Index = () => {
     adminCheckCompleted,
     routingDecision 
   });
+
+  // Show refresh button after 10 seconds of loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading || !adminCheckCompleted) {
+        setShowRefreshButton(true);
+      }
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [loading, adminCheckCompleted]);
 
   // Determine routing decision when auth state is complete
   useEffect(() => {
@@ -51,15 +64,41 @@ const Index = () => {
     setRoutingDecision(null);
   }, [user, loading, isAdmin, adminCheckCompleted]);
 
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    setShowRefreshButton(false);
+    try {
+      await refreshAuth();
+    } catch (error) {
+      console.error("Manual refresh failed:", error);
+      // Show refresh button again if it fails
+      setTimeout(() => setShowRefreshButton(true), 2000);
+    }
+  };
+
   // Show loading state until routing decision is made
   if (loading || !adminCheckCompleted || routingDecision === null) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
+        <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="mt-4 text-gray-600">
+          <p className="text-gray-600">
             {loading ? "Loading..." : !adminCheckCompleted ? "Verifying permissions..." : "Preparing dashboard..."}
           </p>
+          {showRefreshButton && (
+            <div className="mt-4">
+              <p className="text-sm text-gray-500 mb-2">Taking longer than expected?</p>
+              <Button 
+                onClick={handleRefresh} 
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh Authentication
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );

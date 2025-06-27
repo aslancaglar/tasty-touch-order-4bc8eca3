@@ -8,18 +8,30 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
+import { Eye, EyeOff, LogIn, Mail, RefreshCw } from "lucide-react";
 import DOMPurify from 'dompurify';
 
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
+  const { user, loading, isAdmin, adminCheckCompleted, refreshAuth } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showRefreshButton, setShowRefreshButton] = useState(false);
+
+  // Show refresh button after 10 seconds if still loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading || !adminCheckCompleted) {
+        setShowRefreshButton(true);
+      }
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [loading, adminCheckCompleted]);
 
   // Redirect authenticated users to their appropriate dashboard
   useEffect(() => {
@@ -77,14 +89,40 @@ const Auth = () => {
     setShowPassword(!showPassword);
   };
 
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    setShowRefreshButton(false);
+    try {
+      await refreshAuth();
+    } catch (error) {
+      console.error("Manual refresh failed:", error);
+      // Show refresh button again if it fails
+      setTimeout(() => setShowRefreshButton(true), 2000);
+    }
+  };
+
   // Show loading while auth is being processed
   if (loading) {
     console.log("Auth page: Showing loading state");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="text-center">
+        <div className="text-center space-y-4">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
+          <p className="text-gray-600">Checking authentication...</p>
+          {showRefreshButton && (
+            <div className="mt-4">
+              <p className="text-sm text-gray-500 mb-2">Taking longer than expected?</p>
+              <Button 
+                onClick={handleRefresh} 
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh Authentication
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );

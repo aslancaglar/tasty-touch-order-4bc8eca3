@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logSecurityEvent, handleError } from "@/utils/error-handler";
@@ -11,6 +11,7 @@ type AuthContextType = {
   loading: boolean;
   adminCheckCompleted: boolean;
   signOut: () => Promise<void>;
+  refreshAuth: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,110 +23,206 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
 
+  // Refs to prevent race conditions
+  const initializationInProgress = useRef(false);
+  const adminCheckInProgress = useRef(false);
+  const currentUserId = useRef<string | null>(null);
+  const initializationTimeout = useRef<NodeJS.Timeout | null>(null);
+  const adminCheckTimeout = useRef<NodeJS.Timeout | null>(null);
+
   // Cache admin status to avoid repeated checks
   const [adminStatusCache, setAdminStatusCache] = useState<{ [key: string]: boolean }>({});
 
-  // Check admin status with caching and error handling
+  // Enhanced debug logging
+  const debugLog = (message: string, data?: any) => {
+    console.log(`[AuthContext] ${message}`, data || '');
+  };
+
+  // Check admin status with enhanced error handling and timeout
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
-    if (!userId) return false;
-    
+    if (!userId || adminCheckInProgress.current) {
+      debugLog("Admin check skipped", { userId: !!userId, inProgress: adminCheckInProgress.current });
+      return false;
+    }
+
     // Check cache first
     if (adminStatusCache[userId] !== undefined) {
-      console.log("Admin status from cache:", adminStatusCache[userId]);
+      debugLog("Admin status from cache", { userId, status: adminStatusCache[userId] });
       return adminStatusCache[userId];
     }
     
+    adminCheckInProgress.current = true;
+    
     try {
-      console.log("Checking admin status for user:", userId);
+      debugLog("Checking admin status", { userId });
       
-      const { data, error } = await supabase
+      // Set timeout for admin check
+      if (adminCheckTimeout.current) {
+        clearTimeout(adminCheckTimeout.current);
+      }
+      
+      const checkPromise = supabase
         .from('profiles')
         .select('is_admin')
         .eq('id', userId)
         .single();
       
+      // Race the admin check against a timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        adminCheckTimeout.current = setTimeout(() => {
+          reject(new Error('Admin check timeout'));
+        }, 5000); // 5 second timeout
+      });
+      
+      const { data, error } = await Promise.race([checkPromise, timeoutPromise]);
+      
+      if (adminCheckTimeout.current) {
+        clearTimeout(adminCheckTimeout.current);
+        adminCheckTimeout.current = null;
+      }
+      
       if (error) {
-        console.warn("Admin check failed:", error.message);
+        debugLog("Admin check failed", { error: error.message });
         // Cache false result to avoid repeated failed requests
         setAdminStatusCache(prev => ({ ...prev, [userId]: false }));
         return false;
       }
       
       const adminStatus = data?.is_admin || false;
-      console.log("Admin status retrieved:", adminStatus);
+      debugLog("Admin status retrieved", { userId, status: adminStatus });
       
       // Cache the result
       setAdminStatusCache(prev => ({ ...prev, [userId]: adminStatus }));
       return adminStatus;
     } catch (error) {
-      console.error("Admin check exception:", error);
+      debugLog("Admin check exception", { error });
       // Cache false result for exceptions too
       setAdminStatusCache(prev => ({ ...prev, [userId]: false }));
       return false;
+    } finally {
+      adminCheckInProgress.current = false;
+      if (adminCheckTimeout.current) {
+        clearTimeout(adminCheckTimeout.current);
+        adminCheckTimeout.current = null;
+      }
+    }
+  };
+
+  // Enhanced session update with race condition protection
+  const updateSessionState = async (newSession: Session | null, source: string) => {
+    debugLog(`Updating session state from ${source}`, { 
+      userId: newSession?.user?.id, 
+      currentUserId: currentUserId.current 
+    });
+
+    // Update basic session state immediately
+    setSession(newSession);
+    setUser(newSession?.user ?? null);
+    currentUserId.current = newSession?.user?.id ?? null;
+
+    if (!newSession?.user) {
+      // No user, set defaults
+      setIsAdmin(false);
+      setAdminCheckCompleted(true);
+      setLoading(false);
+      debugLog("Session cleared - setting defaults");
+      return;
+    }
+
+    // Check admin status for authenticated user
+    try {
+      setAdminCheckCompleted(false);
+      const adminStatus = await checkAdminStatus(newSession.user.id);
+      
+      // Verify this is still the current user (prevent race conditions)
+      if (currentUserId.current === newSession.user.id) {
+        setIsAdmin(adminStatus);
+        setAdminCheckCompleted(true);
+        setLoading(false);
+        debugLog("Admin check completed", { userId: newSession.user.id, isAdmin: adminStatus });
+      } else {
+        debugLog("Admin check result discarded - user changed", { 
+          checkedUserId: newSession.user.id, 
+          currentUserId: currentUserId.current 
+        });
+      }
+    } catch (error) {
+      debugLog("Error checking admin status", { error });
+      // Only update state if this is still the current user
+      if (currentUserId.current === newSession.user.id) {
+        setIsAdmin(false);
+        setAdminCheckCompleted(true);
+        setLoading(false);
+      }
+    }
+  };
+
+  // Refresh authentication state manually
+  const refreshAuth = async () => {
+    debugLog("Manual auth refresh triggered");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await updateSessionState(session, "manual refresh");
+    } catch (error) {
+      debugLog("Manual auth refresh failed", { error });
+      setSession(null);
+      setUser(null);
+      setIsAdmin(false);
+      setAdminCheckCompleted(true);
+      setLoading(false);
     }
   };
 
   // Initialize authentication state
   useEffect(() => {
-    console.log("Initializing AuthProvider...");
+    if (initializationInProgress.current) {
+      debugLog("Initialization already in progress");
+      return;
+    }
+
+    debugLog("Initializing AuthProvider...");
+    initializationInProgress.current = true;
     
     let isMounted = true;
-    let initializationTimeout: NodeJS.Timeout;
     
     const initializeAuth = async () => {
       try {
-        // Set timeout to prevent indefinite loading
-        initializationTimeout = setTimeout(() => {
+        // Set overall timeout to prevent indefinite loading
+        if (initializationTimeout.current) {
+          clearTimeout(initializationTimeout.current);
+        }
+        
+        initializationTimeout.current = setTimeout(() => {
           if (isMounted && loading) {
-            console.warn("Auth initialization timeout - setting loading to false");
+            debugLog("Auth initialization timeout - forcing completion");
             setLoading(false);
             setAdminCheckCompleted(true);
           }
-        }, 10000); // 10 second timeout
+        }, 15000); // 15 second timeout
 
         // Get current session first
+        debugLog("Getting initial session");
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
-        if (!isMounted) return;
-        
-        console.log("Initial session:", currentSession?.user?.id || 'no session');
-        
-        // Set initial state immediately
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        
-        if (currentSession?.user) {
-          // Check admin status for existing session
-          try {
-            setAdminCheckCompleted(false);
-            const adminStatus = await checkAdminStatus(currentSession.user.id);
-            if (isMounted) {
-              setIsAdmin(adminStatus);
-              setAdminCheckCompleted(true);
-            }
-          } catch (error) {
-            console.error("Error checking initial admin status:", error);
-            if (isMounted) {
-              setIsAdmin(false);
-              setAdminCheckCompleted(true);
-            }
-          }
-        } else {
-          // No user, set defaults
-          setIsAdmin(false);
-          setAdminCheckCompleted(true);
+        if (!isMounted) {
+          debugLog("Component unmounted during initialization");
+          return;
         }
         
-        if (isMounted) {
-          setLoading(false);
-        }
+        debugLog("Initial session retrieved", { userId: currentSession?.user?.id || 'none' });
+        
+        // Update session state
+        await updateSessionState(currentSession, "initialization");
 
         // Set up auth state change listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
-            if (!isMounted) return;
+            if (!isMounted) {
+              debugLog("Auth state change ignored - component unmounted");
+              return;
+            }
             
-            console.log("Auth state change:", event, newSession?.user?.id || 'no user');
+            debugLog("Auth state change", { event, userId: newSession?.user?.id || 'none' });
             
             // Handle sign out
             if (event === 'SIGNED_OUT' || !newSession?.user) {
@@ -134,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setIsAdmin(false);
               setAdminCheckCompleted(true);
               setLoading(false);
+              currentUserId.current = null;
               
               if (event === 'SIGNED_OUT') {
                 logSecurityEvent('User signed out', { 
@@ -146,26 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Handle sign in or token refresh
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-              setSession(newSession);
-              setUser(newSession.user);
-              
-              // Check admin status for new session
-              try {
-                setAdminCheckCompleted(false);
-                const adminStatus = await checkAdminStatus(newSession.user.id);
-                if (isMounted) {
-                  setIsAdmin(adminStatus);
-                  setAdminCheckCompleted(true);
-                  setLoading(false);
-                }
-              } catch (error) {
-                console.error("Error checking admin status on auth change:", error);
-                if (isMounted) {
-                  setIsAdmin(false);
-                  setAdminCheckCompleted(true);
-                  setLoading(false);
-                }
-              }
+              await updateSessionState(newSession, `auth_${event.toLowerCase()}`);
               
               if (event === 'SIGNED_IN') {
                 logSecurityEvent('User signed in', { 
@@ -177,20 +256,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
 
+        // Clear initialization timeout on success
+        if (initializationTimeout.current) {
+          clearTimeout(initializationTimeout.current);
+          initializationTimeout.current = null;
+        }
+
         return () => {
           subscription.unsubscribe();
-          if (initializationTimeout) {
-            clearTimeout(initializationTimeout);
-          }
         };
       } catch (error) {
-        console.error("Auth initialization error:", error);
+        debugLog("Auth initialization error", { error });
         if (isMounted) {
           setSession(null);
           setUser(null);
           setIsAdmin(false);
           setAdminCheckCompleted(true);
           setLoading(false);
+          currentUserId.current = null;
         }
       }
     };
@@ -199,15 +282,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false;
-      if (initializationTimeout) {
-        clearTimeout(initializationTimeout);
+      initializationInProgress.current = false;
+      if (initializationTimeout.current) {
+        clearTimeout(initializationTimeout.current);
+        initializationTimeout.current = null;
+      }
+      if (adminCheckTimeout.current) {
+        clearTimeout(adminCheckTimeout.current);
+        adminCheckTimeout.current = null;
       }
     };
   }, []);
 
+  // Handle tab focus to refresh auth state
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        debugLog("Tab became visible - refreshing auth state");
+        // Small delay to allow for any pending auth state changes
+        setTimeout(() => {
+          refreshAuth();
+        }, 100);
+      }
+    };
+
+    const handleFocus = () => {
+      if (user) {
+        debugLog("Window focused - refreshing auth state");
+        setTimeout(() => {
+          refreshAuth();
+        }, 100);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user]);
+
   const signOut = async () => {
     try {
-      console.log("Signing out...");
+      debugLog("Signing out...");
       logSecurityEvent('Sign out initiated', { 
         userId: user?.id,
         timestamp: new Date().toISOString()
@@ -215,17 +334,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Clear admin status cache
       setAdminStatusCache({});
+      currentUserId.current = null;
       
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error("Sign out error:", error);
+        debugLog("Sign out error", { error });
         throw error;
       }
       
-      console.log("Sign out complete");
+      debugLog("Sign out complete");
     } catch (error) {
-      console.error("Sign out exception:", error);
+      debugLog("Sign out exception", { error });
       throw error;
     }
   };
@@ -237,6 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     adminCheckCompleted,
     signOut,
+    refreshAuth,
   };
 
   return (
