@@ -14,6 +14,7 @@ interface UseSecureFormOptions {
   requireAdmin?: boolean;
   formType?: string;
   validationRules?: Record<string, string[]>;
+  skipSessionValidation?: boolean; // New option for auth flows
 }
 
 export const useSecureForm = (options: UseSecureFormOptions = {}) => {
@@ -23,7 +24,8 @@ export const useSecureForm = (options: UseSecureFormOptions = {}) => {
     enableAuditLogging = true,
     requireAdmin = false,
     formType = 'generic',
-    validationRules = {}
+    validationRules = {},
+    skipSessionValidation = false // Default to false for backward compatibility
   } = options;
 
   const { user } = useAuth();
@@ -96,23 +98,25 @@ export const useSecureForm = (options: UseSecureFormOptions = {}) => {
       throw new Error(error);
     }
 
-    // Session validation
-    const isSessionValid = await validateSession();
-    if (!isSessionValid) {
-      ipBlockingService.recordViolation('invalid_session_form_submission', {
-        form_type: currentFormType,
-      });
-      throw new Error('Session invalid. Please log in again.');
-    }
-
-    // Admin validation if required
-    if (requireAdmin) {
-      const isAdminValid = await validateAdminOperation();
-      if (!isAdminValid) {
-        ipBlockingService.recordViolation('unauthorized_admin_form_submission', {
+    // Session validation - SKIP for auth flows like login/signup
+    if (!skipSessionValidation) {
+      const isSessionValid = await validateSession();
+      if (!isSessionValid) {
+        ipBlockingService.recordViolation('invalid_session_form_submission', {
           form_type: currentFormType,
         });
-        throw new Error('Administrative privileges required.');
+        throw new Error('Session invalid. Please log in again.');
+      }
+
+      // Admin validation if required
+      if (requireAdmin) {
+        const isAdminValid = await validateAdminOperation();
+        if (!isAdminValid) {
+          ipBlockingService.recordViolation('unauthorized_admin_form_submission', {
+            form_type: currentFormType,
+          });
+          throw new Error('Administrative privileges required.');
+        }
       }
     }
 
@@ -221,7 +225,7 @@ export const useSecureForm = (options: UseSecureFormOptions = {}) => {
   }, [
     checkRateLimit, user, lastSubmissionTime, validateAndSanitizeData, 
     enableAuditLogging, requireAdmin, validateSession, validateAdminOperation,
-    maxSubmissions, windowSize, formType
+    maxSubmissions, windowSize, formType, skipSessionValidation
   ]);
 
   return {

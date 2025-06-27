@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSecureForm } from "@/hooks/useSecureForm";
 import { PASSWORD_MIN_LENGTH, PASSWORD_REQUIRES_NUMBERS, PASSWORD_REQUIRES_SYMBOLS } from "@/config/supabase";
 import DOMPurify from 'dompurify';
 
@@ -44,21 +46,31 @@ const isValidPassword = (password: string): { valid: boolean; message: string } 
   return { valid: true, message: "" };
 };
 
-// throttle login attempts
-const LOGIN_ATTEMPT_LIMIT = 5;
-const LOGIN_ATTEMPT_WINDOW = 60 * 1000; // 1 minute in milliseconds
-
 const OwnerLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("login");
   const [passwordFeedback, setPasswordFeedback] = useState<string>("");
-  const [loginAttempts, setLoginAttempts] = useState<number[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+
+  // Secure form for login (skip session validation)
+  const { secureSubmit: secureLogin, isSubmitting: isLoginSubmitting, isBlocked: isLoginBlocked } = useSecureForm({
+    maxSubmissions: 5,
+    windowSize: 60000,
+    skipSessionValidation: true,
+    formType: 'owner_login'
+  });
+
+  // Secure form for signup (skip session validation)
+  const { secureSubmit: secureSignup, isSubmitting: isSignupSubmitting, isBlocked: isSignupBlocked } = useSecureForm({
+    maxSubmissions: 3,
+    windowSize: 300000, // 5 minutes for signup
+    skipSessionValidation: true,
+    formType: 'owner_signup'
+  });
 
   // Reset error when tab changes
   useEffect(() => {
@@ -90,21 +102,6 @@ const OwnerLogin = () => {
     console.log("User already logged in, redirecting to /owner");
     return <Navigate to="/owner" />;
   }
-  
-  // Function to check if too many login attempts
-  const checkLoginThrottle = (): boolean => {
-    const now = Date.now();
-    // Remove attempts older than the window
-    const recentAttempts = loginAttempts.filter(time => now - time < LOGIN_ATTEMPT_WINDOW);
-    setLoginAttempts(recentAttempts);
-    
-    // Too many attempts?
-    if (recentAttempts.length >= LOGIN_ATTEMPT_LIMIT) {
-      setAuthError(`Too many login attempts. Please try again in ${Math.ceil(LOGIN_ATTEMPT_WINDOW / 1000 / 60)} minute(s).`);
-      return true;
-    }
-    return false;
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,81 +123,71 @@ const OwnerLogin = () => {
       return;
     }
     
-    // Check throttling
-    if (checkLoginThrottle()) {
-      console.log("Login failed: Rate limited");
+    if (isLoginBlocked) {
+      setAuthError("Too many login attempts. Please wait before trying again.");
       return;
     }
-    
-    // Add this attempt
-    setLoginAttempts(prev => [...prev, Date.now()]);
-    
-    setLoading(true);
 
     try {
-      // Sanitize inputs (prevents potential XSS in error displays)
-      const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
-      console.log("Attempting login with sanitized email", { sanitizedEmail });
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: sanitizedEmail,
-        password,
-      });
+      await secureLogin(
+        { email, password },
+        async (sanitizedData) => {
+          const sanitizedEmail = DOMPurify.sanitize(sanitizedData.email.trim().toLowerCase());
+          console.log("Attempting login with sanitized email", { sanitizedEmail });
+          
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: sanitizedEmail,
+            password: sanitizedData.password,
+          });
 
-      console.log("Supabase auth response", { 
-        user: data?.user?.id, 
-        session: !!data?.session,
-        error: error?.message 
-      });
+          console.log("Supabase auth response", { 
+            user: data?.user?.id, 
+            session: !!data?.session,
+            error: error?.message 
+          });
 
-      if (error) {
-        console.error("Login error details:", {
-          message: error.message,
-          status: error.status,
-          name: error.name
-        });
-        
-        // Provide more specific error messages based on error type
-        if (error.message.includes('Invalid login credentials')) {
-          setAuthError("Invalid email or password. Please check your credentials and try again.");
-        } else if (error.message.includes('Email not confirmed')) {
-          setAuthError("Please check your email and click the confirmation link before logging in.");
-        } else if (error.message.includes('Too many requests')) {
-          setAuthError("Too many login attempts. Please wait a few minutes before trying again.");
-        } else {
-          setAuthError(`Login failed: ${error.message}`);
+          if (error) {
+            console.error("Login error details:", {
+              message: error.message,
+              status: error.status,
+              name: error.name
+            });
+            
+            // Provide more specific error messages based on error type
+            if (error.message.includes('Invalid login credentials')) {
+              throw new Error("Invalid email or password. Please check your credentials and try again.");
+            } else if (error.message.includes('Email not confirmed')) {
+              throw new Error("Please check your email and click the confirmation link before logging in.");
+            } else if (error.message.includes('Too many requests')) {
+              throw new Error("Too many login attempts. Please wait a few minutes before trying again.");
+            } else {
+              throw new Error(`Login failed: ${error.message}`);
+            }
+          }
+
+          if (!data?.user) {
+            console.error("Login succeeded but no user data returned");
+            throw new Error("Login succeeded but user data is missing. Please try again.");
+          }
+
+          console.log("Login successful", { userId: data.user.id });
+          
+          toast({
+            title: "Login successful",
+            description: "Welcome to your restaurant dashboard",
+          });
+          
+          navigate("/owner");
         }
-        return;
-      }
-
-      if (!data?.user) {
-        console.error("Login succeeded but no user data returned");
-        setAuthError("Login succeeded but user data is missing. Please try again.");
-        return;
-      }
-
-      console.log("Login successful", { userId: data.user.id });
-      
-      toast({
-        title: "Login successful",
-        description: "Welcome to your restaurant dashboard",
-      });
-      
-      navigate("/owner");
-    } catch (error) {
+      );
+    } catch (error: any) {
       console.error("Login exception:", {
         error,
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
       });
       
-      if (error instanceof Error) {
-        setAuthError(`Login failed: ${error.message}`);
-      } else {
-        setAuthError("An unexpected error occurred during login. Please try again.");
-      }
-    } finally {
-      setLoading(false);
+      setAuthError(error.message || "An unexpected error occurred during login. Please try again.");
     }
   };
 
@@ -229,63 +216,63 @@ const OwnerLogin = () => {
       return;
     }
     
-    setLoading(true);
+    if (isSignupBlocked) {
+      setAuthError("Too many signup attempts. Please wait before trying again.");
+      return;
+    }
 
     try {
-      // Sanitize inputs
-      const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
-      console.log("Attempting signup with sanitized email", { sanitizedEmail });
-      
-      const { data, error } = await supabase.auth.signUp({
-        email: sanitizedEmail,
-        password,
-        options: {
-          // Set data that will be accessible in RLS policies
-          data: {
-            registration_source: 'owner_portal',
+      await secureSignup(
+        { email, password },
+        async (sanitizedData) => {
+          const sanitizedEmail = DOMPurify.sanitize(sanitizedData.email.trim().toLowerCase());
+          console.log("Attempting signup with sanitized email", { sanitizedEmail });
+          
+          const { data, error } = await supabase.auth.signUp({
+            email: sanitizedEmail,
+            password: sanitizedData.password,
+            options: {
+              // Set data that will be accessible in RLS policies
+              data: {
+                registration_source: 'owner_portal',
+              }
+            }
+          });
+
+          console.log("Supabase signup response", { 
+            user: data?.user?.id, 
+            session: !!data?.session,
+            error: error?.message 
+          });
+
+          if (error) {
+            console.error("Signup error details:", {
+              message: error.message,
+              status: error.status,
+              name: error.name
+            });
+            throw new Error(error.message);
           }
+
+          console.log("Signup successful", { userId: data?.user?.id });
+
+          toast({
+            title: "Sign up successful",
+            description: "Please check your email for verification instructions.",
+          });
+          
+          // Switch to login tab after successful signup
+          setActiveTab("login");
         }
-      });
-
-      console.log("Supabase signup response", { 
-        user: data?.user?.id, 
-        session: !!data?.session,
-        error: error?.message 
-      });
-
-      if (error) {
-        console.error("Signup error details:", {
-          message: error.message,
-          status: error.status,
-          name: error.name
-        });
-        setAuthError(error.message);
-        return;
-      }
-
-      console.log("Signup successful", { userId: data?.user?.id });
-
-      toast({
-        title: "Sign up successful",
-        description: "Please check your email for verification instructions.",
-      });
-      
-      // Switch to login tab after successful signup
-      setActiveTab("login");
-    } catch (error) {
+      );
+    } catch (error: any) {
       console.error("Signup exception:", {
         error,
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
       });
       
-      if (error instanceof Error) {
-        setAuthError(`Signup failed: ${error.message}`);
-      } else {
-        setAuthError("An unexpected error occurred during signup. Please try again.");
-      }
-    } finally {
-      setLoading(false);
+      setAuthError(error.message || "An unexpected error occurred during signup. Please try again.");
     }
   };
   
@@ -300,6 +287,9 @@ const OwnerLogin = () => {
     // Clear errors when user starts typing
     if (authError) setAuthError(null);
   };
+
+  const isLoading = activeTab === "login" ? isLoginSubmitting : isSignupSubmitting;
+  const blocked = activeTab === "login" ? isLoginBlocked : isSignupBlocked;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gray-50">
@@ -327,6 +317,7 @@ const OwnerLogin = () => {
                       onChange={handleEmailChange}
                       autoComplete="email"
                       required
+                      disabled={isLoading || blocked}
                       aria-invalid={authError ? "true" : "false"}
                     />
                   </div>
@@ -339,6 +330,7 @@ const OwnerLogin = () => {
                       onChange={handlePasswordChange}
                       autoComplete="current-password"
                       required
+                      disabled={isLoading || blocked}
                       aria-invalid={authError ? "true" : "false"}
                     />
                   </div>
@@ -350,8 +342,15 @@ const OwnerLogin = () => {
                     </Alert>
                   )}
                   
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? (
+                  {blocked && (
+                    <Alert variant="destructive">
+                      <ShieldAlert className="h-4 w-4" />
+                      <AlertDescription>Too many attempts. Please wait before trying again.</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <Button type="submit" className="w-full" disabled={isLoading || blocked}>
+                    {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Logging in...
@@ -376,6 +375,7 @@ const OwnerLogin = () => {
                       onChange={handleEmailChange}
                       autoComplete="email"
                       required
+                      disabled={isLoading || blocked}
                     />
                   </div>
                   <div className="space-y-2">
@@ -388,6 +388,7 @@ const OwnerLogin = () => {
                       autoComplete="new-password"
                       required
                       minLength={PASSWORD_MIN_LENGTH}
+                      disabled={isLoading || blocked}
                       aria-invalid={passwordFeedback ? "true" : "false"}
                     />
                     
@@ -410,8 +411,15 @@ const OwnerLogin = () => {
                     </Alert>
                   )}
                   
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? (
+                  {blocked && (
+                    <Alert variant="destructive">
+                      <ShieldAlert className="h-4 w-4" />
+                      <AlertDescription>Too many attempts. Please wait before trying again.</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <Button type="submit" className="w-full" disabled={isLoading || blocked}>
+                    {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creating account...

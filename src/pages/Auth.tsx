@@ -17,9 +17,13 @@ const Auth = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
+  
+  // Use secure form WITHOUT session validation for login
   const { secureSubmit, isSubmitting, isBlocked } = useSecureForm({
     maxSubmissions: 5,
-    windowSize: 60000 // 1 minute
+    windowSize: 60000, // 1 minute
+    skipSessionValidation: true, // Skip session validation for login
+    formType: 'login'
   });
   
   const [email, setEmail] = useState("");
@@ -75,8 +79,7 @@ const Auth = () => {
             title: "Login successful",
             description: "Welcome back to QimboKiosk!"
           });
-        },
-        'login'
+        }
       );
     } catch (error: any) {
       console.error("Login failed:", error);
