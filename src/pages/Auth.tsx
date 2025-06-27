@@ -37,9 +37,9 @@ const Auth = () => {
   useEffect(() => {
     console.log("Auth page effect:", { user: !!user, loading, adminCheckCompleted, isAdmin });
     
-    // Only redirect if we have a user and admin check is completed
+    // Only redirect if we have a user AND admin check is completed
     if (user && adminCheckCompleted && !loading) {
-      console.log("Auth page: User is authenticated, redirecting...", { isAdmin });
+      console.log("Auth page: User is authenticated and admin check complete, redirecting...", { isAdmin });
       const redirectPath = isAdmin ? "/" : "/owner";
       console.log("Redirecting to:", redirectPath);
       navigate(redirectPath, { replace: true });
@@ -181,22 +181,27 @@ const Auth = () => {
     setShowPassword(!showPassword);
   };
 
-  // Show loading while auth is being processed
-  if (loading) {
-    console.log("Auth page: Showing loading state");
+  // Show loading while auth is being processed OR while admin check is incomplete
+  if (loading || (user && !adminCheckCompleted)) {
+    console.log("Auth page: Showing loading state", { loading, user: !!user, adminCheckCompleted });
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
+          <p className="mt-4 text-gray-600">
+            {loading 
+              ? "Checking authentication..." 
+              : "Verifying permissions..."
+            }
+          </p>
         </div>
       </div>
     );
   }
 
-  // Don't show the form if user is already authenticated
-  if (user) {
-    console.log("Auth page: User authenticated, showing redirect message");
+  // Don't show the form if user is already authenticated and admin check is complete
+  if (user && adminCheckCompleted) {
+    console.log("Auth page: User authenticated and admin check complete, showing redirect message");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="text-center">
