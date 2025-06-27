@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,11 +57,13 @@ class EnhancedAuditLogger {
   async logEvent(event: AuditEvent) {
     try {
       const clientInfo = await this.getClientInfo();
+      const session = await supabase.auth.getSession();
+      
       const enhancedEvent: AuditEvent = {
         ...event,
         ...clientInfo,
         details: maskSensitiveData(event.details || {}),
-        session_id: supabase.auth.getSession().then(s => s.data.session?.access_token?.substring(0, 8)),
+        session_id: session.data.session?.access_token?.substring(0, 8) || undefined,
       };
 
       // Queue the event

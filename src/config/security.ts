@@ -1,4 +1,3 @@
-
 // Security configuration and constants
 
 // Import DOMPurify for HTML sanitization
@@ -18,6 +17,7 @@ export const SECURITY_CONFIG = {
     REFRESH_THRESHOLD: 5 * 60 * 1000, // 5 minutes before expiry
     MAX_DURATION: 8 * 60 * 60 * 1000, // 8 hours (reduced from 24)
     ADMIN_CHECK_INTERVAL: 60 * 1000, // 1 minute (no caching)
+    ADMIN_CHECK_CACHE: 2 * 60 * 1000, // 2 minutes cache for validation
     JWT_EXPIRY_BUFFER: 2 * 60 * 1000, // 2 minutes buffer for JWT expiry
     IDLE_TIMEOUT: 30 * 60 * 1000, // 30 minutes idle timeout
   },

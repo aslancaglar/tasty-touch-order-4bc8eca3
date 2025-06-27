@@ -98,10 +98,12 @@ const SecurityDashboard = () => {
 
     ipBlockingService.blockIP(selectedIP, 24 * 60 * 60 * 1000, 'Manual block from dashboard');
     
-    enhancedAuditLogger.logAdminOperation('manual_ip_block', {
-      blocked_ip: selectedIP,
-      admin_user: user?.id,
-    }, user?.id || '');
+    enhancedAuditLogger.logAdminOperation(
+      'manual_ip_block',
+      'ip_address',
+      selectedIP,
+      user?.id || ''
+    );
 
     setSelectedIP('');
     // Refresh metrics would go here
@@ -112,10 +114,12 @@ const SecurityDashboard = () => {
 
     ipBlockingService.unblockIP(selectedIP, 'Manual unblock from dashboard');
     
-    enhancedAuditLogger.logAdminOperation('manual_ip_unblock', {
-      unblocked_ip: selectedIP,
-      admin_user: user?.id,
-    }, user?.id || '');
+    enhancedAuditLogger.logAdminOperation(
+      'manual_ip_unblock',
+      'ip_address',
+      selectedIP,
+      user?.id || ''
+    );
 
     setSelectedIP('');
     // Refresh metrics would go here

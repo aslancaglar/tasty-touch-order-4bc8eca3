@@ -201,6 +201,36 @@ class EnhancedIPBlockingService {
     this.saveToStorage();
   }
 
+  // New method: Manual IP blocking
+  blockIP(ip: string, duration: number, reason: string): void {
+    const ipData = this.getIPData(ip);
+    const now = Date.now();
+    
+    ipData.blockedUntil = now + duration;
+    
+    this.logViolation('manual_ip_block', {
+      reason,
+      duration_ms: duration,
+      block_until: new Date(ipData.blockedUntil).toISOString()
+    }, 'high', ip);
+    
+    this.saveToStorage();
+  }
+
+  // New method: Manual IP unblocking
+  unblockIP(ip: string, reason: string): void {
+    const ipData = this.getIPData(ip);
+    
+    ipData.blockedUntil = 0;
+    ipData.permanentBan = false;
+    
+    this.logViolation('manual_ip_unblock', {
+      reason
+    }, 'medium', ip);
+    
+    this.saveToStorage();
+  }
+
   private calculateBlockDuration(violations: ViolationRecord[]): number {
     const baseBlockDuration = SECURITY_CONFIG.IP_BLOCKING.BLOCK_DURATION;
     const highSeverityCount = violations.filter(v => v.severity === 'high').length;
