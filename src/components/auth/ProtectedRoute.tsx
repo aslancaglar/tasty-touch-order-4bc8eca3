@@ -32,9 +32,12 @@ const ProtectedRoute = ({
 
   // Determine routing decision when auth state is complete
   useEffect(() => {
+    // Reset routing decision when auth state changes
+    setRoutingDecision(null);
+    
     // Don't make routing decisions while loading or admin check is incomplete
     if (loading || !adminCheckCompleted) {
-      setRoutingDecision(null);
+      console.log("ProtectedRoute: Still loading or admin check incomplete");
       return;
     }
 
@@ -71,7 +74,12 @@ const ProtectedRoute = ({
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
           <p className="mt-4 text-gray-600">
-            {loading ? "Loading..." : !adminCheckCompleted ? "Verifying authentication..." : "Preparing content..."}
+            {loading 
+              ? "Loading..." 
+              : !adminCheckCompleted 
+                ? "Verifying authentication..." 
+                : "Preparing content..."
+            }
           </p>
         </div>
       </div>
@@ -89,7 +97,6 @@ const ProtectedRoute = ({
     case "allow":
       return <>{children}</>;
     default:
-      // Fallback to auth
       console.warn("ProtectedRoute: Unexpected routing state, redirecting to auth");
       return <Navigate to="/auth" state={{ from: location }} replace />;
   }
