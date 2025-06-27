@@ -1,6 +1,9 @@
 
 // Security configuration and constants
 
+// Import DOMPurify for HTML sanitization
+import DOMPurify from 'dompurify';
+
 export const SECURITY_CONFIG = {
   // File upload security
   UPLOAD: {
@@ -15,6 +18,7 @@ export const SECURITY_CONFIG = {
     REFRESH_THRESHOLD: 5 * 60 * 1000, // 5 minutes before expiry
     MAX_DURATION: 24 * 60 * 60 * 1000, // 24 hours
     ADMIN_CHECK_CACHE: 5 * 60 * 1000, // 5 minutes
+    JWT_EXPIRY_BUFFER: 2 * 60 * 1000, // 2 minutes buffer for JWT expiry
   },
   
   // Rate limiting
@@ -23,13 +27,33 @@ export const SECURITY_CONFIG = {
     WINDOW_SIZE: 60 * 1000, // 1 minute
     MAX_LOGIN_ATTEMPTS: 5,
     LOGIN_LOCKOUT_DURATION: 15 * 60 * 1000, // 15 minutes
+    ADMIN_OPERATIONS_LIMIT: 30, // Admin operations per minute
+    FORM_SUBMISSIONS_LIMIT: 10, // Form submissions per minute
   },
   
-  // Input validation
+  // Input validation with enhanced rules
   INPUT: {
     MAX_TEXT_LENGTH: 1000,
     MAX_DESCRIPTION_LENGTH: 5000,
     MAX_NAME_LENGTH: 255,
+    MIN_PASSWORD_LENGTH: 8,
+    MAX_EMAIL_LENGTH: 254,
+    PRICE_MIN: 0,
+    PRICE_MAX: 99999.99,
+    TAX_PERCENTAGE_MIN: 0,
+    TAX_PERCENTAGE_MAX: 100,
+    DISPLAY_ORDER_MIN: 0,
+    DISPLAY_ORDER_MAX: 9999,
+  },
+  
+  // Business rules validation
+  BUSINESS_RULES: {
+    MIN_CATEGORY_NAME_LENGTH: 2,
+    MAX_MENU_ITEMS_PER_CATEGORY: 100,
+    MAX_TOPPINGS_PER_CATEGORY: 50,
+    TIME_FORMAT_REGEX: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
+    CURRENCY_FORMAT_REGEX: /^\d+(\.\d{1,2})?$/,
+    SLUG_REGEX: /^[a-z0-9-]+$/,
   },
   
   // Content Security Policy directives
@@ -40,6 +64,13 @@ export const SECURITY_CONFIG = {
     IMG_SRC: ["'self'", "data:", "https:", "blob:"],
     FONT_SRC: ["'self'", "https://fonts.gstatic.com"],
     CONNECT_SRC: ["'self'", "https://*.supabase.co"],
+  },
+
+  // IP blocking configuration
+  IP_BLOCKING: {
+    MAX_VIOLATIONS_PER_IP: 10,
+    BLOCK_DURATION: 24 * 60 * 60 * 1000, // 24 hours
+    VIOLATION_WINDOW: 60 * 60 * 1000, // 1 hour
   }
 } as const;
 
@@ -62,6 +93,9 @@ export const SECURITY_PATTERNS = {
     /onerror=/i,
     /onclick=/i,
     /onmouseover=/i,
+    /<iframe/i,
+    /<object/i,
+    /<embed/i,
   ],
   SQL_INJECTION: [
     /union\s+select/i,
@@ -69,19 +103,28 @@ export const SECURITY_PATTERNS = {
     /insert\s+into/i,
     /delete\s+from/i,
     /update\s+set/i,
+    /exec\s*\(/i,
+    /sp_executesql/i,
   ],
   PATH_TRAVERSAL: [
     /\.\.\//,
     /\.\.\\/,
     /%2e%2e%2f/i,
     /%2e%2e%5c/i,
+    /\.\.%2f/i,
+  ],
+  COMMAND_INJECTION: [
+    /;\s*(rm|del|format|shutdown)/i,
+    /\|\s*(nc|netcat|curl|wget)/i,
+    /`[^`]*`/,
+    /\$\([^)]*\)/,
   ],
 } as const;
 
 // Security event logging function - re-export from error-handler
 export { logSecurityEvent } from '@/utils/error-handler';
 
-// Security validation functions
+// Enhanced security validation functions
 export const validateInput = (input: string, type: 'text' | 'name' | 'description' = 'text'): boolean => {
   if (typeof input !== 'string') return false;
   
@@ -94,16 +137,109 @@ export const validateInput = (input: string, type: 'text' | 'name' | 'descriptio
   if (input.length > maxLength) return false;
   
   // Check for suspicious patterns
-  for (const pattern of SECURITY_PATTERNS.XSS) {
-    if (pattern.test(input)) return false;
+  for (const patternCategory of Object.values(SECURITY_PATTERNS)) {
+    for (const pattern of patternCategory) {
+      if (pattern.test(input)) return false;
+    }
   }
   
   return true;
 };
 
 export const sanitizeInput = (input: string): string => {
-  return input
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/[<>'"]/g, '') // Remove potentially dangerous characters
+  // Use DOMPurify for comprehensive HTML sanitization
+  const sanitized = DOMPurify.sanitize(input, {
+    ALLOWED_TAGS: [], // No HTML tags allowed
+    ALLOWED_ATTR: [], // No attributes allowed
+    KEEP_CONTENT: true, // Keep text content
+  });
+  
+  return sanitized
+    .replace(/[<>'"&]/g, '') // Additional character filtering
     .trim();
+};
+
+// Business rule validation functions
+export const validatePrice = (price: string | number): boolean => {
+  const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+  return !isNaN(numPrice) && 
+         numPrice >= SECURITY_CONFIG.INPUT.PRICE_MIN && 
+         numPrice <= SECURITY_CONFIG.INPUT.PRICE_MAX &&
+         SECURITY_CONFIG.BUSINESS_RULES.CURRENCY_FORMAT_REGEX.test(price.toString());
+};
+
+export const validateTaxPercentage = (tax: string | number): boolean => {
+  const numTax = typeof tax === 'string' ? parseFloat(tax) : tax;
+  return !isNaN(numTax) && 
+         numTax >= SECURITY_CONFIG.INPUT.TAX_PERCENTAGE_MIN && 
+         numTax <= SECURITY_CONFIG.INPUT.TAX_PERCENTAGE_MAX;
+};
+
+export const validateDisplayOrder = (order: string | number): boolean => {
+  const numOrder = typeof order === 'string' ? parseInt(order) : order;
+  return !isNaN(numOrder) && 
+         numOrder >= SECURITY_CONFIG.INPUT.DISPLAY_ORDER_MIN && 
+         numOrder <= SECURITY_CONFIG.INPUT.DISPLAY_ORDER_MAX;
+};
+
+export const validateTimeRange = (fromTime: string, untilTime: string): boolean => {
+  const timeRegex = SECURITY_CONFIG.BUSINESS_RULES.TIME_FORMAT_REGEX;
+  return timeRegex.test(fromTime) && timeRegex.test(untilTime);
+};
+
+export const validateSlug = (slug: string): boolean => {
+  return SECURITY_CONFIG.BUSINESS_RULES.SLUG_REGEX.test(slug) && 
+         slug.length >= 3 && 
+         slug.length <= 50;
+};
+
+// Server-side validation function
+export const validateFormData = (data: Record<string, any>, rules: Record<string, string[]>): { isValid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+
+  for (const [field, fieldRules] of Object.entries(rules)) {
+    const value = data[field];
+
+    for (const rule of fieldRules) {
+      switch (rule) {
+        case 'required':
+          if (!value || (typeof value === 'string' && value.trim() === '')) {
+            errors.push(`${field} is required`);
+          }
+          break;
+        case 'price':
+          if (value && !validatePrice(value)) {
+            errors.push(`${field} must be a valid price`);
+          }
+          break;
+        case 'tax':
+          if (value && !validateTaxPercentage(value)) {
+            errors.push(`${field} must be a valid tax percentage`);
+          }
+          break;
+        case 'display_order':
+          if (value && !validateDisplayOrder(value)) {
+            errors.push(`${field} must be a valid display order`);
+          }
+          break;
+        case 'text':
+          if (value && !validateInput(value, 'text')) {
+            errors.push(`${field} contains invalid characters`);
+          }
+          break;
+        case 'name':
+          if (value && !validateInput(value, 'name')) {
+            errors.push(`${field} contains invalid characters`);
+          }
+          break;
+        case 'description':
+          if (value && !validateInput(value, 'description')) {
+            errors.push(`${field} contains invalid characters`);
+          }
+          break;
+      }
+    }
+  }
+
+  return { isValid: errors.length === 0, errors };
 };
