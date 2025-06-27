@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const adminCheckTimeout = useRef<NodeJS.Timeout | null>(null);
   const lastTabSwitchTime = useRef<number>(0);
 
-  // Enhanced admin status cache with timestamp
+  // Enhanced admin status cache with persistence
   const [adminStatusCache, setAdminStatusCache] = useState<{ 
     [key: string]: { 
       status: boolean; 
@@ -45,20 +45,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log(`[AuthContext] ${message}`, data || '');
   };
 
-  // Improved admin status check with better caching and persistence
+  // Improved admin status check that respects existing verified status
   const checkAdminStatus = async (userId: string, forceRefresh = false): Promise<boolean> => {
-    if (!userId || (adminCheckInProgress.current && !forceRefresh)) {
-      debugLog("Admin check skipped", { userId: !!userId, inProgress: adminCheckInProgress.current });
+    if (!userId) {
+      debugLog("Admin check skipped - no userId");
       return false;
     }
 
-    // Check cache first (valid for 5 minutes)
+    // Check cache first (valid for 10 minutes for verified users)
     const cached = adminStatusCache[userId];
-    const cacheValid = cached && (Date.now() - cached.timestamp < 300000); // 5 minutes
+    const cacheValidTime = cached?.verified ? 600000 : 300000; // 10 min for verified, 5 min for unverified
+    const cacheValid = cached && (Date.now() - cached.timestamp < cacheValidTime);
     
     if (cacheValid && !forceRefresh) {
       debugLog("Admin status from cache", { userId, status: cached.status, verified: cached.verified });
       return cached.status;
+    }
+
+    // Don't start multiple admin checks for the same user
+    if (adminCheckInProgress.current && !forceRefresh) {
+      debugLog("Admin check already in progress");
+      return cached?.status || false;
     }
     
     adminCheckInProgress.current = true;
@@ -71,14 +78,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(adminCheckTimeout.current);
       }
       
-      // Use the dedicated admin check function for better reliability
+      // Use the dedicated admin check function
       const checkPromise = supabase.rpc('get_current_user_admin_status');
       
       // Race the admin check against a timeout
       const timeoutPromise = new Promise<never>((_, reject) => {
         adminCheckTimeout.current = setTimeout(() => {
           reject(new Error('Admin check timeout'));
-        }, 8000); // 8 second timeout
+        }, 8000);
       });
       
       const { data, error } = await Promise.race([checkPromise, timeoutPromise]);
@@ -90,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) {
         debugLog("Admin check failed", { error: error.message });
-        // Don't cache failed results, return existing cache if available
+        // Return cached status if available, otherwise false
         if (cached) {
           debugLog("Using cached admin status due to error", { userId, status: cached.status });
           return cached.status;
@@ -129,18 +136,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Enhanced session update with better state management
-  const updateSessionState = async (newSession: Session | null, source: string, preserveAdminStatus = false) => {
+  // Enhanced session update that prevents unnecessary admin re-checks
+  const updateSessionState = async (newSession: Session | null, source: string, skipAdminCheck = false) => {
     debugLog(`Updating session state from ${source}`, { 
       userId: newSession?.user?.id, 
       currentUserId: currentUserId.current,
-      preserveAdminStatus 
+      skipAdminCheck 
     });
+
+    const newUserId = newSession?.user?.id ?? null;
+    const userChanged = currentUserId.current !== newUserId;
 
     // Update basic session state immediately
     setSession(newSession);
     setUser(newSession?.user ?? null);
-    currentUserId.current = newSession?.user?.id ?? null;
+    currentUserId.current = newUserId;
 
     if (!newSession?.user) {
       // No user, set defaults
@@ -151,43 +161,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const userId = newSession.user.id;
-
-    // If preserving admin status and we have a cached verified status, use it
-    if (preserveAdminStatus && adminStatusCache[userId]?.verified) {
-      const cachedStatus = adminStatusCache[userId];
-      const cacheAge = Date.now() - cachedStatus.timestamp;
-      
-      if (cacheAge < 600000) { // 10 minutes
-        debugLog("Using preserved admin status", { userId, status: cachedStatus.status, cacheAge });
-        setIsAdmin(cachedStatus.status);
-        setAdminCheckCompleted(true);
-        setLoading(false);
-        return;
-      }
+    // If user hasn't changed and we should skip admin check (like tab switches), preserve existing state
+    if (!userChanged && skipAdminCheck && adminCheckCompleted && isAdmin !== null) {
+      debugLog("Preserving existing admin status - no re-check needed", { 
+        userId: newUserId, 
+        isAdmin, 
+        source 
+      });
+      setLoading(false);
+      return;
     }
 
-    // Check admin status for authenticated user
+    // Check if we have a recent verified admin status for this user
+    const cached = adminStatusCache[newUserId];
+    const cacheAge = cached ? Date.now() - cached.timestamp : Infinity;
+    const hasRecentVerifiedStatus = cached?.verified && cacheAge < 600000; // 10 minutes
+
+    if (hasRecentVerifiedStatus && !userChanged) {
+      debugLog("Using recent verified admin status", { 
+        userId: newUserId, 
+        status: cached.status, 
+        cacheAge 
+      });
+      setIsAdmin(cached.status);
+      setAdminCheckCompleted(true);
+      setLoading(false);
+      return;
+    }
+
+    // Check admin status for new users or when forced
     try {
       setAdminCheckCompleted(false);
-      const adminStatus = await checkAdminStatus(userId, source === 'manual refresh');
+      const adminStatus = await checkAdminStatus(newUserId, source === 'manual refresh');
       
       // Verify this is still the current user (prevent race conditions)
-      if (currentUserId.current === userId) {
+      if (currentUserId.current === newUserId) {
         setIsAdmin(adminStatus);
         setAdminCheckCompleted(true);
         setLoading(false);
-        debugLog("Admin check completed", { userId, isAdmin: adminStatus, source });
+        debugLog("Admin check completed", { userId: newUserId, isAdmin: adminStatus, source });
       } else {
         debugLog("Admin check result discarded - user changed", { 
-          checkedUserId: userId, 
+          checkedUserId: newUserId, 
           currentUserId: currentUserId.current 
         });
       }
     } catch (error) {
       debugLog("Error checking admin status", { error });
       // Only update state if this is still the current user
-      if (currentUserId.current === userId) {
+      if (currentUserId.current === newUserId) {
         setIsAdmin(false);
         setAdminCheckCompleted(true);
         setLoading(false);
@@ -195,14 +217,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Enhanced refresh with intelligent caching
-  const refreshAuth = async (preserveAdminStatus = true) => {
-    debugLog("Manual auth refresh triggered", { preserveAdminStatus });
+  // Smart refresh that preserves admin status for tab switches
+  const refreshAuth = async (isTabSwitch = false) => {
+    debugLog("Auth refresh triggered", { isTabSwitch });
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      await updateSessionState(session, "manual refresh", preserveAdminStatus);
+      // Skip admin check for tab switches to prevent unnecessary verification UI
+      await updateSessionState(session, isTabSwitch ? "tab switch" : "manual refresh", isTabSwitch);
     } catch (error) {
-      debugLog("Manual auth refresh failed", { error });
+      debugLog("Auth refresh failed", { error });
       setSession(null);
       setUser(null);
       setIsAdmin(false);
@@ -211,7 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Initialize authentication state with improved error handling
+  // Initialize authentication state
   useEffect(() => {
     if (initializationInProgress.current) {
       debugLog("Initialization already in progress");
@@ -236,7 +259,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
             setAdminCheckCompleted(true);
           }
-        }, 20000); // 20 second timeout
+        }, 20000);
 
         // Get current session first
         debugLog("Getting initial session");
@@ -282,6 +305,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Handle sign in or token refresh
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              // For token refresh, preserve admin status to avoid re-verification
               const preserveStatus = event === 'TOKEN_REFRESHED';
               await updateSessionState(newSession, `auth_${event.toLowerCase()}`, preserveStatus);
               
@@ -333,14 +357,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Enhanced tab focus handling with throttling and smart refresh
+  // Enhanced tab focus handling with smart refresh
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && user) {
         const now = Date.now();
         const timeSinceLastSwitch = now - lastTabSwitchTime.current;
         
-        // Throttle tab switch handling to prevent excessive refreshes
+        // Throttle tab switch handling
         if (timeSinceLastSwitch < 2000) {
           debugLog("Tab switch throttled - too recent");
           return;
@@ -349,7 +373,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastTabSwitchTime.current = now;
         debugLog("Tab became visible - smart refresh");
         
-        // Use smart refresh that preserves admin status
+        // Use tab switch refresh that preserves admin status
         setTimeout(() => {
           refreshAuth(true);
         }, 100);
