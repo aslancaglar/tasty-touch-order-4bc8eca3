@@ -3,57 +3,81 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./Dashboard";
 import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const Index = () => {
   const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
+  const [routingDecision, setRoutingDecision] = useState<string | null>(null);
 
-  console.log("Index component render:", { 
+  console.log("Index render:", { 
     user: !!user, 
-    userEmail: user?.email,
     loading, 
     isAdmin, 
     adminCheckCompleted,
-    timestamp: new Date().toISOString()
+    routingDecision 
   });
 
-  // Show loading state while auth is being determined
-  if (loading || !adminCheckCompleted) {
-    console.log("Index: Showing loading state - auth still being determined");
+  // Determine routing decision when auth state is complete
+  useEffect(() => {
+    // Don't make routing decisions while loading or admin check is incomplete
+    if (loading || !adminCheckCompleted) {
+      setRoutingDecision(null);
+      return;
+    }
+
+    // No user - redirect to auth
+    if (!user) {
+      console.log("No authenticated user, will redirect to auth");
+      setRoutingDecision("auth");
+      return;
+    }
+
+    // User exists but not admin - redirect to owner page
+    if (isAdmin === false) {
+      console.log("User is not an admin, will redirect to owner page");
+      setRoutingDecision("owner");
+      return;
+    }
+
+    // User is admin - show dashboard
+    if (isAdmin === true) {
+      console.log("User is admin, will show dashboard");
+      setRoutingDecision("dashboard");
+      return;
+    }
+
+    // Fallback - still determining admin status
+    console.log("Admin status still being determined");
+    setRoutingDecision(null);
+  }, [user, loading, isAdmin, adminCheckCompleted]);
+
+  // Show loading state until routing decision is made
+  if (loading || !adminCheckCompleted || routingDecision === null) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
           <p className="mt-4 text-gray-600">
-            {loading 
-              ? "Loading..." 
-              : "Verifying permissions..."
-            }
+            {loading ? "Loading..." : !adminCheckCompleted ? "Verifying permissions..." : "Preparing dashboard..."}
           </p>
         </div>
       </div>
     );
   }
 
-  // No user - redirect to auth
-  if (!user) {
-    console.log("Index: No authenticated user, redirecting to /auth");
-    return <Navigate to="/auth" replace />;
+  // Execute routing decision
+  switch (routingDecision) {
+    case "auth":
+      return <Navigate to="/auth" replace />;
+    case "owner":
+      return <Navigate to="/owner" replace />;
+    case "dashboard":
+      return <Dashboard />;
+    default:
+      // This should not happen, but provide a fallback
+      console.warn("Unexpected routing state, redirecting to auth");
+      return <Navigate to="/auth" replace />;
   }
-
-  // User exists and admin check is complete
-  if (isAdmin === true) {
-    console.log("Index: User is admin, showing Dashboard component");
-    return <Dashboard />;
-  }
-  
-  if (isAdmin === false) {
-    console.log("Index: User is not admin, redirecting to /owner");
-    return <Navigate to="/owner" replace />;
-  }
-
-  // This should not happen if adminCheckCompleted is true
-  console.warn("Index: Unexpected state - adminCheckCompleted is true but isAdmin is null");
-  return <Navigate to="/auth" replace />;
 };
 
 export default Index;

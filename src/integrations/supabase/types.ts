@@ -507,33 +507,6 @@ export type Database = {
         }
         Relationships: []
       }
-      rate_limits: {
-        Row: {
-          action_type: string
-          attempts: number | null
-          created_at: string | null
-          id: string
-          user_id: string | null
-          window_start: string | null
-        }
-        Insert: {
-          action_type: string
-          attempts?: number | null
-          created_at?: string | null
-          id?: string
-          user_id?: string | null
-          window_start?: string | null
-        }
-        Update: {
-          action_type?: string
-          attempts?: number | null
-          created_at?: string | null
-          id?: string
-          user_id?: string | null
-          window_start?: string | null
-        }
-        Relationships: []
-      }
       restaurant_owners: {
         Row: {
           created_at: string
@@ -849,15 +822,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_rate_limit: {
-        Args: {
-          p_user_id: string
-          p_action_type: string
-          p_max_attempts?: number
-          p_window_minutes?: number
-        }
-        Returns: boolean
-      }
       duplicate_restaurant: {
         Args: { source_restaurant_id: string }
         Returns: string
@@ -917,14 +881,6 @@ export type Database = {
       }
       is_restaurant_owner_of_order_item_option: {
         Args: { order_item_option_id: string }
-        Returns: boolean
-      }
-      log_security_event: {
-        Args: { event_type: string; event_data?: Json }
-        Returns: undefined
-      }
-      validate_input: {
-        Args: { input_text: string; max_length?: number; allow_html?: boolean }
         Returns: boolean
       }
     }
