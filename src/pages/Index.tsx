@@ -10,31 +10,42 @@ const Index = () => {
   const { user, loading, isAdmin, adminCheckCompleted, refreshAuth } = useAuth();
   const [routingDecision, setRoutingDecision] = useState<string | null>(null);
   const [showRefreshButton, setShowRefreshButton] = useState(false);
+  const [stableAdminStatus, setStableAdminStatus] = useState<boolean | null>(null);
 
   console.log("Index render:", { 
     user: !!user, 
     loading, 
     isAdmin, 
     adminCheckCompleted,
-    routingDecision 
+    routingDecision,
+    stableAdminStatus
   });
 
-  // Show refresh button after 10 seconds of loading
+  // Stabilize admin status to prevent flickering
+  useEffect(() => {
+    if (adminCheckCompleted && isAdmin !== null) {
+      setStableAdminStatus(isAdmin);
+    }
+  }, [isAdmin, adminCheckCompleted]);
+
+  // Show refresh button after 15 seconds of loading
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading || !adminCheckCompleted) {
         setShowRefreshButton(true);
       }
-    }, 10000);
+    }, 15000);
 
     return () => clearTimeout(timer);
   }, [loading, adminCheckCompleted]);
 
-  // Determine routing decision when auth state is complete
+  // Enhanced routing decision logic with stability checks
   useEffect(() => {
+    // Reset routing decision when auth state changes
+    setRoutingDecision(null);
+
     // Don't make routing decisions while loading or admin check is incomplete
     if (loading || !adminCheckCompleted) {
-      setRoutingDecision(null);
       return;
     }
 
@@ -45,28 +56,31 @@ const Index = () => {
       return;
     }
 
+    // Use stable admin status for routing decisions
+    const adminStatus = stableAdminStatus !== null ? stableAdminStatus : isAdmin;
+
     // User exists but not admin - redirect to owner page
-    if (isAdmin === false) {
+    if (adminStatus === false) {
       console.log("User is not an admin, will redirect to owner page");
       setRoutingDecision("owner");
       return;
     }
 
     // User is admin - show dashboard
-    if (isAdmin === true) {
+    if (adminStatus === true) {
       console.log("User is admin, will show dashboard");
       setRoutingDecision("dashboard");
       return;
     }
 
-    // Fallback - still determining admin status
+    // Admin status still being determined
     console.log("Admin status still being determined");
-    setRoutingDecision(null);
-  }, [user, loading, isAdmin, adminCheckCompleted]);
+  }, [user, loading, isAdmin, adminCheckCompleted, stableAdminStatus]);
 
   // Handle manual refresh
   const handleRefresh = async () => {
     setShowRefreshButton(false);
+    setRoutingDecision(null);
     try {
       await refreshAuth();
     } catch (error) {
@@ -83,7 +97,12 @@ const Index = () => {
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
           <p className="text-gray-600">
-            {loading ? "Loading..." : !adminCheckCompleted ? "Verifying permissions..." : "Preparing dashboard..."}
+            {loading 
+              ? "Loading..." 
+              : !adminCheckCompleted 
+                ? "Verifying permissions..." 
+                : "Preparing dashboard..."
+            }
           </p>
           {showRefreshButton && (
             <div className="mt-4">

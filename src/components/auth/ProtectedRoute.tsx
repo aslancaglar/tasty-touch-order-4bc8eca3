@@ -20,6 +20,7 @@ const ProtectedRoute = ({
   const location = useLocation();
   const [routingDecision, setRoutingDecision] = useState<string | null>(null);
   const [showRefreshButton, setShowRefreshButton] = useState(false);
+  const [stableAdminStatus, setStableAdminStatus] = useState<boolean | null>(null);
 
   console.log("ProtectedRoute:", { 
     user: !!user, 
@@ -29,25 +30,35 @@ const ProtectedRoute = ({
     requireAdmin,
     allowAdminAccess,
     pathname: location.pathname,
-    routingDecision
+    routingDecision,
+    stableAdminStatus
   });
 
-  // Show refresh button after 10 seconds of loading
+  // Stabilize admin status to prevent flickering
+  useEffect(() => {
+    if (adminCheckCompleted && isAdmin !== null) {
+      setStableAdminStatus(isAdmin);
+    }
+  }, [isAdmin, adminCheckCompleted]);
+
+  // Show refresh button after 15 seconds of loading
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading || !adminCheckCompleted) {
         setShowRefreshButton(true);
       }
-    }, 10000);
+    }, 15000);
 
     return () => clearTimeout(timer);
   }, [loading, adminCheckCompleted]);
 
-  // Determine routing decision when auth state is complete
+  // Enhanced routing decision logic with stability checks
   useEffect(() => {
+    // Reset routing decision when auth state changes
+    setRoutingDecision(null);
+
     // Don't make routing decisions while loading or admin check is incomplete
     if (loading || !adminCheckCompleted) {
-      setRoutingDecision(null);
       return;
     }
 
@@ -58,15 +69,18 @@ const ProtectedRoute = ({
       return;
     }
 
+    // Use stable admin status for routing decisions
+    const adminStatus = stableAdminStatus !== null ? stableAdminStatus : isAdmin;
+
     // Admin required but user is not admin
-    if (requireAdmin && isAdmin === false) {
+    if (requireAdmin && adminStatus === false) {
       console.log("ProtectedRoute: Admin required but user is not admin, will redirect to /owner");
       setRoutingDecision("owner");
       return;
     }
 
     // Admin user on owner route (and not allowed)
-    if (isAdmin === true && location.pathname === '/owner' && !allowAdminAccess) {
+    if (adminStatus === true && location.pathname === '/owner' && !allowAdminAccess) {
       console.log("ProtectedRoute: Admin user on owner route, will redirect to admin dashboard");
       setRoutingDecision("admin");
       return;
@@ -75,11 +89,12 @@ const ProtectedRoute = ({
     // Access granted
     console.log("ProtectedRoute: Access granted, will show content");
     setRoutingDecision("allow");
-  }, [user, loading, isAdmin, adminCheckCompleted, requireAdmin, allowAdminAccess, location.pathname]);
+  }, [user, loading, isAdmin, adminCheckCompleted, requireAdmin, allowAdminAccess, location.pathname, stableAdminStatus]);
 
   // Handle manual refresh
   const handleRefresh = async () => {
     setShowRefreshButton(false);
+    setRoutingDecision(null);
     try {
       await refreshAuth();
     } catch (error) {
@@ -96,7 +111,12 @@ const ProtectedRoute = ({
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
           <p className="text-gray-600">
-            {loading ? "Loading..." : !adminCheckCompleted ? "Verifying authentication..." : "Preparing content..."}
+            {loading 
+              ? "Loading..." 
+              : !adminCheckCompleted 
+                ? "Verifying authentication..." 
+                : "Preparing content..."
+            }
           </p>
           {showRefreshButton && (
             <div className="mt-4">
