@@ -1,313 +1,245 @@
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { 
+  Users, 
+  Store, 
+  TrendingUp, 
+  DollarSign,
+  Plus,
+  ArrowRight
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ReactNode, useEffect, useState } from "react";
-import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { setCachingEnabledForAdmin } from "@/services/cache-service";
-import { getAdminQueryOptions } from "@/utils/admin-data-utils";
 
-// Define proper types for our API responses
-interface PopularItem {
-  name: string;
-  price: number;
-  restaurant_name: string;
-  order_count: number;
-}
-interface PopularRestaurant {
-  name: string;
-  total_orders: number;
-}
-interface StatCardProps {
-  title: string;
-  value: ReactNode; // Change to ReactNode to accept loading skeletons
-  description: string;
-  icon: React.ElementType;
-  trend?: {
-    value: string;
-    positive: boolean;
-    fromLastMonthText: string; // Added this property to the type
-  };
-}
-const StatCard = ({
-  title,
-  value,
-  description,
-  icon: Icon,
-  trend
-}: StatCardProps) => <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{value}</div>
-      <p className="text-xs text-muted-foreground">{description}</p>
-      {trend && <div className="mt-2 flex items-center text-xs">
-          <span className={trend.positive ? "text-green-500" : "text-red-500"}>
-            {trend.positive ? "+" : ""}
-            {trend.value}
-          </span>
-          <ArrowUpRight className={`ml-1 h-3 w-3 ${trend.positive ? "text-green-500" : "text-red-500"}`} style={{
-        transform: trend.positive ? "none" : "rotate(135deg)"
-      }} />
-          <span className="ml-1 text-muted-foreground">
-            {trend.fromLastMonthText}
-          </span>
-        </div>}
-    </CardContent>
-  </Card>;
-
-// Fetch functions
-const fetchStats = async () => {
-  console.log("[Dashboard] Fetching fresh statistics data");
-
-  // Total revenue - EXCLUDE CANCELLED ORDERS
-  const {
-    data: totalRevenueData,
-    error: totalRevenueError
-  } = await supabase.from("orders").select("total").neq("status", "cancelled"); // Exclude cancelled orders
-
-  // Total restaurants
-  const {
-    count: restaurantCount,
-    error: restaurantsError
-  } = await supabase.from("restaurants").select("*", {
-    count: "exact",
-    head: true
-  });
-
-  // Monthly order count - Using updated function that excludes cancelled orders
-  const {
-    data: monthlyOrderData,
-    error: monthlyError
-  } = await supabase.rpc("get_monthly_order_count");
-
-  // Fixed daily order count calculation to ensure accurate counting
-  const today = new Date();
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-  const {
-    data: dailyOrdersData,
-    error: dailyOrdersError
-  } = await supabase.from("orders").select("id", {
-    count: "exact"
-  }).gte("created_at", startOfDay.toISOString()).lte("created_at", endOfDay.toISOString()).neq("status", "cancelled");
-  const dailyOrderCount = dailyOrdersData?.length || 0;
-  console.log("[Dashboard] Today's orders count:", dailyOrderCount);
-  console.log("[Dashboard] Date range:", startOfDay.toISOString(), "to", endOfDay.toISOString());
-  if (totalRevenueError || restaurantsError || monthlyError || dailyOrdersError) throw totalRevenueError || restaurantsError || monthlyError || dailyOrdersError;
-  const revenue = totalRevenueData ? totalRevenueData.reduce((acc, cur) => acc + Number(cur.total), 0) : 0;
-  return {
-    revenue,
-    restaurants: restaurantCount ?? 0,
-    monthlyOrders: monthlyOrderData ?? 0,
-    dailyOrders: dailyOrderCount
-  };
+type DashboardStats = {
+  totalRestaurants: number;
+  totalOrders: number;
+  totalRevenue: number;
+  activeUsers: number;
 };
 
-// Using updated functions that exclude cancelled orders
-const fetchPopularItems = async () => {
-  console.log("[Dashboard] Fetching fresh popular items data");
-
-  // Top 5 items by sales (uses updated db function)
-  const {
-    data,
-    error
-  } = await supabase.rpc("get_popular_items", {
-    limit_count: 5
-  });
-  if (error) throw error;
-
-  // Handle the case when data might be null or not an array
-  if (!data) return [];
-
-  // Properly cast the JSON data to our type
-  const typedData = typeof data === 'string' ? JSON.parse(data) : data;
-  return Array.isArray(typedData) ? typedData : [];
-};
-const fetchPopularRestaurants = async () => {
-  console.log("[Dashboard] Fetching fresh popular restaurants data");
-
-  // Top 5 restaurants by order count (uses updated db function)
-  const {
-    data,
-    error
-  } = await supabase.rpc("get_popular_restaurants", {
-    limit_count: 5
-  });
-  if (error) throw error;
-
-  // Handle the case when data might be null or not an array
-  if (!data) return [];
-
-  // Properly cast the JSON data to our type
-  const typedData = typeof data === 'string' ? JSON.parse(data) : data;
-  return Array.isArray(typedData) ? typedData : [];
-};
-interface PopularItemsProps {
-  items: PopularItem[] | undefined;
-  isLoading: boolean;
-  title: string;
-  description: string;
-}
-const PopularItems = ({
-  items,
-  isLoading,
-  title,
-  description
-}: PopularItemsProps) => <Card className="col-span-2">
-    <CardHeader>
-      <CardTitle>{title}</CardTitle>
-      <CardDescription>{description}</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        {isLoading ? Array.from({
-        length: 5
-      }).map((_, i) => <div key={i} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-                <div className="flex items-center space-x-3">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <div>
-                    <Skeleton className="h-4 w-32 mb-1" />
-                    <Skeleton className="h-3 w-20" />
-                  </div>
-                </div>
-                <div className="text-right">
-                  <Skeleton className="h-3 w-14" />
-                </div>
-              </div>) : (items ?? []).map((item, index) => <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-                <div className="flex items-center space-x-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Pizza className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">{item.restaurant_name}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">{item.order_count} orders</p>
-                </div>
-              </div>)}
-      </div>
-    </CardContent>
-  </Card>;
-interface PopularRestaurantsProps {
-  data: PopularRestaurant[] | undefined;
-  isLoading: boolean;
-  title: string;
-  description: string;
-}
-const PopularRestaurants = ({
-  data,
-  isLoading,
-  title,
-  description
-}: PopularRestaurantsProps) => <Card>
-    <CardHeader>
-      <CardTitle>{title}</CardTitle>
-      <CardDescription>{description}</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        {isLoading ? Array.from({
-        length: 5
-      }).map((_, i) => <div key={i} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-                <Skeleton className="h-4 w-16" />
-              </div>) : (data ?? []).map((item, index) => <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-bold text-primary">
-                      {item.name.split(" ").map(w => w[0]).slice(0, 2).join("")}
-                    </span>
-                  </div>
-                  <p className="font-medium">{item.name}</p>
-                </div>
-                <p className="font-medium text-sm text-muted-foreground">
-                  {item.total_orders} orders
-                </p>
-              </div>)}
-      </div>
-    </CardContent>
-  </Card>;
 const Dashboard = () => {
-  const {
-    user
-  } = useAuth();
-  // Always use English for admin dashboard
-  const language: SupportedLanguage = 'en';
-  const {
-    t
-  } = useTranslation(language);
-  const [orderCount, setOrderCount] = useState<number>(0);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalRestaurants: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    activeUsers: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const { user, isAdmin } = useAuth();
 
-  // Ensure admin caching is disabled when admin dashboard loads
+  console.log("Dashboard component render:", { 
+    user: !!user, 
+    userEmail: user?.email,
+    isAdmin,
+    timestamp: new Date().toISOString()
+  });
+
   useEffect(() => {
-    setCachingEnabledForAdmin(false);
-    console.log("[AdminDashboard] Disabled caching for admin dashboard");
-  }, []);
-
-  // Use our admin query options for all admin dashboard queries
-  const {
-    data: stats,
-    isLoading: isStatsLoading,
-    error: statsError
-  } = useQuery(getAdminQueryOptions(["dashboard-stats"], fetchStats));
-  const {
-    data: popularItems,
-    isLoading: isItemsLoading,
-    error: itemsError
-  } = useQuery(getAdminQueryOptions(["dashboard-popular-items"], fetchPopularItems));
-  const {
-    data: popularRestaurants,
-    isLoading: isRestaurantsLoading,
-    error: restaurantsError
-  } = useQuery(getAdminQueryOptions(["dashboard-popular-restaurants"], fetchPopularRestaurants));
-  return <AdminLayout useDefaultLanguage={true}>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">{t("dashboard.title")}</h1>
+    const fetchDashboardStats = async () => {
+      try {
+        console.log("Dashboard: Fetching dashboard stats");
         
-      </div>
+        // Fetch restaurants count
+        const { count: restaurantCount, error: restaurantError } = await supabase
+          .from('restaurants')
+          .select('*', { count: 'exact', head: true });
 
-      {statsError && <div className="mb-4 text-red-500 font-medium">Failed to load stats.</div>}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title={t("dashboard.totalRevenue")} value={isStatsLoading ? <Skeleton className="h-8 w-32" /> : `$${stats?.revenue?.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      })}`} description={t("dashboard.revenueDesc")} icon={BadgeDollarSign} trend={{
-        value: "12.5%",
-        positive: true,
-        fromLastMonthText: t("dashboard.fromLastMonth")
-      }} />
-        <StatCard title={t("dashboard.restaurants")} value={isStatsLoading ? <Skeleton className="h-8 w-12" /> : stats?.restaurants ?? 0} description={t("dashboard.restaurantsDesc")} icon={ChefHat} trend={{
-        value: "2",
-        positive: true,
-        fromLastMonthText: t("dashboard.fromLastMonth")
-      }} />
-        <StatCard title={t("dashboard.totalOrders")} value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.monthlyOrders ?? 0} description={t("dashboard.totalOrdersDesc")} icon={ShoppingBag} trend={{
-        value: "5.2%",
-        positive: true,
-        fromLastMonthText: t("dashboard.fromLastMonth")
-      }} />
-        <StatCard title={t("dashboard.dailyOrders")} value={isStatsLoading ? <Skeleton className="h-8 w-20" /> : stats?.dailyOrders ?? 0} description={t("dashboard.dailyOrdersDesc")} icon={Store} trend={{
-        value: "15.3%",
-        positive: true,
-        fromLastMonthText: t("dashboard.fromLastMonth")
-      }} />
-      </div>
+        if (restaurantError) {
+          console.error('Error fetching restaurants:', restaurantError);
+        }
 
-      <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <PopularItems items={popularItems} isLoading={isItemsLoading} title={t("dashboard.popularItems")} description={t("dashboard.popularItemsDesc")} />
-        <PopularRestaurants data={popularRestaurants} isLoading={isRestaurantsLoading} title={t("dashboard.popularRestaurants")} description={t("dashboard.popularRestaurantsDesc")} />
+        // Fetch orders data
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('total, status')
+          .neq('status', 'cancelled');
+
+        if (ordersError) {
+          console.error('Error fetching orders:', ordersError);
+        }
+
+        // Calculate revenue
+        const revenue = orders?.reduce((sum, order) => {
+          return sum + (parseFloat(String(order.total || 0)));
+        }, 0) || 0;
+
+        // Fetch active users (profiles with recent activity)
+        const { count: userCount, error: userError } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+
+        if (userError) {
+          console.error('Error fetching users:', userError);
+        }
+
+        setStats({
+          totalRestaurants: restaurantCount || 0,
+          totalOrders: orders?.length || 0,
+          totalRevenue: revenue,
+          activeUsers: userCount || 0
+        });
+
+        console.log("Dashboard: Stats fetched successfully", {
+          totalRestaurants: restaurantCount || 0,
+          totalOrders: orders?.length || 0,
+          totalRevenue: revenue,
+          activeUsers: userCount || 0
+        });
+
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user && isAdmin) {
+      fetchDashboardStats();
+    } else {
+      console.log("Dashboard: User not authenticated or not admin, skipping stats fetch");
+      setLoading(false);
+    }
+  }, [user, isAdmin]);
+
+  // Don't show anything if user is not admin (let Index handle routing)
+  if (!user || isAdmin !== true) {
+    console.log("Dashboard: User not authenticated or not admin, returning null");
+    return null;
+  }
+
+  console.log("Dashboard: Rendering admin dashboard");
+
+  return (
+    <AdminLayout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back! Here's what's happening with your restaurants.
+          </p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Restaurants</CardTitle>
+              <Store className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {loading ? "..." : stats.totalRestaurants}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Active restaurant locations
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {loading ? "..." : stats.totalOrders.toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Orders processed
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {loading ? "..." : `€${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Revenue generated
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {loading ? "..." : stats.activeUsers}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Registered users
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>
+                Get started with common tasks
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button asChild className="w-full justify-start">
+                <Link to="/restaurants">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add New Restaurant
+                </Link>
+              </Button>
+              <Button variant="outline" asChild className="w-full justify-start">
+                <Link to="/restaurants">
+                  <Store className="mr-2 h-4 w-4" />
+                  View All Restaurants
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>
+                Latest updates from your restaurants
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                  <div className="text-sm">
+                    <p className="font-medium">System Status</p>
+                    <p className="text-muted-foreground">All systems operational</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" asChild className="w-full justify-between p-0">
+                  <Link to="/restaurants">
+                    View All Activity
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </AdminLayout>;
+    </AdminLayout>
+  );
 };
+
 export default Dashboard;

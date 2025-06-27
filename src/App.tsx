@@ -63,8 +63,10 @@ const App = () => {
               <Route path="/auth" element={<Auth />} />
               <Route path="/owner/login" element={<OwnerLogin />} />
               
+              {/* Root Route - No ProtectedRoute wrapper, Index handles auth internally */}
+              <Route path="/" element={<Index />} />
+              
               {/* Admin Routes - Protected and require admin role */}
-              <Route path="/" element={<ProtectedRoute requireAdmin={true}><Index /></ProtectedRoute>} />
               <Route path="/restaurants" element={
                 <ProtectedRoute requireAdmin={true}>
                   <Restaurants />
