@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSecureForm } from "@/hooks/useSecureForm";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,17 +16,9 @@ const Auth = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
-  
-  // Use secure form WITHOUT session validation for login
-  const { secureSubmit, isSubmitting, isBlocked } = useSecureForm({
-    maxSubmissions: 5,
-    windowSize: 60000, // 1 minute
-    skipSessionValidation: true, // Skip session validation for login
-    formType: 'login'
-  });
-  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Redirect authenticated users to their appropriate dashboard
@@ -45,42 +36,32 @@ const Auth = () => {
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginLoading(true);
     
-    if (isBlocked) {
-      toast({
-        title: "Too many attempts",
-        description: "Please wait before trying again",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
-      await secureSubmit(
-        { email, password },
-        async (sanitizedData) => {
-          const sanitizedEmail = DOMPurify.sanitize(sanitizedData.email.trim().toLowerCase());
-          
-          console.log("Attempting login for:", sanitizedEmail);
-          
-          const { error } = await supabase.auth.signInWithPassword({
-            email: sanitizedEmail,
-            password: sanitizedData.password
-          });
-          
-          if (error) {
-            console.error("Login error:", error);
-            throw error;
-          }
-          
-          console.log("Login successful - auth state will handle redirect");
-          
-          toast({
-            title: "Login successful",
-            description: "Welcome back to QimboKiosk!"
-          });
-        }
-      );
+      const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
+      
+      console.log("Attempting login for:", sanitizedEmail);
+      
+      const { error } = await supabase.auth.signInWithPassword({
+        email: sanitizedEmail,
+        password: password
+      });
+      
+      if (error) {
+        console.error("Login error:", error);
+        throw error;
+      }
+      
+      console.log("Login successful - auth state will handle redirect");
+      
+      toast({
+        title: "Login successful",
+        description: "Welcome back to QimboKiosk!"
+      });
+      
+      // Don't set loading to false - let auth state handle everything
+      
     } catch (error: any) {
       console.error("Login failed:", error);
       toast({
@@ -88,6 +69,7 @@ const Auth = () => {
         description: error.message || "An error occurred during login",
         variant: "destructive"
       });
+      setLoginLoading(false);
     }
   };
 
@@ -146,7 +128,7 @@ const Auth = () => {
                   required 
                   pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
                   title="Please enter a valid email address"
-                  disabled={isSubmitting || isBlocked}
+                  disabled={loginLoading}
                 />
               </div>
             </div>
@@ -159,7 +141,7 @@ const Auth = () => {
                   size="icon" 
                   className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground" 
                   onClick={togglePasswordVisibility}
-                  disabled={isSubmitting || isBlocked}
+                  disabled={loginLoading}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
@@ -171,19 +153,14 @@ const Auth = () => {
                   onChange={e => setPassword(e.target.value)} 
                   className="pr-10" 
                   required 
-                  disabled={isSubmitting || isBlocked}
+                  disabled={loginLoading}
                 />
               </div>
             </div>
-            {isBlocked && (
-              <div className="text-sm text-red-600 text-center">
-                Too many login attempts. Please wait before trying again.
-              </div>
-            )}
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={isSubmitting || isBlocked}>
-              {isSubmitting ? (
+            <Button type="submit" className="w-full" disabled={loginLoading}>
+              {loginLoading ? (
                 <span className="flex items-center gap-1">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   Logging in...

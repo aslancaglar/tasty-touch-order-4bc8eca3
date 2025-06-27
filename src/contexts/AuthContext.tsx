@@ -22,87 +22,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
 
-  // Server-side admin status check with no caching
+  // Cache admin status to avoid repeated checks
+  const [adminStatusCache, setAdminStatusCache] = useState<{ [key: string]: boolean }>({});
+
+  // Check admin status with caching and error handling
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
     
+    // Check cache first
+    if (adminStatusCache[userId] !== undefined) {
+      console.log("Admin status from cache:", adminStatusCache[userId]);
+      return adminStatusCache[userId];
+    }
+    
     try {
-      console.log("Server-side admin check for user:", userId);
+      console.log("Checking admin status for user:", userId);
       
       const { data, error } = await supabase
-        .rpc('get_current_user_admin_status');
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
       
       if (error) {
         console.warn("Admin check failed:", error.message);
-        await logSecurityEvent('Admin status check failed', {
-          userId,
-          error: error.message,
-          timestamp: new Date().toISOString()
-        });
+        // Cache false result to avoid repeated failed requests
+        setAdminStatusCache(prev => ({ ...prev, [userId]: false }));
         return false;
       }
       
-      const adminStatus = data === true;
-      console.log("Server-side admin status:", adminStatus);
+      const adminStatus = data?.is_admin || false;
+      console.log("Admin status retrieved:", adminStatus);
       
+      // Cache the result
+      setAdminStatusCache(prev => ({ ...prev, [userId]: adminStatus }));
       return adminStatus;
     } catch (error) {
       console.error("Admin check exception:", error);
-      await logSecurityEvent('Admin status check exception', {
-        userId,
-        error: String(error),
-        timestamp: new Date().toISOString()
-      });
-      return false;
-    }
-  };
-
-  // Enhanced session validation with timeout checks
-  const validateSession = async (): Promise<boolean> => {
-    if (!session) return false;
-
-    try {
-      // Check if session is expired or about to expire
-      const expiresAt = new Date(session.expires_at || 0).getTime();
-      const now = Date.now();
-      const fiveMinutes = 5 * 60 * 1000;
-
-      if (expiresAt <= now) {
-        console.log("Session expired, signing out");
-        await signOut();
-        return false;
-      }
-
-      // Refresh if expiring within 5 minutes
-      if (expiresAt - now < fiveMinutes) {
-        console.log("Session expiring soon, refreshing");
-        const { data, error } = await supabase.auth.refreshSession();
-        
-        if (error) {
-          console.error("Session refresh failed:", error);
-          await logSecurityEvent('Session refresh failed', {
-            userId: user?.id,
-            error: error.message,
-            timestamp: new Date().toISOString()
-          });
-          await signOut();
-          return false;
-        }
-
-        if (data.session) {
-          setSession(data.session);
-          setUser(data.session.user);
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Session validation error:", error);
-      await logSecurityEvent('Session validation error', {
-        userId: user?.id,
-        error: String(error),
-        timestamp: new Date().toISOString()
-      });
+      // Cache false result for exceptions too
+      setAdminStatusCache(prev => ({ ...prev, [userId]: false }));
       return false;
     }
   };
@@ -113,7 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     let isMounted = true;
     let initializationTimeout: NodeJS.Timeout;
-    let sessionValidationInterval: NodeJS.Timeout;
     
     const initializeAuth = async () => {
       try {
@@ -138,26 +95,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
-          // Validate session first
-          setSession(currentSession);
-          setUser(currentSession.user);
-          
-          const isValidSession = await validateSession();
-          if (isValidSession) {
-            // Check admin status for existing session - NO CACHING
-            try {
-              setAdminCheckCompleted(false);
-              const adminStatus = await checkAdminStatus(currentSession.user.id);
-              if (isMounted) {
-                setIsAdmin(adminStatus);
-                setAdminCheckCompleted(true);
-              }
-            } catch (error) {
-              console.error("Error checking initial admin status:", error);
-              if (isMounted) {
-                setIsAdmin(false);
-                setAdminCheckCompleted(true);
-              }
+          // Check admin status for existing session
+          try {
+            setAdminCheckCompleted(false);
+            const adminStatus = await checkAdminStatus(currentSession.user.id);
+            if (isMounted) {
+              setIsAdmin(adminStatus);
+              setAdminCheckCompleted(true);
+            }
+          } catch (error) {
+            console.error("Error checking initial admin status:", error);
+            if (isMounted) {
+              setIsAdmin(false);
+              setAdminCheckCompleted(true);
             }
           }
         } else {
@@ -169,13 +119,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (isMounted) {
           setLoading(false);
         }
-
-        // Set up periodic session validation (every 5 minutes)
-        sessionValidationInterval = setInterval(async () => {
-          if (session) {
-            await validateSession();
-          }
-        }, 5 * 60 * 1000);
 
         // Set up auth state change listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -193,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setLoading(false);
               
               if (event === 'SIGNED_OUT') {
-                await logSecurityEvent('User signed out', { 
+                logSecurityEvent('User signed out', { 
                   event, 
                   timestamp: new Date().toISOString() 
                 });
@@ -206,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setSession(newSession);
               setUser(newSession.user);
               
-              // Check admin status for new session - ALWAYS SERVER-SIDE
+              // Check admin status for new session
               try {
                 setAdminCheckCompleted(false);
                 const adminStatus = await checkAdminStatus(newSession.user.id);
@@ -225,7 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
               
               if (event === 'SIGNED_IN') {
-                await logSecurityEvent('User signed in', { 
+                logSecurityEvent('User signed in', { 
                   userId: newSession.user.id,
                   timestamp: new Date().toISOString()
                 });
@@ -238,9 +181,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           subscription.unsubscribe();
           if (initializationTimeout) {
             clearTimeout(initializationTimeout);
-          }
-          if (sessionValidationInterval) {
-            clearInterval(sessionValidationInterval);
           }
         };
       } catch (error) {
@@ -262,19 +202,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (initializationTimeout) {
         clearTimeout(initializationTimeout);
       }
-      if (sessionValidationInterval) {
-        clearInterval(sessionValidationInterval);
-      }
     };
   }, []);
 
   const signOut = async () => {
     try {
       console.log("Signing out...");
-      await logSecurityEvent('Sign out initiated', { 
+      logSecurityEvent('Sign out initiated', { 
         userId: user?.id,
         timestamp: new Date().toISOString()
       });
+      
+      // Clear admin status cache
+      setAdminStatusCache({});
       
       const { error } = await supabase.auth.signOut();
       
