@@ -248,31 +248,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Signing out...");
       
       // Log sign out attempt
-      await supabase.rpc('log_security_event', {
-        event_type: 'sign_out_initiated',
-        event_data: { 
-          user_id: user?.id,
-          timestamp: new Date().toISOString()
-        }
-      });
+      if (user?.id) {
+        await supabase.rpc('log_security_event', {
+          event_type: 'sign_out_initiated',
+          event_data: { 
+            user_id: user.id,
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
       
+      // Clear local state immediately to prevent UI issues
+      setSession(null);
+      setUser(null);
+      setIsAdmin(false);
+      setAdminCheckCompleted(true);
+      setLoading(false);
+      
+      // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error("Sign out error:", error);
+        console.warn("Sign out error (but local state cleared):", error);
         
-        await supabase.rpc('log_security_event', {
-          event_type: 'sign_out_failed',
-          event_data: { error: error.message, user_id: user?.id }
-        });
+        if (user?.id) {
+          await supabase.rpc('log_security_event', {
+            event_type: 'sign_out_warning',
+            event_data: { error: error.message, user_id: user.id, note: 'Local state cleared successfully' }
+          });
+        }
         
-        throw error;
+        // Don't throw the error since we've already cleared local state
+        // The user will be effectively signed out from the UI perspective
+        return;
       }
       
       console.log("Sign out complete");
     } catch (error) {
-      console.error("Sign out exception:", error);
-      throw error;
+      console.warn("Sign out exception (but local state cleared):", error);
+      
+      // Even if there's an exception, we've already cleared the local state
+      // so the user will appear signed out in the UI
+      if (user?.id) {
+        await supabase.rpc('log_security_event', {
+          event_type: 'sign_out_exception',
+          event_data: { error: String(error), user_id: user.id, note: 'Local state cleared successfully' }
+        });
+      }
     }
   };
 
