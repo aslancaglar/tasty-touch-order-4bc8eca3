@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Cache admin status to avoid repeated checks
   const [adminStatusCache, setAdminStatusCache] = useState<{ [key: string]: boolean }>({});
 
-  // Check admin status with caching and error handling
+  // Enhanced admin status check with security logging
   const checkAdminStatus = async (userId: string): Promise<boolean> => {
     if (!userId) return false;
     
@@ -38,36 +38,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Checking admin status for user:", userId);
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', userId)
-        .single();
+      // Use the enhanced security function
+      const { data, error } = await supabase.rpc('get_current_user_admin_status');
       
       if (error) {
         console.warn("Admin check failed:", error.message);
+        // Log security event for failed admin checks
+        await supabase.rpc('log_security_event', {
+          event_type: 'admin_check_failed',
+          event_data: { error: error.message, user_id: userId }
+        });
+        
         // Cache false result to avoid repeated failed requests
         setAdminStatusCache(prev => ({ ...prev, [userId]: false }));
         return false;
       }
       
-      const adminStatus = data?.is_admin || false;
+      const adminStatus = data || false;
       console.log("Admin status retrieved:", adminStatus);
+      
+      // Log successful admin status verification
+      if (adminStatus) {
+        await supabase.rpc('log_security_event', {
+          event_type: 'admin_status_verified',
+          event_data: { user_id: userId }
+        });
+      }
       
       // Cache the result
       setAdminStatusCache(prev => ({ ...prev, [userId]: adminStatus }));
       return adminStatus;
     } catch (error) {
       console.error("Admin check exception:", error);
+      
+      // Log security exception
+      await supabase.rpc('log_security_event', {
+        event_type: 'admin_check_exception',
+        event_data: { error: String(error), user_id: userId }
+      });
+      
       // Cache false result for exceptions too
       setAdminStatusCache(prev => ({ ...prev, [userId]: false }));
       return false;
     }
   };
 
-  // Initialize authentication state
+  // Initialize authentication state with enhanced security
   useEffect(() => {
-    console.log("Initializing AuthProvider...");
+    console.log("Initializing AuthProvider with security enhancements...");
     
     let isMounted = true;
     let initializationTimeout: NodeJS.Timeout;
@@ -95,6 +113,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
+          // Log successful session restoration
+          await supabase.rpc('log_security_event', {
+            event_type: 'session_restored',
+            event_data: { user_id: currentSession.user.id }
+          });
+
           // Check admin status for existing session
           try {
             setAdminCheckCompleted(false);
@@ -120,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         }
 
-        // Set up auth state change listener
+        // Set up auth state change listener with enhanced security
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!isMounted) return;
@@ -136,9 +160,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setLoading(false);
               
               if (event === 'SIGNED_OUT') {
-                logSecurityEvent('User signed out', { 
-                  event, 
-                  timestamp: new Date().toISOString() 
+                await supabase.rpc('log_security_event', {
+                  event_type: 'user_signed_out',
+                  event_data: { timestamp: new Date().toISOString() }
                 });
               }
               return;
@@ -148,6 +172,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
               setSession(newSession);
               setUser(newSession.user);
+              
+              // Log authentication events
+              await supabase.rpc('log_security_event', {
+                event_type: event === 'SIGNED_IN' ? 'user_signed_in' : 'token_refreshed',
+                event_data: { 
+                  user_id: newSession.user.id,
+                  timestamp: new Date().toISOString(),
+                  email: newSession.user.email
+                }
+              });
               
               // Check admin status for new session
               try {
@@ -166,13 +200,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setLoading(false);
                 }
               }
-              
-              if (event === 'SIGNED_IN') {
-                logSecurityEvent('User signed in', { 
-                  userId: newSession.user.id,
-                  timestamp: new Date().toISOString()
-                });
-              }
             }
           }
         );
@@ -185,6 +212,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       } catch (error) {
         console.error("Auth initialization error:", error);
+        
+        // Log initialization errors
+        await supabase.rpc('log_security_event', {
+          event_type: 'auth_initialization_error',
+          event_data: { error: String(error) }
+        });
+        
         if (isMounted) {
           setSession(null);
           setUser(null);
@@ -208,9 +242,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log("Signing out...");
-      logSecurityEvent('Sign out initiated', { 
-        userId: user?.id,
-        timestamp: new Date().toISOString()
+      
+      // Log sign out attempt
+      await supabase.rpc('log_security_event', {
+        event_type: 'sign_out_initiated',
+        event_data: { 
+          user_id: user?.id,
+          timestamp: new Date().toISOString()
+        }
       });
       
       // Clear admin status cache
@@ -220,6 +259,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) {
         console.error("Sign out error:", error);
+        
+        // Log sign out failure
+        await supabase.rpc('log_security_event', {
+          event_type: 'sign_out_failed',
+          event_data: { error: error.message, user_id: user?.id }
+        });
+        
         throw error;
       }
       
