@@ -9,51 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      audit_logs: {
-        Row: {
-          action: string | null
-          created_at: string | null
-          details: Json | null
-          event_type: string
-          id: string
-          ip_address: unknown | null
-          resource_id: string | null
-          resource_type: string | null
-          session_id: string | null
-          severity: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          action?: string | null
-          created_at?: string | null
-          details?: Json | null
-          event_type: string
-          id?: string
-          ip_address?: unknown | null
-          resource_id?: string | null
-          resource_type?: string | null
-          session_id?: string | null
-          severity?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          action?: string | null
-          created_at?: string | null
-          details?: Json | null
-          event_type?: string
-          id?: string
-          ip_address?: unknown | null
-          resource_id?: string | null
-          resource_type?: string | null
-          session_id?: string | null
-          severity?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       menu_categories: {
         Row: {
           created_at: string
@@ -762,39 +717,6 @@ export type Database = {
         }
         Relationships: []
       }
-      security_violations: {
-        Row: {
-          created_at: string | null
-          details: Json | null
-          id: string
-          ip_address: unknown | null
-          resolved: boolean | null
-          severity: string | null
-          user_id: string | null
-          violation_type: string
-        }
-        Insert: {
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          ip_address?: unknown | null
-          resolved?: boolean | null
-          severity?: string | null
-          user_id?: string | null
-          violation_type: string
-        }
-        Update: {
-          created_at?: string | null
-          details?: Json | null
-          id?: string
-          ip_address?: unknown | null
-          resolved?: boolean | null
-          severity?: string | null
-          user_id?: string | null
-          violation_type?: string
-        }
-        Relationships: []
-      }
       topping_categories: {
         Row: {
           allow_multiple_same_topping: boolean
@@ -944,10 +866,6 @@ export type Database = {
       get_user_restaurant_ids: {
         Args: Record<PropertyKey, never>
         Returns: string[]
-      }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
       }
       is_menu_item_available_now: {
         Args: { item_id: string }
