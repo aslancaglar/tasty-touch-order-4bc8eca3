@@ -2,185 +2,64 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./Dashboard";
-import { Loader2, RefreshCw } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const Index = () => {
-  const { user, loading, isAdmin, adminCheckCompleted, refreshAuth } = useAuth();
+  const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
   const [routingDecision, setRoutingDecision] = useState<string | null>(null);
-  const [showRefreshButton, setShowRefreshButton] = useState(false);
-  const [stableAdminStatus, setStableAdminStatus] = useState<boolean | null>(null);
-  
-  // Track previous user ID to detect actual user changes
-  const previousUserIdRef = useRef<string | null>(null);
-  const hasInitializedRef = useRef(false);
 
   console.log("Index render:", { 
     user: !!user, 
-    userId: user?.id,
-    previousUserId: previousUserIdRef.current,
     loading, 
     isAdmin, 
     adminCheckCompleted,
-    routingDecision,
-    stableAdminStatus,
-    hasInitialized: hasInitializedRef.current
+    routingDecision 
   });
 
-  // Detect if this is the same user (to prevent routing resets during tab switches)
-  const currentUserId = user?.id || null;
-  const userChanged = previousUserIdRef.current !== currentUserId;
-  
-  // Update previous user ID reference
+  // Determine routing decision when auth state is complete
   useEffect(() => {
-    previousUserIdRef.current = currentUserId;
-  }, [currentUserId]);
-
-  // Stabilize admin status to prevent flickering, but respect user changes
-  useEffect(() => {
-    if (adminCheckCompleted && isAdmin !== null) {
-      // If user changed, always update stable status
-      if (userChanged || !hasInitializedRef.current) {
-        console.log("Index: Updating stable admin status due to user change or initialization", { 
-          isAdmin, 
-          userChanged, 
-          hasInitialized: hasInitializedRef.current 
-        });
-        setStableAdminStatus(isAdmin);
-        hasInitializedRef.current = true;
-      } else {
-        // For same user, check if there's a clear conflict and resolve it
-        if (stableAdminStatus !== null && stableAdminStatus !== isAdmin) {
-          console.log("Index: Resolving admin status conflict", { 
-            stableAdminStatus, 
-            isAdmin,
-            action: "updating to current isAdmin value"
-          });
-          setStableAdminStatus(isAdmin);
-        } else if (stableAdminStatus === null) {
-          console.log("Index: Setting initial stable admin status", { isAdmin });
-          setStableAdminStatus(isAdmin);
-        } else {
-          console.log("Index: Preserving stable admin status during tab switch", { 
-            stableAdminStatus, 
-            isAdmin 
-          });
-        }
-      }
-    }
-  }, [isAdmin, adminCheckCompleted, userChanged, stableAdminStatus]);
-
-  // Show refresh button after 15 seconds of loading - but only when we truly have no status info
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if ((loading || !adminCheckCompleted) && stableAdminStatus === null) {
-        setShowRefreshButton(true);
-      }
-    }, 15000);
-
-    return () => clearTimeout(timer);
-  }, [loading, adminCheckCompleted, stableAdminStatus]);
-
-  // Enhanced routing decision logic with better handling of preserved admin status
-  useEffect(() => {
-    console.log("Index: Evaluating routing decision...", {
-      loading,
-      adminCheckCompleted,
-      user: !!user,
-      userChanged,
-      stableAdminStatus,
-      isAdmin,
-      currentRoutingDecision: routingDecision
-    });
-
-    // Don't make routing decisions while loading IF we don't have any stable status
-    if ((loading || !adminCheckCompleted) && stableAdminStatus === null) {
-      console.log("Index: Still loading and no stable status, not making routing decision");
+    // Don't make routing decisions while loading or admin check is incomplete
+    if (loading || !adminCheckCompleted) {
+      setRoutingDecision(null);
       return;
     }
 
-    // No user - redirect to auth (always reset routing decision for this)
+    // No user - redirect to auth
     if (!user) {
-      console.log("Index: No authenticated user, will redirect to auth");
+      console.log("No authenticated user, will redirect to auth");
       setRoutingDecision("auth");
       return;
     }
 
-    // Use stable admin status for routing decisions, with fallback to current isAdmin
-    const effectiveAdminStatus = stableAdminStatus !== null ? stableAdminStatus : isAdmin;
-
-    console.log("Index: Making routing decision with effective admin status", {
-      effectiveAdminStatus,
-      stableAdminStatus,
-      isAdmin,
-      userChanged
-    });
-
     // User exists but not admin - redirect to owner page
-    if (effectiveAdminStatus === false) {
-      console.log("Index: User is not an admin, will redirect to owner page");
+    if (isAdmin === false) {
+      console.log("User is not an admin, will redirect to owner page");
       setRoutingDecision("owner");
       return;
     }
 
     // User is admin - show dashboard
-    if (effectiveAdminStatus === true) {
-      console.log("Index: User is admin, will show dashboard");
+    if (isAdmin === true) {
+      console.log("User is admin, will show dashboard");
       setRoutingDecision("dashboard");
       return;
     }
 
-    // Admin status still being determined - don't change routing decision yet
-    console.log("Index: Admin status still being determined, waiting...");
-  }, [user, loading, isAdmin, adminCheckCompleted, stableAdminStatus, userChanged, routingDecision]);
-
-  // Handle manual refresh
-  const handleRefresh = async () => {
-    console.log("Index: Manual refresh triggered");
-    setShowRefreshButton(false);
+    // Fallback - still determining admin status
+    console.log("Admin status still being determined");
     setRoutingDecision(null);
-    setStableAdminStatus(null); // Reset stable status on manual refresh
-    hasInitializedRef.current = false;
-    try {
-      await refreshAuth();
-    } catch (error) {
-      console.error("Index: Manual refresh failed:", error);
-      // Show refresh button again if it fails
-      setTimeout(() => setShowRefreshButton(true), 2000);
-    }
-  };
+  }, [user, loading, isAdmin, adminCheckCompleted]);
 
-  // Show loading state only when we truly don't have enough info to make a routing decision
-  const shouldShowLoading = (loading || !adminCheckCompleted) && 
-    stableAdminStatus === null && 
-    routingDecision === null;
-
-  if (shouldShowLoading) {
+  // Show loading state until routing decision is made
+  if (loading || !adminCheckCompleted || routingDecision === null) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-center space-y-4">
+        <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-purple-700 mx-auto" />
-          <p className="text-gray-600">
-            {loading 
-              ? "Loading..." 
-              : "Preparing dashboard..."
-            }
+          <p className="mt-4 text-gray-600">
+            {loading ? "Loading..." : !adminCheckCompleted ? "Verifying permissions..." : "Preparing dashboard..."}
           </p>
-          {showRefreshButton && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-500 mb-2">Taking longer than expected?</p>
-              <Button 
-                onClick={handleRefresh} 
-                variant="outline" 
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh Authentication
-              </Button>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -196,7 +75,7 @@ const Index = () => {
       return <Dashboard />;
     default:
       // This should not happen, but provide a fallback
-      console.warn("Index: Unexpected routing state, redirecting to auth");
+      console.warn("Unexpected routing state, redirecting to auth");
       return <Navigate to="/auth" replace />;
   }
 };
