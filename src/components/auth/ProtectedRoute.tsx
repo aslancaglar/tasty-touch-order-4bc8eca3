@@ -77,16 +77,16 @@ const ProtectedRoute = ({
     }
   }, [isAdmin, adminCheckCompleted, userChanged, stableAdminStatus]);
 
-  // Show refresh button after 15 seconds of loading
+  // Show refresh button after 15 seconds of loading - but only when we truly have no status info
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (loading || !adminCheckCompleted) {
+      if ((loading || !adminCheckCompleted) && stableAdminStatus === null) {
         setShowRefreshButton(true);
       }
     }, 15000);
 
     return () => clearTimeout(timer);
-  }, [loading, adminCheckCompleted]);
+  }, [loading, adminCheckCompleted, stableAdminStatus]);
 
   // Enhanced routing decision logic with better handling of preserved admin status
   useEffect(() => {
@@ -103,9 +103,9 @@ const ProtectedRoute = ({
       currentRoutingDecision: routingDecision
     });
 
-    // Don't make routing decisions while loading or admin check is incomplete
-    if (loading || !adminCheckCompleted) {
-      console.log("ProtectedRoute: Still loading or admin check incomplete, not making routing decision");
+    // Don't make routing decisions while loading IF we don't have any stable status
+    if ((loading || !adminCheckCompleted) && stableAdminStatus === null) {
+      console.log("ProtectedRoute: Still loading and no stable status, not making routing decision");
       return;
     }
 
@@ -186,8 +186,12 @@ const ProtectedRoute = ({
     }
   };
 
-  // Show loading spinner while determining routing
-  if (loading || !adminCheckCompleted || routingDecision === null) {
+  // Show loading spinner only when we truly don't have enough info to make a routing decision
+  const shouldShowLoading = (loading || !adminCheckCompleted) && 
+    stableAdminStatus === null && 
+    routingDecision === null;
+
+  if (shouldShowLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center space-y-4">
@@ -195,9 +199,7 @@ const ProtectedRoute = ({
           <p className="text-gray-600">
             {loading 
               ? "Loading..." 
-              : !adminCheckCompleted 
-                ? "Verifying authentication..." 
-                : "Preparing content..."
+              : "Preparing content..."
             }
           </p>
           {showRefreshButton && (

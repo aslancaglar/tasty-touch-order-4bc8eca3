@@ -64,16 +64,16 @@ const Index = () => {
     }
   }, [isAdmin, adminCheckCompleted, userChanged, stableAdminStatus]);
 
-  // Show refresh button after 15 seconds of loading
+  // Show refresh button after 15 seconds of loading - but only when we truly have no status info
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (loading || !adminCheckCompleted) {
+      if ((loading || !adminCheckCompleted) && stableAdminStatus === null) {
         setShowRefreshButton(true);
       }
     }, 15000);
 
     return () => clearTimeout(timer);
-  }, [loading, adminCheckCompleted]);
+  }, [loading, adminCheckCompleted, stableAdminStatus]);
 
   // Enhanced routing decision logic with better handling of preserved admin status
   useEffect(() => {
@@ -87,9 +87,9 @@ const Index = () => {
       currentRoutingDecision: routingDecision
     });
 
-    // Don't make routing decisions while loading or admin check is incomplete
-    if (loading || !adminCheckCompleted) {
-      console.log("Index: Still loading or admin check incomplete, not making routing decision");
+    // Don't make routing decisions while loading IF we don't have any stable status
+    if ((loading || !adminCheckCompleted) && stableAdminStatus === null) {
+      console.log("Index: Still loading and no stable status, not making routing decision");
       return;
     }
 
@@ -160,8 +160,12 @@ const Index = () => {
     }
   };
 
-  // Show loading state until routing decision is made
-  if (loading || !adminCheckCompleted || routingDecision === null) {
+  // Show loading state only when we truly don't have enough info to make a routing decision
+  const shouldShowLoading = (loading || !adminCheckCompleted) && 
+    stableAdminStatus === null && 
+    routingDecision === null;
+
+  if (shouldShowLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center space-y-4">
@@ -169,9 +173,7 @@ const Index = () => {
           <p className="text-gray-600">
             {loading 
               ? "Loading..." 
-              : !adminCheckCompleted 
-                ? "Verifying permissions..." 
-                : "Preparing dashboard..."
+              : "Preparing dashboard..."
             }
           </p>
           {showRefreshButton && (
