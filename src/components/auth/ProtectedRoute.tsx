@@ -2,7 +2,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 interface ProtectedRouteProps {
@@ -21,9 +21,15 @@ const ProtectedRoute = ({
   const [routingDecision, setRoutingDecision] = useState<string | null>(null);
   const [showRefreshButton, setShowRefreshButton] = useState(false);
   const [stableAdminStatus, setStableAdminStatus] = useState<boolean | null>(null);
+  
+  // Track previous user ID to detect actual user changes
+  const previousUserIdRef = useRef<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
   console.log("ProtectedRoute:", { 
-    user: !!user, 
+    user: !!user,
+    userId: user?.id,
+    previousUserId: previousUserIdRef.current,
     loading, 
     isAdmin, 
     adminCheckCompleted, 
@@ -31,15 +37,45 @@ const ProtectedRoute = ({
     allowAdminAccess,
     pathname: location.pathname,
     routingDecision,
-    stableAdminStatus
+    stableAdminStatus,
+    hasInitialized: hasInitializedRef.current
   });
 
-  // Stabilize admin status to prevent flickering
+  // Detect if this is the same user
+  const currentUserId = user?.id || null;
+  const userChanged = previousUserIdRef.current !== currentUserId;
+  
+  // Update previous user ID reference
+  useEffect(() => {
+    previousUserIdRef.current = currentUserId;
+  }, [currentUserId]);
+
+  // Stabilize admin status to prevent flickering, but respect user changes
   useEffect(() => {
     if (adminCheckCompleted && isAdmin !== null) {
-      setStableAdminStatus(isAdmin);
+      // If user changed, always update stable status
+      if (userChanged || !hasInitializedRef.current) {
+        console.log("ProtectedRoute: Updating stable admin status due to user change or initialization", { 
+          isAdmin, 
+          userChanged, 
+          hasInitialized: hasInitializedRef.current 
+        });
+        setStableAdminStatus(isAdmin);
+        hasInitializedRef.current = true;
+      } else {
+        // For same user, only update if we don't have a stable status yet
+        if (stableAdminStatus === null) {
+          console.log("ProtectedRoute: Setting initial stable admin status", { isAdmin });
+          setStableAdminStatus(isAdmin);
+        } else {
+          console.log("ProtectedRoute: Preserving stable admin status during tab switch", { 
+            stableAdminStatus, 
+            isAdmin 
+          });
+        }
+      }
     }
-  }, [isAdmin, adminCheckCompleted]);
+  }, [isAdmin, adminCheckCompleted, userChanged, stableAdminStatus]);
 
   // Show refresh button after 15 seconds of loading
   useEffect(() => {
@@ -52,13 +88,24 @@ const ProtectedRoute = ({
     return () => clearTimeout(timer);
   }, [loading, adminCheckCompleted]);
 
-  // Enhanced routing decision logic with stability checks
+  // Enhanced routing decision logic with better handling of preserved admin status
   useEffect(() => {
-    // Reset routing decision when auth state changes
-    setRoutingDecision(null);
+    console.log("ProtectedRoute: Evaluating routing decision...", {
+      loading,
+      adminCheckCompleted,
+      user: !!user,
+      userChanged,
+      stableAdminStatus,
+      isAdmin,
+      requireAdmin,
+      allowAdminAccess,
+      pathname: location.pathname,
+      currentRoutingDecision: routingDecision
+    });
 
     // Don't make routing decisions while loading or admin check is incomplete
     if (loading || !adminCheckCompleted) {
+      console.log("ProtectedRoute: Still loading or admin check incomplete, not making routing decision");
       return;
     }
 
@@ -69,36 +116,71 @@ const ProtectedRoute = ({
       return;
     }
 
-    // Use stable admin status for routing decisions
-    const adminStatus = stableAdminStatus !== null ? stableAdminStatus : isAdmin;
+    // For same user with existing routing decision, preserve it unless there's a compelling reason to change
+    if (!userChanged && routingDecision === "allow" && stableAdminStatus !== null) {
+      // Check if the current "allow" decision is still valid
+      const effectiveAdminStatus = stableAdminStatus;
+      
+      const shouldStillAllow = 
+        (!requireAdmin) || // Route doesn't require admin
+        (requireAdmin && effectiveAdminStatus === true); // Route requires admin and user is admin
+      
+      if (shouldStillAllow) {
+        console.log("ProtectedRoute: Preserving access decision for same user", { 
+          requireAdmin,
+          stableAdminStatus 
+        });
+        return;
+      }
+    }
+
+    // Use stable admin status for routing decisions, with fallback to current isAdmin
+    const effectiveAdminStatus = stableAdminStatus !== null ? stableAdminStatus : isAdmin;
+
+    console.log("ProtectedRoute: Making routing decision with effective admin status", {
+      effectiveAdminStatus,
+      stableAdminStatus,
+      isAdmin,
+      userChanged,
+      requireAdmin
+    });
 
     // Admin required but user is not admin
-    if (requireAdmin && adminStatus === false) {
+    if (requireAdmin && effectiveAdminStatus === false) {
       console.log("ProtectedRoute: Admin required but user is not admin, will redirect to /owner");
       setRoutingDecision("owner");
       return;
     }
 
     // Admin user on owner route (and not allowed)
-    if (adminStatus === true && location.pathname === '/owner' && !allowAdminAccess) {
+    if (effectiveAdminStatus === true && location.pathname === '/owner' && !allowAdminAccess) {
       console.log("ProtectedRoute: Admin user on owner route, will redirect to admin dashboard");
       setRoutingDecision("admin");
       return;
     }
 
     // Access granted
-    console.log("ProtectedRoute: Access granted, will show content");
-    setRoutingDecision("allow");
-  }, [user, loading, isAdmin, adminCheckCompleted, requireAdmin, allowAdminAccess, location.pathname, stableAdminStatus]);
+    if (effectiveAdminStatus !== null) {
+      console.log("ProtectedRoute: Access granted, will show content");
+      setRoutingDecision("allow");
+      return;
+    }
+
+    // Admin status still being determined
+    console.log("ProtectedRoute: Admin status still being determined, waiting...");
+  }, [user, loading, isAdmin, adminCheckCompleted, requireAdmin, allowAdminAccess, location.pathname, stableAdminStatus, userChanged, routingDecision]);
 
   // Handle manual refresh
   const handleRefresh = async () => {
+    console.log("ProtectedRoute: Manual refresh triggered");
     setShowRefreshButton(false);
     setRoutingDecision(null);
+    setStableAdminStatus(null); // Reset stable status on manual refresh
+    hasInitializedRef.current = false;
     try {
       await refreshAuth();
     } catch (error) {
-      console.error("Manual refresh failed:", error);
+      console.error("ProtectedRoute: Manual refresh failed:", error);
       // Show refresh button again if it fails
       setTimeout(() => setShowRefreshButton(true), 2000);
     }
