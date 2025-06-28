@@ -50,8 +50,15 @@ const Index = () => {
         setStableAdminStatus(isAdmin);
         hasInitializedRef.current = true;
       } else {
-        // For same user, only update if we don't have a stable status yet
-        if (stableAdminStatus === null) {
+        // For same user, check if there's a clear conflict and resolve it
+        if (stableAdminStatus !== null && stableAdminStatus !== isAdmin) {
+          console.log("Index: Resolving admin status conflict", { 
+            stableAdminStatus, 
+            isAdmin,
+            action: "updating to current isAdmin value"
+          });
+          setStableAdminStatus(isAdmin);
+        } else if (stableAdminStatus === null) {
           console.log("Index: Setting initial stable admin status", { isAdmin });
           setStableAdminStatus(isAdmin);
         } else {
@@ -98,22 +105,6 @@ const Index = () => {
       console.log("Index: No authenticated user, will redirect to auth");
       setRoutingDecision("auth");
       return;
-    }
-
-    // For same user with existing routing decision, preserve it unless there's a compelling reason to change
-    if (!userChanged && routingDecision && stableAdminStatus !== null) {
-      // Check if current routing decision is still valid
-      const shouldPreserveRouting = 
-        (routingDecision === "dashboard" && stableAdminStatus === true) ||
-        (routingDecision === "owner" && stableAdminStatus === false);
-      
-      if (shouldPreserveRouting) {
-        console.log("Index: Preserving existing routing decision for same user", { 
-          routingDecision, 
-          stableAdminStatus 
-        });
-        return;
-      }
     }
 
     // Use stable admin status for routing decisions, with fallback to current isAdmin
