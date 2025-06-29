@@ -11,7 +11,7 @@ interface RateLimitEntry {
 
 class RateLimiter {
   private attempts: Map<string, RateLimitEntry> = new Map();
-  private readonly cleanupInterval: number;
+  private readonly cleanupInterval: ReturnType<typeof setInterval>;
 
   constructor() {
     // Clean up old entries every 5 minutes
