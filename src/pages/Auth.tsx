@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
-import { validateEmail, validatePassword } from "@/utils/input-validation";
+import { validateEmail, validateLoginPassword } from "@/utils/input-validation";
 import { checkLoginRateLimit } from "@/utils/rate-limiter";
 import { logSecurityEvent, handleError } from "@/utils/error-handler";
 
@@ -76,8 +75,8 @@ const Auth = () => {
         throw new Error(emailValidation.error);
       }
 
-      // Validate password
-      const passwordValidation = validatePassword(password);
+      // Validate password for login (basic validation only)
+      const passwordValidation = validateLoginPassword(password);
       if (!passwordValidation.valid) {
         throw new Error(passwordValidation.error);
       }

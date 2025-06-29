@@ -72,6 +72,7 @@ export const validateEmail = (email: string): ValidationResult => {
   return validateAndSanitizeInput(email, 'email');
 };
 
+// For password creation/signup - strict validation
 export const validatePassword = (password: string): ValidationResult => {
   if (password.length < 8) {
     return { valid: false, error: 'Password must be at least 8 characters long' };
@@ -83,6 +84,19 @@ export const validatePassword = (password: string): ValidationResult => {
 
   if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
     return { valid: false, error: 'Password must contain at least one special character' };
+  }
+
+  return { valid: true };
+};
+
+// For login - basic validation only
+export const validateLoginPassword = (password: string): ValidationResult => {
+  if (password.length < 1) {
+    return { valid: false, error: 'Password is required' };
+  }
+
+  if (password.length > 128) {
+    return { valid: false, error: 'Password is too long' };
   }
 
   return { valid: true };
