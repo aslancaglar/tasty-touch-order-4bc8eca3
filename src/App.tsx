@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -35,7 +36,7 @@ import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
 import OwnerLogin from "./pages/OwnerLogin";
 import Index from "./pages/Index";
 
-function App() {
+const App = () => {
   // Initialize cache config when the app starts
   useEffect(() => {
     initializeCacheConfig();
@@ -43,12 +44,20 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+      <BrowserRouter>
         <AuthProvider>
-          <SecurityMonitor />
-          <BrowserRouter>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            
+            {/* Security Monitoring */}
+            <SecurityMonitor />
+            
+            {/* Network Status */}
+            <div className="fixed bottom-4 right-4 z-50">
+              <NetworkStatus showLabel={true} />
+            </div>
+            
             <Routes>
               {/* Auth Routes */}
               <Route path="/auth" element={<Auth />} />
@@ -85,11 +94,11 @@ function App() {
               {/* Catch-all Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </TooltipProvider>
         </AuthProvider>
-      </TooltipProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
-}
+};
 
 export default App;
