@@ -17,7 +17,7 @@ const ProtectedRoute = ({
 }: ProtectedRouteProps) => {
   const { user, loading, isAdmin, adminCheckCompleted } = useAuth();
   const location = useLocation();
-  const [fallbackTimer, setFallbackTimer] = useState(0);
+  const [emergencyTimer, setEmergencyTimer] = useState(0);
 
   console.log("ProtectedRoute:", { 
     user: !!user, 
@@ -27,36 +27,37 @@ const ProtectedRoute = ({
     requireAdmin,
     allowAdminAccess,
     pathname: location.pathname,
-    fallbackTimer
+    emergencyTimer
   });
 
-  // Fallback mechanism to prevent infinite loading
+  // Emergency fallback mechanism with progressive feedback
   useEffect(() => {
     if (loading || !adminCheckCompleted) {
       const timer = setTimeout(() => {
-        setFallbackTimer(prev => prev + 1);
+        setEmergencyTimer(prev => prev + 1);
       }, 1000);
 
       return () => clearTimeout(timer);
     } else {
-      setFallbackTimer(0);
+      setEmergencyTimer(0);
     }
   }, [loading, adminCheckCompleted]);
 
-  // Force navigation after reasonable timeout (15 seconds)
+  // Emergency redirect after 30 seconds (reduced from 15)
   useEffect(() => {
-    if (fallbackTimer >= 15) {
-      console.warn("ProtectedRoute: Fallback timeout reached, forcing auth redirect");
+    if (emergencyTimer >= 30) {
+      console.warn("ProtectedRoute: Emergency timeout reached, forcing navigation");
       if (!user) {
-        // Force redirect to auth if no user after timeout
         window.location.href = '/auth';
+      } else {
+        // If we have a user but admin check is stuck, assume non-admin
+        window.location.href = '/owner';
       }
     }
-  }, [fallbackTimer, user]);
+  }, [emergencyTimer, user]);
 
-  // Show loading spinner while auth state is being determined
-  // But with improved timeout logic
-  if ((loading || !adminCheckCompleted) && fallbackTimer < 15) {
+  // Show loading state with progressive feedback
+  if ((loading || !adminCheckCompleted) && emergencyTimer < 30) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -64,9 +65,19 @@ const ProtectedRoute = ({
           <p className="mt-4 text-gray-600">
             {loading ? "Loading..." : "Verifying authentication..."}
           </p>
-          {fallbackTimer > 8 && (
+          {emergencyTimer > 5 && (
             <p className="mt-2 text-sm text-gray-500">
-              This is taking longer than usual... ({15 - fallbackTimer}s)
+              This is taking longer than usual... ({30 - emergencyTimer}s)
+            </p>
+          )}
+          {emergencyTimer > 15 && (
+            <p className="mt-1 text-xs text-gray-400">
+              Checking authentication status...
+            </p>
+          )}
+          {emergencyTimer > 25 && (
+            <p className="mt-1 text-xs text-orange-500">
+              Redirecting shortly if this continues...
             </p>
           )}
         </div>

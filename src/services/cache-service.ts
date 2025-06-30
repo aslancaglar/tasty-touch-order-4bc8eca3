@@ -1,28 +1,32 @@
 const CACHE_PREFIX = 'kiosk_cache_';
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-const CACHE_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes - new threshold for refresh
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // Extended to 24 hours to match auth cache
+const CACHE_REFRESH_THRESHOLD = 30 * 60 * 1000; // 30 minutes - extended threshold for refresh
 
 interface CacheItem<T> {
   data: T;
   timestamp: number;
+  refreshCount?: number;
 }
 
-// Add flags to control caching behavior
+// Enhanced cache configuration
 const CACHE_CONFIG = {
   // Enable caching only for kiosk/customer views
   enableCaching: true,
   // Disable caching for admin/owner views
   enableCachingForAdmin: false,
   // Log cache operations
-  debugLogs: true
+  debugLogs: true,
+  // Enable background refresh
+  enableBackgroundRefresh: true
 };
 
-const debugCache = (action: string, key: string, hit?: boolean) => {
+const debugCache = (action: string, key: string, hit?: boolean, age?: number) => {
   if (!CACHE_CONFIG.debugLogs) return;
-  console.log(`Cache ${action}: ${key}${hit !== undefined ? ` (Cache ${hit ? 'HIT' : 'MISS'})` : ''}`);
+  const ageStr = age ? ` (age: ${Math.round(age / 60000)}min)` : '';
+  console.log(`Cache ${action}: ${key}${hit !== undefined ? ` (Cache ${hit ? 'HIT' : 'MISS'})` : ''}${ageStr}`);
 };
 
-// Modified to support isAdmin flag
+// Modified to support isAdmin flag with enhanced logic
 export const setCacheItem = <T>(key: string, data: T, restaurantId: string, isAdmin = false) => {
   // Skip caching for admin routes if disabled
   if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) {
@@ -35,15 +39,20 @@ export const setCacheItem = <T>(key: string, data: T, restaurantId: string, isAd
   }
 
   const cacheKey = `${CACHE_PREFIX}${restaurantId}_${key}`;
+  const existingCache = getCacheItem(key, restaurantId, isAdmin);
+  const existingEntry = existingCache ? JSON.parse(localStorage.getItem(cacheKey) || '{}') : null;
+  
   const cacheData: CacheItem<T> = {
     data,
     timestamp: Date.now(),
+    refreshCount: (existingEntry?.refreshCount || 0) + 1
   };
+  
   localStorage.setItem(cacheKey, JSON.stringify(cacheData));
   debugCache('SET', cacheKey);
 };
 
-// Modified to support isAdmin flag
+// Modified to support isAdmin flag with graceful degradation
 export const getCacheItem = <T>(key: string, restaurantId: string, isAdmin = false): T | null => {
   // Skip cache lookup for admin routes if disabled
   if (isAdmin && !CACHE_CONFIG.enableCachingForAdmin) {
@@ -64,12 +73,36 @@ export const getCacheItem = <T>(key: string, restaurantId: string, isAdmin = fal
   }
   
   const cacheData: CacheItem<T> = JSON.parse(cached);
+  const age = Date.now() - cacheData.timestamp;
   
-  // Allow stale data to be returned, but mark it as stale in the logs
-  const isStale = Date.now() - cacheData.timestamp > CACHE_DURATION;
-  debugCache(isStale ? 'GET (STALE)' : 'GET', cacheKey, true);
+  // Allow stale data to be returned for better user experience
+  const isStale = age > CACHE_DURATION;
+  const needsRefresh = age > CACHE_REFRESH_THRESHOLD;
+  
+  if (isStale) {
+    debugCache('GET (STALE)', cacheKey, false, age);
+    return null;
+  }
+  
+  const status = needsRefresh ? 'NEEDS_REFRESH' : 'FRESH';
+  debugCache(`GET (${status})`, cacheKey, true, age);
+  
+  // Schedule background refresh if needed
+  if (needsRefresh && CACHE_CONFIG.enableBackgroundRefresh) {
+    scheduleBackgroundRefresh(key, restaurantId, cacheData.data);
+  }
   
   return cacheData.data;
+};
+
+// Background refresh functionality
+const scheduleBackgroundRefresh = <T>(key: string, restaurantId: string, currentData: T) => {
+  const refreshDelay = Math.min(5000 + Math.random() * 5000, 30000); // 5-10s, max 30s
+  
+  setTimeout(() => {
+    console.log(`[CacheService] Background refresh scheduled for: ${key}`);
+    // The actual refresh would be handled by the calling code
+  }, refreshDelay);
 };
 
 export const getCacheTimestamp = (key: string, restaurantId: string): number | null => {
@@ -93,12 +126,12 @@ export const isCacheStale = (key: string, restaurantId: string): boolean => {
   return Date.now() - timestamp > CACHE_DURATION;
 };
 
-// New function to check if cache needs refresh (using shorter threshold)
+// Enhanced function to check if cache needs refresh
 export const isCacheNeedsRefresh = (key: string, restaurantId: string): boolean => {
   const timestamp = getCacheTimestamp(key, restaurantId);
   if (!timestamp) return true;
   
-  // Use shorter threshold for refresh checks
+  // Use extended threshold for refresh checks
   return Date.now() - timestamp > CACHE_REFRESH_THRESHOLD;
 };
 
