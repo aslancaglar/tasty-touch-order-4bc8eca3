@@ -1,4 +1,4 @@
-import AdminLayout from "@/components/layout/AdminLayout";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -77,7 +77,7 @@ const AddRestaurantDialog = ({ onRestaurantAdded, t }: { onRestaurantAdded: () =
         slug,
         location,
         image_url: imageUrl,
-        logo_url: null // Add the missing logo_url property with null as default value
+        logo_url: null
       });
       
       toast({
@@ -351,7 +351,7 @@ const Restaurants = () => {
   }, [restaurants]);
 
   return (
-    <AdminLayout>
+    <div className="p-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">{t("restaurants.title")}</h1>
@@ -391,7 +391,7 @@ const Restaurants = () => {
           <p className="text-muted-foreground mb-6">{t("restaurants.startAdding")}</p>
         </div>
       )}
-    </AdminLayout>
+    </div>
   );
 };
 
