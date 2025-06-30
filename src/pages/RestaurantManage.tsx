@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -76,25 +76,29 @@ const RestaurantManage = () => {
 
   if (loading && !restaurant) {
     return (
-      <div className="flex justify-center items-center h-[80vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-700" />
-      </div>
+      <AdminLayout>
+        <div className="flex justify-center items-center h-[80vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-purple-700" />
+        </div>
+      </AdminLayout>
     );
   }
 
   if (!restaurant) {
     return (
-      <div className="text-center py-10">
-        <h1 className="text-2xl font-bold mb-4">{t("restaurants.notFound")}</h1>
-        <Button asChild>
-          <Link to="/restaurants">{t("restaurants.backToRestaurants")}</Link>
-        </Button>
-      </div>
+      <AdminLayout>
+        <div className="text-center py-10">
+          <h1 className="text-2xl font-bold mb-4">{t("restaurants.notFound")}</h1>
+          <Button asChild>
+            <Link to="/restaurants">{t("restaurants.backToRestaurants")}</Link>
+          </Button>
+        </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="p-6">
+    <AdminLayout>
       <div className="flex items-center mb-8">
         <Button variant="ghost" asChild className="mr-4">
           <Link to="/restaurants">
@@ -183,7 +187,7 @@ const RestaurantManage = () => {
           </Tabs>
         </CardContent>
       </Card>
-    </div>
+    </AdminLayout>
   );
 };
 

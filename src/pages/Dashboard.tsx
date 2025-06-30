@@ -271,9 +271,7 @@ const Dashboard = () => {
     isLoading: isRestaurantsLoading,
     error: restaurantsError
   } = useQuery(getAdminQueryOptions(["dashboard-popular-restaurants"], fetchPopularRestaurants));
-  
-  return (
-    <AdminLayout>
+  return <AdminLayout useDefaultLanguage={true}>
       <div className="mb-8">
         <h1 className="text-3xl font-bold">{t("dashboard.title")}</h1>
         
@@ -310,7 +308,6 @@ const Dashboard = () => {
         <PopularItems items={popularItems} isLoading={isItemsLoading} title={t("dashboard.popularItems")} description={t("dashboard.popularItemsDesc")} />
         <PopularRestaurants data={popularRestaurants} isLoading={isRestaurantsLoading} title={t("dashboard.popularRestaurants")} description={t("dashboard.popularRestaurantsDesc")} />
       </div>
-    </AdminLayout>
-  );
+    </AdminLayout>;
 };
 export default Dashboard;

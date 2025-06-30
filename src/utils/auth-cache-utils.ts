@@ -1,3 +1,4 @@
+
 /**
  * Enhanced utility functions for managing authentication cache with improved session continuity
  */
@@ -7,38 +8,15 @@ interface CacheEntry {
   timestamp: number;
   sessionId?: string;
   refreshCount?: number;
-  lastValidated?: number;
-  securityHash?: string;
 }
 
 export const AUTH_CACHE_KEY = 'auth_admin_cache';
-export const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+export const CACHE_DURATION = 24 * 60 * 60 * 1000; // Extended to 24 hours
 export const CACHE_REFRESH_THRESHOLD = 30 * 60 * 1000; // 30 minutes for refresh
 export const EMERGENCY_FALLBACK_TIME = 2 * 60 * 60 * 1000; // 2 hours emergency fallback
-export const SECURITY_VALIDATION_INTERVAL = 15 * 60 * 1000; // 15 minutes security check
 
 /**
- * Generate security hash for cache validation
- */
-const generateSecurityHash = (userId: string, sessionId?: string): string => {
-  const data = `${userId}:${sessionId || 'no-session'}:${Math.floor(Date.now() / SECURITY_VALIDATION_INTERVAL)}`;
-  return btoa(data).slice(0, 16);
-};
-
-/**
- * Validate cache entry security
- */
-const validateCacheEntrySecurity = (entry: CacheEntry, userId: string, sessionId?: string): boolean => {
-  if (!entry.securityHash) return false;
-  
-  const currentHash = generateSecurityHash(userId, sessionId);
-  const previousHash = generateSecurityHash(userId, sessionId);
-  
-  return entry.securityHash === currentHash || entry.securityHash === previousHash;
-};
-
-/**
- * Clear stale cache entries from localStorage with improved security validation
+ * Clear stale cache entries from localStorage with improved logic
  */
 export const clearStaleAuthCache = (): void => {
   try {
@@ -49,16 +27,11 @@ export const clearStaleAuthCache = (): void => {
     const now = Date.now();
     const cleanCache: { [key: string]: CacheEntry } = {};
 
-    // Keep only non-stale entries with valid security hashes
+    // Keep only non-stale entries
     Object.keys(cache).forEach(key => {
       const entry = cache[key];
       if (entry && (now - entry.timestamp) < CACHE_DURATION) {
-        // Validate security hash if present
-        if (!entry.securityHash || validateCacheEntrySecurity(entry, key)) {
-          cleanCache[key] = entry;
-        } else {
-          console.warn(`[AuthCache] Removing entry with invalid security hash for user: ${key}`);
-        }
+        cleanCache[key] = entry;
       }
     });
 
@@ -77,7 +50,7 @@ export const clearStaleAuthCache = (): void => {
 };
 
 /**
- * Get cache entry for a user with enhanced security validation
+ * Get cache entry for a user with graceful degradation
  */
 export const getCachedAdminStatus = (userId: string, sessionId?: string): boolean | null => {
   try {
@@ -93,18 +66,17 @@ export const getCachedAdminStatus = (userId: string, sessionId?: string): boolea
     const age = now - entry.timestamp;
     const isStale = age > CACHE_DURATION;
     const needsRefresh = age > CACHE_REFRESH_THRESHOLD;
-    const needsSecurityValidation = !entry.lastValidated || (now - entry.lastValidated) > SECURITY_VALIDATION_INTERVAL;
+    const isEmergencyFallback = age > EMERGENCY_FALLBACK_TIME;
     
+    // Emergency fallback: if cache is very old but not stale, allow it
+    if (isEmergencyFallback && !isStale) {
+      console.log('[AuthCache] Using emergency fallback cache (very old but valid)');
+      return entry.status;
+    }
+
     // Return null if truly stale
     if (isStale) {
       console.log('[AuthCache] Cache entry is stale, returning null');
-      return null;
-    }
-
-    // Enhanced security validation
-    if (needsSecurityValidation && !validateCacheEntryService(entry, userId, sessionId)) {
-      console.warn('[AuthCache] Cache entry failed security validation, invalidating');
-      invalidateCacheEntry(userId);
       return null;
     }
 
@@ -116,14 +88,6 @@ export const getCachedAdminStatus = (userId: string, sessionId?: string): boolea
 
     const status = needsRefresh ? '(needs refresh)' : '(fresh)';
     console.log(`[AuthCache] Using cached admin status: ${entry.status} ${status}`);
-    
-    // Update last validated timestamp
-    if (needsSecurityValidation) {
-      entry.lastValidated = now;
-      cache[userId] = entry;
-      localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cache));
-    }
-    
     return entry.status;
   } catch (error) {
     console.error('[AuthCache] Error reading cache:', error);
@@ -132,7 +96,7 @@ export const getCachedAdminStatus = (userId: string, sessionId?: string): boolea
 };
 
 /**
- * Set cache entry for a user with enhanced security metadata
+ * Set cache entry for a user with enhanced metadata
  */
 export const setCachedAdminStatus = (userId: string, status: boolean, sessionId?: string): void => {
   try {
@@ -140,15 +104,11 @@ export const setCachedAdminStatus = (userId: string, status: boolean, sessionId?
     const cache = stored ? JSON.parse(stored) : {};
 
     const existingEntry = cache[userId];
-    const now = Date.now();
-    
     cache[userId] = {
       status,
-      timestamp: now,
+      timestamp: Date.now(),
       sessionId: sessionId || existingEntry?.sessionId,
-      refreshCount: (existingEntry?.refreshCount || 0) + 1,
-      lastValidated: now,
-      securityHash: generateSecurityHash(userId, sessionId)
+      refreshCount: (existingEntry?.refreshCount || 0) + 1
     };
 
     localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cache));
@@ -160,48 +120,7 @@ export const setCachedAdminStatus = (userId: string, status: boolean, sessionId?
 };
 
 /**
- * Invalidate specific cache entry for security reasons
- */
-export const invalidateCacheEntry = (userId: string): void => {
-  try {
-    const stored = localStorage.getItem(AUTH_CACHE_KEY);
-    if (!stored) return;
-
-    const cache = JSON.parse(stored);
-    delete cache[userId];
-    
-    if (Object.keys(cache).length > 0) {
-      localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cache));
-    } else {
-      localStorage.removeItem(AUTH_CACHE_KEY);
-    }
-    
-    console.log('[AuthCache] Invalidated cache entry for user:', userId);
-  } catch (error) {
-    console.error('[AuthCache] Error invalidating cache:', error);
-  }
-};
-
-/**
- * Force invalidate all sessions for security
- */
-export const forceInvalidateAllSessions = (): void => {
-  try {
-    localStorage.removeItem(AUTH_CACHE_KEY);
-    // Also clear any other auth-related storage
-    const authKeys = ['supabase.auth.token', 'auth_admin_cache'];
-    authKeys.forEach(key => {
-      localStorage.removeItem(key);
-      sessionStorage.removeItem(key);
-    });
-    console.log('[AuthCache] Force invalidated all auth sessions');
-  } catch (error) {
-    console.error('[AuthCache] Error force invalidating sessions:', error);
-  }
-};
-
-/**
- * Check if cache needs refresh with enhanced security checks
+ * Check if cache needs refresh with progressive logic
  */
 export const shouldRefreshCache = (userId: string): boolean => {
   try {
@@ -216,14 +135,12 @@ export const shouldRefreshCache = (userId: string): boolean => {
     const now = Date.now();
     const age = now - entry.timestamp;
     const needsRefresh = age > CACHE_REFRESH_THRESHOLD;
-    const needsSecurityValidation = !entry.lastValidated || (now - entry.lastValidated) > SECURITY_VALIDATION_INTERVAL;
     
-    if (needsRefresh || needsSecurityValidation) {
-      console.log('[AuthCache] Cache needs refresh for user:', userId, 
-        `(age: ${Math.round(age / 60000)}min, security: ${needsSecurityValidation})`);
+    if (needsRefresh) {
+      console.log('[AuthCache] Cache needs refresh for user:', userId, `(age: ${Math.round(age / 60000)}min)`);
     }
     
-    return needsRefresh || needsSecurityValidation;
+    return needsRefresh;
   } catch (error) {
     console.error('[AuthCache] Error checking refresh need:', error);
     return false;
@@ -231,7 +148,7 @@ export const shouldRefreshCache = (userId: string): boolean => {
 };
 
 /**
- * Background refresh functionality with enhanced security
+ * Background refresh functionality
  */
 export const scheduleBackgroundRefresh = (userId: string, refreshFn: () => Promise<void>): void => {
   if (!shouldRefreshCache(userId)) return;
@@ -245,97 +162,33 @@ export const scheduleBackgroundRefresh = (userId: string, refreshFn: () => Promi
       await refreshFn();
     } catch (error) {
       console.warn('[AuthCache] Background refresh failed:', error);
-      // On failure, invalidate the cache entry to force fresh check
-      invalidateCacheEntry(userId);
     }
   }, refreshDelay);
 };
 
 /**
- * Helper function for security validation (used internally)
+ * Clear all auth cache
  */
-const validateCacheEntryService = (entry: CacheEntry, userId: string, sessionId?: string): boolean => {
-  return validateCacheEntrySecurity(entry, userId, sessionId);
+export const clearAllAuthCache = (): void => {
+  try {
+    localStorage.removeItem(AUTH_CACHE_KEY);
+    console.log('[AuthCache] Cleared all auth cache');
+  } catch (error) {
+    console.error('[AuthCache] Error clearing cache:', error);
+  }
 };
 
 /**
- * Initialize cache cleanup with improved security intervals
+ * Initialize cache cleanup with improved intervals
  */
 export const initializeAuthCacheCleanup = (): void => {
   // Clean up stale entries on initialization
   clearStaleAuthCache();
 
-  // Set up periodic cleanup every 15 minutes (more frequent for security)
+  // Set up periodic cleanup every 30 minutes (less frequent due to longer cache)
   setInterval(() => {
     clearStaleAuthCache();
-  }, 15 * 60 * 1000);
+  }, 30 * 60 * 1000);
 
-  console.log('[AuthCache] Initialized enhanced cache cleanup with security validation');
-};
-
-/**
- * Get cache security metrics for monitoring
- */
-export const getCacheSecurityMetrics = (): {
-  totalEntries: number;
-  validEntries: number;
-  invalidEntries: number;
-  oldestEntry: number | null;
-  newestEntry: number | null;
-} => {
-  try {
-    const stored = localStorage.getItem(AUTH_CACHE_KEY);
-    if (!stored) return {
-      totalEntries: 0,
-      validEntries: 0,
-      invalidEntries: 0,
-      oldestEntry: null,
-      newestEntry: null
-    };
-
-    const cache = JSON.parse(stored);
-    const entries = Object.values(cache) as CacheEntry[];
-    const now = Date.now();
-    
-    let validEntries = 0;
-    let invalidEntries = 0;
-    let oldestEntry: number | null = null;
-    let newestEntry: number | null = null;
-    
-    entries.forEach(entry => {
-      const age = now - entry.timestamp;
-      const isValid = age < CACHE_DURATION && entry.securityHash;
-      
-      if (isValid) {
-        validEntries++;
-      } else {
-        invalidEntries++;
-      }
-      
-      if (oldestEntry === null || entry.timestamp < oldestEntry) {
-        oldestEntry = entry.timestamp;
-      }
-      
-      if (newestEntry === null || entry.timestamp > newestEntry) {
-        newestEntry = entry.timestamp;
-      }
-    });
-    
-    return {
-      totalEntries: entries.length,
-      validEntries,
-      invalidEntries,
-      oldestEntry,
-      newestEntry
-    };
-  } catch (error) {
-    console.error('[AuthCache] Error getting security metrics:', error);
-    return {
-      totalEntries: 0,
-      validEntries: 0,
-      invalidEntries: 0,
-      oldestEntry: null,
-      newestEntry: null
-    };
-  }
+  console.log('[AuthCache] Initialized enhanced cache cleanup with 24h duration');
 };

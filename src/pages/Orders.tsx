@@ -1,4 +1,5 @@
 
+import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -120,7 +121,7 @@ const Orders = () => {
   };
 
   return (
-    <div className="p-6">
+    <AdminLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Orders</h1>
         <p className="text-muted-foreground">Manage and track all your customer orders</p>
@@ -322,7 +323,7 @@ const Orders = () => {
           </Tabs>
         </CardContent>
       </Card>
-    </div>
+    </AdminLayout>
   );
 };
 

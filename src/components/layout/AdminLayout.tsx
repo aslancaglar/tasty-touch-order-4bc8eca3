@@ -1,25 +1,24 @@
 
-import { Outlet } from "react-router-dom";
+import { ReactNode } from "react";
 import Sidebar from "./Sidebar";
-import AuthSecurityMonitor from "@/components/security/AuthSecurityMonitor";
+import { useTranslation } from "@/utils/language-utils";
 
 interface AdminLayoutProps {
-  children?: React.ReactNode;
+  children: ReactNode;
+  useDefaultLanguage?: boolean;
 }
 
-const AdminLayout = ({ children }: AdminLayoutProps) => {
+export function AdminLayout({ children, useDefaultLanguage = true }: AdminLayoutProps) {
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-auto">
-          {children || <Outlet />}
-        </main>
-      </div>
-      {/* Security monitoring components */}
-      <AuthSecurityMonitor />
+      <Sidebar forceDefaultLanguage={useDefaultLanguage} />
+      <main className="flex-1 p-6 overflow-auto">
+        <div className="max-w-7xl mx-auto">
+          {children}
+        </div>
+      </main>
     </div>
   );
-};
+}
 
 export default AdminLayout;
