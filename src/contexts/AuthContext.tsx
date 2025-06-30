@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +8,9 @@ import {
   setCachedAdminStatus, 
   clearStaleAuthCache,
   initializeAuthCacheCleanup,
-  scheduleBackgroundRefresh
+  scheduleBackgroundRefresh,
+  invalidateCacheEntry,
+  forceInvalidateAllSessions
 } from "@/utils/auth-cache-utils";
 
 type AuthContextType = {
@@ -17,6 +20,12 @@ type AuthContextType = {
   loading: boolean;
   adminCheckCompleted: boolean;
   signOut: () => Promise<void>;
+  forceSessionInvalidation: () => Promise<void>;
+  securityMetrics: {
+    sessionAge: number | null;
+    lastActivity: number;
+    sessionChanges: number;
+  };
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +36,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
+  const [securityMetrics, setSecurityMetrics] = useState({
+    sessionAge: null as number | null,
+    lastActivity: Date.now(),
+    sessionChanges: 0
+  });
 
   // Refs for tracking state and preventing race conditions
   const isCheckingAdmin = useRef(false);
@@ -34,15 +48,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const adminCheckTimeoutRef = useRef<NodeJS.Timeout>();
   const emergencyTimeoutRef = useRef<NodeJS.Timeout>();
   const backgroundRefreshRef = useRef<NodeJS.Timeout>();
+  const sessionStartTime = useRef<number | null>(null);
+  const sessionChangeCount = useRef(0);
   
   // Initialize cache cleanup
   useEffect(() => {
     initializeAuthCacheCleanup();
-  }, []);
+    
+    // Security monitoring: Check for suspicious localStorage manipulation
+    const checkLocalStorageIntegrity = () => {
+      try {
+        const authData = localStorage.getItem('supabase.auth.token');
+        if (authData && session) {
+          const parsedAuth = JSON.parse(authData);
+          const currentTokenHash = btoa(session.access_token).slice(0, 16);
+          const storedTokenHash = btoa(parsedAuth.access_token || '').slice(0, 16);
+          
+          if (currentTokenHash !== storedTokenHash) {
+            logSecurityEvent('Token mismatch detected between session and localStorage', {
+              userId: user?.id,
+              sessionId: session.access_token.slice(-8)
+            });
+            
+            // Force session refresh
+            forceSessionInvalidation();
+          }
+        }
+      } catch (error) {
+        logSecurityEvent('localStorage integrity check failed', { error: String(error) });
+      }
+    };
+    
+    const integrityInterval = setInterval(checkLocalStorageIntegrity, 60000); // Check every minute
+    
+    return () => clearInterval(integrityInterval);
+  }, [session, user]);
 
-  // Enhanced admin status check with graceful degradation
+  // Enhanced admin status check with security monitoring
   const checkAdminStatus = async (userId: string, sessionId?: string, isBackground = false): Promise<boolean> => {
     if (!userId) return false;
+    
+    // Security: Log admin status checks for monitoring
+    if (!isBackground) {
+      logSecurityEvent('Admin status check initiated', {
+        userId,
+        sessionId: sessionId?.slice(-8),
+        timestamp: Date.now()
+      });
+    }
     
     // Prevent concurrent checks for the same user (unless it's background)
     if (!isBackground && isCheckingAdmin.current && lastAdminCheckUserId.current === userId) {
@@ -51,12 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return cached !== null ? cached : false;
     }
     
-    // Check cache first - now with 24h duration
+    // Check cache first - now with enhanced security validation
     const cachedStatus = getCachedAdminStatus(userId, sessionId);
     if (cachedStatus !== null && !isBackground) {
       console.log("[AuthContext] Using cached admin status:", cachedStatus);
       
-      // Schedule background refresh if needed - fix: wrap to return Promise<void>
+      // Schedule background refresh if needed
       scheduleBackgroundRefresh(userId, async () => {
         await checkAdminStatus(userId, sessionId, true);
       });
@@ -99,6 +152,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.warn(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} admin check failed:`, error.message);
         
+        // Security: Log failed admin checks
+        logSecurityEvent('Admin status check failed', {
+          userId,
+          error: error.message,
+          isBackground
+        });
+        
         // For background checks, don't update cache on failure
         if (!isBackground) {
           // Use cached value if available, otherwise default to false
@@ -112,12 +172,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const adminStatus = data?.is_admin || false;
       console.log(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} admin status retrieved:`, adminStatus);
       
-      // Cache the result
+      // Cache the result with enhanced security
       setCachedAdminStatus(userId, adminStatus, sessionId);
       
       return adminStatus;
     } catch (error) {
       console.error(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} admin check exception:`, error);
+      
+      // Security: Log admin check exceptions
+      logSecurityEvent('Admin status check exception', {
+        userId,
+        error: String(error),
+        isBackground
+      });
       
       if (!isBackground) {
         // Graceful degradation: use cached value if available
@@ -136,6 +203,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   };
+
+  // Force session invalidation for security
+  const forceSessionInvalidation = useCallback(async () => {
+    try {
+      console.log("[AuthContext] Force invalidating session for security...");
+      
+      // Clear all caches
+      forceInvalidateAllSessions();
+      
+      // Sign out from Supabase  
+      await supabase.auth.signOut();
+      
+      // Reset state
+      setSession(null);
+      setUser(null);
+      setIsAdmin(false);
+      setAdminCheckCompleted(true);
+      setLoading(false);
+      
+      // Reset security metrics
+      setSecurityMetrics({
+        sessionAge: null,
+        lastActivity: Date.now(),
+        sessionChanges: 0
+      });
+      
+      sessionStartTime.current = null;
+      sessionChangeCount.current = 0;
+      
+      logSecurityEvent('Session force invalidated', {
+        reason: 'security_check',
+        timestamp: Date.now()
+      });
+      
+      console.log("[AuthContext] Force session invalidation complete");
+    } catch (error) {
+      console.error("[AuthContext] Force session invalidation error:", error);
+      logSecurityEvent('Force session invalidation failed', { error: String(error) });
+    }
+  }, []);
 
   // Progressive timeout logic with user feedback
   const [authFeedback, setAuthFeedback] = useState<string>("");
@@ -170,7 +277,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [loading]);
 
-  // Initialize authentication state with improved error handling
+  // Update security metrics
+  const updateSecurityMetrics = useCallback((newSession?: Session | null) => {
+    const now = Date.now();
+    
+    if (newSession && !sessionStartTime.current) {
+      sessionStartTime.current = now;
+    }
+    
+    const sessionAge = sessionStartTime.current ? now - sessionStartTime.current : null;
+    
+    setSecurityMetrics(prev => ({
+      sessionAge,
+      lastActivity: now,
+      sessionChanges: prev.sessionChanges
+    }));
+  }, []);
+
+  // Initialize authentication state with enhanced security monitoring
   useEffect(() => {
     console.log("[AuthContext] Initializing AuthProvider...");
     
@@ -184,6 +308,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (sessionError) {
           console.error("[AuthContext] Error getting session:", sessionError);
+          logSecurityEvent('Session retrieval error', { error: sessionError.message });
         }
         
         if (!isMounted) return;
@@ -195,6 +320,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentSession?.user ?? null);
         setAuthFeedback("");
         setTimeoutProgress(0);
+        updateSecurityMetrics(currentSession);
         
         if (currentSession?.user) {
           // Check admin status for existing session
@@ -228,12 +354,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         }
 
-        // Set up auth state change listener with simplified token refresh handling
+        // Set up auth state change listener with enhanced security monitoring
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!isMounted) return;
             
             console.log("[AuthContext] Auth state change:", event, newSession?.user?.id || 'no user');
+            sessionChangeCount.current++;
+            
+            // Security: Monitor for rapid session changes
+            if (sessionChangeCount.current > 5) {
+              logSecurityEvent('Rapid session changes detected', {
+                changeCount: sessionChangeCount.current,
+                event,
+                userId: newSession?.user?.id
+              });
+            }
             
             // Handle sign out
             if (event === 'SIGNED_OUT' || !newSession?.user) {
@@ -245,6 +381,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setLoading(false);
               setAuthFeedback("");
               setTimeoutProgress(0);
+              
+              // Clear cache for security
+              if (user?.id) {
+                invalidateCacheEntry(user.id);
+              }
+              
+              // Reset security metrics
+              setSecurityMetrics({
+                sessionAge: null,
+                lastActivity: Date.now(),
+                sessionChanges: sessionChangeCount.current
+              });
+              sessionStartTime.current = null;
               
               if (event === 'SIGNED_OUT') {
                 logSecurityEvent('User signed out', { 
@@ -262,6 +411,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser(newSession.user);
               setAuthFeedback("");
               setTimeoutProgress(0);
+              updateSecurityMetrics(newSession);
               
               try {
                 setAdminCheckCompleted(false);
@@ -290,11 +440,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               });
             }
 
-            // Simplified token refresh handling
+            // Enhanced token refresh handling with security monitoring
             if (event === 'TOKEN_REFRESHED') {
               console.log("[AuthContext] Processing token refresh");
               setSession(newSession);
               setUser(newSession.user);
+              updateSecurityMetrics(newSession);
+              
+              // Security: Monitor token refresh frequency
+              const refreshCount = sessionChangeCount.current;
+              if (refreshCount > 10) {
+                logSecurityEvent('Excessive token refreshes detected', {
+                  refreshCount,
+                  userId: newSession.user.id,
+                  sessionId: newSession.access_token.slice(-8)
+                });
+              }
               
               // Always use cached status for token refresh to maintain continuity
               const cachedStatus = getCachedAdminStatus(
@@ -310,7 +471,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setLoading(false);
                 }
                 
-                // Schedule background refresh for next time - fix: wrap to return Promise<void>
+                // Schedule background refresh for next time
                 scheduleBackgroundRefresh(newSession.user.id, async () => {
                   await checkAdminStatus(newSession.user.id, newSession.access_token, true);
                 });
@@ -327,6 +488,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       } catch (error) {
         console.error("[AuthContext] Auth initialization error:", error);
+        logSecurityEvent('Auth initialization failed', { error: String(error) });
+        
         if (isMounted) {
           setSession(null);
           setUser(null);
@@ -353,7 +516,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(backgroundRefreshRef.current);
       }
     };
-  }, [startProgressiveTimeout]);
+  }, [startProgressiveTimeout, checkAdminStatus, updateSecurityMetrics, user?.id]);
 
   const signOut = async () => {
     try {
@@ -362,6 +525,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId: user?.id,
         timestamp: new Date().toISOString()
       });
+      
+      // Clear cache entries
+      if (user?.id) {
+        invalidateCacheEntry(user.id);
+      }
       
       const { error } = await supabase.auth.signOut();
       
@@ -384,6 +552,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     adminCheckCompleted,
     signOut,
+    forceSessionInvalidation,
+    securityMetrics
   };
 
   return (

@@ -1,104 +1,74 @@
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { QueryClient } from 'react-query';
+import { Auth } from '@/pages/Auth';
+import { Dashboard } from '@/pages/Dashboard';
+import { Restaurants } from '@/pages/Restaurants';
+import { RestaurantManage } from '@/pages/RestaurantManage';
+import { Orders } from '@/pages/Orders';
+import { OwnerDashboard } from '@/pages/OwnerDashboard';
+import { OwnerLogin } from '@/pages/OwnerLogin';
+import { OwnerRestaurantManage } from '@/pages/OwnerRestaurantManage';
+import { KioskView } from '@/pages/KioskView';
+import { Menu } from '@/pages/Menu';
+import { NotFound } from '@/pages/NotFound';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { NetworkErrorBoundary } from '@/components/error/NetworkErrorBoundary';
+import { Toaster } from "@/components/ui/toaster"
+import SecurityMonitor from '@/components/security/SecurityMonitor';
+import AdminLayout from '@/components/layout/AdminLayout';
+import SecurityDashboard from "@/components/security/SecurityDashboard";
 
-import { useEffect } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { NetworkStatus } from "@/components/ui/network-status";
-import SecurityMonitor from "@/components/security/SecurityMonitor";
-import { initializeCacheConfig } from "@/utils/cache-config";
-
-// Create a more sophisticated QueryClient with route-aware settings
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Default settings for customer-facing routes
-      refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
-      retry: 1,
-    },
-  },
-});
-
-// Lazy load pages for better initial load performance
-import Dashboard from "./pages/Dashboard";
-import Restaurants from "./pages/Restaurants";
-import RestaurantManage from "./pages/RestaurantManage";
-import KioskView from "./pages/KioskView";
-import NotFound from "./pages/NotFound";
-import Auth from "./pages/Auth";
-import OwnerDashboard from "./pages/OwnerDashboard";
-import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
-import OwnerLogin from "./pages/OwnerLogin";
-import Index from "./pages/Index";
-
-const App = () => {
-  // Initialize cache config when the app starts
-  useEffect(() => {
-    initializeCacheConfig();
-  }, []);
-
+function App() {
+  
+  
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            
-            {/* Security Monitoring */}
-            <SecurityMonitor />
-            
-            {/* Network Status */}
-            <div className="fixed bottom-4 right-4 z-50">
-              <NetworkStatus showLabel={true} />
-            </div>
-            
-            <Routes>
-              {/* Auth Routes */}
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/owner/login" element={<OwnerLogin />} />
-              
-              {/* Admin Routes - Protected and require admin role */}
-              <Route path="/" element={<ProtectedRoute requireAdmin={true}><Index /></ProtectedRoute>} />
-              <Route path="/restaurants" element={
-                <ProtectedRoute requireAdmin={true}>
-                  <Restaurants />
+    <QueryClient>
+      <Router>
+        <NetworkErrorBoundary>
+          <Toaster />
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminLayout />
                 </ProtectedRoute>
-              } />
-              <Route path="/restaurant/:id" element={
-                <ProtectedRoute requireAdmin={true}>
-                  <RestaurantManage />
-                </ProtectedRoute>
-              } />
-              
-              {/* Restaurant Owner Routes - Protected but don't require admin role */}
-              <Route path="/owner" element={
-                <ProtectedRoute>
+              }
+            >
+              <Route index element={<Dashboard />} />
+              <Route path="restaurants" element={<Restaurants />} />
+              <Route path="restaurants/:id" element={<RestaurantManage />} />
+              <Route path="orders" element={<Orders />} />
+              <Route path="security" element={<SecurityDashboard />} />
+            </Route>
+            <Route 
+              path="/owner" 
+              element={
+                <ProtectedRoute allowAdminAccess={false}>
                   <OwnerDashboard />
                 </ProtectedRoute>
-              } />
-              <Route path="/owner/restaurant/:id" element={
-                <ProtectedRoute>
+              } 
+            />
+            <Route path="/owner/login" element={<OwnerLogin />} />
+            <Route 
+              path="/owner/restaurant/:id" 
+              element={
+                <ProtectedRoute allowAdminAccess={false}>
                   <OwnerRestaurantManage />
                 </ProtectedRoute>
-              } />
-              
-              {/* Public Kiosk Routes */}
-              <Route path="/r/:restaurantSlug" element={<KioskView />} />
-              
-              {/* Catch-all Route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </TooltipProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+              } 
+            />
+            <Route path="/kiosk/:restaurantId" element={<KioskView />} />
+            <Route path="/menu/:restaurantId" element={<Menu />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <SecurityMonitor />
+        </NetworkErrorBoundary>
+      </Router>
+    </QueryClient>
   );
-};
+}
 
 export default App;
