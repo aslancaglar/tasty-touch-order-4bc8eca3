@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,8 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (cachedStatus !== null && !isBackground) {
       console.log("[AuthContext] Using cached admin status:", cachedStatus);
       
-      // Schedule background refresh if needed
-      scheduleBackgroundRefresh(userId, () => checkAdminStatus(userId, sessionId, true));
+      // Schedule background refresh if needed - fix: wrap to return Promise<void>
+      scheduleBackgroundRefresh(userId, async () => {
+        await checkAdminStatus(userId, sessionId, true);
+      });
       
       return cachedStatus;
     }
@@ -309,10 +310,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setLoading(false);
                 }
                 
-                // Schedule background refresh for next time
-                scheduleBackgroundRefresh(newSession.user.id, () => 
-                  checkAdminStatus(newSession.user.id, newSession.access_token, true)
-                );
+                // Schedule background refresh for next time - fix: wrap to return Promise<void>
+                scheduleBackgroundRefresh(newSession.user.id, async () => {
+                  await checkAdminStatus(newSession.user.id, newSession.access_token, true);
+                });
               } else {
                 // Only check if no cache exists
                 console.log("[AuthContext] No cache for token refresh, checking admin status");
