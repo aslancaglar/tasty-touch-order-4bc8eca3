@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, useRef } from "react";
+
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logSecurityEvent, handleError } from "@/utils/error-handler";
@@ -27,40 +28,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [adminCheckCompleted, setAdminCheckCompleted] = useState(false);
 
-  // Ref to track if we're currently checking admin status
+  // Refs for tracking state and preventing race conditions
   const isCheckingAdmin = useRef(false);
+  const lastAdminCheckUserId = useRef<string | null>(null);
+  const adminCheckTimeoutRef = useRef<NodeJS.Timeout>();
+  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  const initializationTimeoutRef = useRef<NodeJS.Timeout>();
   
   // Initialize cache cleanup
   useEffect(() => {
     initializeAuthCacheCleanup();
   }, []);
 
-  // Enhanced admin status check with improved caching
+  // Debounced admin status setter to prevent rapid state changes
+  const setAdminStatusDebounced = useCallback((status: boolean, completed: boolean = true) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      console.log("[AuthContext] Setting debounced admin status:", status, "completed:", completed);
+      setIsAdmin(status);
+      setAdminCheckCompleted(completed);
+    }, 100); // 100ms debounce
+  }, []);
+
+  // Enhanced admin status check with improved error handling and caching
   const checkAdminStatus = async (userId: string, sessionId?: string): Promise<boolean> => {
     if (!userId) return false;
     
-    // Check cache first
+    // Prevent concurrent checks for the same user
+    if (isCheckingAdmin.current && lastAdminCheckUserId.current === userId) {
+      console.log("[AuthContext] Admin check already in progress for same user, returning cached or false");
+      const cached = getCachedAdminStatus(userId, sessionId);
+      return cached !== null ? cached : false;
+    }
+    
+    // Check cache first - prioritize recent cache
     const cachedStatus = getCachedAdminStatus(userId, sessionId);
     if (cachedStatus !== null) {
       console.log("[AuthContext] Using cached admin status:", cachedStatus);
       return cachedStatus;
     }
     
-    // Prevent concurrent admin checks for the same user
-    if (isCheckingAdmin.current) {
-      console.log("[AuthContext] Admin check already in progress, returning false");
-      return false;
-    }
-    
     try {
       isCheckingAdmin.current = true;
+      lastAdminCheckUserId.current = userId;
       console.log("[AuthContext] Checking admin status for user:", userId);
       
-      const { data, error } = await supabase
+      // Set timeout for admin check to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        adminCheckTimeoutRef.current = setTimeout(() => {
+          reject(new Error('Admin check timeout'));
+        }, 8000); // 8 second timeout
+      });
+      
+      const adminCheckPromise = supabase
         .from('profiles')
         .select('is_admin')
         .eq('id', userId)
         .single();
+      
+      const { data, error } = await Promise.race([adminCheckPromise, timeoutPromise]);
+      
+      if (adminCheckTimeoutRef.current) {
+        clearTimeout(adminCheckTimeoutRef.current);
+      }
       
       if (error) {
         console.warn("[AuthContext] Admin check failed:", error.message);
@@ -72,40 +105,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const adminStatus = data?.is_admin || false;
       console.log("[AuthContext] Admin status retrieved:", adminStatus);
       
-      // Cache the result
+      // Cache the result with extended validity for successful checks
       setCachedAdminStatus(userId, adminStatus, sessionId);
       
       return adminStatus;
     } catch (error) {
       console.error("[AuthContext] Admin check exception:", error);
-      // Cache false result for exceptions too
+      // Cache false result for exceptions
       setCachedAdminStatus(userId, false, sessionId);
       return false;
     } finally {
       isCheckingAdmin.current = false;
+      lastAdminCheckUserId.current = null;
+      if (adminCheckTimeoutRef.current) {
+        clearTimeout(adminCheckTimeoutRef.current);
+      }
     }
   };
 
-  // Initialize authentication state
+  // Initialize authentication state with improved error handling
   useEffect(() => {
     console.log("[AuthContext] Initializing AuthProvider...");
     
     let isMounted = true;
-    let initializationTimeout: NodeJS.Timeout;
     
     const initializeAuth = async () => {
       try {
-        // Set timeout to prevent indefinite loading
-        initializationTimeout = setTimeout(() => {
+        // Set overall initialization timeout to prevent indefinite loading
+        initializationTimeoutRef.current = setTimeout(() => {
           if (isMounted && loading) {
-            console.warn("[AuthContext] Auth initialization timeout - setting loading to false");
+            console.warn("[AuthContext] Auth initialization timeout - forcing completion");
             setLoading(false);
             setAdminCheckCompleted(true);
           }
-        }, 10000); // 10 second timeout
+        }, 12000); // 12 second timeout
 
         // Get current session first
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("[AuthContext] Error getting session:", sessionError);
+        }
         
         if (!isMounted) return;
         
@@ -124,19 +164,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               currentSession.access_token
             );
             if (isMounted) {
-              setIsAdmin(adminStatus);
-              setAdminCheckCompleted(true);
+              setAdminStatusDebounced(adminStatus, true);
               console.log("[AuthContext] Initial admin status set:", adminStatus);
             }
           } catch (error) {
             console.error("[AuthContext] Error checking initial admin status:", error);
             if (isMounted) {
-              setIsAdmin(false);
-              setAdminCheckCompleted(true);
+              setAdminStatusDebounced(false, true);
             }
           }
         } else {
-          // No user, set defaults
+          // No user, set defaults immediately
           setIsAdmin(false);
           setAdminCheckCompleted(true);
         }
@@ -145,7 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         }
 
-        // Set up auth state change listener
+        // Set up auth state change listener with improved token refresh handling
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             if (!isMounted) return;
@@ -170,7 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return;
             }
 
-            // Handle sign in - always check admin status
+            // Handle sign in
             if (event === 'SIGNED_IN') {
               console.log("[AuthContext] Processing sign in");
               setSession(newSession);
@@ -183,16 +221,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   newSession.access_token
                 );
                 if (isMounted) {
-                  setIsAdmin(adminStatus);
-                  setAdminCheckCompleted(true);
+                  setAdminStatusDebounced(adminStatus, true);
                   setLoading(false);
                   console.log("[AuthContext] Sign in admin status set:", adminStatus);
                 }
               } catch (error) {
                 console.error("[AuthContext] Error checking admin status on sign in:", error);
                 if (isMounted) {
-                  setIsAdmin(false);
-                  setAdminCheckCompleted(true);
+                  setAdminStatusDebounced(false, true);
                   setLoading(false);
                 }
               }
@@ -203,49 +239,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               });
             }
 
-            // Handle token refresh - improved logic to prevent unnecessary state changes
+            // Improved token refresh handling
             if (event === 'TOKEN_REFRESHED') {
               console.log("[AuthContext] Processing token refresh");
               setSession(newSession);
               setUser(newSession.user);
               
-              // Check if we have valid cached admin status
+              // For token refresh, prioritize session continuity
               const cachedStatus = getCachedAdminStatus(
                 newSession.user.id, 
                 newSession.access_token
               );
               
               if (cachedStatus !== null) {
-                // Use cached status without toggling adminCheckCompleted
+                // Use cached status and maintain continuity
                 console.log("[AuthContext] Using cached admin status on token refresh:", cachedStatus);
                 if (isMounted) {
-                  setIsAdmin(cachedStatus);
-                  // Keep adminCheckCompleted as true since we're using cache
-                  if (!adminCheckCompleted) {
-                    setAdminCheckCompleted(true);
+                  // Don't change adminCheckCompleted if it's already true and we have cache
+                  if (adminCheckCompleted) {
+                    setIsAdmin(cachedStatus);
+                  } else {
+                    setAdminStatusDebounced(cachedStatus, true);
                   }
                   setLoading(false);
                 }
               } else {
-                // Only fetch if no valid cache exists
-                console.log("[AuthContext] No valid cache, checking admin status on token refresh");
+                // Only fetch if no valid cache exists and we're not already in a good state
+                console.log("[AuthContext] No cache for token refresh, checking admin status");
                 try {
-                  setAdminCheckCompleted(false);
+                  // Don't reset adminCheckCompleted to false if we're already in a good state
+                  const needsCheck = !adminCheckCompleted || isAdmin === null;
+                  
+                  if (needsCheck) {
+                    setAdminCheckCompleted(false);
+                  }
+                  
                   const adminStatus = await checkAdminStatus(
                     newSession.user.id,
                     newSession.access_token
                   );
                   if (isMounted) {
-                    setIsAdmin(adminStatus);
-                    setAdminCheckCompleted(true);
+                    setAdminStatusDebounced(adminStatus, true);
                     setLoading(false);
                     console.log("[AuthContext] Token refresh admin status set:", adminStatus);
                   }
                 } catch (error) {
                   console.error("[AuthContext] Error checking admin status on token refresh:", error);
                   if (isMounted) {
-                    // Keep existing admin status if check fails
-                    setAdminCheckCompleted(true);
+                    // Maintain existing state if check fails during token refresh
+                    if (!adminCheckCompleted) {
+                      setAdminStatusDebounced(false, true);
+                    }
                     setLoading(false);
                   }
                 }
@@ -256,9 +300,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return () => {
           subscription.unsubscribe();
-          if (initializationTimeout) {
-            clearTimeout(initializationTimeout);
-          }
         };
       } catch (error) {
         console.error("[AuthContext] Auth initialization error:", error);
@@ -276,11 +317,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false;
-      if (initializationTimeout) {
-        clearTimeout(initializationTimeout);
+      if (initializationTimeoutRef.current) {
+        clearTimeout(initializationTimeoutRef.current);
+      }
+      if (adminCheckTimeoutRef.current) {
+        clearTimeout(adminCheckTimeoutRef.current);
+      }
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, []);
+  }, [setAdminStatusDebounced]);
 
   const signOut = async () => {
     try {

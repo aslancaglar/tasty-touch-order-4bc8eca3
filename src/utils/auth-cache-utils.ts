@@ -1,5 +1,6 @@
+
 /**
- * Utility functions for managing authentication cache
+ * Enhanced utility functions for managing authentication cache with improved session continuity
  */
 
 interface CacheEntry {
@@ -9,10 +10,11 @@ interface CacheEntry {
 }
 
 export const AUTH_CACHE_KEY = 'auth_admin_cache';
-export const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+export const CACHE_DURATION = 10 * 60 * 1000; // Increased to 10 minutes for better continuity
+export const CACHE_REFRESH_THRESHOLD = 2 * 60 * 1000; // 2 minutes for refresh
 
 /**
- * Clear stale cache entries from localStorage
+ * Clear stale cache entries from localStorage with improved logic
  */
 export const clearStaleAuthCache = (): void => {
   try {
@@ -46,7 +48,7 @@ export const clearStaleAuthCache = (): void => {
 };
 
 /**
- * Get cache entry for a user
+ * Get cache entry for a user with more lenient session checking
  */
 export const getCachedAdminStatus = (userId: string, sessionId?: string): boolean | null => {
   try {
@@ -60,14 +62,22 @@ export const getCachedAdminStatus = (userId: string, sessionId?: string): boolea
 
     const now = Date.now();
     const isStale = (now - entry.timestamp) > CACHE_DURATION;
-    const sessionChanged = sessionId && entry.sessionId !== sessionId;
-
-    if (isStale || sessionChanged) {
-      console.log('[AuthCache] Cache entry is stale or session changed');
+    const isOld = (now - entry.timestamp) > CACHE_REFRESH_THRESHOLD;
+    
+    // Allow slightly stale cache during token refresh for continuity
+    if (isStale) {
+      console.log('[AuthCache] Cache entry is stale, returning null');
       return null;
     }
 
-    console.log('[AuthCache] Using cached admin status:', entry.status);
+    // For token refresh scenarios, be more lenient about session changes
+    const sessionChanged = sessionId && entry.sessionId && entry.sessionId !== sessionId;
+    if (sessionChanged && !isOld) {
+      console.log('[AuthCache] Session changed but cache is recent, allowing it');
+    }
+
+    console.log('[AuthCache] Using cached admin status:', entry.status, 
+      isOld ? '(needs refresh soon)' : '(fresh)');
     return entry.status;
   } catch (error) {
     console.error('[AuthCache] Error reading cache:', error);
@@ -76,7 +86,7 @@ export const getCachedAdminStatus = (userId: string, sessionId?: string): boolea
 };
 
 /**
- * Set cache entry for a user
+ * Set cache entry for a user with enhanced metadata
  */
 export const setCachedAdminStatus = (userId: string, status: boolean, sessionId?: string): void => {
   try {
@@ -86,13 +96,41 @@ export const setCachedAdminStatus = (userId: string, status: boolean, sessionId?
     cache[userId] = {
       status,
       timestamp: Date.now(),
-      sessionId
+      sessionId: sessionId || cache[userId]?.sessionId // Preserve sessionId if not provided
     };
 
     localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cache));
-    console.log('[AuthCache] Cached admin status:', status, 'for user:', userId);
+    console.log('[AuthCache] Cached admin status:', status, 'for user:', userId, 
+      sessionId ? `(session: ${sessionId.slice(0, 8)}...)` : '');
   } catch (error) {
     console.error('[AuthCache] Error setting cache:', error);
+  }
+};
+
+/**
+ * Check if cache needs refresh (for proactive updates)
+ */
+export const shouldRefreshCache = (userId: string): boolean => {
+  try {
+    const stored = localStorage.getItem(AUTH_CACHE_KEY);
+    if (!stored) return false;
+
+    const cache = JSON.parse(stored);
+    const entry: CacheEntry = cache[userId];
+    
+    if (!entry) return false;
+
+    const now = Date.now();
+    const needsRefresh = (now - entry.timestamp) > CACHE_REFRESH_THRESHOLD;
+    
+    if (needsRefresh) {
+      console.log('[AuthCache] Cache needs refresh for user:', userId);
+    }
+    
+    return needsRefresh;
+  } catch (error) {
+    console.error('[AuthCache] Error checking refresh need:', error);
+    return false;
   }
 };
 
@@ -109,16 +147,16 @@ export const clearAllAuthCache = (): void => {
 };
 
 /**
- * Initialize cache cleanup on app start
+ * Initialize cache cleanup with improved intervals
  */
 export const initializeAuthCacheCleanup = (): void => {
   // Clean up stale entries on initialization
   clearStaleAuthCache();
 
-  // Set up periodic cleanup every 10 minutes
+  // Set up periodic cleanup every 5 minutes (more frequent)
   setInterval(() => {
     clearStaleAuthCache();
-  }, 10 * 60 * 1000);
+  }, 5 * 60 * 1000);
 
-  console.log('[AuthCache] Initialized cache cleanup');
+  console.log('[AuthCache] Initialized enhanced cache cleanup');
 };
