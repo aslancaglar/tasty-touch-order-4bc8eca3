@@ -33,43 +33,21 @@ export class ValidationError extends Error {
   }
 }
 
-// Security event logging with enhanced protection
+// Security event logging
 export const logSecurityEvent = (event: string, details: Record<string, any> = {}) => {
-  // Sanitize sensitive data from details
-  const sanitizedDetails = Object.entries(details).reduce((acc, [key, value]) => {
-    const sensitiveKeys = ['password', 'token', 'key', 'secret', 'auth', 'session'];
-    const isSensitive = sensitiveKeys.some(pattern => 
-      key.toLowerCase().includes(pattern)
-    );
-    
-    if (isSensitive) {
-      acc[key] = '[REDACTED]';
-    } else if (typeof value === 'string' && value.length > 20) {
-      // Potentially sensitive long strings
-      acc[key] = `[TRUNCATED:${value.length}chars]`;
-    } else {
-      acc[key] = value;
-    }
-    return acc;
-  }, {} as Record<string, any>);
-
   const logEntry = {
     event,
     timestamp: new Date().toISOString(),
-    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 100) : 'unknown',
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
     url: typeof window !== 'undefined' ? window.location.href : 'unknown',
-    ...sanitizedDetails
+    ...details
   };
   
-  // Only log in development or for critical security events
-  if (process.env.NODE_ENV === 'development' || 
-      ['rate_limit_exceeded', 'xss_attempt', 'injection_attempt'].includes(event)) {
-    console.warn(`[Security Event] ${event}`, logEntry);
-  }
+  console.warn(`[Security Event] ${event}`, logEntry);
   
-  // In production, send only critical events to monitoring service
+  // In production, you might want to send this to a monitoring service
   if (process.env.NODE_ENV === 'production') {
-    // Example: Send to monitoring service for critical events only
+    // Example: Send to monitoring service
     // monitoringService.logSecurityEvent(logEntry);
   }
 };
@@ -169,20 +147,3 @@ class RateLimiter {
 }
 
 export const rateLimiter = new RateLimiter();
-
-// Secure error logging function for backward compatibility
-export const logError = (message: string, error?: any) => {
-  // Sanitize error details before logging
-  const sanitizedError = error instanceof Error 
-    ? { name: error.name, message: error.message, stack: error.stack?.slice(0, 500) }
-    : String(error).slice(0, 200);
-    
-  if (process.env.NODE_ENV === 'development') {
-    console.error(message, sanitizedError);
-  }
-  
-  logSecurityEvent('Error logged', { 
-    message: message.slice(0, 200), 
-    error: sanitizedError 
-  });
-};

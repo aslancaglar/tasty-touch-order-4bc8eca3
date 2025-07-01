@@ -139,39 +139,8 @@ const SecurityMonitor = () => {
     setThreats(prev => prev.filter(t => t.timestamp !== timestamp));
   };
 
-  // Only show critical security threats in development
-  if (process.env.NODE_ENV !== 'development' || threats.length === 0) {
-    return null;
-  }
-
-  // Only show high severity threats
-  const criticalThreats = threats.filter(threat => threat.severity === 'high');
-  
-  if (criticalThreats.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm space-y-2">
-      {criticalThreats.map((threat) => (
-        <Alert key={threat.timestamp} variant="destructive" className="border-destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle className="flex items-center justify-between">
-            <span>Security Alert</span>
-            <button
-              onClick={() => dismissThreat(threat.timestamp)}
-              className="text-destructive-foreground/70 hover:text-destructive-foreground"
-            >
-              ×
-            </button>
-          </AlertTitle>
-          <AlertDescription className="text-sm">
-            {threat.message}
-          </AlertDescription>
-        </Alert>
-      ))}
-    </div>
-  );
+  // Hide all security alerts - return null to not render anything
+  return null;
 };
 
 export default SecurityMonitor;
