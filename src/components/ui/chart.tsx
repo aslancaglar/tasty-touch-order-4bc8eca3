@@ -74,28 +74,49 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
-    />
-  )
+  // Create CSS rules safely without dangerouslySetInnerHTML
+  React.useEffect(() => {
+    const styleId = `chart-style-${id}`
+    const existingStyle = document.getElementById(styleId)
+    
+    // Remove existing style if present
+    if (existingStyle) {
+      existingStyle.remove()
+    }
+
+    // Create safe CSS content
+    const cssRules = Object.entries(THEMES)
+      .map(([theme, prefix]) => {
+        const rules = colorConfig
+          .map(([key, itemConfig]) => {
+            const color =
+              itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+              itemConfig.color
+            return color ? `  --color-${key}: ${color};` : null
+          })
+          .filter(Boolean)
+          .join("\n")
+        
+        return `${prefix} [data-chart="${id}"] {\n${rules}\n}`
+      })
+      .join("\n")
+
+    // Create and append style element safely
+    const style = document.createElement('style')
+    style.id = styleId
+    style.textContent = cssRules
+    document.head.appendChild(style)
+
+    // Cleanup on unmount
+    return () => {
+      const styleToRemove = document.getElementById(styleId)
+      if (styleToRemove) {
+        styleToRemove.remove()
+      }
+    }
+  }, [id, colorConfig])
+
+  return null
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip
