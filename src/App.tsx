@@ -10,6 +10,8 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NetworkStatus } from "@/components/ui/network-status";
 import SecurityMonitor from "@/components/security/SecurityMonitor";
 import { initializeCacheConfig } from "@/utils/cache-config";
+import { initializeAuthCacheCleanup } from "@/utils/auth-cache-utils";
+import { initializeSecurityListeners } from "@/utils/security-utils";
 
 // Create a more sophisticated QueryClient with route-aware settings
 const queryClient = new QueryClient({
@@ -37,9 +39,11 @@ import OwnerLogin from "./pages/OwnerLogin";
 import Index from "./pages/Index";
 
 const App = () => {
-  // Initialize cache config when the app starts
+  // Initialize security and cache systems when the app starts
   useEffect(() => {
     initializeCacheConfig();
+    initializeAuthCacheCleanup();
+    initializeSecurityListeners();
   }, []);
 
   return (

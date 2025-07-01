@@ -147,3 +147,9 @@ class RateLimiter {
 }
 
 export const rateLimiter = new RateLimiter();
+
+// Simple error logging function for backward compatibility
+export const logError = (message: string, error?: any) => {
+  console.error(message, error);
+  logSecurityEvent('Error logged', { message, error: String(error) });
+};
