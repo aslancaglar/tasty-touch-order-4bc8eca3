@@ -11,8 +11,12 @@ interface LanguagePickerProps {
 export const LanguagePicker = ({ onLanguageSelect, className }: LanguagePickerProps) => {
   const { supportedLanguages, selectedLanguage } = useLanguage();
 
+  console.log('[LanguagePicker] Supported languages:', supportedLanguages);
+  console.log('[LanguagePicker] Selected language:', selectedLanguage);
+
   // Only show language picker if there are multiple supported languages
   if (supportedLanguages.length <= 1) {
+    console.log('[LanguagePicker] Not showing picker - only', supportedLanguages.length, 'language(s)');
     return null;
   }
 

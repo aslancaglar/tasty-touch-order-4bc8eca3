@@ -1112,6 +1112,11 @@ const KioskView = () => {
   // Initialize supported languages from restaurant data
   const supportedLanguages = restaurant?.supported_languages || [restaurant?.ui_language || 'fr'];
   const initialLanguage = (restaurant?.ui_language || 'fr') as SupportedLanguage;
+  
+  console.log('[KioskView] Restaurant:', restaurant);
+  console.log('[KioskView] Restaurant supported_languages:', restaurant?.supported_languages);
+  console.log('[KioskView] Computed supportedLanguages:', supportedLanguages);
+  console.log('[KioskView] Initial language:', initialLanguage);
 
   if (showWelcome) {
     return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
