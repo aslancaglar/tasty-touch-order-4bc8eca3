@@ -67,7 +67,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
             setApiKey(data.api_key);
             setMaskedKey(maskApiKey(data.api_key));
             setIsConfigured(true);
-            fetchPrinters(data.api_key);
+            fetchPrinters();
           }
         }
       } catch (error) {
@@ -91,7 +91,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     try {
       setIsFetching(true);
       
-      const printerData = await fetchPrintersFromAPI(apiKey);
+      const printerData = await fetchPrintersFromAPI();
       
       if (printerData.length === 0) {
         toast({
@@ -139,11 +139,11 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     }
   };
 
-  const fetchPrinters = async (key = apiKey) => {
+  const fetchPrinters = async () => {
     try {
       setIsFetching(true);
       
-      const printerData = await fetchPrintersFromAPI(key);
+      const printerData = await fetchPrintersFromAPI();
       
       const { data: configData, error: configError } = await supabase
         .from('restaurant_print_config')
@@ -180,11 +180,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     }
   };
 
-  const fetchPrintersFromAPI = async (key: string): Promise<Printer[]> => {
-    if (!key || key.length < 10) {
-      return [];
-    }
-    
+  const fetchPrintersFromAPI = async (): Promise<Printer[]> => {
     try {
       // Use edge function for secure API calls
       const { data, error } = await supabase.functions.invoke('printnode-api', {
