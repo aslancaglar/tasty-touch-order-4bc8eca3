@@ -22,8 +22,6 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  console.log("AuthProvider component mounted");
-  
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -192,14 +190,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         console.log("[AuthContext] Initial session:", currentSession?.user?.id || 'no session');
         
-        // Set initial state immediately and consistently
+        // Set initial state immediately
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setAuthFeedback("");
         setTimeoutProgress(0);
         
         if (currentSession?.user) {
-          // Don't set loading to false until admin check is complete
+          // Check admin status for existing session
           try {
             setAdminCheckCompleted(false);
             const adminStatus = await checkAdminStatus(
@@ -209,7 +207,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (isMounted) {
               setIsAdmin(adminStatus);
               setAdminCheckCompleted(true);
-              setLoading(false); // Only set loading false after admin check
               console.log("[AuthContext] Initial admin status set:", adminStatus);
             }
           } catch (error) {
@@ -219,14 +216,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const cachedStatus = getCachedAdminStatus(currentSession.user.id, currentSession.access_token);
               setIsAdmin(cachedStatus !== null ? cachedStatus : false);
               setAdminCheckCompleted(true);
-              setLoading(false); // Set loading false even on error
             }
           }
         } else {
           // No user, set defaults immediately
           setIsAdmin(false);
           setAdminCheckCompleted(true);
-          setLoading(false); // Set loading false for no user case
+        }
+        
+        if (isMounted) {
+          setLoading(false);
         }
 
         // Set up auth state change listener with simplified token refresh handling
@@ -266,7 +265,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               
               try {
                 setAdminCheckCompleted(false);
-                setLoading(true); // Set loading true during admin check
                 const adminStatus = await checkAdminStatus(
                   newSession.user.id,
                   newSession.access_token

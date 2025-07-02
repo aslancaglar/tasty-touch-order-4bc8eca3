@@ -14,13 +14,8 @@ const Index = () => {
     adminCheckCompleted
   });
 
-  // Add debug log to see if we reach this component at all
-  console.log("Index component mounted");
-
   // Show loading state while auth is being determined
-  // Both loading and adminCheckCompleted must be properly resolved
   if (loading || !adminCheckCompleted) {
-    console.log("Index showing loading state:", { loading, adminCheckCompleted });
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">

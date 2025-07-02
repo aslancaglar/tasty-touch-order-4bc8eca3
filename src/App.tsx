@@ -9,9 +9,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NetworkStatus } from "@/components/ui/network-status";
 import SecurityMonitor from "@/components/security/SecurityMonitor";
-import { InputValidator } from "@/components/security/InputValidator";
-import { useSecurityHeaders } from "@/hooks/useSecurityHeaders";
-import { useSecurityMonitoring } from "@/hooks/useSecurityMonitoring";
 import { initializeCacheConfig } from "@/utils/cache-config";
 
 // Create a more sophisticated QueryClient with route-aware settings
@@ -40,12 +37,6 @@ import OwnerLogin from "./pages/OwnerLogin";
 import Index from "./pages/Index";
 
 const App = () => {
-  console.log("App component mounted");
-  
-  // Initialize security monitoring
-  useSecurityHeaders();
-  const { reportSecurityEvent } = useSecurityMonitoring();
-
   // Initialize cache config when the app starts
   useEffect(() => {
     initializeCacheConfig();
@@ -56,19 +47,18 @@ const App = () => {
       <BrowserRouter>
         <AuthProvider>
           <TooltipProvider>
-            <InputValidator onSecurityViolation={reportSecurityEvent}>
-              <Toaster />
-              <Sonner />
-              
-              {/* Security Monitoring */}
-              <SecurityMonitor />
-              
-              {/* Network Status */}
-              <div className="fixed bottom-4 right-4 z-50">
-                <NetworkStatus showLabel={true} />
-              </div>
-              
-              <Routes>
+            <Toaster />
+            <Sonner />
+            
+            {/* Security Monitoring */}
+            <SecurityMonitor />
+            
+            {/* Network Status */}
+            <div className="fixed bottom-4 right-4 z-50">
+              <NetworkStatus showLabel={true} />
+            </div>
+            
+            <Routes>
               {/* Auth Routes */}
               <Route path="/auth" element={<Auth />} />
               <Route path="/owner/login" element={<OwnerLogin />} />
@@ -103,8 +93,7 @@ const App = () => {
               
               {/* Catch-all Route */}
               <Route path="*" element={<NotFound />} />
-              </Routes>
-            </InputValidator>
+            </Routes>
           </TooltipProvider>
         </AuthProvider>
       </BrowserRouter>

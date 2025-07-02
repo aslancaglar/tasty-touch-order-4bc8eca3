@@ -67,7 +67,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
             setApiKey(data.api_key);
             setMaskedKey(maskApiKey(data.api_key));
             setIsConfigured(true);
-            fetchPrinters();
+            fetchPrinters(data.api_key);
           }
         }
       } catch (error) {
@@ -91,7 +91,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     try {
       setIsFetching(true);
       
-      const printerData = await fetchPrintersFromAPI();
+      const printerData = await fetchPrintersFromAPI(apiKey);
       
       if (printerData.length === 0) {
         toast({
@@ -139,11 +139,11 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     }
   };
 
-  const fetchPrinters = async () => {
+  const fetchPrinters = async (key = apiKey) => {
     try {
       setIsFetching(true);
       
-      const printerData = await fetchPrintersFromAPI();
+      const printerData = await fetchPrintersFromAPI(key);
       
       const { data: configData, error: configError } = await supabase
         .from('restaurant_print_config')
@@ -180,16 +180,24 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     }
   };
 
-  const fetchPrintersFromAPI = async (): Promise<Printer[]> => {
+  const fetchPrintersFromAPI = async (key: string): Promise<Printer[]> => {
+    if (!key || key.length < 10) {
+      return [];
+    }
+    
     try {
-      // Use edge function for secure API calls
-      const { data, error } = await supabase.functions.invoke('printnode-api', {
-        body: { action: 'getPrinters' }
+      // Make secure API call to PrintNode
+      const response = await fetch('https://api.printnode.com/printers', {
+        headers: {
+          'Authorization': `Basic ${btoa(key + ':')}`
+        }
       });
       
-      if (error) {
-        throw new Error(`Edge function error: ${error.message}`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
       }
+      
+      const data = await response.json();
       
       return data.map((printer: any) => ({
         id: printer.id.toString(),
@@ -199,7 +207,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         selected: false
       }));
     } catch (error) {
-      console.error("Error calling PrintNode API");
+      console.error("Error calling API");
       
       // Fallback to mock data during development or when API fails
       if (process.env.NODE_ENV === 'development') {
@@ -310,22 +318,25 @@ is working correctly!
       // Properly encode for PrintNode - fix for non-Latin1 characters
       const encodedContent = btoa(unescape(encodeURIComponent(testReceipt)));
       
-      // Use edge function for secure API calls
-      const { data, error } = await supabase.functions.invoke('printnode-api', {
-        body: {
-          action: 'testPrint',
-          printJob: {
-            printer: parseInt(printerId, 10) || printerId,
-            title: "Test Print",
-            contentType: "raw_base64",
-            content: encodedContent,
-            source: "Restaurant Kiosk"
-          }
-        }
+      // Make secure API call
+      const response = await fetch('https://api.printnode.com/printjobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${btoa(apiKey + ':')}`
+        },
+        body: JSON.stringify({
+          printer: parseInt(printerId, 10) || printerId,
+          title: "Test Print",
+          contentType: "raw_base64",
+          content: encodedContent,
+          source: "Restaurant Kiosk"
+        })
       });
       
-      if (error) {
-        throw new Error(`Error sending print job: ${error.message}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error sending print job: ${response.status}`);
       }
       
       toast({
