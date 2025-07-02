@@ -1186,8 +1186,8 @@ const KioskView = () => {
       </div>
 
       {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={(instructions) => {
-        // Sanitize special instructions input to prevent XSS
-        const sanitized = sanitizeInput(instructions, 'description');
+        // Less aggressive sanitization for special instructions to preserve print formatting
+        const sanitized = instructions.trim().substring(0, 500); // Just limit length, don't strip characters
         setSpecialInstructions(sanitized);
       }} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
 
