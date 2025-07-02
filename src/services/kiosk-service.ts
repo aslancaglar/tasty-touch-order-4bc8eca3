@@ -13,6 +13,16 @@ import {
   ToppingCategory,
   Topping
 } from "@/types/database-types";
+import { 
+  validatePrice, 
+  validateQuantity, 
+  validateUuid,
+  sanitizeTextInput,
+  LENGTH_LIMITS,
+  BUSINESS_LIMITS,
+  checkClientRateLimit
+} from "@/utils/security-utils";
+import { logError } from "@/utils/error-handler";
 
 // Restaurant services
 export const getRestaurants = async (): Promise<Restaurant[]> => {
@@ -376,15 +386,57 @@ interface CreateOrderParams {
 
 export const createOrder = async (params: CreateOrderParams): Promise<any> => {
   try {
+    // Security validations
+    const uuidValidation = validateUuid(params.restaurant_id);
+    if (!uuidValidation.isValid) {
+      throw new Error(`Invalid restaurant ID: ${uuidValidation.error}`);
+    }
+
+    const priceValidation = validatePrice(params.total);
+    if (!priceValidation.isValid) {
+      throw new Error(`Invalid order total: ${priceValidation.error}`);
+    }
+
+    // Validate order total is within business limits
+    if (params.total < BUSINESS_LIMITS.orderTotal.min || params.total > BUSINESS_LIMITS.orderTotal.max) {
+      throw new Error(`Order total must be between ${BUSINESS_LIMITS.orderTotal.min} and ${BUSINESS_LIMITS.orderTotal.max}`);
+    }
+
+    // Sanitize customer name if provided
+    let sanitizedCustomerName = params.customer_name;
+    if (params.customer_name) {
+      const nameValidation = sanitizeTextInput(params.customer_name, LENGTH_LIMITS.name);
+      if (!nameValidation.isValid) {
+        throw new Error(`Invalid customer name: ${nameValidation.error}`);
+      }
+      sanitizedCustomerName = nameValidation.sanitized;
+    }
+
+    // Validate table number if provided
+    let sanitizedTableNumber = params.table_number;
+    if (params.table_number) {
+      const tableValidation = sanitizeTextInput(params.table_number, LENGTH_LIMITS.tableNumber);
+      if (!tableValidation.isValid) {
+        throw new Error(`Invalid table number: ${tableValidation.error}`);
+      }
+      sanitizedTableNumber = tableValidation.sanitized;
+    }
+
+    // Rate limiting check (client-side)
+    const clientIP = 'kiosk-order'; // In a real app, you'd get the actual IP
+    if (!checkClientRateLimit(clientIP, 10, 60000)) {
+      throw new Error('Too many orders. Please wait before creating another order.');
+    }
+
     const { data, error } = await supabase
       .from('orders')
       .insert({
         restaurant_id: params.restaurant_id,
-        customer_name: params.customer_name,
+        customer_name: sanitizedCustomerName,
         status: params.status,
         total: params.total,
         order_type: params.order_type,
-        table_number: params.table_number
+        table_number: sanitizedTableNumber
       })
       .select()
       .single();
@@ -392,7 +444,7 @@ export const createOrder = async (params: CreateOrderParams): Promise<any> => {
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error creating order:', error);
+    logError('Error creating order:', error);
     throw error;
   }
 };
@@ -460,17 +512,60 @@ export const updateOrderStatus = async (id: string, status: OrderStatus): Promis
 
 // Order Item services
 export const createOrderItems = async (items: Omit<OrderItem, 'id' | 'created_at' | 'updated_at'>[]): Promise<OrderItem[]> => {
-  const { data, error } = await supabase
-    .from("order_items")
-    .insert(items)
-    .select();
+  try {
+    // Validate each order item
+    for (const item of items) {
+      // Validate UUIDs
+      const orderIdValidation = validateUuid(item.order_id);
+      if (!orderIdValidation.isValid) {
+        throw new Error(`Invalid order ID: ${orderIdValidation.error}`);
+      }
 
-  if (error) {
-    console.error("Error creating order items:", error);
+      const menuItemIdValidation = validateUuid(item.menu_item_id);
+      if (!menuItemIdValidation.isValid) {
+        throw new Error(`Invalid menu item ID: ${menuItemIdValidation.error}`);
+      }
+
+      // Validate quantity
+      const quantityValidation = validateQuantity(item.quantity);
+      if (!quantityValidation.isValid) {
+        throw new Error(`Invalid quantity: ${quantityValidation.error}`);
+      }
+
+      // Validate price
+      const priceValidation = validatePrice(item.price);
+      if (!priceValidation.isValid) {
+        throw new Error(`Invalid price: ${priceValidation.error}`);
+      }
+
+      // Sanitize special instructions if provided
+      if (item.special_instructions) {
+        const instructionsValidation = sanitizeTextInput(
+          item.special_instructions, 
+          LENGTH_LIMITS.specialInstructions
+        );
+        if (!instructionsValidation.isValid) {
+          throw new Error(`Invalid special instructions: ${instructionsValidation.error}`);
+        }
+        item.special_instructions = instructionsValidation.sanitized;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("order_items")
+      .insert(items)
+      .select();
+
+    if (error) {
+      logError("Error creating order items:", error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    logError("Error in createOrderItems:", error);
     throw error;
   }
-
-  return data;
 };
 
 // Order Item Options services

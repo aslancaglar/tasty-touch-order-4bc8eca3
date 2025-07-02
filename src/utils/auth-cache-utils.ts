@@ -1,13 +1,17 @@
 
 /**
  * Enhanced utility functions for managing authentication cache with improved session continuity
+ * Now includes security event logging
  */
+import { logSecurityEvent } from '@/utils/error-handler';
 
 interface CacheEntry {
   status: boolean;
   timestamp: number;
   sessionId?: string;
   refreshCount?: number;
+  lastValidated?: number;
+  ipHash?: string;
 }
 
 export const AUTH_CACHE_KEY = 'auth_admin_cache';
@@ -104,11 +108,23 @@ export const setCachedAdminStatus = (userId: string, status: boolean, sessionId?
     const cache = stored ? JSON.parse(stored) : {};
 
     const existingEntry = cache[userId];
+    const now = Date.now();
+    
+    // Log suspicious caching patterns
+    if (existingEntry && existingEntry.refreshCount > 10) {
+      logSecurityEvent('excessive_auth_cache_refresh', { 
+        userId, 
+        refreshCount: existingEntry.refreshCount,
+        severity: 'medium' 
+      });
+    }
+    
     cache[userId] = {
       status,
-      timestamp: Date.now(),
+      timestamp: now,
       sessionId: sessionId || existingEntry?.sessionId,
-      refreshCount: (existingEntry?.refreshCount || 0) + 1
+      refreshCount: (existingEntry?.refreshCount || 0) + 1,
+      lastValidated: now
     };
 
     localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cache));
@@ -116,6 +132,7 @@ export const setCachedAdminStatus = (userId: string, status: boolean, sessionId?
       sessionId ? `(session: ${sessionId.slice(0, 8)}...)` : '');
   } catch (error) {
     console.error('[AuthCache] Error setting cache:', error);
+    logSecurityEvent('auth_cache_error', { error: error.message, severity: 'low' });
   }
 };
 
