@@ -139,8 +139,49 @@ const SecurityMonitor = () => {
     setThreats(prev => prev.filter(t => t.timestamp !== timestamp));
   };
 
-  // Hide all security alerts - return null to not render anything
-  return null;
+  // Show security alerts for admin users only
+  if (threats.length === 0) return null;
+
+  return (
+    <div className="fixed top-4 right-4 z-50 max-w-md space-y-2">
+      {threats.map((threat) => (
+        <Alert 
+          key={threat.timestamp} 
+          variant={threat.severity === 'high' ? 'destructive' : 'default'}
+          className="relative"
+        >
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="flex items-center justify-between">
+            Security Alert
+            <button
+              onClick={() => dismissThreat(threat.timestamp)}
+              className="ml-2 text-sm opacity-70 hover:opacity-100"
+            >
+              ×
+            </button>
+          </AlertTitle>
+          <AlertDescription>
+            <div className="space-y-1">
+              <p>{threat.message}</p>
+              <p className="text-xs opacity-75">
+                Type: {threat.type} | Severity: {threat.severity}
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
+      ))}
+      
+      {!isOnline && (
+        <Alert variant="destructive">
+          <WifiOff className="h-4 w-4" />
+          <AlertTitle>Network Offline</AlertTitle>
+          <AlertDescription>
+            No internet connection. Security monitoring is limited.
+          </AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
 };
 
 export default SecurityMonitor;

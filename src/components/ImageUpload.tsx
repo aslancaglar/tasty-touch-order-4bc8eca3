@@ -5,6 +5,7 @@ import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
+import { validateFile, generateSecureFilename, isValidImageFile } from "@/utils/file-security";
 
 interface ImageUploadProps {
   value?: string;
@@ -16,38 +17,7 @@ interface ImageUploadProps {
   clearable?: boolean;
 }
 
-// Security constants for file validation
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg',
-  'image/jpg', 
-  'image/png',
-  'image/webp',
-  'image/gif'
-];
-
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
-
-// Enhanced security validation functions
-const validateFileType = (file: File): boolean => {
-  return ALLOWED_MIME_TYPES.includes(file.type.toLowerCase());
-};
-
-const validateFileExtension = (fileName: string): boolean => {
-  const extension = fileName.split('.').pop()?.toLowerCase();
-  return extension ? ALLOWED_EXTENSIONS.includes(extension) : false;
-};
-
-const validateFileSize = (file: File): boolean => {
-  return file.size <= MAX_FILE_SIZE;
-};
-
-const sanitizeFileName = (fileName: string): string => {
-  // Remove potentially dangerous characters and limit length
-  return fileName
-    .replace(/[^a-zA-Z0-9.-]/g, '_')
-    .substring(0, 100);
-};
+// Use enhanced security validation from file-security utils
 
 const ImageUpload = ({ 
   value, 
@@ -82,33 +52,29 @@ const ImageUpload = ({
       const file = event.target.files[0];
       
       // Enhanced security validations
-      if (!validateFileType(file)) {
-        logSecurityEvent("Invalid file type attempt", { 
+      const validation = validateFile(file);
+      if (!validation.valid) {
+        logSecurityEvent("File validation failed", { 
+          error: validation.error,
           fileType: file.type, 
-          fileName: file.name 
+          fileName: file.name,
+          fileSize: file.size
         });
-        throw new Error(`Invalid file type. Only ${ALLOWED_MIME_TYPES.join(', ')} are allowed.`);
+        throw new Error(validation.error);
       }
-      
-      if (!validateFileExtension(file.name)) {
-        logSecurityEvent("Invalid file extension attempt", { 
-          fileName: file.name 
+
+      // Additional magic number validation
+      const isValidImage = await isValidImageFile(file);
+      if (!isValidImage) {
+        logSecurityEvent("Invalid image file detected", { 
+          fileName: file.name,
+          fileType: file.type
         });
-        throw new Error(`Invalid file extension. Only ${ALLOWED_EXTENSIONS.join(', ')} files are allowed.`);
-      }
-      
-      if (!validateFileSize(file)) {
-        logSecurityEvent("File size exceeded", { 
-          fileSize: file.size, 
-          maxSize: MAX_FILE_SIZE 
-        });
-        throw new Error(`File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB.`);
+        throw new Error("File does not appear to be a valid image.");
       }
 
       // Create secure filename
-      const sanitizedName = sanitizeFileName(file.name);
-      const fileExt = sanitizedName.split('.').pop();
-      const secureFileName = `${uuidv4()}.${fileExt}`;
+      const secureFileName = generateSecureFilename(file.name);
       const filePath = `${uploadFolder}/${secureFileName}`;
       
       console.log(`[ImageUpload] Uploading secure file: ${secureFileName}`);
@@ -235,7 +201,7 @@ const ImageUpload = ({
             )}
             <input
               type="file"
-              accept={ALLOWED_MIME_TYPES.join(',')}
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
               onChange={uploadImage}
               disabled={uploading}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"

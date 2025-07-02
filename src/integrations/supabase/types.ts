@@ -863,6 +863,10 @@ export type Database = {
         Args: { limit_count: number }
         Returns: Json
       }
+      get_security_headers: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_user_restaurant_ids: {
         Args: Record<PropertyKey, never>
         Returns: string[]
