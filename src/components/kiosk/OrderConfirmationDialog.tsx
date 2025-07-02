@@ -173,7 +173,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         setHasPrinted(true);
       }
     } catch (error) {
-      console.error("Error during receipt printing:", error);
+      console.error("Error during receipt printing");
       toast({
         title: t("order.error"),
         description: t("order.errorPrinting"),
@@ -245,7 +245,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         }
       }
     } catch (error) {
-      console.error("Error sending receipt to PrintNode:", error);
+      console.error("Error sending receipt to printer");
     }
   };
   

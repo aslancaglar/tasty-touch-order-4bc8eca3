@@ -507,36 +507,6 @@ export type Database = {
         }
         Relationships: []
       }
-      rate_limits: {
-        Row: {
-          attempt_count: number | null
-          created_at: string | null
-          id: string
-          identifier: string
-          resource_type: string
-          updated_at: string | null
-          window_start: string | null
-        }
-        Insert: {
-          attempt_count?: number | null
-          created_at?: string | null
-          id?: string
-          identifier: string
-          resource_type: string
-          updated_at?: string | null
-          window_start?: string | null
-        }
-        Update: {
-          attempt_count?: number | null
-          created_at?: string | null
-          id?: string
-          identifier?: string
-          resource_type?: string
-          updated_at?: string | null
-          window_start?: string | null
-        }
-        Relationships: []
-      }
       restaurant_owners: {
         Row: {
           created_at: string
@@ -747,45 +717,6 @@ export type Database = {
         }
         Relationships: []
       }
-      security_audit_log: {
-        Row: {
-          created_at: string | null
-          details: Json | null
-          event_type: string
-          id: string
-          ip_address: unknown | null
-          resource_id: string | null
-          resource_type: string | null
-          severity: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          details?: Json | null
-          event_type: string
-          id?: string
-          ip_address?: unknown | null
-          resource_id?: string | null
-          resource_type?: string | null
-          severity?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          details?: Json | null
-          event_type?: string
-          id?: string
-          ip_address?: unknown | null
-          resource_id?: string | null
-          resource_type?: string | null
-          severity?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       topping_categories: {
         Row: {
           allow_multiple_same_topping: boolean
@@ -891,24 +822,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_rate_limit: {
-        Args: {
-          p_identifier: string
-          p_resource_type: string
-          p_max_attempts?: number
-          p_window_minutes?: number
-        }
-        Returns: boolean
-      }
       duplicate_restaurant: {
         Args: { source_restaurant_id: string }
         Returns: string
       }
       get_current_user_admin_status: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      get_current_user_admin_status_audited: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
@@ -963,35 +881,6 @@ export type Database = {
       }
       is_restaurant_owner_of_order_item_option: {
         Args: { order_item_option_id: string }
-        Returns: boolean
-      }
-      log_security_event: {
-        Args: {
-          p_event_type: string
-          p_user_id?: string
-          p_ip_address?: unknown
-          p_user_agent?: string
-          p_resource_type?: string
-          p_resource_id?: string
-          p_details?: Json
-          p_severity?: string
-        }
-        Returns: string
-      }
-      validate_menu_item_belongs_to_restaurant: {
-        Args: { item_id: string; restaurant_uuid: string }
-        Returns: boolean
-      }
-      validate_order_total: {
-        Args: { order_uuid: string; expected_total: number }
-        Returns: boolean
-      }
-      validate_restaurant_exists: {
-        Args: { restaurant_uuid: string }
-        Returns: boolean
-      }
-      validate_topping_belongs_to_restaurant: {
-        Args: { topping_id: string; restaurant_uuid: string }
         Returns: boolean
       }
     }
