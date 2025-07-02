@@ -24,6 +24,7 @@ import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
 import { useConnectionStatus, useNetworkAwareFetch } from "@/hooks/use-network-aware-fetch";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { testNetworkConnectivity } from "@/utils/service-worker";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -1108,35 +1109,49 @@ const KioskView = () => {
     </NetworkErrorBoundary>;
   }
 
+  // Initialize supported languages from restaurant data
+  const supportedLanguages = restaurant?.supported_languages || [restaurant?.ui_language || 'fr'];
+  const initialLanguage = (restaurant?.ui_language || 'fr') as SupportedLanguage;
+
   if (showWelcome) {
     return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
-      <div className="kiosk-view">
-        <WelcomePage 
-          restaurant={restaurant} 
-          onStart={() => {
-            fullReset();
-            handleStartOrder();
-          }} 
-          uiLanguage={uiLanguage}
-          isDataLoading={isPreloading || loading} 
-        />
-      </div>
+      <LanguageProvider 
+        initialLanguage={initialLanguage}
+        initialSupportedLanguages={supportedLanguages as SupportedLanguage[]}
+      >
+        <div className="kiosk-view">
+          <WelcomePage 
+            restaurant={restaurant} 
+            onStart={() => {
+              fullReset();
+              handleStartOrder();
+            }} 
+            uiLanguage={uiLanguage}
+            isDataLoading={isPreloading || loading} 
+          />
+        </div>
+      </LanguageProvider>
     </NetworkErrorBoundary>;
   }
 
   if (showOrderTypeSelection) {
     return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
-      <div className="kiosk-view">
-        <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
-        }} />
-        <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
-          setShowOrderTypeSelection(false);
-          setShowWelcome(true);
-        }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
-        
-        <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
-      </div>
+      <LanguageProvider 
+        initialLanguage={initialLanguage}
+        initialSupportedLanguages={supportedLanguages as SupportedLanguage[]}
+      >
+        <div className="kiosk-view">
+          <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
+            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+          }} />
+          <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
+            setShowOrderTypeSelection(false);
+            setShowWelcome(true);
+          }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
+          
+          <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+        </div>
+      </LanguageProvider>
     </NetworkErrorBoundary>;
   }
 
@@ -1145,7 +1160,11 @@ const KioskView = () => {
   const cartIsEmpty = cart.length === 0;
 
   return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
-    <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+    <LanguageProvider 
+      initialLanguage={initialLanguage}
+      initialSupportedLanguages={supportedLanguages as SupportedLanguage[]}
+    >
+      <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
         <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
@@ -1200,7 +1219,8 @@ const KioskView = () => {
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
       />
-    </div>
+      </div>
+    </LanguageProvider>
   </NetworkErrorBoundary>;
 };
 

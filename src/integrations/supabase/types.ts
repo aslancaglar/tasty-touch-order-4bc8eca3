@@ -53,6 +53,44 @@ export type Database = {
           },
         ]
       }
+      menu_category_translations: {
+        Row: {
+          category_id: string
+          created_at: string
+          description: string | null
+          id: string
+          language_code: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          language_code: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          language_code?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_category_translations_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_item_options: {
         Row: {
           created_at: string
@@ -129,6 +167,44 @@ export type Database = {
             columns: ["topping_category_id"]
             isOneToOne: false
             referencedRelation: "topping_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_translations: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          language_code: string
+          menu_item_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          language_code: string
+          menu_item_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          language_code?: string
+          menu_item_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_translations_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
             referencedColumns: ["id"]
           },
         ]
@@ -684,6 +760,7 @@ export type Database = {
           logo_url: string | null
           name: string
           slug: string
+          supported_languages: string[] | null
           ui_language: string
           updated_at: string
         }
@@ -698,6 +775,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           slug: string
+          supported_languages?: string[] | null
           ui_language?: string
           updated_at?: string
         }
@@ -712,6 +790,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           slug?: string
+          supported_languages?: string[] | null
           ui_language?: string
           updated_at?: string
         }
@@ -769,6 +848,79 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topping_category_translations: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          language_code: string
+          name: string
+          topping_category_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          language_code: string
+          name: string
+          topping_category_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          language_code?: string
+          name?: string
+          topping_category_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topping_category_translations_topping_category_id_fkey"
+            columns: ["topping_category_id"]
+            isOneToOne: false
+            referencedRelation: "topping_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topping_translations: {
+        Row: {
+          created_at: string
+          id: string
+          language_code: string
+          name: string
+          topping_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          language_code: string
+          name: string
+          topping_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          language_code?: string
+          name?: string
+          topping_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topping_translations_topping_id_fkey"
+            columns: ["topping_id"]
+            isOneToOne: false
+            referencedRelation: "toppings"
             referencedColumns: ["id"]
           },
         ]
@@ -851,6 +1003,7 @@ export type Database = {
           logo_url: string | null
           name: string
           slug: string
+          supported_languages: string[] | null
           ui_language: string
           updated_at: string
         }[]
