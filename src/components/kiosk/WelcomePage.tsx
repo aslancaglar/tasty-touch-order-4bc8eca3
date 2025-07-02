@@ -3,8 +3,6 @@ import { Restaurant } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { useState } from "react";
-import { LanguagePicker } from "./LanguagePicker";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 interface WelcomePageProps {
   restaurant: Restaurant;
@@ -19,13 +17,8 @@ const WelcomePage = ({
   uiLanguage = "fr",
   isDataLoading = false
 }: WelcomePageProps) => {
-  const { selectedLanguage, setSelectedLanguage } = useLanguage();
-  const { t } = useTranslation(selectedLanguage);
+  const { t } = useTranslation(uiLanguage);
   const [isStarting, setIsStarting] = useState(false);
-  
-  const handleLanguageSelect = (language: SupportedLanguage) => {
-    setSelectedLanguage(language);
-  };
   
   const handleStart = () => {
     setIsStarting(true);
@@ -46,15 +39,9 @@ const WelcomePage = ({
         <h1 className="text-white font-bold mb-3 text-6xl md:text-7xl lg:text-9xl font-bebas tracking-wide">
           {restaurant.name}
         </h1>
-        <p className="text-white text-xl md:text-2xl font-inter lg:text-5xl mb-8">
+        <p className="text-white text-xl md:text-2xl font-inter lg:text-5xl">
           {t("welcome.title")}
         </p>
-        
-        {/* Language picker */}
-        <LanguagePicker 
-          onLanguageSelect={handleLanguageSelect}
-          className="mb-8"
-        />
       </div>
       
       {/* Start button - vertically centered */}

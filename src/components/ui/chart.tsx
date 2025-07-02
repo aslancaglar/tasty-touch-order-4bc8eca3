@@ -74,29 +74,27 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  const sanitizedCSS = Object.entries(THEMES)
-    .map(([theme, prefix]) => {
-      const themeCSS = colorConfig
-        .map(([key, itemConfig]) => {
-          const color =
-            itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-            itemConfig.color
-          // Sanitize color value to prevent injection
-          const sanitizedColor = color?.replace(/[<>'"\\]/g, '') || ''
-          return sanitizedColor ? `  --color-${key.replace(/[<>'"\\]/g, '')}: ${sanitizedColor};` : null
-        })
-        .filter(Boolean)
-        .join("\n")
-      
-      const sanitizedPrefix = prefix.replace(/[<>'"\\]/g, '')
-      const sanitizedId = id.replace(/[<>'"\\]/g, '')
-      
-      return `${sanitizedPrefix} [data-chart=${sanitizedId}] {\n${themeCSS}\n}`
-    })
-    .join("\n")
-
   return (
-    <style>{sanitizedCSS}</style>
+    <style
+      dangerouslySetInnerHTML={{
+        __html: Object.entries(THEMES)
+          .map(
+            ([theme, prefix]) => `
+${prefix} [data-chart=${id}] {
+${colorConfig
+  .map(([key, itemConfig]) => {
+    const color =
+      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+      itemConfig.color
+    return color ? `  --color-${key}: ${color};` : null
+  })
+  .join("\n")}
+}
+`
+          )
+          .join("\n"),
+      }}
+    />
   )
 }
 

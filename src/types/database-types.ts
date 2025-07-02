@@ -12,7 +12,6 @@ export type Restaurant = {
   updated_at: string;
   ui_language?: string;
   currency?: string; // NEW: ISO 4217 code, e.g. "EUR", "USD", ...
-  supported_languages?: string[]; // NEW: Array of supported language codes
 };
 
 export type MenuCategory = {

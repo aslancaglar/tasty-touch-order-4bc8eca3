@@ -106,10 +106,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [currency, setCurrency] = useState(restaurant.currency || "EUR");
   const [isSavingCurrency, setIsSavingCurrency] = useState(false);
-  const [supportedLanguages, setSupportedLanguages] = useState<string[]>(
-    restaurant.supported_languages || [restaurant.ui_language || "fr"]
-  );
-  const [isSavingSupportedLanguages, setIsSavingSupportedLanguages] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const { toast } = useToast();
@@ -127,7 +123,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     setSlug(restaurant.slug || "");
     setUiLanguage(restaurant.ui_language || "fr");
     setCurrency(restaurant.currency || "EUR");
-    setSupportedLanguages(restaurant.supported_languages || [restaurant.ui_language || "fr"]);
     
     // Check network status
     setIsOffline(!navigator.onLine);
@@ -212,7 +207,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
         ui_language: uiLanguage,
         currency,
         slug: slug.toLowerCase().trim(),
-        supported_languages: supportedLanguages,
       });
       
       toast({
@@ -486,78 +480,6 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
     }
   };
 
-  const handleSaveSupportedLanguages = async () => {
-    setIsSavingSupportedLanguages(true);
-    try {
-      console.log("Saving supported languages:", supportedLanguages);
-      
-      const updatedData = {
-        supported_languages: supportedLanguages
-      };
-      
-      const { data, error } = await supabase
-        .from("restaurants")
-        .update(updatedData)
-        .eq("id", restaurant.id)
-        .select();
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log("Supported languages update response:", data);
-
-      toast({
-        title: "Langues prises en charge sauvegardées",
-        description: "Les langues prises en charge par le restaurant ont été mises à jour.",
-      });
-
-      if (onRestaurantUpdated && data && data.length > 0) {
-        const updatedRestaurant = {
-          ...restaurant,
-          supported_languages: supportedLanguages
-        };
-        onRestaurantUpdated(updatedRestaurant);
-        console.log("Updated restaurant with new supported languages:", updatedRestaurant);
-      }
-    } catch (error) {
-      console.error("Error updating supported languages:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour les langues prises en charge.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingSupportedLanguages(false);
-    }
-  };
-
-  const handleToggleSupportedLanguage = (languageValue: string) => {
-    setSupportedLanguages(prev => {
-      if (prev.includes(languageValue)) {
-        // Don't allow removing the UI language
-        if (languageValue === uiLanguage && prev.length === 1) {
-          toast({
-            title: "Attention",
-            description: "La langue de l'interface doit être incluse dans les langues prises en charge.",
-            variant: "destructive"
-          });
-          return prev;
-        }
-        return prev.filter(lang => lang !== languageValue);
-      } else {
-        return [...prev, languageValue];
-      }
-    });
-  };
-
-  // Ensure UI language is always included in supported languages
-  const ensureUiLanguageInSupported = (newUiLanguage: string) => {
-    if (!supportedLanguages.includes(newUiLanguage)) {
-      setSupportedLanguages(prev => [...prev, newUiLanguage]);
-    }
-  };
-
   const selectedCurrencyOption = currencyOptions.find(opt => opt.value === currency);
   const currencySymbol = selectedCurrencyOption?.symbol || currency;
 
@@ -658,9 +580,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                   value={uiLanguage}
                   onChange={e => {
                     console.log("Language selected:", e.target.value);
-                    const newLanguage = e.target.value;
-                    setUiLanguage(newLanguage);
-                    ensureUiLanguageInSupported(newLanguage);
+                    setUiLanguage(e.target.value);
                   }}
                   className="w-full px-3 py-2 border rounded-md bg-white"
                 >
@@ -733,60 +653,7 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                 </div>
               </div>
             </div>
-
-            <div className="sm:col-span-2">
-              <Label>Langues prises en charge par le restaurant</Label>
-              <div className="mt-2">
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Sélectionnez les langues que vos clients pourront choisir sur la page d'accueil du kiosk.
-                  </p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {languageOptions.map(option => (
-                      <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={supportedLanguages.includes(option.value)}
-                          onChange={() => handleToggleSupportedLanguage(option.value)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm">{option.label}</span>
-                        {option.value === uiLanguage && (
-                          <Badge variant="secondary" className="text-xs">
-                            Interface
-                          </Badge>
-                        )}
-                      </label>
-                    ))}
-                  </div>
-                  <div className="mt-3">
-                    <Button
-                      onClick={handleSaveSupportedLanguages}
-                      disabled={isSavingSupportedLanguages}
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {isSavingSupportedLanguages ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sauvegarde...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="mr-2 h-4 w-4" />
-                          Enregistrer les langues
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Les clients pourront choisir parmi ces langues sur la page d'accueil du kiosk. 
-                    {supportedLanguages.length === 1 && " (Avec une seule langue, le sélecteur ne s'affichera pas)"}
-                  </div>
-                </div>
-              </div>
-            </div>
-            </div>
+          </div>
           
           <div className="flex flex-col space-y-4">
             <div className="flex justify-end">
