@@ -182,10 +182,12 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
 
   const fetchPrintersFromAPI = async (key: string): Promise<Printer[]> => {
     if (!key || key.length < 10) {
+      console.log("API key too short or missing");
       return [];
     }
     
     try {
+      console.log("Making PrintNode API call to fetch printers...");
       // Make secure API call to PrintNode
       const response = await fetch('https://api.printnode.com/printers', {
         headers: {
@@ -193,50 +195,66 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         }
       });
       
+      console.log("PrintNode API response status:", response.status);
+      
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error("PrintNode API error response:", errorText);
+        throw new Error(`API error: ${response.status} - ${errorText}`);
       }
       
       const data = await response.json();
+      console.log("PrintNode API response data:", data);
       
-      return data.map((printer: any) => ({
+      if (!Array.isArray(data)) {
+        console.error("PrintNode API returned non-array data:", data);
+        return [];
+      }
+      
+      const realPrinters: Printer[] = data.map((printer: any) => ({
         id: printer.id.toString(),
         name: printer.name,
         description: printer.description || (printer.computer ? printer.computer.name : undefined),
-        state: printer.state === "online" ? "online" : "offline",
+        state: (printer.state === "online" ? "online" : "offline") as "online" | "offline",
         selected: false
       }));
+      
+      console.log("Processed real printers:", realPrinters);
+      return realPrinters;
+      
     } catch (error) {
       console.error("Error calling PrintNode API:", error);
       
-      // Fallback to mock data during development or when API fails
+      // Only show mock data in development AND log that we're doing so
       if (process.env.NODE_ENV === 'development') {
-        console.log("Using mock printer data in development");
+        console.warn("🚨 USING MOCK DATA - PrintNode API call failed in development");
         return [
           {
-            id: "printer1",
-            name: "Printer 1",
-            description: "Front Counter",
-            state: "online",
+            id: "mock-printer1",
+            name: "Mock Printer 1",
+            description: "Development Mock - Front Counter",
+            state: "online" as const,
             selected: false
           },
           {
-            id: "printer2",
-            name: "Printer 2",
-            description: "Kitchen",
-            state: "online",
+            id: "mock-printer2", 
+            name: "Mock Printer 2",
+            description: "Development Mock - Kitchen",
+            state: "online" as const,
             selected: false
           },
           {
-            id: "printer3",
-            name: "Printer 3",
-            description: "Bar",
-            state: "offline",
+            id: "mock-printer3",
+            name: "Mock Printer 3", 
+            description: "Development Mock - Bar",
+            state: "offline" as const,
             selected: false
           }
         ];
       }
       
+      // In production, return empty array and let user know there was an error
+      console.error("PrintNode API call failed in production mode");
       return [];
     }
   };
