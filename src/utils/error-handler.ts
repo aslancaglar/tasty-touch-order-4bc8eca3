@@ -43,7 +43,10 @@ export const logSecurityEvent = (event: string, details: Record<string, any> = {
     ...details
   };
   
-  console.warn(`[Security Event] ${event}`, logEntry);
+  // Use a direct console call to prevent infinite loops with security monitoring
+  if (typeof console !== 'undefined' && console.warn) {
+    console.warn(`[Security Event] ${event}`, logEntry);
+  }
   
   // In production, you might want to send this to a monitoring service
   if (process.env.NODE_ENV === 'production') {

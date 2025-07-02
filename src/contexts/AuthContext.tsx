@@ -192,14 +192,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         console.log("[AuthContext] Initial session:", currentSession?.user?.id || 'no session');
         
-        // Set initial state immediately
+        // Set initial state immediately and consistently
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setAuthFeedback("");
         setTimeoutProgress(0);
         
         if (currentSession?.user) {
-          // Check admin status for existing session
+          // Don't set loading to false until admin check is complete
           try {
             setAdminCheckCompleted(false);
             const adminStatus = await checkAdminStatus(
@@ -209,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (isMounted) {
               setIsAdmin(adminStatus);
               setAdminCheckCompleted(true);
+              setLoading(false); // Only set loading false after admin check
               console.log("[AuthContext] Initial admin status set:", adminStatus);
             }
           } catch (error) {
@@ -218,16 +219,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const cachedStatus = getCachedAdminStatus(currentSession.user.id, currentSession.access_token);
               setIsAdmin(cachedStatus !== null ? cachedStatus : false);
               setAdminCheckCompleted(true);
+              setLoading(false); // Set loading false even on error
             }
           }
         } else {
           // No user, set defaults immediately
           setIsAdmin(false);
           setAdminCheckCompleted(true);
-        }
-        
-        if (isMounted) {
-          setLoading(false);
+          setLoading(false); // Set loading false for no user case
         }
 
         // Set up auth state change listener with simplified token refresh handling
@@ -267,6 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               
               try {
                 setAdminCheckCompleted(false);
+                setLoading(true); // Set loading true during admin check
                 const adminStatus = await checkAdminStatus(
                   newSession.user.id,
                   newSession.access_token
