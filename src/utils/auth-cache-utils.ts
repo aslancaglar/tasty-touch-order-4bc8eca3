@@ -3,9 +3,6 @@
  * Enhanced utility functions for managing authentication cache with improved session continuity
  */
 
-import { logSecurityEvent } from '@/config/security';
-import { sanitizeInput } from '@/utils/input-sanitizer';
-
 interface CacheEntry {
   status: boolean;
   timestamp: number;
@@ -26,38 +23,14 @@ export const clearStaleAuthCache = (): void => {
     const stored = localStorage.getItem(AUTH_CACHE_KEY);
     if (!stored) return;
 
-    // Validate stored data before parsing
-    if (stored.length > 10000) { // Prevent oversized cache
-      logSecurityEvent('Auth cache oversized, clearing', { size: stored.length });
-      localStorage.removeItem(AUTH_CACHE_KEY);
-      return;
-    }
-
     const cache = JSON.parse(stored);
-    
-    // Validate cache structure
-    if (typeof cache !== 'object' || cache === null) {
-      logSecurityEvent('Invalid auth cache structure', { cache });
-      localStorage.removeItem(AUTH_CACHE_KEY);
-      return;
-    }
-
     const now = Date.now();
     const cleanCache: { [key: string]: CacheEntry } = {};
 
-    // Keep only non-stale entries with validation
+    // Keep only non-stale entries
     Object.keys(cache).forEach(key => {
       const entry = cache[key];
-      
-      // Validate entry structure
-      if (!entry || typeof entry !== 'object' || 
-          typeof entry.status !== 'boolean' || 
-          typeof entry.timestamp !== 'number') {
-        logSecurityEvent('Invalid cache entry structure', { key, entry });
-        return;
-      }
-
-      if ((now - entry.timestamp) < CACHE_DURATION) {
+      if (entry && (now - entry.timestamp) < CACHE_DURATION) {
         cleanCache[key] = entry;
       }
     });
@@ -71,7 +44,6 @@ export const clearStaleAuthCache = (): void => {
       console.log('[AuthCache] Removed empty cache');
     }
   } catch (error) {
-    logSecurityEvent('Auth cache cleanup error', { error: String(error) });
     console.error('[AuthCache] Error cleaning cache:', error);
     localStorage.removeItem(AUTH_CACHE_KEY);
   }
