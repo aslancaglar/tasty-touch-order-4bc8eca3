@@ -207,7 +207,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         selected: false
       }));
     } catch (error) {
-      console.error("Error calling API");
+      console.error("Error calling PrintNode API:", error);
       
       // Fallback to mock data during development or when API fails
       if (process.env.NODE_ENV === 'development') {
