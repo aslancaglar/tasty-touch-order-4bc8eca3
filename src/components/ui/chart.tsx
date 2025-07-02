@@ -2,6 +2,8 @@ import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 
 import { cn } from "@/lib/utils"
+import { validateChartConfig, escapeHtml } from "@/utils/input-sanitizer"
+import { logSecurityEvent } from "@/config/security"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const
@@ -42,10 +44,22 @@ const ChartContainer = React.forwardRef<
   }
 >(({ id, className, children, config, ...props }, ref) => {
   const uniqueId = React.useId()
-  const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
+  // Sanitize chart ID to prevent XSS
+  const sanitizedId = id ? escapeHtml(id.replace(/[^a-zA-Z0-9-_]/g, '')) : uniqueId.replace(/:/g, "")
+  const chartId = `chart-${sanitizedId}`
+
+  // Validate and sanitize chart configuration
+  const validatedConfig = React.useMemo(() => {
+    try {
+      return validateChartConfig(config)
+    } catch (error) {
+      logSecurityEvent('Chart config validation failed', { error: String(error) })
+      return {}
+    }
+  }, [config])
 
   return (
-    <ChartContext.Provider value={{ config }}>
+    <ChartContext.Provider value={{ config: validatedConfig }}>
       <div
         data-chart={chartId}
         ref={ref}
@@ -55,7 +69,7 @@ const ChartContainer = React.forwardRef<
         )}
         {...props}
       >
-        <ChartStyle id={chartId} config={config} />
+        <ChartStyle id={chartId} config={validatedConfig} />
         <RechartsPrimitive.ResponsiveContainer>
           {children}
         </RechartsPrimitive.ResponsiveContainer>
@@ -74,28 +88,51 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  return (
+  // Secure CSS generation - escape values to prevent injection
+  const generateSecureCSS = () => {
+    const sanitizedId = escapeHtml(id)
+    
+    return Object.entries(THEMES)
+      .map(([theme, prefix]) => {
+        const cssRules = colorConfig
+          .map(([key, itemConfig]) => {
+            const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color
+            
+            if (!color || typeof color !== 'string') return null
+            
+            // Validate color format to prevent CSS injection
+            const sanitizedColor = color.match(/^(#[0-9A-Fa-f]{3,6}|hsl\(\d+,\s*\d+%,\s*\d+%\)|rgb\(\d+,\s*\d+,\s*\d+\))$/) 
+              ? color 
+              : null
+            
+            if (!sanitizedColor) {
+              logSecurityEvent('Invalid color format in chart config', { key, color })
+              return null
+            }
+            
+            const sanitizedKey = escapeHtml(key.replace(/[^a-zA-Z0-9-_]/g, ''))
+            return `  --color-${sanitizedKey}: ${sanitizedColor};`
+          })
+          .filter(Boolean)
+          .join('\n')
+
+        return cssRules.length > 0 
+          ? `${prefix} [data-chart="${sanitizedId}"] {\n${cssRules}\n}`
+          : ''
+      })
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  const secureCSS = generateSecureCSS()
+
+  return secureCSS ? (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
+        __html: secureCSS,
       }}
     />
-  )
+  ) : null
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip

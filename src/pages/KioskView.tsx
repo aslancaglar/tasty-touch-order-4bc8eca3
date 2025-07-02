@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { sanitizeInput, escapeHtml } from "@/utils/input-sanitizer";
+import { logSecurityEvent } from "@/config/security";
 import { getRestaurantBySlug, getMenuForRestaurant, getMenuItemWithOptions, createOrder, createOrderItems, createOrderItemOptions, createOrderItemToppings } from "@/services/kiosk-service";
 import { Restaurant, MenuCategory, MenuItem, CartItem, MenuItemWithOptions, OrderType, Topping } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
@@ -752,7 +754,7 @@ const KioskView = () => {
       quantity,
       selectedOptions,
       selectedToppings,
-      specialInstructions: specialInstructions.trim() || undefined,
+      specialInstructions: specialInstructions.trim() ? sanitizeInput(specialInstructions.trim(), 'description') : undefined,
       itemPrice
     };
     setCart(prev => [newItem, ...prev]);
@@ -1183,7 +1185,11 @@ const KioskView = () => {
         <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} t={t} />
       </div>
 
-      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
+      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={(instructions) => {
+        // Sanitize special instructions input to prevent XSS
+        const sanitized = sanitizeInput(instructions, 'description');
+        setSpecialInstructions(sanitized);
+      }} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       

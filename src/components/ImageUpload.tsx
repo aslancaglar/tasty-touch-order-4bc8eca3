@@ -5,6 +5,8 @@ import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
+import { sanitizeFileName as sanitizeFileNameUtil } from "@/utils/input-sanitizer";
+import { logSecurityEvent } from "@/config/security";
 
 interface ImageUploadProps {
   value?: string;
@@ -42,12 +44,8 @@ const validateFileSize = (file: File): boolean => {
   return file.size <= MAX_FILE_SIZE;
 };
 
-const sanitizeFileName = (fileName: string): string => {
-  // Remove potentially dangerous characters and limit length
-  return fileName
-    .replace(/[^a-zA-Z0-9.-]/g, '_')
-    .substring(0, 100);
-};
+// Use the centralized sanitization function
+const sanitizeFileName = sanitizeFileNameUtil;
 
 const ImageUpload = ({ 
   value, 
