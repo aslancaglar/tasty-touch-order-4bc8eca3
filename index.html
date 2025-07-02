@@ -13,6 +13,11 @@
     <meta name="author" content="Lovable" />
     <meta name="theme-color" content="#4f46e5">
     <link rel="manifest" href="/manifest.json">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
 
     <meta property="og:title" content="qimbo-kiosk-order" />
     <meta property="og:description" content="Lovable Generated Project" />
@@ -33,8 +38,8 @@
 
   <body>
     <div id="root"></div>
-    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
-    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    <!-- External script removed for security -->
+    <!-- The gptengineer script is no longer needed and was removed for security reasons -->
     <script type="module" src="/src/main.tsx"></script>
     <script>
       // Prevent pinch zoom on Windows touch devices

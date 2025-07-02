@@ -96,6 +96,34 @@ export const printReceipt = (elementId: string) => {
       throw new Error("Could not access iframe document");
     }
     
+    // Sanitize content before inserting
+    const sanitizeHTML = (html: string): string => {
+      // Create a temporary div to parse and clean HTML
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      
+      // Remove dangerous scripts and attributes
+      const scripts = temp.querySelectorAll('script');
+      scripts.forEach(script => script.remove());
+      
+      // Remove dangerous attributes
+      const elements = temp.querySelectorAll('*');
+      elements.forEach(el => {
+        const attrs = ['onload', 'onerror', 'onclick', 'onmouseover', 'onmouseout', 'onfocus', 'onblur'];
+        attrs.forEach(attr => el.removeAttribute(attr));
+        if (el.getAttribute('href')?.startsWith('javascript:')) {
+          el.removeAttribute('href');
+        }
+        if (el.getAttribute('src')?.startsWith('javascript:')) {
+          el.removeAttribute('src');
+        }
+      });
+      
+      return temp.innerHTML;
+    };
+
+    const sanitizedContent = sanitizeHTML(printContent.innerHTML);
+    
     iframeDoc.write(`
       <html>
         <head>
@@ -183,7 +211,7 @@ export const printReceipt = (elementId: string) => {
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
+          ${sanitizedContent}
         </body>
       </html>
     `);

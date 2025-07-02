@@ -1,96 +1,111 @@
 
 /**
  * Enhanced utility functions for managing authentication cache with improved session continuity
+ * Now uses secure storage and logging for better security
  */
 
+import { SECURITY_CONFIG } from '@/config/security';
+import { secureStorage } from './secure-storage';
+import { secureWarn, secureInfo, secureDebug } from './secure-logger';
+
 interface CacheEntry {
-  status: boolean;
+  isAdmin: boolean;
   timestamp: number;
   sessionId?: string;
   refreshCount?: number;
 }
 
-export const AUTH_CACHE_KEY = 'auth_admin_cache';
-export const CACHE_DURATION = 24 * 60 * 60 * 1000; // Extended to 24 hours
-export const CACHE_REFRESH_THRESHOLD = 30 * 60 * 1000; // 30 minutes for refresh
-export const EMERGENCY_FALLBACK_TIME = 2 * 60 * 60 * 1000; // 2 hours emergency fallback
+type AuthCacheEntry = Record<string, CacheEntry>;
+
+const AUTH_CACHE_KEY = 'admin_status_cache';
 
 /**
- * Clear stale cache entries from localStorage with improved logic
+ * Clear stale cache entries with improved logic
  */
-export const clearStaleAuthCache = (): void => {
+export const clearStaleAuthCache = async (): Promise<void> => {
   try {
-    const stored = localStorage.getItem(AUTH_CACHE_KEY);
-    if (!stored) return;
+    const cache = await secureStorage.getItem<AuthCacheEntry>(AUTH_CACHE_KEY);
+    if (!cache) return;
 
-    const cache = JSON.parse(stored);
     const now = Date.now();
-    const cleanCache: { [key: string]: CacheEntry } = {};
+    const cleanCache: AuthCacheEntry = {};
 
     // Keep only non-stale entries
-    Object.keys(cache).forEach(key => {
-      const entry = cache[key];
-      if (entry && (now - entry.timestamp) < CACHE_DURATION) {
-        cleanCache[key] = entry;
+    for (const [userId, entry] of Object.entries(cache)) {
+      if (entry && typeof entry === 'object' && 'timestamp' in entry) {
+        const age = now - entry.timestamp;
+        
+        if (age < SECURITY_CONFIG.SESSION.ADMIN_CHECK_CACHE) {
+          cleanCache[userId] = entry;
+        }
       }
-    });
+    }
 
-    // Update localStorage with cleaned cache
     if (Object.keys(cleanCache).length > 0) {
-      localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cleanCache));
-      console.log(`[AuthCache] Cleaned cache, kept ${Object.keys(cleanCache).length} entries`);
+      await secureStorage.setItem(AUTH_CACHE_KEY, cleanCache, true);
+      secureDebug(`Cleaned cache, kept ${Object.keys(cleanCache).length} entries`, undefined, 'AuthCache');
     } else {
-      localStorage.removeItem(AUTH_CACHE_KEY);
-      console.log('[AuthCache] Removed empty cache');
+      secureStorage.removeItem(AUTH_CACHE_KEY);
+      secureDebug('Removed empty cache', undefined, 'AuthCache');
     }
   } catch (error) {
-    console.error('[AuthCache] Error cleaning cache:', error);
-    localStorage.removeItem(AUTH_CACHE_KEY);
+    secureWarn('Error cleaning cache', error, 'AuthCache');
+    secureStorage.removeItem(AUTH_CACHE_KEY);
   }
 };
 
 /**
  * Get cache entry for a user with graceful degradation
+ * Compatibility wrapper for existing code
  */
 export const getCachedAdminStatus = (userId: string, sessionId?: string): boolean | null => {
+  // Synchronous wrapper for compatibility
   try {
     const stored = localStorage.getItem(AUTH_CACHE_KEY);
     if (!stored) return null;
-
+    
     const cache = JSON.parse(stored);
-    const entry: CacheEntry = cache[userId];
-    
+    const entry = cache[userId];
     if (!entry) return null;
-
-    const now = Date.now();
-    const age = now - entry.timestamp;
-    const isStale = age > CACHE_DURATION;
-    const needsRefresh = age > CACHE_REFRESH_THRESHOLD;
-    const isEmergencyFallback = age > EMERGENCY_FALLBACK_TIME;
     
-    // Emergency fallback: if cache is very old but not stale, allow it
-    if (isEmergencyFallback && !isStale) {
-      console.log('[AuthCache] Using emergency fallback cache (very old but valid)');
-      return entry.status;
-    }
+    const age = Date.now() - entry.timestamp;
+    if (age > SECURITY_CONFIG.SESSION.ADMIN_CHECK_CACHE) return null;
+    
+    return entry.isAdmin;
+  } catch {
+    return null;
+  }
+};
 
-    // Return null if truly stale
-    if (isStale) {
-      console.log('[AuthCache] Cache entry is stale, returning null');
+export const getCachedAdminStatusAsync = async (userId: string): Promise<{ isAdmin: boolean; isFresh: boolean } | null> => {
+  try {
+    const cache = await secureStorage.getItem<AuthCacheEntry>(AUTH_CACHE_KEY);
+    if (!cache) return null;
+
+    const entry = cache[userId];
+    
+    if (!entry || typeof entry !== 'object' || !('isAdmin' in entry) || !('timestamp' in entry)) {
       return null;
     }
 
-    // For session changes, be more lenient during refresh periods
-    const sessionChanged = sessionId && entry.sessionId && entry.sessionId !== sessionId;
-    if (sessionChanged && needsRefresh) {
-      console.log('[AuthCache] Session changed during refresh period, allowing cached value');
+    const age = Date.now() - entry.timestamp;
+    
+    // Check if cache is expired
+    if (age > SECURITY_CONFIG.SESSION.ADMIN_CHECK_CACHE) {
+      return null;
     }
 
-    const status = needsRefresh ? '(needs refresh)' : '(fresh)';
-    console.log(`[AuthCache] Using cached admin status: ${entry.status} ${status}`);
-    return entry.status;
+    // Cache is fresh if less than 1 minute old
+    const isFresh = age < 60000;
+    
+    secureDebug(`Using cached admin status: ${entry.isAdmin} ${isFresh ? '(fresh)' : '(needs refresh)'}`, undefined, 'AuthCache');
+    
+    return {
+      isAdmin: entry.isAdmin,
+      isFresh
+    };
   } catch (error) {
-    console.error('[AuthCache] Error reading cache:', error);
+    secureWarn('Error reading cache', error, 'AuthCache');
     return null;
   }
 };
@@ -98,97 +113,85 @@ export const getCachedAdminStatus = (userId: string, sessionId?: string): boolea
 /**
  * Set cache entry for a user with enhanced metadata
  */
-export const setCachedAdminStatus = (userId: string, status: boolean, sessionId?: string): void => {
+export const setCachedAdminStatus = (userId: string, isAdmin: boolean, sessionId?: string): void => {
+  // Synchronous wrapper for compatibility
   try {
     const stored = localStorage.getItem(AUTH_CACHE_KEY);
     const cache = stored ? JSON.parse(stored) : {};
-
-    const existingEntry = cache[userId];
+    
     cache[userId] = {
-      status,
+      isAdmin,
       timestamp: Date.now(),
-      sessionId: sessionId || existingEntry?.sessionId,
-      refreshCount: (existingEntry?.refreshCount || 0) + 1
+      sessionId
     };
-
+    
     localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cache));
-    console.log('[AuthCache] Cached admin status:', status, 'for user:', userId, 
-      sessionId ? `(session: ${sessionId.slice(0, 8)}...)` : '');
   } catch (error) {
-    console.error('[AuthCache] Error setting cache:', error);
+    secureWarn('Error setting cache', error, 'AuthCache');
+  }
+};
+
+export const setCachedAdminStatusSecure = async (userId: string, isAdmin: boolean): Promise<void> => {
+  try {
+    const cache = await secureStorage.getItem<AuthCacheEntry>(AUTH_CACHE_KEY) || {};
+    
+    cache[userId] = {
+      isAdmin,
+      timestamp: Date.now()
+    };
+    
+    await secureStorage.setItem(AUTH_CACHE_KEY, cache, true);
+    secureInfo('Admin status cached', { isAdmin }, 'AuthCache');
+  } catch (error) {
+    secureWarn('Error setting cache', error, 'AuthCache');
   }
 };
 
 /**
  * Check if cache needs refresh with progressive logic
  */
-export const shouldRefreshCache = (userId: string): boolean => {
+export const isCacheEntryValid = async (userId: string): Promise<boolean> => {
   try {
-    const stored = localStorage.getItem(AUTH_CACHE_KEY);
-    if (!stored) return false;
+    const cache = await secureStorage.getItem<AuthCacheEntry>(AUTH_CACHE_KEY);
+    if (!cache) return false;
 
-    const cache = JSON.parse(stored);
-    const entry: CacheEntry = cache[userId];
+    const entry = cache[userId];
     
-    if (!entry) return false;
-
-    const now = Date.now();
-    const age = now - entry.timestamp;
-    const needsRefresh = age > CACHE_REFRESH_THRESHOLD;
-    
-    if (needsRefresh) {
-      console.log('[AuthCache] Cache needs refresh for user:', userId, `(age: ${Math.round(age / 60000)}min)`);
+    if (!entry || typeof entry !== 'object' || !('timestamp' in entry)) {
+      return false;
     }
-    
-    return needsRefresh;
+
+    const age = Date.now() - entry.timestamp;
+    return age < SECURITY_CONFIG.SESSION.ADMIN_CHECK_CACHE;
   } catch (error) {
-    console.error('[AuthCache] Error checking refresh need:', error);
     return false;
   }
 };
 
 /**
- * Background refresh functionality
- */
-export const scheduleBackgroundRefresh = (userId: string, refreshFn: () => Promise<void>): void => {
-  if (!shouldRefreshCache(userId)) return;
-
-  // Schedule background refresh with exponential backoff
-  const refreshDelay = Math.min(5000 + Math.random() * 5000, 30000); // 5-10s, max 30s
-  
-  setTimeout(async () => {
-    try {
-      console.log('[AuthCache] Performing background refresh for user:', userId);
-      await refreshFn();
-    } catch (error) {
-      console.warn('[AuthCache] Background refresh failed:', error);
-    }
-  }, refreshDelay);
-};
-
-/**
  * Clear all auth cache
  */
-export const clearAllAuthCache = (): void => {
+export const clearAuthCache = (): void => {
   try {
-    localStorage.removeItem(AUTH_CACHE_KEY);
-    console.log('[AuthCache] Cleared all auth cache');
+    secureStorage.removeItem(AUTH_CACHE_KEY);
+    secureInfo('Auth cache cleared', undefined, 'AuthCache');
   } catch (error) {
-    console.error('[AuthCache] Error clearing cache:', error);
+    secureWarn('Error clearing cache', error, 'AuthCache');
   }
 };
 
-/**
- * Initialize cache cleanup with improved intervals
- */
+// Compatibility exports for existing code
 export const initializeAuthCacheCleanup = (): void => {
-  // Clean up stale entries on initialization
   clearStaleAuthCache();
+};
 
-  // Set up periodic cleanup every 30 minutes (less frequent due to longer cache)
-  setInterval(() => {
-    clearStaleAuthCache();
-  }, 30 * 60 * 1000);
-
-  console.log('[AuthCache] Initialized enhanced cache cleanup with 24h duration');
+export const scheduleBackgroundRefresh = (userId: string, refreshFn: () => Promise<void>): void => {
+  // Simplified background refresh
+  setTimeout(async () => {
+    try {
+      await refreshFn();
+    } catch (error) {
+      secureWarn('Background refresh failed', error, 'AuthCache');
+    }
+  }, 5000);
 };
