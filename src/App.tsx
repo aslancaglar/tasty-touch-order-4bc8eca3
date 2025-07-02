@@ -40,6 +40,8 @@ import OwnerLogin from "./pages/OwnerLogin";
 import Index from "./pages/Index";
 
 const App = () => {
+  console.log("App component mounted");
+  
   // Initialize security monitoring
   useSecurityHeaders();
   const { reportSecurityEvent } = useSecurityMonitoring();

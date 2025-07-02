@@ -14,6 +14,9 @@ const Index = () => {
     adminCheckCompleted
   });
 
+  // Add debug log to see if we reach this component at all
+  console.log("Index component mounted");
+
   // Show loading state while auth is being determined
   if (loading || !adminCheckCompleted) {
     return (
