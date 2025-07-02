@@ -186,18 +186,14 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     }
     
     try {
-      // Make secure API call to PrintNode
-      const response = await fetch('https://api.printnode.com/printers', {
-        headers: {
-          'Authorization': `Basic ${btoa(key + ':')}`
-        }
+      // Use edge function for secure API calls
+      const { data, error } = await supabase.functions.invoke('printnode-api', {
+        body: { action: 'getPrinters' }
       });
       
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      if (error) {
+        throw new Error(`Edge function error: ${error.message}`);
       }
-      
-      const data = await response.json();
       
       return data.map((printer: any) => ({
         id: printer.id.toString(),
@@ -207,7 +203,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         selected: false
       }));
     } catch (error) {
-      console.error("Error calling API");
+      console.error("Error calling PrintNode API");
       
       // Fallback to mock data during development or when API fails
       if (process.env.NODE_ENV === 'development') {
@@ -318,25 +314,22 @@ is working correctly!
       // Properly encode for PrintNode - fix for non-Latin1 characters
       const encodedContent = btoa(unescape(encodeURIComponent(testReceipt)));
       
-      // Make secure API call
-      const response = await fetch('https://api.printnode.com/printjobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${btoa(apiKey + ':')}`
-        },
-        body: JSON.stringify({
-          printer: parseInt(printerId, 10) || printerId,
-          title: "Test Print",
-          contentType: "raw_base64",
-          content: encodedContent,
-          source: "Restaurant Kiosk"
-        })
+      // Use edge function for secure API calls
+      const { data, error } = await supabase.functions.invoke('printnode-api', {
+        body: {
+          action: 'testPrint',
+          printJob: {
+            printer: parseInt(printerId, 10) || printerId,
+            title: "Test Print",
+            contentType: "raw_base64",
+            content: encodedContent,
+            source: "Restaurant Kiosk"
+          }
+        }
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error sending print job: ${response.status}`);
+      if (error) {
+        throw new Error(`Error sending print job: ${error.message}`);
       }
       
       toast({

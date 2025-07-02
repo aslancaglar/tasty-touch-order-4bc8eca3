@@ -222,24 +222,22 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       for (const printerId of printerIds) {
         console.log(`Sending to printer ID: ${printerId}`);
         
-        // Make secure API call
-        const response = await fetch('https://api.printnode.com/printjobs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${btoa(apiKey + ':')}`
-          },
-          body: JSON.stringify({
-            printer: parseInt(printerId, 10) || printerId,
-            title: `Order #${orderData.orderNumber}`,
-            contentType: "raw_base64",
-            content: encodedContent,
-            source: "Restaurant Kiosk"
-          })
+        // Use edge function for secure API calls
+        const { data, error } = await supabase.functions.invoke('printnode-api', {
+          body: {
+            action: 'sendReceipt',
+            printJob: {
+              printer: parseInt(printerId, 10) || printerId,
+              title: `Order #${orderData.orderNumber}`,
+              contentType: "raw_base64",
+              content: encodedContent,
+              source: "Restaurant Kiosk"
+            }
+          }
         });
         
-        if (!response.ok) {
-          throw new Error(`Error sending print job: ${response.status}`);
+        if (error) {
+          throw new Error(`Error sending print job: ${error.message}`);
         } else {
           console.log(`Print receipt sent successfully`);
         }
