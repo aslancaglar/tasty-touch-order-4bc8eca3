@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
   Store,
+  Shield,
   ChevronLeft,
   ChevronRight,
   LogOut
@@ -33,6 +34,12 @@ const createSidebarItems = (t: (key: string) => string): SidebarItem[] => [
     icon: Store,
     href: "/restaurants",
     translationKey: "sidebar.restaurants"
+  },
+  {
+    title: "Security",
+    icon: Shield,
+    href: "/security",
+    translationKey: "sidebar.security"
   },
 ];
 

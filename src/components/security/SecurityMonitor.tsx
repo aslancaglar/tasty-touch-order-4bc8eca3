@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Shield, WifiOff } from 'lucide-react';
 import { logSecurityEvent } from '@/utils/error-handler';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SecurityThreat {
   type: 'network' | 'session' | 'injection' | 'rate_limit';
@@ -121,11 +122,29 @@ const SecurityMonitor = () => {
     };
   }, []);
 
-  const addThreat = (threat: SecurityThreat) => {
+  const addThreat = async (threat: SecurityThreat) => {
     setThreats(prev => {
       const newThreats = [threat, ...prev].slice(0, 5); // Keep only last 5
       return newThreats;
     });
+
+    // Log to database
+    try {
+      await supabase.rpc('log_security_event', {
+        _event_type: threat.type,
+        _severity: threat.severity,
+        _title: threat.message,
+        _description: `Detected by SecurityMonitor at ${new Date(threat.timestamp).toISOString()}`,
+        _source_ip: window.location.hostname,
+        _metadata: { 
+          user_agent: navigator.userAgent,
+          url: window.location.href,
+          timestamp: threat.timestamp
+        }
+      });
+    } catch (error) {
+      console.error('Failed to log security event:', error);
+    }
 
     // Auto-remove low severity threats after 30 seconds
     if (threat.severity === 'low') {
