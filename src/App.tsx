@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import React from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -38,7 +38,7 @@ import Security from "./pages/Security";
 
 const App = () => {
   // Initialize cache config when the app starts
-  useEffect(() => {
+  React.useEffect(() => {
     initializeCacheConfig();
   }, []);
 
