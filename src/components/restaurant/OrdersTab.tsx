@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Restaurant, OrderStatus } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, ChefHat, CheckCircle, XCircle, Trash2, Calendar } from "lucide-react";
+import { Clock, ChefHat, CheckCircle, XCircle, Trash2, Calendar, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type OrderItem = {
   name: string;
@@ -67,7 +68,9 @@ interface OrdersTabProps {
 
 const OrdersTab = ({ restaurant }: OrdersTabProps) => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -182,7 +185,9 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
           })
         );
 
-        setOrders(transformedOrders.filter(Boolean) as Order[]);
+        const validOrders = transformedOrders.filter(Boolean) as Order[];
+        setAllOrders(validOrders);
+        setOrders(validOrders);
       } catch (error) {
         console.error("Error fetching orders:", error);
         toast({
@@ -199,6 +204,17 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
       fetchOrders();
     }
   }, [restaurant.id, currentPage, toast, totalOrders]);
+
+  // Filter orders based on status
+  useEffect(() => {
+    let filteredOrders = allOrders;
+
+    if (selectedStatus !== "all") {
+      filteredOrders = filteredOrders.filter(order => order.status === selectedStatus);
+    }
+
+    setOrders(filteredOrders);
+  }, [selectedStatus, allOrders]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
@@ -345,6 +361,45 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Orders</h3>
+        <div className="flex items-center space-x-4">
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                <div className="flex items-center space-x-2">
+                  <Filter className="h-4 w-4" />
+                  <span>All Statuses</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="pending">
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Pending</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="preparing">
+                <div className="flex items-center space-x-2">
+                  <ChefHat className="h-4 w-4" />
+                  <span>Preparing</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="completed">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Completed</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="cancelled">
+                <div className="flex items-center space-x-2">
+                  <XCircle className="h-4 w-4" />
+                  <span>Cancelled</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       
       <div className="rounded-md border">
