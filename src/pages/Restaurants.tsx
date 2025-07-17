@@ -261,13 +261,10 @@ const RestaurantCard = ({
   );
 };
 
-const fetchRestaurantStats = async (restaurantIds: string[], bustCache = false): Promise<Record<string, RestaurantStats>> => {
+const fetchRestaurantStats = async (restaurantIds: string[], restaurants: Restaurant[], bustCache = false): Promise<Record<string, RestaurantStats>> => {
   if (restaurantIds.length === 0) return {};
 
-  // Add cache-busting timestamp
-  const cacheBuster = bustCache ? Date.now() : undefined;
-  
-  console.log(`🔍 Fetching restaurant stats for IDs: ${restaurantIds.join(', ')} ${bustCache ? `(cache busted: ${cacheBuster})` : ''}`);
+  console.log(`🔍 Fetching restaurant stats using direct database query ${bustCache ? '(cache busted)' : ''}`);
 
   let stats: Record<string, RestaurantStats> = {};
   
@@ -282,35 +279,46 @@ const fetchRestaurantStats = async (restaurantIds: string[], bustCache = false):
     sessionStorage.clear();
   }
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select("restaurant_id,total,status,created_at")
-    .in("restaurant_id", restaurantIds)
-    .neq("status", "cancelled");
-
-  if (error) {
-    console.error("❌ Error fetching order stats for restaurants:", error);
-    throw error;
-  }
-
+  // Initialize stats for all restaurants
   for (const id of restaurantIds) {
     stats[id] = { totalOrders: 0, revenue: 0 };
   }
 
-  if (data) {
-    console.log(`📊 Raw order data fetched: ${data.length} orders`);
+  // Fetch order data directly with proper count
+  const { data: orderData, error: orderError } = await supabase
+    .from("orders")
+    .select("restaurant_id,total,status")
+    .in("restaurant_id", restaurantIds)
+    .neq("status", "cancelled");
+
+  if (orderError) {
+    console.error("❌ Error fetching order data:", orderError);
+    throw orderError;
+  }
+
+  if (orderData) {
+    console.log(`📊 Processing ${orderData.length} orders for statistics`);
+    console.log(`🔍 Sample orders:`, orderData.slice(0, 5));
     
-    for (const order of data) {
+    // Calculate both order count and revenue
+    for (const order of orderData) {
       if (order.restaurant_id && stats[order.restaurant_id]) {
         stats[order.restaurant_id].totalOrders += 1;
         stats[order.restaurant_id].revenue += order.total ? parseFloat(String(order.total)) : 0;
       }
     }
     
-    // Log detailed stats
+    // Log final stats with restaurant names for debugging
     for (const [id, stat] of Object.entries(stats)) {
-      const restaurant = restaurantIds.find(rid => rid === id);
-      console.log(`📈 Restaurant ${id}: ${stat.totalOrders} orders, ${stat.revenue.toFixed(2)} revenue`);
+      const restaurant = restaurants.find(r => r.id === id);
+      const restaurantName = restaurant?.name || 'Unknown';
+      console.log(`📈 FINAL RESULT: ${restaurantName} (${id}): ${stat.totalOrders} orders, ${stat.revenue.toFixed(2)} revenue`);
+      
+      // Special debugging for Green Kebab
+      if (restaurantName.includes('Green Kebab')) {
+        const greenOrders = orderData.filter(o => o.restaurant_id === id);
+        console.log(`🥙 Green Kebab DEBUG: Found ${greenOrders.length} orders in raw data`);
+      }
     }
   }
   
@@ -356,7 +364,7 @@ const Restaurants = () => {
     setLoadingStats(true);
     try {
       const ids = restaurants.map((r) => r.id);
-      const statData = await fetchRestaurantStats(ids, bustCache);
+      const statData = await fetchRestaurantStats(ids, restaurants, bustCache);
       setStats(statData);
       
       if (bustCache) {
