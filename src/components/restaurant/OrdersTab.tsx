@@ -86,7 +86,8 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
         const { count, error: countError } = await supabase
           .from("orders")
           .select("*", { count: 'exact', head: true })
-          .eq("restaurant_id", restaurant.id);
+          .eq("restaurant_id", restaurant.id)
+          .neq("status", "cancelled");
 
         if (countError) {
           throw countError;
@@ -98,6 +99,7 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
           .from("orders")
           .select("*")
           .eq("restaurant_id", restaurant.id)
+          .neq("status", "cancelled")
           .order("created_at", { ascending: false })
           .range((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage - 1);
 
