@@ -83,6 +83,7 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -233,7 +234,7 @@ const Orders = () => {
     fetchData();
   }, [currentPage, toast, totalOrders]);
 
-  // Filter orders based on search and restaurant selection
+  // Filter orders based on search, restaurant selection, and status
   useEffect(() => {
     let filteredOrders = allOrders;
 
@@ -249,8 +250,12 @@ const Orders = () => {
       filteredOrders = filteredOrders.filter(order => order.restaurantId === selectedRestaurant);
     }
 
+    if (selectedStatus !== "all") {
+      filteredOrders = filteredOrders.filter(order => order.status === selectedStatus);
+    }
+
     setOrders(filteredOrders);
-  }, [searchTerm, selectedRestaurant, allOrders]);
+  }, [searchTerm, selectedRestaurant, selectedStatus, allOrders]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
@@ -518,6 +523,38 @@ const Orders = () => {
                 {restaurant.name}
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4" />
+                <span>Pending</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="preparing">
+              <div className="flex items-center space-x-2">
+                <ChefHat className="h-4 w-4" />
+                <span>Preparing</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="completed">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4" />
+                <span>Completed</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="cancelled">
+              <div className="flex items-center space-x-2">
+                <XCircle className="h-4 w-4" />
+                <span>Cancelled</span>
+              </div>
+            </SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" className="sm:w-auto">
