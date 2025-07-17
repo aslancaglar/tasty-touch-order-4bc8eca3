@@ -193,7 +193,7 @@ const AddRestaurantDialog = ({ onRestaurantAdded, t }: { onRestaurantAdded: () =
 
 type RestaurantStats = {
   totalOrders: number;
-  revenue: number;
+  totalRevenue: number;
 };
 
 const RestaurantCard = ({
@@ -238,7 +238,7 @@ const RestaurantCard = ({
               <Skeleton className="h-6 w-20" />
             ) : (
               <p className="font-medium">
-                {currencySymbol}{stats?.revenue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
+                {currencySymbol}{stats?.totalRevenue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "0.00"}
               </p>
             )}
           </div>
@@ -264,30 +264,39 @@ const RestaurantCard = ({
 const fetchRestaurantStats = async (restaurantIds: string[]): Promise<Record<string, RestaurantStats>> => {
   if (restaurantIds.length === 0) return {};
 
-  let stats: Record<string, RestaurantStats> = {};
-  const { data, error } = await supabase
-    .from("orders")
-    .select("restaurant_id,total,status")
-    .in("restaurant_id", restaurantIds);
+  const stats: Record<string, RestaurantStats> = {};
+  
+  // Initialize stats for all restaurants
+  restaurantIds.forEach(id => {
+    stats[id] = { totalOrders: 0, totalRevenue: 0 };
+  });
 
-  if (error) {
-    console.error("Error fetching order stats for restaurants:", error);
-    throw error;
-  }
+  // Fetch stats for each restaurant using server-side aggregation
+  await Promise.all(restaurantIds.map(async (restaurantId) => {
+    const [ordersResponse, revenueResponse] = await Promise.all([
+      // Count orders excluding cancelled ones
+      supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('restaurant_id', restaurantId)
+        .neq('status', 'cancelled'),
+      // Sum total revenue excluding cancelled orders
+      supabase
+        .from('orders')
+        .select('total')
+        .eq('restaurant_id', restaurantId)
+        .neq('status', 'cancelled')
+    ]);
 
-  for (const id of restaurantIds) {
-    stats[id] = { totalOrders: 0, revenue: 0 };
-  }
-
-  if (data) {
-    for (const order of data) {
-      if (order.status === "cancelled") continue;
-      if (order.restaurant_id && stats[order.restaurant_id]) {
-        stats[order.restaurant_id].totalOrders += 1;
-        stats[order.restaurant_id].revenue += order.total ? parseFloat(String(order.total)) : 0;
-      }
+    if (ordersResponse.error || revenueResponse.error) {
+      console.error('Error fetching restaurant stats:', ordersResponse.error || revenueResponse.error);
+      return;
     }
-  }
+
+    stats[restaurantId].totalOrders = ordersResponse.count || 0;
+    stats[restaurantId].totalRevenue = revenueResponse.data?.reduce((sum, order) => sum + (Number(order.total) || 0), 0) || 0;
+  }));
+
   return stats;
 };
 
