@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Restaurant, OrderStatus } from "@/types/database-types";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock, ChefHat, CheckCircle, XCircle, Trash2, Calendar, Filter } from "lucide-react";
