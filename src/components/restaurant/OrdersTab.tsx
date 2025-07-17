@@ -207,11 +207,30 @@ const OrdersTab = ({ restaurant }: OrdersTabProps) => {
 
   // Filter orders based on status
   useEffect(() => {
+    console.log('Filtering orders:', {
+      selectedStatus,
+      totalAllOrders: allOrders.length,
+      orderStatuses: allOrders.map(order => order.status),
+      orderStatusCounts: allOrders.reduce((acc, order) => {
+        acc[order.status] = (acc[order.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    });
+
     let filteredOrders = allOrders;
 
     if (selectedStatus !== "all") {
-      filteredOrders = filteredOrders.filter(order => order.status === selectedStatus);
+      filteredOrders = filteredOrders.filter(order => {
+        const matches = order.status === selectedStatus;
+        console.log(`Order ${order.id} status: "${order.status}", selectedStatus: "${selectedStatus}", matches: ${matches}`);
+        return matches;
+      });
     }
+
+    console.log('Filtered orders result:', {
+      filteredCount: filteredOrders.length,
+      filteredStatuses: filteredOrders.map(order => order.status)
+    });
 
     setOrders(filteredOrders);
   }, [selectedStatus, allOrders]);
