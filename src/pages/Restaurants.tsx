@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit, MoreHorizontal, Plus, Trash2, Settings, Loader2, RefreshCw } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { Edit, MoreHorizontal, Plus, Trash2, Settings, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -261,67 +261,33 @@ const RestaurantCard = ({
   );
 };
 
-const fetchRestaurantStats = async (restaurantIds: string[], restaurants: Restaurant[], bustCache = false): Promise<Record<string, RestaurantStats>> => {
+const fetchRestaurantStats = async (restaurantIds: string[]): Promise<Record<string, RestaurantStats>> => {
   if (restaurantIds.length === 0) return {};
 
-  console.log(`🔍 Fetching restaurant stats using direct database query ${bustCache ? '(cache busted)' : ''}`);
-
   let stats: Record<string, RestaurantStats> = {};
-  
-  // Clear relevant caches before query
-  if (bustCache) {
-    console.log('🧹 Clearing browser and storage caches...');
-    if ('caches' in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map(name => caches.delete(name)));
-    }
-    localStorage.clear();
-    sessionStorage.clear();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("restaurant_id,total,status")
+    .in("restaurant_id", restaurantIds);
+
+  if (error) {
+    console.error("Error fetching order stats for restaurants:", error);
+    throw error;
   }
 
-  // Initialize stats for all restaurants
   for (const id of restaurantIds) {
     stats[id] = { totalOrders: 0, revenue: 0 };
   }
 
-  // Fetch order data directly with proper count
-  const { data: orderData, error: orderError } = await supabase
-    .from("orders")
-    .select("restaurant_id,total,status")
-    .in("restaurant_id", restaurantIds)
-    .neq("status", "cancelled");
-
-  if (orderError) {
-    console.error("❌ Error fetching order data:", orderError);
-    throw orderError;
-  }
-
-  if (orderData) {
-    console.log(`📊 Processing ${orderData.length} orders for statistics`);
-    console.log(`🔍 Sample orders:`, orderData.slice(0, 5));
-    
-    // Calculate both order count and revenue
-    for (const order of orderData) {
+  if (data) {
+    for (const order of data) {
+      if (order.status === "cancelled") continue;
       if (order.restaurant_id && stats[order.restaurant_id]) {
         stats[order.restaurant_id].totalOrders += 1;
         stats[order.restaurant_id].revenue += order.total ? parseFloat(String(order.total)) : 0;
       }
     }
-    
-    // Log final stats with restaurant names for debugging
-    for (const [id, stat] of Object.entries(stats)) {
-      const restaurant = restaurants.find(r => r.id === id);
-      const restaurantName = restaurant?.name || 'Unknown';
-      console.log(`📈 FINAL RESULT: ${restaurantName} (${id}): ${stat.totalOrders} orders, ${stat.revenue.toFixed(2)} revenue`);
-      
-      // Special debugging for Green Kebab
-      if (restaurantName.includes('Green Kebab')) {
-        const greenOrders = orderData.filter(o => o.restaurant_id === id);
-        console.log(`🥙 Green Kebab DEBUG: Found ${greenOrders.length} orders in raw data`);
-      }
-    }
   }
-  
   return stats;
 };
 
@@ -330,7 +296,6 @@ const Restaurants = () => {
   const [stats, setStats] = useState<Record<string, RestaurantStats>>({});
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   
@@ -354,43 +319,6 @@ const Restaurants = () => {
     }
   };
 
-  const fetchStats = useCallback(async (bustCache = false) => {
-    if (restaurants.length === 0) {
-      setStats({});
-      setLoadingStats(false);
-      return;
-    }
-    
-    setLoadingStats(true);
-    try {
-      const ids = restaurants.map((r) => r.id);
-      const statData = await fetchRestaurantStats(ids, restaurants, bustCache);
-      setStats(statData);
-      
-      if (bustCache) {
-        toast({
-          title: "Statistics Refreshed",
-          description: "Restaurant statistics have been updated with latest data",
-        });
-      }
-    } catch (err) {
-      console.error("Failed to fetch restaurant stats", err);
-      toast({
-        title: "Error",
-        description: "Failed to fetch restaurant statistics",
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingStats(false);
-    }
-  }, [restaurants, toast]);
-
-  const handleManualRefresh = async () => {
-    setRefreshing(true);
-    await fetchStats(true);
-    setRefreshing(false);
-  };
-
   useEffect(() => {
     if (user) {
       fetchRestaurants();
@@ -402,37 +330,25 @@ const Restaurants = () => {
   }, [user]);
 
   useEffect(() => {
-    fetchStats(false);
-  }, [fetchStats]);
-
-  // Set up real-time updates for orders
-  useEffect(() => {
-    if (restaurants.length === 0) return;
-
-    console.log('🔄 Setting up real-time updates for restaurant orders');
-    
-    const channel = supabase
-      .channel('restaurant-orders-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        (payload) => {
-          console.log('🔄 Real-time order update received:', payload);
-          // Refresh stats when orders change
-          fetchStats(true);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('🔄 Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
+    const getStats = async () => {
+      if (restaurants.length === 0) {
+        setStats({});
+        setLoadingStats(false);
+        return;
+      }
+      setLoadingStats(true);
+      try {
+        const ids = restaurants.map((r) => r.id);
+        const statData = await fetchRestaurantStats(ids);
+        setStats(statData);
+      } catch (err) {
+        console.error("Failed to fetch restaurant stats", err);
+      } finally {
+        setLoadingStats(false);
+      }
     };
-  }, [restaurants, fetchStats]);
+    getStats();
+  }, [restaurants]);
 
   return (
     <AdminLayout>
@@ -443,18 +359,7 @@ const Restaurants = () => {
             {t("restaurants.subtitle")}
           </p>
         </div>
-        <div className="flex gap-2 mt-4 sm:mt-0">
-          <Button 
-            variant="outline" 
-            onClick={handleManualRefresh}
-            disabled={refreshing || loadingStats}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh Stats'}
-          </Button>
-          <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} t={t} />
-        </div>
+        <AddRestaurantDialog onRestaurantAdded={fetchRestaurants} t={t} />
       </div>
 
       {!user ? (
