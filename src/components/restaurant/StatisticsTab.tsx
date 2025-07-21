@@ -226,17 +226,44 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
       });
       
       // EXCLUDE CANCELLED ORDERS from custom period data
-      const { data: periodOrders, error: periodError } = await supabase
+      // First get the count to determine if we need pagination
+      const { count: totalOrdersCount } = await supabase
         .from('orders')
-        .select('id, total, created_at')
+        .select('*', { count: 'exact', head: true })
         .eq('restaurant_id', restaurant.id)
-        .neq('status', 'cancelled')  // Exclude cancelled orders
+        .neq('status', 'cancelled')
         .gte('created_at', fromDate)
-        .lte('created_at', toDate)
-        .order('created_at', { ascending: true })
-        .range(0, 9999);  // Use range instead of limit to override PostgREST default 1000 limit
-      
-      if (periodError) throw periodError;
+        .lte('created_at', toDate);
+
+      console.log('Total orders count for period:', totalOrdersCount);
+
+      // Fetch all orders using pagination if needed
+      let periodOrders: any[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
+
+      while (hasMore && periodOrders.length < (totalOrdersCount || 0)) {
+        const { data: pageData, error: pageError } = await supabase
+          .from('orders')
+          .select('id, total, created_at')
+          .eq('restaurant_id', restaurant.id)
+          .neq('status', 'cancelled')
+          .gte('created_at', fromDate)
+          .lte('created_at', toDate)
+          .order('created_at', { ascending: true })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (pageError) throw pageError;
+        
+        if (pageData && pageData.length > 0) {
+          periodOrders = [...periodOrders, ...pageData];
+          page++;
+          hasMore = pageData.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
       
       console.log('Custom period orders found:', {
         count: periodOrders.length,
