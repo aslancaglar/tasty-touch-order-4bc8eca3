@@ -234,7 +234,7 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
         .gte('created_at', fromDate)
         .lte('created_at', toDate)
         .order('created_at', { ascending: true })
-        .limit(10000);  // Increase limit to handle large datasets
+        .range(0, 9999);  // Use range instead of limit to override PostgREST default 1000 limit
       
       if (periodError) throw periodError;
       
