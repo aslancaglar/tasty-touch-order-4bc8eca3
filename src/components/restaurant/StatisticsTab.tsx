@@ -131,7 +131,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
         .eq('restaurant_id', restaurant.id)
         .neq('status', 'cancelled')  // Exclude cancelled orders
         .gte('created_at', monthStart)
-        .lte('created_at', monthEnd);
+        .lte('created_at', monthEnd)
+        .limit(10000);  // Increase limit for large datasets
       
       if (monthlyError) throw monthlyError;
       
@@ -161,7 +162,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
         .eq('restaurant_id', restaurant.id)
         .neq('status', 'cancelled')  // Exclude cancelled orders
         .gte('created_at', last7Days)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(10000);  // Increase limit for large datasets
       
       if (chartError) throw chartError;
       
