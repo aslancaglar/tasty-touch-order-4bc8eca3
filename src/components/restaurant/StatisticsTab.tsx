@@ -231,7 +231,8 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
         .neq('status', 'cancelled')  // Exclude cancelled orders
         .gte('created_at', fromDate)
         .lte('created_at', toDate)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(10000);  // Increase limit to handle large datasets
       
       if (periodError) throw periodError;
       
