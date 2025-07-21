@@ -87,13 +87,19 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
       if (restaurant.ui_language) {
         setLanguage(restaurant.ui_language as SupportedLanguage);
       }
-      fetchStatistics();
+      // Only fetch default statistics if custom period is not active
+      if (!customPeriodActive) {
+        fetchStatistics();
+      }
     }
-  }, [restaurant.id, restaurant.ui_language]);
+  }, [restaurant.id, restaurant.ui_language, customPeriodActive]);
 
   useEffect(() => {
     if (customPeriodActive && dateRange && dateRange.from) {
       fetchCustomPeriodData();
+    } else if (!customPeriodActive) {
+      // When custom period is turned off, fetch default statistics
+      fetchStatistics();
     }
   }, [dateRange, customPeriodActive]);
 
