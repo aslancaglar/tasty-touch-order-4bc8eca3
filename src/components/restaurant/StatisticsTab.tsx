@@ -240,7 +240,9 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
       
       console.log('Custom period orders found:', {
         count: periodOrders.length,
-        orders: periodOrders.map(o => ({ id: o.id, date: o.created_at, total: o.total }))
+        queryDetails: { fromDate, toDate, restaurantId: restaurant.id },
+        hasMore: periodOrders.length === 10000 ? 'MIGHT_HAVE_MORE' : 'COMPLETE',
+        actualQueryUsed: `SELECT id, total, created_at FROM orders WHERE restaurant_id = '${restaurant.id}' AND status != 'cancelled' AND created_at >= '${fromDate}' AND created_at <= '${toDate}' ORDER BY created_at ASC LIMIT 10000`
       });
       
       // Process chart data
