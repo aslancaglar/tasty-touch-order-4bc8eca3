@@ -210,6 +210,13 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
       const fromDate = startOfDay(dateRange.from).toISOString();
       const toDate = endOfDay(dateRange.to).toISOString();
       
+      console.log('Custom period query:', {
+        restaurantId: restaurant.id,
+        fromDate,
+        toDate,
+        customPeriodActive
+      });
+      
       // EXCLUDE CANCELLED ORDERS from custom period data
       const { data: periodOrders, error: periodError } = await supabase
         .from('orders')
@@ -221,6 +228,11 @@ const StatisticsTab = ({ restaurant }: StatisticsTabProps) => {
         .order('created_at', { ascending: true });
       
       if (periodError) throw periodError;
+      
+      console.log('Custom period orders found:', {
+        count: periodOrders.length,
+        orders: periodOrders.map(o => ({ id: o.id, date: o.created_at, total: o.total }))
+      });
       
       // Process chart data
       const chartDataByDay: Record<string, ChartData> = {};
