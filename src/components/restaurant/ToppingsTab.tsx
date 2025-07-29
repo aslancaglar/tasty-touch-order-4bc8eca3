@@ -368,6 +368,9 @@ const ToppingsTab = ({
         error
       } = await supabase.from('toppings').insert([{
         name: formData.name,
+        name_fr: formData.name_fr,
+        name_en: formData.name_en,
+        name_tr: formData.name_tr,
         price: parseFloat(formData.price),
         tax_percentage: parseFloat(formData.tax_percentage || "10"),
         display_order: parseInt(formData.display_order || "0"),
@@ -416,6 +419,9 @@ const ToppingsTab = ({
         error
       } = await supabase.from('toppings').update({
         name: formData.name,
+        name_fr: formData.name_fr,
+        name_en: formData.name_en,
+        name_tr: formData.name_tr,
         price: parseFloat(formData.price),
         tax_percentage: parseFloat(formData.tax_percentage || "10"),
         display_order: parseInt(formData.display_order || "0")
@@ -934,6 +940,9 @@ const ToppingsTab = ({
           </DialogHeader>
           {selectedTopping && <ToppingForm onSubmit={values => handleUpdateTopping(selectedTopping.id, values)} initialValues={{
           name: selectedTopping.name,
+          name_fr: selectedTopping.name_fr,
+          name_en: selectedTopping.name_en,
+          name_tr: selectedTopping.name_tr,
           price: selectedTopping.price?.toString() || "0",
           tax_percentage: selectedTopping.tax_percentage?.toString() || "10",
           display_order: selectedTopping.display_order?.toString() || "0"
