@@ -1,7 +1,7 @@
 
 // src/utils/receipt-templates.ts
 import { CartItem } from '@/types/database-types';
-import { SupportedLanguage } from '@/utils/language-utils';
+import { SupportedLanguage, getTranslatedField } from '@/utils/language-utils';
 import { ESCPOS, formatText, centerText, addLineFeed, createDivider } from '@/utils/print-utils';
 
 // Define topping object type with name and quantity
@@ -17,7 +17,7 @@ export interface GroupedToppings {
 }
 
 // Helper function to group toppings by category for receipt display
-export function getGroupedToppings(item: CartItem): GroupedToppings[] {
+export function getGroupedToppings(item: CartItem, uiLanguage: SupportedLanguage = 'fr'): GroupedToppings[] {
   if (!item.menuItem.toppingCategories || item.menuItem.toppingCategories.length === 0 || !item.selectedToppings) {
     return [];
   }
@@ -39,18 +39,18 @@ export function getGroupedToppings(item: CartItem): GroupedToppings[] {
               selectedCategory.toppingQuantities[toppingId]) {
             // Return topping with quantity
             return {
-              name: topping.name,
+              name: getTranslatedField(topping, 'name', uiLanguage),
               quantity: selectedCategory.toppingQuantities[toppingId]
             };
           }
           // Return just the name for simple display
-          return topping.name;
+          return getTranslatedField(topping, 'name', uiLanguage);
         }
         return '';
       }).filter(Boolean) as (string | ToppingWithQuantity)[];
 
       return {
-        category: category.name,
+        category: getTranslatedField(category, 'name', uiLanguage),
         toppings
       };
     });
@@ -92,7 +92,7 @@ export function generateReceiptHTML(
   
   // Function to format each item in the cart
   const formatCartItem = (item: CartItem) => {
-    const itemToppings = getGroupedToppings(item);
+    const itemToppings = getGroupedToppings(item, 'fr');
     const selectedOptions = item.selectedOptions.flatMap(option => {
       const optionDef = item.menuItem.options?.find(o => o.id === option.optionId);
       if (!optionDef) return [];
@@ -335,7 +335,7 @@ export function generatePlainTextReceipt(
     
     // Add toppings with toppings price in parentheses next to topping name (not right-aligned)
     if (item.selectedToppings && item.selectedToppings.length > 0) {
-      const itemToppings = getGroupedToppings(item);
+      const itemToppings = getGroupedToppings(item, 'fr');
       
       // Process all toppings, flattening the structure
       itemToppings.forEach(group => {
@@ -553,7 +553,7 @@ ${tableNumber ? `${t('receipt.tableNumber')}: ${tableNumber}` : ''}
     }
     
     // Add toppings with quantities
-    const itemToppings = getGroupedToppings(item);
+    const itemToppings = getGroupedToppings(item, uiLanguage);
     itemToppings.forEach(group => {
       receipt += `   ${group.category}:\n`;
       group.toppings.forEach(topping => {

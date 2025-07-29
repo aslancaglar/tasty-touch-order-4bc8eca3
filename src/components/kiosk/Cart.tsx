@@ -7,6 +7,7 @@ import OrderSummary from "./OrderSummary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { calculateCartTotals } from "@/utils/price-utils";
+import { getTranslatedField } from "@/utils/language-utils";
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
@@ -179,7 +180,7 @@ const Cart: React.FC<CartProps> = ({
                       <div className="flex items-start space-x-3">
                         <img src={item.menuItem.image || '/placeholder.svg'} alt={item.menuItem.name} className="w-16 h-16 object-cover rounded" />
                         <div className="flex flex-col">
-                          <h3 className="text-responsive-body font-bold font-bebas text-lg">{item.menuItem.name}</h3>
+                          <h3 className="text-responsive-body font-bold font-bebas text-lg">{getTranslatedField(item.menuItem, 'name', uiLanguage)}</h3>
                           <p className="text-responsive-price text-gray-700">
                             {parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}
                           </p>

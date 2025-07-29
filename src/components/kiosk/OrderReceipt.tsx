@@ -3,7 +3,7 @@ import { CartItem } from "@/types/database-types";
 import { format } from "date-fns";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
-import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { useTranslation, SupportedLanguage, getTranslatedField } from "@/utils/language-utils";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -86,7 +86,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
         {cart.map((item, index) => (
           <div key={item.id} style={{ marginBottom: "8px" }}>
             <div className="item">
-              <span>{item.quantity}x {sanitizeText(item.menuItem.name)}</span>
+              <span>{item.quantity}x {sanitizeText(getTranslatedField(item.menuItem, 'name', uiLanguage))}</span>
               <span>{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
             </div>
             {getFormattedOptions(item) && (
@@ -103,16 +103,17 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
             {/* Add toppings without category headers and tax info */}
             {item.selectedToppings && item.selectedToppings.length > 0 && (
               <div className="item-details text-xs">
-                {getGroupedToppings(item).flatMap((group) => 
-                  group.toppings.map((topping, toppingIdx) => {
-                    const category = item.menuItem.toppingCategories?.find(cat => cat.name === group.category);
+                {item.selectedToppings.flatMap(selectedCategory => {
+                  const category = item.menuItem.toppingCategories?.find(cat => cat.id === selectedCategory.categoryId);
+                  if (!category) return [];
+                  
+                  return selectedCategory.toppingIds.map((toppingId, toppingIdx) => {
+                    const topping = category.toppings.find(t => t.id === toppingId);
+                    if (!topping) return null;
                     
-                    // Handle either string or ToppingWithQuantity
-                    const toppingName = typeof topping === 'string' ? topping : topping.name;
-                    const quantity = typeof topping === 'object' ? topping.quantity : 1;
+                    const quantity = selectedCategory.toppingQuantities?.[toppingId] || 1;
                     
-                    const toppingObj = category?.toppings.find(t => t.name === toppingName);
-                    const price = toppingObj ? parseFloat(String(toppingObj.price ?? "0")) : 0;
+                    const price = parseFloat(String(topping.price ?? "0"));
                     
                     // Calculate total price based on quantity
                     const totalPrice = price * quantity;
@@ -120,13 +121,13 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({
                     return (
                       <div key={`${item.id}-topping-${toppingIdx}`} className="item">
                         <span>
-                          {quantity > 1 ? `+ ${quantity}x ${sanitizeText(toppingName)}` : `+ ${sanitizeText(toppingName)}`}
+                          {quantity > 1 ? `+ ${quantity}x ${sanitizeText(getTranslatedField(topping, 'name', uiLanguage))}` : `+ ${sanitizeText(getTranslatedField(topping, 'name', uiLanguage))}`}
                         </span>
                         {totalPrice > 0 && <span>{totalPrice.toFixed(2)} {currencySymbol}</span>}
                       </div>
                     );
-                  })
-                )}
+                  }).filter(Boolean);
+                })}
               </div>
             )}
           </div>

@@ -160,7 +160,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                         <span>0.00 {currencySymbol}</span>
                       </div>)}
                     {/* Grouped toppings by category, show price if > 0 */}
-                    {getGroupedToppings(item).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
+                    {getGroupedToppings(item, uiLanguage).map((group, groupIdx) => <div key={`${item.id}-cat-summary-${groupIdx}`}>
                         <div style={{
                   fontWeight: 500,
                   paddingLeft: 0

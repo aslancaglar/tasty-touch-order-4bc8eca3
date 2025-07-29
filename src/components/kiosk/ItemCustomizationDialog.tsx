@@ -52,12 +52,14 @@ const Option = memo(({
   option,
   selectedOption,
   onToggleChoice,
-  currencySymbol
+  currencySymbol,
+  uiLanguage
 }: {
   option: any;
   selectedOption: any;
   onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
   currencySymbol: string;
+  uiLanguage: SupportedLanguage;
 }) => {
   return <div className="space-y-1">
       {option.choices.map(choice => {
@@ -73,7 +75,7 @@ const Option = memo(({
               `}>
                 {isSelected && <Check className="h-3 w-3" />}
               </div>
-              <span>{choice.name}</span>
+              <span>{getTranslatedField(choice, 'name', uiLanguage)}</span>
             </div>
             {choice.price && choice.price > 0 && <span>+{parseFloat(choice.price.toString()).toFixed(2)} {currencySymbol}</span>}
           </div>;
@@ -373,19 +375,19 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
-          <DialogTitle className="font-bold text-3xl mx-0 my-0 leading-relaxed">{item.name}</DialogTitle>
-          {item.description && <DialogDescription className="text-xl text-gray-800">{item.description}</DialogDescription>}
+          <DialogTitle className="font-bold text-3xl mx-0 my-0 leading-relaxed">{getTranslatedField(item, 'name', uiLanguage)}</DialogTitle>
+          {item.description && <DialogDescription className="text-xl text-gray-800">{getTranslatedField(item, 'description', uiLanguage)}</DialogDescription>}
         </DialogHeader>
         
         <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
           {/* Options section - only show if there are options */}
           {item.options && item.options.length > 0 && item.options.map(option => <div key={option.id} className="space-y-1">
               <Label className="font-medium">
-                {option.name}
+                {getTranslatedField(option, 'name', uiLanguage)}
                 {option.required && <span className="text-red-500 ml-1">*</span>}
                 {option.multiple && <span className="text-sm text-gray-500 ml-2">({t("multipleSelection")})</span>}
               </Label>
-              <Option option={option} selectedOption={selectedOptions.find(o => o.optionId === option.id)} onToggleChoice={onToggleChoice} currencySymbol={currencySymbol} />
+              <Option option={option} selectedOption={selectedOptions.find(o => o.optionId === option.id)} onToggleChoice={onToggleChoice} currencySymbol={currencySymbol} uiLanguage={uiLanguage} />
             </div>)}
 
           {/* Toppings section - with staggered animation */}

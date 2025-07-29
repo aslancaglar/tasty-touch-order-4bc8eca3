@@ -22,7 +22,7 @@ import OrderConfirmationDialog from "@/components/kiosk/OrderConfirmationDialog"
 import { preloadAllRestaurantData, PreloaderState } from "@/utils/data-preloader";
 import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
 import { useConnectionStatus, useNetworkAwareFetch } from "@/hooks/use-network-aware-fetch";
-import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { getTranslation, SupportedLanguage, getTranslatedField } from "@/utils/language-utils";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { LanguageSync } from "@/components/kiosk/LanguageSync";
 import { testNetworkConnectivity } from "@/utils/service-worker";
@@ -702,7 +702,7 @@ const KioskView = () => {
       if (!option) return [];
       return selectedOption.choiceIds.map(choiceId => {
         const choice = option.choices.find(c => c.id === choiceId);
-        return choice ? choice.name : "";
+        return choice ? getTranslatedField(choice, 'name', uiLanguage) : "";
       });
     }).filter(Boolean).join(", ");
   };
@@ -713,7 +713,7 @@ const KioskView = () => {
       if (!category) return [];
       return selectedCategory.toppingIds.map(toppingId => {
         const topping = category.toppings.find(t => t.id === toppingId);
-        return topping ? topping.name : "";
+        return topping ? getTranslatedField(topping, 'name', uiLanguage) : "";
       });
     }).filter(Boolean).join(", ");
   };

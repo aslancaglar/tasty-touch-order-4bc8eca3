@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { generatePlainTextReceipt, getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getTranslatedField } from "@/utils/language-utils";
 
 const translations = {
   fr: {
@@ -325,7 +326,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <div className="flex justify-between">
                   <div className="flex items-center">
                     <span className="font-medium mr-2">{item.quantity}x</span>
-                    <span className="font-medium">{item.menuItem.name}</span>
+                    <span className="font-medium">{getTranslatedField(item.menuItem, 'name', uiLanguage)}</span>
                   </div>
                   <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} €</span>
                 </div>
@@ -340,7 +341,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                       </div>
                     ))}
                     {/* Grouped toppings by category, show price if > 0 */}
-                    {getGroupedToppings(item).map((group, groupIdx) => (
+                    {getGroupedToppings(item, uiLanguage).map((group, groupIdx) => (
                       <div key={`${item.id}-cat-summary-${groupIdx}`}>
                         <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
