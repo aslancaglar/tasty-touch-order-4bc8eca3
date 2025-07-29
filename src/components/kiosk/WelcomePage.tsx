@@ -19,8 +19,20 @@ const WelcomePage = ({
   uiLanguage = "fr",
   isDataLoading = false
 }: WelcomePageProps) => {
-  const { language, setLanguage } = useLanguage();
-  const { t } = useTranslation(language);
+  // Try to use language context, but fall back to prop if not available
+  let currentLanguage = uiLanguage;
+  let setLanguage = (_lang: SupportedLanguage) => {};
+  
+  try {
+    const context = useLanguage();
+    currentLanguage = context.language;
+    setLanguage = context.setLanguage;
+  } catch {
+    // Context not available, use the prop
+    currentLanguage = uiLanguage;
+  }
+  
+  const { t } = useTranslation(currentLanguage);
   const [isStarting, setIsStarting] = useState(false);
   
   const handleStart = () => {
@@ -45,11 +57,11 @@ const WelcomePage = ({
             {availableLanguages.map((lang) => (
               <Button
                 key={lang}
-                variant={language === lang ? "default" : "ghost"}
+                variant={currentLanguage === lang ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setLanguage(lang)}
                 className={`
-                  ${language === lang 
+                  ${currentLanguage === lang
                     ? 'bg-white text-black hover:bg-white/90' 
                     : 'text-white hover:bg-white/20 border-white/20'
                   }
@@ -84,11 +96,11 @@ const WelcomePage = ({
             {availableLanguages.map((lang) => (
               <Button
                 key={lang}
-                variant={language === lang ? "default" : "outline"}
+                variant={currentLanguage === lang ? "default" : "outline"}
                 size="lg"
                 onClick={() => setLanguage(lang)}
                 className={`
-                  ${language === lang 
+                  ${currentLanguage === lang 
                     ? 'bg-violet-700 text-white hover:bg-violet-600 border-violet-700' 
                     : 'bg-white/10 text-white hover:bg-white/20 border-white/30'
                   }
