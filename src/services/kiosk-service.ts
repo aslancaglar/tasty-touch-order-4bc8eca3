@@ -707,7 +707,7 @@ export const deleteToppingCategory = async (id: string): Promise<void> => {
 export const getToppingsByCategory = async (categoryId: string): Promise<Topping[]> => {
   const { data, error } = await supabase
     .from("toppings")
-    .select("*")
+    .select("*, name_fr, name_en, name_tr")
     .eq("category_id", categoryId)
     .order('display_order', { ascending: true }); // Order by display_order
 

@@ -437,7 +437,7 @@ const KioskView = () => {
         const {
           data: toppings,
           error: toppingsError
-        } = await supabase.from('toppings').select('*').eq('category_id', category.id).eq('in_stock', true).order('display_order', {
+        } = await supabase.from('toppings').select('*, name_fr, name_en, name_tr').eq('category_id', category.id).eq('in_stock', true).order('display_order', {
           ascending: true
         }); // Order toppings by display_order
 
