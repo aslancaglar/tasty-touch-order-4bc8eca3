@@ -149,9 +149,15 @@ const KioskViewInner = () => {
     }
   }, [connectionStatus, restaurant, networkHealthy, toast]);
 
-  // Modify resetToWelcome to keep preloaded data and preserve user language preference
+  // Reset to welcome and clear user language preference to use restaurant default
+  const { resetToDefault } = useLanguage();
+  
   const resetToWelcome = () => {
     console.log("Resetting to welcome page - cleaning up all state");
+    
+    // Clear user language preference to revert to restaurant default
+    resetToDefault();
+    
     setShowWelcome(true);
     setShowOrderTypeSelection(false);
     setCart([]);

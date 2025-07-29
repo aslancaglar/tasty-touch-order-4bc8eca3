@@ -4,6 +4,7 @@ import { SupportedLanguage, DEFAULT_LANGUAGE } from '@/utils/language-utils';
 interface LanguageContextType {
   language: SupportedLanguage;
   setLanguage: (language: SupportedLanguage) => void;
+  resetToDefault: () => void;
 }
 
 const LanguageContext = React.createContext<LanguageContextType | undefined>(undefined);
@@ -60,8 +61,18 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
     localStorage.setItem('kiosk-language', newLanguage);
   };
 
+  const resetToDefault = () => {
+    console.log('[LanguageContext] Resetting to restaurant default language');
+    localStorage.removeItem('kiosk-language');
+    
+    // Reset to initial language or default
+    const targetLanguage = initialLanguage || DEFAULT_LANGUAGE;
+    console.log('[LanguageContext] Setting language to:', targetLanguage);
+    setLanguageState(targetLanguage);
+  };
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage }}>
+    <LanguageContext.Provider value={{ language, setLanguage, resetToDefault }}>
       {children}
     </LanguageContext.Provider>
   );
