@@ -16,11 +16,19 @@ import {
 } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
+import { MultiLanguageInput } from "./MultiLanguageInput";
+import { SupportedLanguage } from "@/utils/language-utils";
 
 // Define the form schema with validation
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
+  name_fr: z.string().optional(),
+  name_en: z.string().optional(),
+  name_tr: z.string().optional(),
   description: z.string().optional(),
+  description_fr: z.string().optional(),
+  description_en: z.string().optional(),
+  description_tr: z.string().optional(),
   icon: z.string().optional(),
   display_order: z.string().refine(
     (val) => !isNaN(Number(val)),
@@ -42,7 +50,13 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: initialValues?.name || "",
+      name_fr: initialValues?.name_fr || "",
+      name_en: initialValues?.name_en || "",
+      name_tr: initialValues?.name_tr || "",
       description: initialValues?.description || "",
+      description_fr: initialValues?.description_fr || "",
+      description_en: initialValues?.description_en || "",
+      description_tr: initialValues?.description_tr || "",
       icon: initialValues?.icon || "",
       display_order: initialValues?.display_order || "0",
     },
@@ -62,35 +76,43 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
     form.setValue("icon", url);
   };
 
+  // Handle multi-language field changes
+  const handleNameChange = (language: SupportedLanguage, value: string) => {
+    form.setValue(`name_${language}`, value);
+  };
+
+  const handleDescriptionChange = (language: SupportedLanguage, value: string) => {
+    form.setValue(`description_${language}`, value);
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Category name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+        {/* Multi-language name input */}
+        <MultiLanguageInput
+          label="Category Name"
+          placeholder="Category name"
+          required={true}
+          values={{
+            fr: form.watch("name_fr"),
+            en: form.watch("name_en"),
+            tr: form.watch("name_tr")
+          }}
+          onChange={handleNameChange}
+          error={form.formState.errors.name?.message}
         />
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Category description (optional)" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+        {/* Multi-language description input */}
+        <MultiLanguageInput
+          label="Category Description"
+          placeholder="Category description"
+          type="textarea"
+          values={{
+            fr: form.watch("description_fr"),
+            en: form.watch("description_en"),
+            tr: form.watch("description_tr")
+          }}
+          onChange={handleDescriptionChange}
         />
 
         <FormField

@@ -3,6 +3,7 @@ import React from "react";
 import { Clock, Database } from "lucide-react";
 import { Restaurant, OrderType } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
+import { LanguageSelector } from "./LanguageSelector";
 
 interface KioskHeaderProps {
   restaurant: Restaurant;
@@ -25,9 +26,10 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
     }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       
-      {/* Refresh button in top right corner */}
-      {onRefresh && (
-        <div className="absolute top-4 right-4 z-10">
+      {/* Controls in top right corner */}
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <LanguageSelector className="bg-white/20 text-white hover:bg-white/30 border-white/30" />
+        {onRefresh && (
           <Button 
             size="xs" 
             variant="ghost" 
@@ -37,8 +39,8 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
           >
             <Database className="h-3 w-3" />
           </Button>
-        </div>
-      )}
+        )}
+      </div>
       
       <div className="absolute inset-0 flex items-center p-6">
         <div className="flex items-center">
