@@ -13,14 +13,22 @@ import ImageUpload from "@/components/ImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { Topping } from "@/types/database-types";
 import { toast } from "@/hooks/use-toast";
+import { MultiLanguageInput } from "@/components/forms/MultiLanguageInput";
+import { SupportedLanguage } from "@/utils/language-utils";
 
 const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
+  name_fr: z.string().optional(),
+  name_en: z.string().optional(),
+  name_tr: z.string().optional(),
   description: z.string().optional(),
+  description_fr: z.string().optional(),
+  description_en: z.string().optional(),
+  description_tr: z.string().optional(),
   icon: z.string().optional(),
   min_selections: z.coerce.number().min(0, "Must be 0 or greater"),
   max_selections: z.coerce.number().min(0, "Must be 0 or greater"),
-  allow_multiple_same_topping: z.boolean().optional() // Added field for multiple quantities
+  allow_multiple_same_topping: z.boolean().optional()
 });
 
 type ToppingCategoryFormValues = z.infer<typeof toppingCategorySchema>;
@@ -31,7 +39,7 @@ interface ToppingCategoryFormProps {
   }) => void;
   initialValues?: Partial<ToppingCategoryFormValues> & {
     show_if_selection_id?: string[] | null;
-    allow_multiple_same_topping?: boolean; // Added to initialValues
+    allow_multiple_same_topping?: boolean;
   };
   isLoading?: boolean;
   restaurantId?: string;
@@ -52,15 +60,33 @@ const ToppingCategoryForm = ({
   console.log("Initial selectedToppings:", selectedToppings);
   console.log("Initial allow_multiple_same_topping:", initialValues?.allow_multiple_same_topping);
   
+  const [nameValues, setNameValues] = useState({
+    fr: initialValues?.name_fr || initialValues?.name || "",
+    en: initialValues?.name_en || "",
+    tr: initialValues?.name_tr || ""
+  });
+
+  const [descriptionValues, setDescriptionValues] = useState({
+    fr: initialValues?.description_fr || initialValues?.description || "",
+    en: initialValues?.description_en || "",
+    tr: initialValues?.description_tr || ""
+  });
+
   const form = useForm<ToppingCategoryFormValues>({
     resolver: zodResolver(toppingCategorySchema),
     defaultValues: {
       name: initialValues?.name || "",
+      name_fr: initialValues?.name_fr || initialValues?.name || "",
+      name_en: initialValues?.name_en || "",
+      name_tr: initialValues?.name_tr || "",
       description: initialValues?.description || "",
+      description_fr: initialValues?.description_fr || initialValues?.description || "",
+      description_en: initialValues?.description_en || "",
+      description_tr: initialValues?.description_tr || "",
       icon: initialValues?.icon || "",
       min_selections: initialValues?.min_selections ?? 0,
       max_selections: initialValues?.max_selections ?? 0,
-      allow_multiple_same_topping: initialValues?.allow_multiple_same_topping ?? false // Added to defaultValues
+      allow_multiple_same_topping: initialValues?.allow_multiple_same_topping ?? false
     }
   });
   
@@ -124,6 +150,22 @@ const ToppingCategoryForm = ({
     }
   }, [initialValues?.show_if_selection_id]);
   
+  const handleNameChange = (language: SupportedLanguage, value: string) => {
+    setNameValues(prev => ({ ...prev, [language]: value }));
+    form.setValue(`name_${language}`, value);
+    if (language === 'fr') {
+      form.setValue('name', value);
+    }
+  };
+
+  const handleDescriptionChange = (language: SupportedLanguage, value: string) => {
+    setDescriptionValues(prev => ({ ...prev, [language]: value }));
+    form.setValue(`description_${language}`, value);
+    if (language === 'fr') {
+      form.setValue('description', value);
+    }
+  };
+
   const handleSubmit = (values: ToppingCategoryFormValues) => {
     console.log("Submitting form with values:", values);
     console.log("Selected toppings:", selectedToppings);
@@ -147,25 +189,21 @@ const ToppingCategoryForm = ({
   
   return <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 px-0">
-        <FormField control={form.control} name="name" render={({
-        field
-      }) => <FormItem>
-              <FormLabel>Category Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Cheese, Vegetables, Sauces" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>} />
+        <MultiLanguageInput
+          label="Category Name"
+          placeholder="e.g., Cheese, Vegetables, Sauces"
+          values={nameValues}
+          onChange={handleNameChange}
+          required
+        />
         
-        <FormField control={form.control} name="description" render={({
-        field
-      }) => <FormItem>
-              <FormLabel>Description (Optional)</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Describe this topping category..." className="resize-none" {...field} value={field.value || ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>} />
+        <MultiLanguageInput
+          label="Description"
+          placeholder="Describe this topping category..."
+          type="textarea"
+          values={descriptionValues}
+          onChange={handleDescriptionChange}
+        />
         
         <div className="grid grid-cols-2 gap-4">
           <FormField control={form.control} name="min_selections" render={({

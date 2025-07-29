@@ -7,9 +7,14 @@ import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MultiLanguageInput } from "@/components/forms/MultiLanguageInput";
+import { SupportedLanguage } from "@/utils/language-utils";
 
 const toppingSchema = z.object({
   name: z.string().min(1, "Nom du complément requis"),
+  name_fr: z.string().optional(),
+  name_en: z.string().optional(),
+  name_tr: z.string().optional(),
   price: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
     message: "Le prix doit être un nombre valide supérieur ou égal à 0",
   }),
@@ -28,6 +33,9 @@ interface ToppingFormProps {
   onSubmit: (values: ToppingFormValues) => void;
   initialValues?: {
     name: string;
+    name_fr?: string;
+    name_en?: string;
+    name_tr?: string;
     price: string;
     tax_percentage?: string;
     display_order?: string;
@@ -43,16 +51,33 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
                         currency === "GBP" ? "£" : 
                         currency;
 
+  const [nameValues, setNameValues] = useState({
+    fr: initialValues?.name_fr || initialValues?.name || "",
+    en: initialValues?.name_en || "",
+    tr: initialValues?.name_tr || ""
+  });
+
   const form = useForm<ToppingFormValues>({
     resolver: zodResolver(toppingSchema),
     defaultValues: {
       name: initialValues?.name || "",
+      name_fr: initialValues?.name_fr || initialValues?.name || "",
+      name_en: initialValues?.name_en || "",
+      name_tr: initialValues?.name_tr || "",
       price: initialValues?.price || "0",
       tax_percentage: initialValues?.tax_percentage || "10",
       display_order: initialValues?.display_order || "0",
       in_stock: initialValues?.in_stock !== undefined ? initialValues.in_stock : true,
     },
   });
+
+  const handleNameChange = (language: SupportedLanguage, value: string) => {
+    setNameValues(prev => ({ ...prev, [language]: value }));
+    form.setValue(`name_${language}`, value);
+    if (language === 'fr') {
+      form.setValue('name', value);
+    }
+  };
 
   const handleSubmit = (values: ToppingFormValues) => {
     onSubmit(values);
@@ -61,18 +86,12 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nom du complément</FormLabel>
-              <FormControl>
-                <Input placeholder="ex: Fromage Cheddar, Tomates" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+        <MultiLanguageInput
+          label="Nom du complément"
+          placeholder="ex: Fromage Cheddar, Tomates"
+          values={nameValues}
+          onChange={handleNameChange}
+          required
         />
         
         <FormField
