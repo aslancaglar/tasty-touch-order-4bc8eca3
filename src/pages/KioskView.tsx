@@ -63,7 +63,7 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [uiLanguage, setUiLanguage] = useState<"fr" | "en" | "tr">("fr");
+  const [uiLanguage, setUiLanguage] = useState<SupportedLanguage>("fr");
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -148,7 +148,7 @@ const KioskView = () => {
     }
   }, [connectionStatus, restaurant, networkHealthy, toast]);
 
-  // Modify resetToWelcome to keep preloaded data
+  // Modify resetToWelcome to keep preloaded data and reset language
   const resetToWelcome = () => {
     console.log("Resetting to welcome page - cleaning up all state");
     setShowWelcome(true);
@@ -164,6 +164,11 @@ const KioskView = () => {
     setTableNumber(null);
     setOrderPlaced(false); 
     setPlacingOrder(false);
+    // Reset language to restaurant default
+    if (restaurant) {
+      const defaultLang: SupportedLanguage = restaurant.ui_language === "en" ? "en" : restaurant.ui_language === "tr" ? "tr" : "fr";
+      setUiLanguage(defaultLang);
+    }
     if (categories.length > 0) {
       setActiveCategory(categories[0].id);
     }
@@ -202,9 +207,9 @@ const KioskView = () => {
         (state) => setPreloadState(state)
       );
 
-      if (restaurant) {
+        if (restaurant) {
         setRestaurant(restaurant);
-        const lang = restaurant.ui_language === "en" ? "en" : restaurant.ui_language === "tr" ? "tr" : "fr";
+        const lang: SupportedLanguage = restaurant.ui_language === "en" ? "en" : restaurant.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         
         // Get cached categories
@@ -300,7 +305,7 @@ const KioskView = () => {
       if (cachedRestaurant) {
         console.log(`[KioskView] Found cached restaurant, loading immediately`);
         setRestaurant(cachedRestaurant);
-        const lang = cachedRestaurant.ui_language === "en" ? "en" : cachedRestaurant.ui_language === "tr" ? "tr" : "fr";
+        const lang: SupportedLanguage = cachedRestaurant.ui_language === "en" ? "en" : cachedRestaurant.ui_language === "tr" ? "tr" : "fr";
         setUiLanguage(lang);
         
         // Get cached categories
@@ -1113,7 +1118,10 @@ const KioskView = () => {
   if (showWelcome) {
     return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
       <LanguageProvider initialLanguage={uiLanguage}>
-        <LanguageSync onLanguageChange={(lang) => setUiLanguage(lang)}>
+        <LanguageSync onLanguageChange={(lang) => {
+          console.log('Language changed to:', lang);
+          setUiLanguage(lang);
+        }}>
           <WelcomePage 
             restaurant={restaurant} 
             onStart={() => {
@@ -1130,17 +1138,24 @@ const KioskView = () => {
 
   if (showOrderTypeSelection) {
     return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
-      <div className="kiosk-view">
-        <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
-        }} />
-        <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
-          setShowOrderTypeSelection(false);
-          setShowWelcome(true);
-        }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
-        
-        <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
-      </div>
+      <LanguageProvider initialLanguage={uiLanguage}>
+        <LanguageSync onLanguageChange={(lang) => {
+          console.log('Language maintained during order type selection:', lang);
+          setUiLanguage(lang);
+        }}>
+          <div className="kiosk-view">
+            <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
+              backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+            }} />
+            <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
+              setShowOrderTypeSelection(false);
+              setShowWelcome(true);
+            }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
+            
+            <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+          </div>
+        </LanguageSync>
+      </LanguageProvider>
     </NetworkErrorBoundary>;
   }
 
@@ -1150,7 +1165,11 @@ const KioskView = () => {
 
   return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
     <LanguageProvider initialLanguage={uiLanguage}>
-      <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+      <LanguageSync onLanguageChange={(lang) => {
+        console.log('Language maintained during main menu:', lang);
+        setUiLanguage(lang);
+      }}>
+        <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
         <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
@@ -1205,7 +1224,8 @@ const KioskView = () => {
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
       />
-      </div>
+        </div>
+      </LanguageSync>
     </LanguageProvider>
   </NetworkErrorBoundary>;
 };
