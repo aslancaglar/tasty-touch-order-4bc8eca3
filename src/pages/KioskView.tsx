@@ -164,10 +164,13 @@ const KioskView = () => {
     setTableNumber(null);
     setOrderPlaced(false); 
     setPlacingOrder(false);
-    // Reset language to restaurant default
+    // Reset language to restaurant default and clear localStorage
     if (restaurant) {
       const defaultLang: SupportedLanguage = restaurant.ui_language === "en" ? "en" : restaurant.ui_language === "tr" ? "tr" : "fr";
+      console.log(`Resetting language to restaurant default: ${defaultLang}`);
       setUiLanguage(defaultLang);
+      // Clear the localStorage so the language context uses the default
+      localStorage.removeItem('kiosk-language');
     }
     if (categories.length > 0) {
       setActiveCategory(categories[0].id);
