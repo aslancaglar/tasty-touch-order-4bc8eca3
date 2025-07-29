@@ -29,9 +29,14 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
     initialLanguage || DEFAULT_LANGUAGE
   );
 
-  // Load saved language preference from localStorage
+  // Load saved language preference from localStorage or respond to initialLanguage changes
   React.useEffect(() => {
-    if (!initialLanguage) {
+    if (initialLanguage) {
+      // If initialLanguage is provided, use it and clear any conflicting localStorage
+      setLanguageState(initialLanguage);
+      localStorage.removeItem('kiosk-language');
+    } else {
+      // Only load from localStorage if no initialLanguage is provided
       const savedLanguage = localStorage.getItem('kiosk-language') as SupportedLanguage;
       if (savedLanguage && ['fr', 'en', 'tr'].includes(savedLanguage)) {
         setLanguageState(savedLanguage);
