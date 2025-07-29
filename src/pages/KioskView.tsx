@@ -24,6 +24,7 @@ import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
 import { useConnectionStatus, useNetworkAwareFetch } from "@/hooks/use-network-aware-fetch";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { LanguageSync } from "@/components/kiosk/LanguageSync";
 import { testNetworkConnectivity } from "@/utils/service-worker";
 
 type CategoryWithItems = MenuCategory & {
@@ -1111,17 +1112,19 @@ const KioskView = () => {
 
   if (showWelcome) {
     return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
-      <div className="kiosk-view">
-        <WelcomePage 
-          restaurant={restaurant} 
-          onStart={() => {
-            fullReset();
-            handleStartOrder();
-          }} 
-          uiLanguage={uiLanguage}
-          isDataLoading={isPreloading || loading} 
-        />
-      </div>
+      <LanguageProvider initialLanguage={uiLanguage}>
+        <LanguageSync onLanguageChange={(lang) => setUiLanguage(lang)}>
+          <WelcomePage 
+            restaurant={restaurant} 
+            onStart={() => {
+              fullReset();
+              handleStartOrder();
+            }} 
+            uiLanguage={uiLanguage}
+            isDataLoading={isPreloading || loading} 
+          />
+        </LanguageSync>
+      </LanguageProvider>
     </NetworkErrorBoundary>;
   }
 
