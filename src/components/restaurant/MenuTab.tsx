@@ -207,9 +207,15 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       
       const newCategory = await createCategory({
         name: values.name,
+        name_fr: values.name_fr || null,
+        name_en: values.name_en || null,
+        name_tr: values.name_tr || null,
         description: values.description || null,
-        image_url: values.image_url || null,
-        icon: "utensils",
+        description_fr: values.description_fr || null,
+        description_en: values.description_en || null,
+        description_tr: values.description_tr || null,
+        image_url: values.icon || null,
+        icon: values.icon || "utensils",
         restaurant_id: restaurant.id,
         display_order: values.display_order ? parseInt(values.display_order, 10) : 0
       });
@@ -249,8 +255,14 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       
       const updatedCategory = await updateCategory(categoryId, {
         name: values.name,
+        name_fr: values.name_fr || null,
+        name_en: values.name_en || null,
+        name_tr: values.name_tr || null,
         description: values.description || null,
-        image_url: values.image_url || null,
+        description_fr: values.description_fr || null,
+        description_en: values.description_en || null,
+        description_tr: values.description_tr || null,
+        image_url: values.icon || null,
         icon: values.icon || "utensils",
         display_order: values.display_order ? parseInt(values.display_order, 10) : 0
       });
@@ -323,7 +335,13 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       
       const updatedMenuItem = await updateMenuItem(selectedItem.id, {
         name: values.name,
+        name_fr: values.name_fr || null,
+        name_en: values.name_en || null,
+        name_tr: values.name_tr || null,
         description: values.description || null,
+        description_fr: values.description_fr || null,
+        description_en: values.description_en || null,
+        description_tr: values.description_tr || null,
         price: Number(values.price),
         promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
         image: values.image || null,
@@ -369,7 +387,13 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
       
       const newMenuItem = await createMenuItem({
         name: values.name,
+        name_fr: values.name_fr || null,
+        name_en: values.name_en || null,
+        name_tr: values.name_tr || null,
         description: values.description || null,
+        description_fr: values.description_fr || null,
+        description_en: values.description_en || null,
+        description_tr: values.description_tr || null,
         price: Number(values.price),
         promotion_price: values.promotion_price ? Number(values.promotion_price) : null,
         image: values.image || null,
@@ -589,7 +613,13 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
               onSubmit={(values) => handleEditCategory(selectedCategory.id, values)}
               initialValues={{
                 name: selectedCategory.name,
+                name_fr: selectedCategory.name_fr || "",
+                name_en: selectedCategory.name_en || "",
+                name_tr: selectedCategory.name_tr || "",
                 description: selectedCategory.description || "",
+                description_fr: selectedCategory.description_fr || "",
+                description_en: selectedCategory.description_en || "",
+                description_tr: selectedCategory.description_tr || "",
                 icon: selectedCategory.icon || "",
                 display_order: selectedCategory.display_order?.toString() || "0"
               }}
@@ -640,7 +670,13 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
               onSubmit={handleEditMenuItem}
               initialValues={{
                 name: selectedItem.name,
+                name_fr: selectedItem.name_fr || "",
+                name_en: selectedItem.name_en || "",
+                name_tr: selectedItem.name_tr || "",
                 description: selectedItem.description || "",
+                description_fr: selectedItem.description_fr || "",
+                description_en: selectedItem.description_en || "",
+                description_tr: selectedItem.description_tr || "",
                 price: selectedItem.price.toString(),
                 promotion_price: selectedItem.promotion_price ? selectedItem.promotion_price.toString() : "",
                 image: selectedItem.image || "",

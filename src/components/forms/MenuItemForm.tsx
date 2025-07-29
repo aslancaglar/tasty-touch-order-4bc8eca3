@@ -30,11 +30,19 @@ import {
 import { getToppingCategoriesByRestaurantId } from "@/services/kiosk-service";
 import { ToppingCategory } from "@/types/database-types";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { MultiLanguageInput } from "@/components/forms/MultiLanguageInput";
+import { SupportedLanguage } from "@/utils/language-utils";
 
 // Define the form schema with Zod for validation
 const formSchema = z.object({
   name: z.string().min(1, "Menu item name is required"),
+  name_fr: z.string().optional(),
+  name_en: z.string().optional(),
+  name_tr: z.string().optional(),
   description: z.string().optional(),
+  description_fr: z.string().optional(),
+  description_en: z.string().optional(),
+  description_tr: z.string().optional(),
   price: z.string().min(1, "Price is required").refine(
     (value) => !isNaN(Number(value)) && Number(value) >= 0,
     { message: "Price must be a non-negative number" }
@@ -88,7 +96,13 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: initialValues?.name || "",
+      name_fr: initialValues?.name_fr || "",
+      name_en: initialValues?.name_en || "",
+      name_tr: initialValues?.name_tr || "",
       description: initialValues?.description || "",
+      description_fr: initialValues?.description_fr || "",
+      description_en: initialValues?.description_en || "",
+      description_tr: initialValues?.description_tr || "",
       price: initialValues?.price || "",
       promotion_price: initialValues?.promotion_price || "",
       image: initialValues?.image || "",
@@ -241,6 +255,15 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
     onSubmit(finalValues);
   };
 
+  // Handle multi-language field changes
+  const handleNameChange = (language: SupportedLanguage, value: string) => {
+    form.setValue(`name_${language}`, value);
+  };
+
+  const handleDescriptionChange = (language: SupportedLanguage, value: string) => {
+    form.setValue(`description_${language}`, value);
+  };
+
   // Sort the categories by their assigned order for display
   const sortedSelectedCategories = [...selectedToppingCategories].sort(
     (a, b) => toppingCategoryOrder[a] - toppingCategoryOrder[b]
@@ -249,32 +272,31 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Menu item name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+        {/* Multi-language name input */}
+        <MultiLanguageInput
+          label="Menu Item Name"
+          placeholder="Menu item name"
+          required={true}
+          values={{
+            fr: form.watch("name_fr"),
+            en: form.watch("name_en"),
+            tr: form.watch("name_tr")
+          }}
+          onChange={handleNameChange}
+          error={form.formState.errors.name?.message}
         />
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Menu item description" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+        {/* Multi-language description input */}
+        <MultiLanguageInput
+          label="Menu Item Description"
+          placeholder="Menu item description"
+          type="textarea"
+          values={{
+            fr: form.watch("description_fr"),
+            en: form.watch("description_en"),
+            tr: form.watch("description_tr")
+          }}
+          onChange={handleDescriptionChange}
         />
 
         <div className="grid grid-cols-2 gap-4">
