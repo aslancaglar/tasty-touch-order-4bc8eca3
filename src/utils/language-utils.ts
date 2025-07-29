@@ -8,6 +8,43 @@ export type SupportedLanguage = 'fr' | 'en' | 'tr';
 // Default language is French
 export const DEFAULT_LANGUAGE: SupportedLanguage = 'fr';
 
+// Language display names
+export const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
+  fr: 'Français',
+  en: 'English',
+  tr: 'Türkçe'
+};
+
+// Get translated field from database object
+export function getTranslatedField(
+  obj: any,
+  fieldName: string,
+  language: SupportedLanguage = DEFAULT_LANGUAGE,
+  fallbackLanguage: SupportedLanguage = DEFAULT_LANGUAGE
+): string {
+  // Try to get the translated field for the requested language
+  const translatedField = obj[`${fieldName}_${language}`];
+  if (translatedField && translatedField.trim()) {
+    return translatedField;
+  }
+  
+  // If not found, try fallback language
+  if (language !== fallbackLanguage) {
+    const fallbackField = obj[`${fieldName}_${fallbackLanguage}`];
+    if (fallbackField && fallbackField.trim()) {
+      return fallbackField;
+    }
+  }
+  
+  // Last resort: try the original field without language suffix
+  const originalField = obj[fieldName];
+  if (originalField && originalField.trim()) {
+    return originalField;
+  }
+  
+  return fieldName; // Return field name as last fallback
+}
+
 // All available translations
 const translations = {
   fr,

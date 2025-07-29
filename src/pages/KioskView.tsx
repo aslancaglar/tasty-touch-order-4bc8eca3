@@ -23,6 +23,7 @@ import { preloadAllRestaurantData, PreloaderState } from "@/utils/data-preloader
 import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
 import { useConnectionStatus, useNetworkAwareFetch } from "@/hooks/use-network-aware-fetch";
 import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { testNetworkConnectivity } from "@/utils/service-worker";
 
 type CategoryWithItems = MenuCategory & {
@@ -1145,7 +1146,8 @@ const KioskView = () => {
   const cartIsEmpty = cart.length === 0;
 
   return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
-    <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+    <LanguageProvider initialLanguage={uiLanguage}>
+      <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
         <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
@@ -1155,7 +1157,7 @@ const KioskView = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Fixed width sidebar - 16vw */}
         <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
-          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} uiLanguage={uiLanguage} />
         </div>
 
         {/* Scrollable menu grid area */}
@@ -1183,7 +1185,7 @@ const KioskView = () => {
         <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} t={t} />
       </div>
 
-      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
+      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} uiLanguage={uiLanguage} />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       
@@ -1200,7 +1202,8 @@ const KioskView = () => {
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
       />
-    </div>
+      </div>
+    </LanguageProvider>
   </NetworkErrorBoundary>;
 };
 

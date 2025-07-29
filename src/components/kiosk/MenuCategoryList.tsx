@@ -2,17 +2,20 @@
 import React from "react";
 import { UtensilsCrossed } from "lucide-react";
 import { MenuCategory } from "@/types/database-types";
+import { SupportedLanguage, getTranslatedField } from '@/utils/language-utils';
 
 interface MenuCategoryListProps {
   categories: MenuCategory[];
   activeCategory: string | null;
   setActiveCategory: (categoryId: string) => void;
+  uiLanguage: SupportedLanguage;
 }
 
 const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   categories,
   activeCategory,
-  setActiveCategory
+  setActiveCategory,
+  uiLanguage
 }) => {
   // Sort categories by display_order
   const sortedCategories = [...categories].sort((a, b) => {
@@ -70,7 +73,7 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
               {category.icon ? (
                 <img 
                   src={category.icon} 
-                  alt={category.name} 
+                  alt={getTranslatedField(category, 'name', uiLanguage)} 
                   className="w-full h-full object-cover" 
                 />
               ) : (
@@ -81,7 +84,7 @@ const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
                 </div>
               )}
             </div>
-            <span className="font-bebas uppercase break-words text-lg tracking-wide">{category.name}</span>
+            <span className="font-bebas uppercase break-words text-lg tracking-wide">{getTranslatedField(category, 'name', uiLanguage)}</span>
           </button>
         ))}
       </div>

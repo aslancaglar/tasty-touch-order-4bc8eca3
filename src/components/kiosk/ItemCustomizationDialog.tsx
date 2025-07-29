@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
+import { getTranslatedField, SupportedLanguage } from "@/utils/language-utils";
 
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
@@ -29,6 +30,7 @@ interface ItemCustomizationDialogProps {
   shouldShowToppingCategory: (category: any) => boolean;
   t: (key: string) => string;
   currencySymbol: string;
+  uiLanguage: SupportedLanguage;
 }
 
 // Define alternating background colors for topping categories
@@ -88,7 +90,8 @@ const ToppingCategory = memo(({
   t,
   currencySymbol,
   bgColorClass,
-  isVisible
+  isVisible,
+  uiLanguage
 }: {
   category: any;
   selectedCategory: any;
@@ -97,6 +100,7 @@ const ToppingCategory = memo(({
   currencySymbol: string;
   bgColorClass: string;
   isVisible: boolean;
+  uiLanguage: SupportedLanguage;
 }) => {
   // Sort toppings by display_order
   const sortedToppings = [...category.toppings].sort((a, b) => {
@@ -132,7 +136,7 @@ const ToppingCategory = memo(({
     }}
   >
       <div className="font-bold text-xl flex items-center">
-        {category.name}
+        {getTranslatedField(category, 'name', uiLanguage)}
         {category.required && <span className="text-red-500 ml-1">*</span>}
         <span className="ml-2 text-red-600 font-bold text-base">
           {category.max_selections > 0 ? `(${t("selectUpTo")} ${category.max_selections})` : `(${t("multipleSelection")})`}
@@ -168,7 +172,7 @@ const ToppingCategory = memo(({
             }}
           >
               <span className={`flex-1 mr-2 ${isSelected ? 'text-green-700 font-medium' : ''}`}>
-                {topping.name}
+                {getTranslatedField(topping, 'name', uiLanguage)}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
                 {topping.price > 0 && <span className="text-sm">
@@ -269,7 +273,8 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   onSpecialInstructionsChange,
   shouldShowToppingCategory,
   t,
-  currencySymbol
+  currencySymbol,
+  uiLanguage
 }) => {
   if (!item) return null;
 
@@ -394,6 +399,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               currencySymbol={currencySymbol} 
               bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
               isVisible={visibleCategories[category.id] || false}
+              uiLanguage={uiLanguage}
             />
           ))}
         </div>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, ImageOff, Clock } from "lucide-react";
 import { MenuItem, MenuCategory } from "@/types/database-types";
 import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/image-cache";
-import { getTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { getTranslation, SupportedLanguage, getTranslatedField } from "@/utils/language-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 interface MenuItemGridProps {
@@ -116,7 +116,7 @@ const MenuItemCard = memo(({
       </div>
       <div className="p-4 select-none">
         <div className="flex justify-between">
-          <h3 className="font-bebas text-lg tracking-wide break-words">{item.name}</h3>
+          <h3 className="font-bebas text-lg tracking-wide break-words">{getTranslatedField(item, 'name', uiLanguage)}</h3>
           <div className="flex flex-col items-end ml-2">
             {hasPromotion ? <>
                 <p className="font-bebas text-lg whitespace-nowrap text-black">{formattedPromotionPrice} {currencySymbol}</p>
@@ -124,7 +124,7 @@ const MenuItemCard = memo(({
               </> : <p className="font-bebas whitespace-nowrap text-xl">{formattedPrice} {currencySymbol}</p>}
           </div>
         </div>
-        <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{item.description}</p>
+        <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{getTranslatedField(item, 'description', uiLanguage)}</p>
         {currentAvailabilityStatus ? <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
             {t("addToCart")}
             <ChevronRight className="h-4 w-4 ml-2" />
@@ -495,7 +495,7 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   return <div className="space-y-8 pb-20">
       {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20 pt-0 py-0">
           <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide pl-4">
-            {category.name}
+            {getTranslatedField(category, 'name', uiLanguage)}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none px-4">
             {itemsByCategory[category.id]?.map(item => <div key={item.id} data-item-id={item.id}>
