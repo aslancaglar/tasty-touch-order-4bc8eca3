@@ -7,6 +7,8 @@ import { getCachedImageUrl, precacheImages, getStorageEstimate } from "@/utils/i
 import { getTranslation, SupportedLanguage, getTranslatedField } from "@/utils/language-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from '@/contexts/LanguageContext';
+
 interface MenuItemGridProps {
   items: MenuItem[];
   handleSelectItem: (item: MenuItem) => void;
@@ -16,7 +18,6 @@ interface MenuItemGridProps {
   refreshTrigger?: number;
   categories: MenuCategory[];
   activeCategory?: string;
-  uiLanguage: SupportedLanguage;
 }
 
 // Function to check if a menu item is available based on time constraints
@@ -143,9 +144,9 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   restaurantId,
   refreshTrigger,
   categories,
-  activeCategory,
-  uiLanguage
+  activeCategory
 }) => {
+  const { language: uiLanguage } = useLanguage();
   const {
     toast
   } = useToast();

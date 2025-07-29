@@ -7,26 +7,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 interface WelcomePageProps {
   restaurant: Restaurant;
   onStart: () => void;
-  uiLanguage?: SupportedLanguage;
   isDataLoading?: boolean;
 }
 const WelcomePage = ({
   restaurant,
   onStart,
-  uiLanguage = "fr",
   isDataLoading = false
 }: WelcomePageProps) => {
-  // Try to use language context, but fall back to prop if not available
-  let currentLanguage = uiLanguage;
-  let setLanguage = (_lang: SupportedLanguage) => {};
-  try {
-    const context = useLanguage();
-    currentLanguage = context.language;
-    setLanguage = context.setLanguage;
-  } catch {
-    // Context not available, use the prop
-    currentLanguage = uiLanguage;
-  }
+  const { language: currentLanguage, setLanguage } = useLanguage();
   const {
     t
   } = useTranslation(currentLanguage);

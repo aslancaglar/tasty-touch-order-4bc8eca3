@@ -23,8 +23,7 @@ import { preloadAllRestaurantData, PreloaderState } from "@/utils/data-preloader
 import PreloadingScreen from "@/components/kiosk/PreloadingScreen";
 import { useConnectionStatus, useNetworkAwareFetch } from "@/hooks/use-network-aware-fetch";
 import { getTranslation, SupportedLanguage, getTranslatedField } from "@/utils/language-utils";
-import { LanguageProvider } from "@/contexts/LanguageContext";
-import { LanguageSync } from "@/components/kiosk/LanguageSync";
+import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import { testNetworkConnectivity } from "@/utils/service-worker";
 
 type CategoryWithItems = MenuCategory & {
@@ -36,7 +35,7 @@ type SelectedToppingCategory = {
   toppingQuantities?: { [toppingId: string]: number }; // Added toppingQuantities map
 };
 
-const KioskView = () => {
+const KioskViewInner = () => {
   const {
     restaurantSlug
   } = useParams<{
@@ -63,7 +62,7 @@ const KioskView = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [uiLanguage, setUiLanguage] = useState<SupportedLanguage>("fr");
+  
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -105,6 +104,8 @@ const KioskView = () => {
     return CURRENCY_SYMBOLS[code] || code;
   };
 
+  const { language: uiLanguage } = useLanguage();
+  
   const t = (key: string): string => {
     return getTranslation(key, uiLanguage as SupportedLanguage);
   };
@@ -164,14 +165,8 @@ const KioskView = () => {
     setTableNumber(null);
     setOrderPlaced(false); 
     setPlacingOrder(false);
-    // Reset language to restaurant default and clear localStorage
-    if (restaurant) {
-      const defaultLang: SupportedLanguage = restaurant.ui_language === "en" ? "en" : restaurant.ui_language === "tr" ? "tr" : "fr";
-      console.log(`Resetting language to restaurant default: ${defaultLang}`);
-      setUiLanguage(defaultLang);
-      // Clear the localStorage so the language context uses the default
-      localStorage.removeItem('kiosk-language');
-    }
+    // Clear the localStorage so the language context uses the restaurant default
+    localStorage.removeItem('kiosk-language');
     if (categories.length > 0) {
       setActiveCategory(categories[0].id);
     }
@@ -212,8 +207,6 @@ const KioskView = () => {
 
         if (restaurant) {
         setRestaurant(restaurant);
-        const lang: SupportedLanguage = restaurant.ui_language === "en" ? "en" : restaurant.ui_language === "tr" ? "tr" : "fr";
-        setUiLanguage(lang);
         
         // Get cached categories
         const menuCacheKey = `categories_${restaurant.id}`;
@@ -308,8 +301,6 @@ const KioskView = () => {
       if (cachedRestaurant) {
         console.log(`[KioskView] Found cached restaurant, loading immediately`);
         setRestaurant(cachedRestaurant);
-        const lang: SupportedLanguage = cachedRestaurant.ui_language === "en" ? "en" : cachedRestaurant.ui_language === "tr" ? "tr" : "fr";
-        setUiLanguage(lang);
         
         // Get cached categories
         const menuCacheKey = `categories_${cachedRestaurant.id}`;
@@ -1105,7 +1096,6 @@ const KioskView = () => {
       <PreloadingScreen 
         state={preloadState}
         onRetry={() => preloadAllData(true)} 
-        uiLanguage={uiLanguage} 
       />
     </NetworkErrorBoundary>;
   }
@@ -1135,45 +1125,30 @@ const KioskView = () => {
 
   if (showWelcome) {
     return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
-      <LanguageProvider initialLanguage={uiLanguage}>
-        <LanguageSync onLanguageChange={(lang) => {
-          console.log('Language changed to:', lang);
-          setUiLanguage(lang);
-        }}>
-          <WelcomePage 
-            restaurant={restaurant} 
-            onStart={() => {
-              fullReset();
-              handleStartOrder();
-            }} 
-            uiLanguage={uiLanguage}
-            isDataLoading={isPreloading || loading} 
-          />
-        </LanguageSync>
-      </LanguageProvider>
+      <WelcomePage 
+        restaurant={restaurant} 
+        onStart={() => {
+          fullReset();
+          handleStartOrder();
+        }} 
+        isDataLoading={isPreloading || loading} 
+      />
     </NetworkErrorBoundary>;
   }
 
   if (showOrderTypeSelection) {
     return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
-      <LanguageProvider initialLanguage={uiLanguage}>
-        <LanguageSync onLanguageChange={(lang) => {
-          console.log('Language maintained during order type selection:', lang);
-          setUiLanguage(lang);
-        }}>
-          <div className="kiosk-view">
-            <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
-              backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
-            }} />
-            <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
-              setShowOrderTypeSelection(false);
-              setShowWelcome(true);
-            }} onSelectOrderType={handleOrderTypeSelected} uiLanguage={uiLanguage} />
-            
-            <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
-          </div>
-        </LanguageSync>
-      </LanguageProvider>
+      <div className="kiosk-view">
+        <div className="fixed inset-0 bg-cover bg-center bg-black/50" style={{
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
+        }} />
+        <OrderTypeSelection isOpen={showOrderTypeSelection} onClose={() => {
+          setShowOrderTypeSelection(false);
+          setShowWelcome(true);
+        }} onSelectOrderType={handleOrderTypeSelected} />
+        
+        <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
+      </div>
     </NetworkErrorBoundary>;
   }
 
@@ -1182,12 +1157,7 @@ const KioskView = () => {
   const cartIsEmpty = cart.length === 0;
 
   return <NetworkErrorBoundary onRetry={() => preloadAllData(true)}>
-    <LanguageProvider initialLanguage={uiLanguage}>
-      <LanguageSync onLanguageChange={(lang) => {
-        console.log('Language maintained during main menu:', lang);
-        setUiLanguage(lang);
-      }}>
-        <div className="h-screen flex flex-col overflow-hidden kiosk-view">
+    <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
         <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
@@ -1197,7 +1167,7 @@ const KioskView = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Fixed width sidebar - 16vw */}
         <div className="w-64 min-w-[220px] max-w-[280px] bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
-          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} uiLanguage={uiLanguage} />
+          <MenuCategoryList categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
         </div>
 
         {/* Scrollable menu grid area */}
@@ -1211,21 +1181,20 @@ const KioskView = () => {
               restaurantId={restaurant?.id} 
               refreshTrigger={refreshTrigger}
               categories={categories}
-              uiLanguage={uiLanguage}
             />
           </div>
         </div>
       </div>
 
-      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} uiLanguage={uiLanguage} currency={restaurant.currency} />}
+      {!isCartOpen && !cartIsEmpty && <CartButton itemCount={cartItemCount} total={calculateCartTotal()} onClick={toggleCart} currency={restaurant.currency} />}
 
       <div ref={cartRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg" style={{
         maxHeight: "60vh"
       }}>
-        <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} t={t} />
+        <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} />
       </div>
 
-      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} uiLanguage={uiLanguage} />}
+      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       
@@ -1238,14 +1207,63 @@ const KioskView = () => {
         restaurant={restaurant}
         orderType={orderType}
         tableNumber={tableNumber}
-        uiLanguage={uiLanguage}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
       />
-        </div>
-      </LanguageSync>
-    </LanguageProvider>
+    </div>
   </NetworkErrorBoundary>;
+};
+
+const KioskView = () => {
+  const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
+  const navigate = useNavigate();
+  
+  // Initial restaurant data loading to determine language
+  const [initialRestaurant, setInitialRestaurant] = useState<Restaurant | null>(null);
+  
+  useEffect(() => {
+    const loadInitialData = async () => {
+      if (!restaurantSlug) {
+        navigate('/');
+        return;
+      }
+      
+      // Check cache for restaurant first
+      const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
+      if (cachedRestaurant) {
+        setInitialRestaurant(cachedRestaurant);
+      } else {
+        // If no cache, load from service
+        try {
+          const restaurant = await getRestaurantBySlug(restaurantSlug);
+          if (restaurant) {
+            setInitialRestaurant(restaurant);
+          } else {
+            navigate('/');
+          }
+        } catch (error) {
+          console.error('Error loading initial restaurant:', error);
+          navigate('/');
+        }
+      }
+    };
+    
+    loadInitialData();
+  }, [restaurantSlug, navigate]);
+  
+  if (!initialRestaurant) {
+    return <div className="flex items-center justify-center h-screen">
+      <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
+    </div>;
+  }
+  
+  const restaurantLanguage: SupportedLanguage = initialRestaurant.ui_language === "en" ? "en" : initialRestaurant.ui_language === "tr" ? "tr" : "fr";
+  
+  return (
+    <LanguageProvider initialLanguage={restaurantLanguage}>
+      <KioskViewInner />
+    </LanguageProvider>
+  );
 };
 
 export default KioskView;

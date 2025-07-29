@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
 import { getTranslatedField, SupportedLanguage } from "@/utils/language-utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ItemCustomizationDialogProps {
   item: MenuItemWithOptions | null;
@@ -30,7 +31,6 @@ interface ItemCustomizationDialogProps {
   shouldShowToppingCategory: (category: any) => boolean;
   t: (key: string) => string;
   currencySymbol: string;
-  uiLanguage: SupportedLanguage;
 }
 
 // Define alternating background colors for topping categories
@@ -275,9 +275,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   onSpecialInstructionsChange,
   shouldShowToppingCategory,
   t,
-  currencySymbol,
-  uiLanguage
+  currencySymbol
 }) => {
+  const { language: uiLanguage } = useLanguage();
   if (!item) return null;
 
   // State to track which topping categories are visible (for staggered animation)

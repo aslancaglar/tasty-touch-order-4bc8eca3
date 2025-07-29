@@ -25,32 +25,30 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
   children, 
   initialLanguage 
 }) => {
-  const [language, setLanguageState] = React.useState<SupportedLanguage>(
-    initialLanguage || DEFAULT_LANGUAGE
-  );
-
-  // Initialize language on mount only
-  React.useEffect(() => {
+  const [language, setLanguageState] = React.useState<SupportedLanguage>(() => {
+    // On initial mount, prioritize initialLanguage if provided
     if (initialLanguage) {
-      // If initialLanguage is provided, use it and clear any conflicting localStorage
-      setLanguageState(initialLanguage);
-      localStorage.removeItem('kiosk-language');
-    } else {
-      // Only load from localStorage if no initialLanguage is provided
-      const savedLanguage = localStorage.getItem('kiosk-language') as SupportedLanguage;
-      if (savedLanguage && ['fr', 'en', 'tr'].includes(savedLanguage)) {
-        setLanguageState(savedLanguage);
-      }
+      return initialLanguage;
     }
-  }, []); // Only run on mount
+    
+    // Otherwise try to load from localStorage
+    const savedLanguage = localStorage.getItem('kiosk-language') as SupportedLanguage;
+    if (savedLanguage && ['fr', 'en', 'tr'].includes(savedLanguage)) {
+      return savedLanguage;
+    }
+    
+    // Fall back to default
+    return DEFAULT_LANGUAGE;
+  });
 
-  // Handle initialLanguage changes separately 
+  // Only handle initialLanguage changes (not initial mount)
   React.useEffect(() => {
-    if (initialLanguage && language !== initialLanguage) {
+    if (initialLanguage && initialLanguage !== language) {
       setLanguageState(initialLanguage);
+      // When restaurant sets the language, remove user preference to avoid conflicts
       localStorage.removeItem('kiosk-language');
     }
-  }, [initialLanguage]);
+  }, [initialLanguage, language]);
 
   const setLanguage = (newLanguage: SupportedLanguage) => {
     setLanguageState(newLanguage);

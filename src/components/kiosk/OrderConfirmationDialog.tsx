@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import OrderReceipt from "./OrderReceipt";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface OrderConfirmationDialogProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ interface OrderConfirmationDialogProps {
   } | null;
   orderType: "dine-in" | "takeaway" | null;
   tableNumber: string | null;
-  uiLanguage: SupportedLanguage;
+  
   getFormattedOptions: (item: CartItem) => string;
   getFormattedToppings: (item: CartItem) => string;
 }
@@ -39,13 +40,11 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   restaurant,
   orderType,
   tableNumber,
-  uiLanguage,
   getFormattedOptions,
   getFormattedToppings
 }) => {
-  const {
-    t
-  } = useTranslation(uiLanguage);
+  const { language: uiLanguage } = useLanguage();
+  const { t } = useTranslation(uiLanguage);
   const {
     toast
   } = useToast();

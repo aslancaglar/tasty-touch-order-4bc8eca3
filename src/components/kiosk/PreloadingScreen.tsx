@@ -4,14 +4,15 @@ import { Progress } from "@/components/ui/progress";
 import { Loader2, Database, Image, RefreshCcw } from "lucide-react";
 import { PreloadStage, PreloaderState } from '@/utils/data-preloader';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PreloadingScreenProps {
   state: PreloaderState;
   onRetry?: () => void;
-  uiLanguage: "fr" | "en" | "tr";
 }
 
-const PreloadingScreen: React.FC<PreloadingScreenProps> = ({ state, onRetry, uiLanguage }) => {
+const PreloadingScreen: React.FC<PreloadingScreenProps> = ({ state, onRetry }) => {
+  const { language: uiLanguage } = useLanguage();
   const { isLoading, progress, stage, error, restaurantData } = state;
   
   // Translations

@@ -3,6 +3,7 @@ import { UtensilsCrossed, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export type OrderType = "dine-in" | "takeaway" | null;
 
@@ -10,16 +11,15 @@ interface OrderTypeSelectionProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectOrderType: (type: OrderType, tableNumber?: string) => void;
-  uiLanguage?: SupportedLanguage;
 }
 
 const OrderTypeSelection = ({
   isOpen,
   onClose,
-  onSelectOrderType,
-  uiLanguage = "fr"
+  onSelectOrderType
 }: OrderTypeSelectionProps) => {
-  const { t } = useTranslation(uiLanguage);
+  const { language } = useLanguage();
+  const { t } = useTranslation(language);
   
   const handleSelectDineIn = () => {
     onSelectOrderType("dine-in");

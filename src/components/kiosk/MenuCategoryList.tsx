@@ -3,20 +3,20 @@ import React from "react";
 import { UtensilsCrossed } from "lucide-react";
 import { MenuCategory } from "@/types/database-types";
 import { SupportedLanguage, getTranslatedField } from '@/utils/language-utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface MenuCategoryListProps {
   categories: MenuCategory[];
   activeCategory: string | null;
   setActiveCategory: (categoryId: string) => void;
-  uiLanguage: SupportedLanguage;
 }
 
 const MenuCategoryList: React.FC<MenuCategoryListProps> = ({
   categories,
   activeCategory,
-  setActiveCategory,
-  uiLanguage
+  setActiveCategory
 }) => {
+  const { language: uiLanguage } = useLanguage();
   // Sort categories by display_order
   const sortedCategories = [...categories].sort((a, b) => {
     // If display_order is null/undefined, treat it as highest number (displayed last)
