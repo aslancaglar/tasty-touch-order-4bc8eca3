@@ -522,7 +522,13 @@ const ToppingsTab = ({
         error
       } = await supabase.from('topping_categories').insert([{
         name,
+        name_fr: values.name_fr,
+        name_en: values.name_en,
+        name_tr: values.name_tr,
         description,
+        description_fr: values.description_fr,
+        description_en: values.description_en,
+        description_tr: values.description_tr,
         restaurant_id: restaurant.id,
         min_selections,
         max_selections,
@@ -581,7 +587,13 @@ const ToppingsTab = ({
         error
       } = await supabase.from('topping_categories').update({
         name,
+        name_fr: values.name_fr,
+        name_en: values.name_en,
+        name_tr: values.name_tr,
         description,
+        description_fr: values.description_fr,
+        description_en: values.description_en,
+        description_tr: values.description_tr,
         min_selections,
         max_selections,
         show_if_selection_id: conditionToppingIds.length > 0 ? conditionToppingIds : null,
@@ -893,7 +905,13 @@ const ToppingsTab = ({
               restaurantId={restaurant.id} 
               initialValues={{
                 name: selectedCategory.name,
+                name_fr: selectedCategory.name_fr,
+                name_en: selectedCategory.name_en,
+                name_tr: selectedCategory.name_tr,
                 description: selectedCategory.description || "",
+                description_fr: selectedCategory.description_fr,
+                description_en: selectedCategory.description_en,
+                description_tr: selectedCategory.description_tr,
                 min_selections: selectedCategory.min_selections || 0,
                 max_selections: selectedCategory.max_selections || 0,
                 show_if_selection_id: selectedCategory.show_if_selection_id || [],
