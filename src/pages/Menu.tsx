@@ -147,9 +147,16 @@ const MenuPage = () => {
       console.log("Adding category for restaurant:", selectedRestaurant);
       const newCategory = await createCategory({
         name: values.name,
+        name_fr: values.name_fr || null,
+        name_en: values.name_en || null,
+        name_tr: values.name_tr || null,
         description: values.description || null,
-        image_url: values.image_url || null,
-        icon: "utensils", // Default icon
+        description_fr: values.description_fr || null,
+        description_en: values.description_en || null,
+        description_tr: values.description_tr || null,
+        image_url: values.icon || null,
+        icon: values.icon || "utensils",
+        display_order: parseInt(values.display_order) || 0,
         restaurant_id: selectedRestaurant
       });
       

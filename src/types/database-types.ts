@@ -23,7 +23,13 @@ export type MenuCategory = {
   image_url: string | null;
   created_at: string;
   updated_at: string;
-  display_order?: number | null; // Added display_order property
+  display_order?: number | null;
+  name_fr?: string | null;
+  name_en?: string | null;
+  name_tr?: string | null;
+  description_fr?: string | null;
+  description_en?: string | null;
+  description_tr?: string | null;
 };
 
 export type MenuItem = {
@@ -39,9 +45,15 @@ export type MenuItem = {
   topping_categories?: string[];
   tax_percentage?: number | null;
   in_stock: boolean;
-  display_order?: number | null; // Added display_order property
-  available_from?: string | null; // Added time availability property
-  available_until?: string | null; // Added time availability property
+  display_order?: number | null;
+  available_from?: string | null;
+  available_until?: string | null;
+  name_fr?: string | null;
+  name_en?: string | null;
+  name_tr?: string | null;
+  description_fr?: string | null;
+  description_en?: string | null;
+  description_tr?: string | null;
 };
 
 export type MenuItemToppingCategory = {
@@ -84,8 +96,14 @@ export type ToppingCategory = {
   updated_at: string;
   show_if_selection_type?: string[] | null;
   show_if_selection_id?: string[] | null;
-  display_order?: number | null; // Added display_order property
-  allow_multiple_same_topping?: boolean; // Added property to allow multiple quantities
+  display_order?: number | null;
+  allow_multiple_same_topping?: boolean;
+  name_fr?: string | null;
+  name_en?: string | null;
+  name_tr?: string | null;
+  description_fr?: string | null;
+  description_en?: string | null;
+  description_tr?: string | null;
 };
 
 export type Topping = {
@@ -96,8 +114,11 @@ export type Topping = {
   tax_percentage: number | null;
   created_at: string;
   updated_at: string;
-  in_stock: boolean; // Added this property to match the database schema
-  display_order?: number | null; // Added display_order property
+  in_stock: boolean;
+  display_order?: number | null;
+  name_fr?: string | null;
+  name_en?: string | null;
+  name_tr?: string | null;
 };
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
