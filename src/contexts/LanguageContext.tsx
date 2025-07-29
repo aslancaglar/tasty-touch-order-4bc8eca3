@@ -44,13 +44,15 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
   // Only handle initialLanguage changes (not initial mount)
   React.useEffect(() => {
     if (initialLanguage && initialLanguage !== language) {
+      console.log('[LanguageContext] Restaurant language override:', initialLanguage);
       setLanguageState(initialLanguage);
       // When restaurant sets the language, remove user preference to avoid conflicts
       localStorage.removeItem('kiosk-language');
     }
-  }, [initialLanguage, language]);
+  }, [initialLanguage]);
 
   const setLanguage = (newLanguage: SupportedLanguage) => {
+    console.log('[LanguageContext] User selected language:', newLanguage);
     setLanguageState(newLanguage);
     localStorage.setItem('kiosk-language', newLanguage);
   };

@@ -149,7 +149,7 @@ const KioskViewInner = () => {
     }
   }, [connectionStatus, restaurant, networkHealthy, toast]);
 
-  // Modify resetToWelcome to keep preloaded data and reset language
+  // Modify resetToWelcome to keep preloaded data and preserve user language preference
   const resetToWelcome = () => {
     console.log("Resetting to welcome page - cleaning up all state");
     setShowWelcome(true);
@@ -165,8 +165,7 @@ const KioskViewInner = () => {
     setTableNumber(null);
     setOrderPlaced(false); 
     setPlacingOrder(false);
-    // Clear the localStorage so the language context uses the restaurant default
-    localStorage.removeItem('kiosk-language');
+    // Keep user language preference - don't remove it anymore
     if (categories.length > 0) {
       setActiveCategory(categories[0].id);
     }
