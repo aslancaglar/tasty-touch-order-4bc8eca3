@@ -428,7 +428,7 @@ const KioskView = () => {
       const {
         data: toppingCategories,
         error: categoriesError
-      } = await supabase.from('topping_categories').select('*').in('id', toppingCategoryIds);
+      } = await supabase.from('topping_categories').select('*, name_fr, name_en, name_tr, description_fr, description_en, description_tr').in('id', toppingCategoryIds);
       if (categoriesError) {
         console.error("Erreur lors du chargement des détails des catégories de toppings:", categoriesError);
         return [];

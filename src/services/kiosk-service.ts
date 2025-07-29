@@ -553,10 +553,10 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
     };
   }
 
-  // Fetch the actual topping categories
+  // Fetch the actual topping categories with explicit multilingual fields
   const { data: toppingCategories, error: tcError } = await supabase
     .from("topping_categories")
-    .select("*")
+    .select("*, name_fr, name_en, name_tr, description_fr, description_en, description_tr")
     .in("id", toppingCategoryIds);
 
   if (tcError) {
