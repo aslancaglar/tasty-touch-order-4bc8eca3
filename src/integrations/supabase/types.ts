@@ -1057,6 +1057,10 @@ export type Database = {
         }
         Returns: string
       }
+      translate_topping_names: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
