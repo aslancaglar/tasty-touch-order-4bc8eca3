@@ -29,7 +29,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
     initialLanguage || DEFAULT_LANGUAGE
   );
 
-  // Load saved language preference from localStorage or respond to initialLanguage changes
+  // Initialize language on mount only
   React.useEffect(() => {
     if (initialLanguage) {
       // If initialLanguage is provided, use it and clear any conflicting localStorage
@@ -41,6 +41,14 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
       if (savedLanguage && ['fr', 'en', 'tr'].includes(savedLanguage)) {
         setLanguageState(savedLanguage);
       }
+    }
+  }, []); // Only run on mount
+
+  // Handle initialLanguage changes separately 
+  React.useEffect(() => {
+    if (initialLanguage && language !== initialLanguage) {
+      setLanguageState(initialLanguage);
+      localStorage.removeItem('kiosk-language');
     }
   }, [initialLanguage]);
 
