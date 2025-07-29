@@ -26,18 +26,21 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
   initialLanguage 
 }) => {
   const [language, setLanguageState] = React.useState<SupportedLanguage>(() => {
-    // On initial mount, prioritize initialLanguage if provided
-    if (initialLanguage) {
-      return initialLanguage;
-    }
-    
-    // Otherwise try to load from localStorage
+    // Prioritize user's saved language preference first
     const savedLanguage = localStorage.getItem('kiosk-language') as SupportedLanguage;
     if (savedLanguage && ['fr', 'en', 'tr'].includes(savedLanguage)) {
+      console.log('[LanguageContext] Using saved user language:', savedLanguage);
       return savedLanguage;
     }
     
-    // Fall back to default
+    // Fall back to restaurant's initial language if provided
+    if (initialLanguage) {
+      console.log('[LanguageContext] Using restaurant initial language:', initialLanguage);
+      return initialLanguage;
+    }
+    
+    // Final fallback to default
+    console.log('[LanguageContext] Using default language:', DEFAULT_LANGUAGE);
     return DEFAULT_LANGUAGE;
   });
 
