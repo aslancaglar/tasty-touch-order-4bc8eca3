@@ -443,23 +443,35 @@ const KioskView = () => {
 
         if (toppingsError) {
           console.error(`Erreur lors du chargement des ingrédients pour la catégorie ${category.id}:`, toppingsError);
-          return {
-            id: category.id,
-            name: category.name,
-            min_selections: category.min_selections || 0,
-            max_selections: category.max_selections || 0,
-            required: category.min_selections ? category.min_selections > 0 : false,
-            display_order: displayOrderMap[category.id],
-            // Use display_order from relation
-            toppings: [],
-            show_if_selection_id: category.show_if_selection_id,
-            show_if_selection_type: category.show_if_selection_type,
-            allow_multiple_same_topping: category.allow_multiple_same_topping || false // Include allow_multiple_same_topping property
-          };
+        return {
+          id: category.id,
+          name: category.name,
+          name_fr: category.name_fr,
+          name_en: category.name_en,
+          name_tr: category.name_tr,
+          description_fr: category.description_fr,
+          description_en: category.description_en,
+          description_tr: category.description_tr,
+          min_selections: category.min_selections || 0,
+          max_selections: category.max_selections || 0,
+          required: category.min_selections ? category.min_selections > 0 : false,
+          display_order: displayOrderMap[category.id],
+          // Use display_order from relation
+          toppings: [],
+          show_if_selection_id: category.show_if_selection_id,
+          show_if_selection_type: category.show_if_selection_type,
+          allow_multiple_same_topping: category.allow_multiple_same_topping || false // Include allow_multiple_same_topping property
+        };
         }
         return {
           id: category.id,
           name: category.name,
+          name_fr: category.name_fr,
+          name_en: category.name_en,
+          name_tr: category.name_tr,
+          description_fr: category.description_fr,
+          description_en: category.description_en,
+          description_tr: category.description_tr,
           min_selections: category.min_selections || 0,
           max_selections: category.max_selections || 0,
           required: category.min_selections ? category.min_selections > 0 : false,
@@ -468,6 +480,9 @@ const KioskView = () => {
           toppings: toppings.map(topping => ({
             id: topping.id,
             name: topping.name,
+            name_fr: topping.name_fr,
+            name_en: topping.name_en,
+            name_tr: topping.name_tr,
             price: topping.price,
             tax_percentage: topping.tax_percentage || 0,
             display_order: topping.display_order

@@ -646,7 +646,7 @@ export const getToppingCategoriesByRestaurantId = async (restaurantId: string): 
   console.log("Fetching topping categories for restaurant:", restaurantId);
   const { data, error } = await supabase
     .from("topping_categories")
-    .select("*")
+    .select("*, name_fr, name_en, name_tr, description_fr, description_en, description_tr")
     .eq("restaurant_id", restaurantId);
 
   if (error) {
