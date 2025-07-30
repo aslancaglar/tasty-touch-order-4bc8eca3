@@ -51,19 +51,18 @@ const WelcomePage = ({
               </span> : t("welcome.start")}
           </Button>
         </div>
-        
-        {/* Language selection below the start button */}
-        <div className="text-center">
-          
-          <div className="flex justify-center gap-4">
-            {availableLanguages.map(lang => <Button key={lang} variant={currentLanguage === lang ? "default" : "outline"} size="lg" onClick={() => setLanguage(lang)} className={`
-                  ${currentLanguage === lang ? 'bg-violet-700 text-white hover:bg-violet-600 border-violet-700' : 'bg-white/10 text-white hover:bg-white/20 border-white/30'}
-                  px-8 py-4 text-lg font-medium backdrop-blur-sm
-                `}>
-                <Globe className="h-5 w-5 mr-2" />
-                {LANGUAGE_NAMES[lang]}
-              </Button>)}
-          </div>
+      </div>
+
+      {/* Language selection at bottom of screen */}
+      <div className="pb-8 px-4">
+        <div className="flex justify-center gap-4">
+          {availableLanguages.map(lang => <Button key={lang} variant={currentLanguage === lang ? "default" : "outline"} size="lg" onClick={() => setLanguage(lang)} className={`
+                ${currentLanguage === lang ? 'bg-violet-700 text-white hover:bg-violet-600 border-violet-700' : 'bg-white/10 text-white hover:bg-white/20 border-white/30'}
+                px-8 py-4 text-lg font-medium backdrop-blur-sm
+              `}>
+              <Globe className="h-5 w-5 mr-2" />
+              {LANGUAGE_NAMES[lang]}
+            </Button>)}
         </div>
       </div>
     </div>;
