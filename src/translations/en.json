@@ -71,6 +71,8 @@
   "sidebar": {
     "dashboard": "Dashboard",
     "restaurants": "Restaurants",
+    "security": "Security",
+    "generalSettings": "General Settings",
     "signOut": "Sign Out",
     "admin": "Admin",
     "owner": "Restaurant Owner"

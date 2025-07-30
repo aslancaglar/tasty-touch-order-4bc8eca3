@@ -5,6 +5,7 @@ import {
   LayoutDashboard, 
   Store,
   Shield,
+  Settings,
   ChevronLeft,
   ChevronRight,
   LogOut
@@ -40,6 +41,12 @@ const createSidebarItems = (t: (key: string) => string): SidebarItem[] => [
     icon: Shield,
     href: "/security",
     translationKey: "sidebar.security"
+  },
+  {
+    title: "General Settings",
+    icon: Settings,
+    href: "/general-settings",
+    translationKey: "sidebar.generalSettings"
   },
 ];
 

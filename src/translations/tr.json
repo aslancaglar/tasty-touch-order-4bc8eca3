@@ -71,6 +71,8 @@
   "sidebar": {
     "dashboard": "Kontrol Paneli",
     "restaurants": "Restoranlar",
+    "security": "Güvenlik",
+    "generalSettings": "Genel Ayarlar",
     "signOut": "Çıkış Yap",
     "admin": "Yönetici",
     "owner": "Restoran Sahibi"

@@ -72,6 +72,8 @@
   "sidebar": {
     "dashboard": "Tableau de bord",
     "restaurants": "Restaurants",
+    "security": "Sécurité",
+    "generalSettings": "Paramètres généraux",
     "signOut": "Déconnexion",
     "admin": "Administrateur",
     "owner": "Propriétaire"

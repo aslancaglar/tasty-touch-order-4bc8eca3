@@ -15,7 +15,7 @@ interface LanguageSetting {
 }
 
 interface GeneralSettingsProps {
-  restaurantId: string;
+  restaurantId?: string;
 }
 
 export const GeneralSettings: React.FC<GeneralSettingsProps> = ({ restaurantId }) => {
@@ -27,10 +27,17 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({ restaurantId }
   const languages: SupportedLanguage[] = ['fr', 'en', 'tr'];
 
   useEffect(() => {
-    fetchLanguageSettings();
+    if (restaurantId) {
+      fetchLanguageSettings();
+    }
   }, [restaurantId]);
 
   const fetchLanguageSettings = async () => {
+    if (!restaurantId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('language_settings')
@@ -54,7 +61,7 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({ restaurantId }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, language: SupportedLanguage) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !restaurantId) return;
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -129,6 +136,8 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({ restaurantId }
   };
 
   const handleDeleteFlag = async (language: SupportedLanguage) => {
+    if (!restaurantId) return;
+    
     try {
       const setting = languageSettings.find(s => s.language === language);
       if (!setting) return;
