@@ -56,6 +56,33 @@ export type Database = {
         }
         Relationships: []
       }
+      language_settings: {
+        Row: {
+          created_at: string
+          flag_url: string | null
+          id: string
+          language: string
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          flag_url?: string | null
+          id?: string
+          language: string
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          flag_url?: string | null
+          id?: string
+          language?: string
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string
