@@ -1,9 +1,17 @@
 import { Restaurant } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
 import { useTranslation, SupportedLanguage, LANGUAGE_NAMES } from "@/utils/language-utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Globe } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
+interface LanguageSetting {
+  id: string;
+  restaurant_id: string;
+  language: SupportedLanguage;
+  flag_url: string | null;
+}
+
 interface WelcomePageProps {
   restaurant: Restaurant;
   onStart: () => void;
@@ -15,15 +23,43 @@ const WelcomePage = ({
   isDataLoading = false
 }: WelcomePageProps) => {
   const { language: currentLanguage, setLanguage } = useLanguage();
-  const {
-    t
-  } = useTranslation(currentLanguage);
+  const { t } = useTranslation(currentLanguage);
   const [isStarting, setIsStarting] = useState(false);
+  const [languageSettings, setLanguageSettings] = useState<LanguageSetting[]>([]);
+  
+  const availableLanguages: SupportedLanguage[] = ['fr', 'en', 'tr'];
+
+  useEffect(() => {
+    fetchLanguageSettings();
+  }, [restaurant.id]);
+
+  const fetchLanguageSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('language_settings')
+        .select('*')
+        .eq('restaurant_id', restaurant.id);
+
+      if (error) {
+        console.error('Error fetching language settings:', error);
+        return;
+      }
+
+      setLanguageSettings((data || []) as LanguageSetting[]);
+    } catch (error) {
+      console.error('Error fetching language settings:', error);
+    }
+  };
+
   const handleStart = () => {
     setIsStarting(true);
     onStart();
   };
-  const availableLanguages: SupportedLanguage[] = ['fr', 'en', 'tr'];
+
+  const getFlagForLanguage = (language: SupportedLanguage) => {
+    const setting = languageSettings.find(s => s.language === language);
+    return setting?.flag_url;
+  };
   return <div className="fixed inset-0 flex flex-col bg-cover bg-center" style={{
     backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url(${restaurant.image_url || "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"})`
   }}>
@@ -56,13 +92,32 @@ const WelcomePage = ({
       {/* Language selection at bottom of screen */}
       <div className="pb-8 px-4">
         <div className="flex justify-center gap-4">
-          {availableLanguages.map(lang => <Button key={lang} variant={currentLanguage === lang ? "default" : "outline"} size="lg" onClick={() => setLanguage(lang)} className={`
-                ${currentLanguage === lang ? 'bg-violet-700 text-white hover:bg-violet-600 border-violet-700' : 'bg-white/10 text-white hover:bg-white/20 border-white/30'}
-                px-8 py-4 text-lg font-medium backdrop-blur-sm
-              `}>
-              <Globe className="h-5 w-5 mr-2" />
-              {LANGUAGE_NAMES[lang]}
-            </Button>)}
+          {availableLanguages.map(lang => {
+            const flagUrl = getFlagForLanguage(lang);
+            return (
+              <Button 
+                key={lang} 
+                variant={currentLanguage === lang ? "default" : "outline"} 
+                size="lg" 
+                onClick={() => setLanguage(lang)} 
+                className={`
+                  ${currentLanguage === lang ? 'bg-violet-700 text-white hover:bg-violet-600 border-violet-700' : 'bg-white/10 text-white hover:bg-white/20 border-white/30'}
+                  px-8 py-4 text-lg font-medium backdrop-blur-sm
+                `}
+              >
+                {flagUrl ? (
+                  <img 
+                    src={flagUrl} 
+                    alt={`${LANGUAGE_NAMES[lang]} flag`}
+                    className="h-5 w-8 mr-2 object-cover rounded-sm"
+                  />
+                ) : (
+                  <Globe className="h-5 w-5 mr-2" />
+                )}
+                {LANGUAGE_NAMES[lang]}
+              </Button>
+            );
+          })}
         </div>
       </div>
     </div>;

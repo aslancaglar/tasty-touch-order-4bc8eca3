@@ -2,11 +2,40 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { SecurityMetrics } from "@/components/security/SecurityMetrics";
 import { SecurityEventsList } from "@/components/security/SecurityEventsList";
 import { AuditLogsList } from "@/components/security/AuditLogsList";
+import { GeneralSettings } from "@/components/security/GeneralSettings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, FileText, AlertTriangle, Activity } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Shield, FileText, AlertTriangle, Activity, Settings } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
 
 export default function Security() {
+  const [restaurants, setRestaurants] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string>("");
+
+  useEffect(() => {
+    fetchRestaurants();
+  }, []);
+
+  const fetchRestaurants = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setRestaurants(data);
+        setSelectedRestaurant(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -35,6 +64,10 @@ export default function Security() {
             <TabsTrigger value="monitoring" className="flex items-center space-x-2">
               <Activity className="h-4 w-4" />
               <span>System Monitoring</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center space-x-2">
+              <Settings className="h-4 w-4" />
+              <span>General Settings</span>
             </TabsTrigger>
           </TabsList>
 
@@ -99,6 +132,32 @@ export default function Security() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <Label htmlFor="restaurant-select" className="text-sm font-medium">
+                  Select Restaurant:
+                </Label>
+                <Select value={selectedRestaurant} onValueChange={setSelectedRestaurant}>
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Select a restaurant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {restaurants.map((restaurant) => (
+                      <SelectItem key={restaurant.id} value={restaurant.id}>
+                        {restaurant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {selectedRestaurant && (
+                <GeneralSettings restaurantId={selectedRestaurant} />
+              )}
             </div>
           </TabsContent>
         </Tabs>
