@@ -114,51 +114,99 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          description_ar: string | null
+          description_de: string | null
           description_en: string | null
+          description_es: string | null
           description_fr: string | null
+          description_it: string | null
+          description_nl: string | null
+          description_pt: string | null
+          description_ru: string | null
           description_tr: string | null
+          description_zh: string | null
           display_order: number | null
           icon: string | null
           id: string
           image_url: string | null
           name: string
+          name_ar: string | null
+          name_de: string | null
           name_en: string | null
+          name_es: string | null
           name_fr: string | null
+          name_it: string | null
+          name_nl: string | null
+          name_pt: string | null
+          name_ru: string | null
           name_tr: string | null
+          name_zh: string | null
           restaurant_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           description?: string | null
+          description_ar?: string | null
+          description_de?: string | null
           description_en?: string | null
+          description_es?: string | null
           description_fr?: string | null
+          description_it?: string | null
+          description_nl?: string | null
+          description_pt?: string | null
+          description_ru?: string | null
           description_tr?: string | null
+          description_zh?: string | null
           display_order?: number | null
           icon?: string | null
           id?: string
           image_url?: string | null
           name: string
+          name_ar?: string | null
+          name_de?: string | null
           name_en?: string | null
+          name_es?: string | null
           name_fr?: string | null
+          name_it?: string | null
+          name_nl?: string | null
+          name_pt?: string | null
+          name_ru?: string | null
           name_tr?: string | null
+          name_zh?: string | null
           restaurant_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           description?: string | null
+          description_ar?: string | null
+          description_de?: string | null
           description_en?: string | null
+          description_es?: string | null
           description_fr?: string | null
+          description_it?: string | null
+          description_nl?: string | null
+          description_pt?: string | null
+          description_ru?: string | null
           description_tr?: string | null
+          description_zh?: string | null
           display_order?: number | null
           icon?: string | null
           id?: string
           image_url?: string | null
           name?: string
+          name_ar?: string | null
+          name_de?: string | null
           name_en?: string | null
+          name_es?: string | null
           name_fr?: string | null
+          name_it?: string | null
+          name_nl?: string | null
+          name_pt?: string | null
+          name_ru?: string | null
           name_tr?: string | null
+          name_zh?: string | null
           restaurant_id?: string
           updated_at?: string
         }
@@ -259,18 +307,34 @@ export type Database = {
           category_id: string
           created_at: string
           description: string | null
+          description_ar: string | null
+          description_de: string | null
           description_en: string | null
+          description_es: string | null
           description_fr: string | null
+          description_it: string | null
+          description_nl: string | null
+          description_pt: string | null
+          description_ru: string | null
           description_tr: string | null
+          description_zh: string | null
           display_order: number | null
           id: string
           image: string | null
           in_stock: boolean
           is_featured: boolean
           name: string
+          name_ar: string | null
+          name_de: string | null
           name_en: string | null
+          name_es: string | null
           name_fr: string | null
+          name_it: string | null
+          name_nl: string | null
+          name_pt: string | null
+          name_ru: string | null
           name_tr: string | null
+          name_zh: string | null
           price: number
           promotion_price: number | null
           tax_percentage: number | null
@@ -282,18 +346,34 @@ export type Database = {
           category_id: string
           created_at?: string
           description?: string | null
+          description_ar?: string | null
+          description_de?: string | null
           description_en?: string | null
+          description_es?: string | null
           description_fr?: string | null
+          description_it?: string | null
+          description_nl?: string | null
+          description_pt?: string | null
+          description_ru?: string | null
           description_tr?: string | null
+          description_zh?: string | null
           display_order?: number | null
           id?: string
           image?: string | null
           in_stock?: boolean
           is_featured?: boolean
           name: string
+          name_ar?: string | null
+          name_de?: string | null
           name_en?: string | null
+          name_es?: string | null
           name_fr?: string | null
+          name_it?: string | null
+          name_nl?: string | null
+          name_pt?: string | null
+          name_ru?: string | null
           name_tr?: string | null
+          name_zh?: string | null
           price: number
           promotion_price?: number | null
           tax_percentage?: number | null
@@ -305,18 +385,34 @@ export type Database = {
           category_id?: string
           created_at?: string
           description?: string | null
+          description_ar?: string | null
+          description_de?: string | null
           description_en?: string | null
+          description_es?: string | null
           description_fr?: string | null
+          description_it?: string | null
+          description_nl?: string | null
+          description_pt?: string | null
+          description_ru?: string | null
           description_tr?: string | null
+          description_zh?: string | null
           display_order?: number | null
           id?: string
           image?: string | null
           in_stock?: boolean
           is_featured?: boolean
           name?: string
+          name_ar?: string | null
+          name_de?: string | null
           name_en?: string | null
+          name_es?: string | null
           name_fr?: string | null
+          name_it?: string | null
+          name_nl?: string | null
+          name_pt?: string | null
+          name_ru?: string | null
           name_tr?: string | null
+          name_zh?: string | null
           price?: number
           promotion_price?: number | null
           tax_percentage?: number | null
@@ -952,18 +1048,34 @@ export type Database = {
           allow_multiple_same_topping: boolean
           created_at: string
           description: string | null
+          description_ar: string | null
+          description_de: string | null
           description_en: string | null
+          description_es: string | null
           description_fr: string | null
+          description_it: string | null
+          description_nl: string | null
+          description_pt: string | null
+          description_ru: string | null
           description_tr: string | null
+          description_zh: string | null
           display_order: number | null
           icon: string | null
           id: string
           max_selections: number | null
           min_selections: number | null
           name: string
+          name_ar: string | null
+          name_de: string | null
           name_en: string | null
+          name_es: string | null
           name_fr: string | null
+          name_it: string | null
+          name_nl: string | null
+          name_pt: string | null
+          name_ru: string | null
           name_tr: string | null
+          name_zh: string | null
           restaurant_id: string
           show_if_selection_id: string[] | null
           show_if_selection_type: string[] | null
@@ -973,18 +1085,34 @@ export type Database = {
           allow_multiple_same_topping?: boolean
           created_at?: string
           description?: string | null
+          description_ar?: string | null
+          description_de?: string | null
           description_en?: string | null
+          description_es?: string | null
           description_fr?: string | null
+          description_it?: string | null
+          description_nl?: string | null
+          description_pt?: string | null
+          description_ru?: string | null
           description_tr?: string | null
+          description_zh?: string | null
           display_order?: number | null
           icon?: string | null
           id?: string
           max_selections?: number | null
           min_selections?: number | null
           name: string
+          name_ar?: string | null
+          name_de?: string | null
           name_en?: string | null
+          name_es?: string | null
           name_fr?: string | null
+          name_it?: string | null
+          name_nl?: string | null
+          name_pt?: string | null
+          name_ru?: string | null
           name_tr?: string | null
+          name_zh?: string | null
           restaurant_id: string
           show_if_selection_id?: string[] | null
           show_if_selection_type?: string[] | null
@@ -994,18 +1122,34 @@ export type Database = {
           allow_multiple_same_topping?: boolean
           created_at?: string
           description?: string | null
+          description_ar?: string | null
+          description_de?: string | null
           description_en?: string | null
+          description_es?: string | null
           description_fr?: string | null
+          description_it?: string | null
+          description_nl?: string | null
+          description_pt?: string | null
+          description_ru?: string | null
           description_tr?: string | null
+          description_zh?: string | null
           display_order?: number | null
           icon?: string | null
           id?: string
           max_selections?: number | null
           min_selections?: number | null
           name?: string
+          name_ar?: string | null
+          name_de?: string | null
           name_en?: string | null
+          name_es?: string | null
           name_fr?: string | null
+          name_it?: string | null
+          name_nl?: string | null
+          name_pt?: string | null
+          name_ru?: string | null
           name_tr?: string | null
+          name_zh?: string | null
           restaurant_id?: string
           show_if_selection_id?: string[] | null
           show_if_selection_type?: string[] | null
@@ -1029,9 +1173,17 @@ export type Database = {
           id: string
           in_stock: boolean
           name: string
+          name_ar: string | null
+          name_de: string | null
           name_en: string | null
+          name_es: string | null
           name_fr: string | null
+          name_it: string | null
+          name_nl: string | null
+          name_pt: string | null
+          name_ru: string | null
           name_tr: string | null
+          name_zh: string | null
           price: number
           tax_percentage: number | null
           updated_at: string
@@ -1043,9 +1195,17 @@ export type Database = {
           id?: string
           in_stock?: boolean
           name: string
+          name_ar?: string | null
+          name_de?: string | null
           name_en?: string | null
+          name_es?: string | null
           name_fr?: string | null
+          name_it?: string | null
+          name_nl?: string | null
+          name_pt?: string | null
+          name_ru?: string | null
           name_tr?: string | null
+          name_zh?: string | null
           price?: number
           tax_percentage?: number | null
           updated_at?: string
@@ -1057,9 +1217,17 @@ export type Database = {
           id?: string
           in_stock?: boolean
           name?: string
+          name_ar?: string | null
+          name_de?: string | null
           name_en?: string | null
+          name_es?: string | null
           name_fr?: string | null
+          name_it?: string | null
+          name_nl?: string | null
+          name_pt?: string | null
+          name_ru?: string | null
           name_tr?: string | null
+          name_zh?: string | null
           price?: number
           tax_percentage?: number | null
           updated_at?: string
