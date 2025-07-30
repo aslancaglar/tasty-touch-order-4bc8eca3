@@ -26,10 +26,26 @@ const formSchema = z.object({
   name_fr: z.string().optional(),
   name_en: z.string().optional(),
   name_tr: z.string().optional(),
+  name_de: z.string().optional(),
+  name_es: z.string().optional(),
+  name_it: z.string().optional(),
+  name_nl: z.string().optional(),
+  name_pt: z.string().optional(),
+  name_ru: z.string().optional(),
+  name_ar: z.string().optional(),
+  name_zh: z.string().optional(),
   description: z.string().optional(),
   description_fr: z.string().optional(),
   description_en: z.string().optional(),
   description_tr: z.string().optional(),
+  description_de: z.string().optional(),
+  description_es: z.string().optional(),
+  description_it: z.string().optional(),
+  description_nl: z.string().optional(),
+  description_pt: z.string().optional(),
+  description_ru: z.string().optional(),
+  description_ar: z.string().optional(),
+  description_zh: z.string().optional(),
   icon: z.string().optional(),
   display_order: z.string().refine(
     (val) => !isNaN(Number(val)),
@@ -61,10 +77,26 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Cate
       name_fr: initialValues?.name_fr || "",
       name_en: initialValues?.name_en || "",
       name_tr: initialValues?.name_tr || "",
+      name_de: initialValues?.name_de || "",
+      name_es: initialValues?.name_es || "",
+      name_it: initialValues?.name_it || "",
+      name_nl: initialValues?.name_nl || "",
+      name_pt: initialValues?.name_pt || "",
+      name_ru: initialValues?.name_ru || "",
+      name_ar: initialValues?.name_ar || "",
+      name_zh: initialValues?.name_zh || "",
       description: initialValues?.description || "",
       description_fr: initialValues?.description_fr || "",
       description_en: initialValues?.description_en || "",
       description_tr: initialValues?.description_tr || "",
+      description_de: initialValues?.description_de || "",
+      description_es: initialValues?.description_es || "",
+      description_it: initialValues?.description_it || "",
+      description_nl: initialValues?.description_nl || "",
+      description_pt: initialValues?.description_pt || "",
+      description_ru: initialValues?.description_ru || "",
+      description_ar: initialValues?.description_ar || "",
+      description_zh: initialValues?.description_zh || "",
       icon: initialValues?.icon || "",
       display_order: initialValues?.display_order || "0",
     },
@@ -104,7 +136,15 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Cate
           values={{
             fr: form.watch("name_fr"),
             en: form.watch("name_en"),
-            tr: form.watch("name_tr")
+            tr: form.watch("name_tr"),
+            de: form.watch("name_de"),
+            es: form.watch("name_es"),
+            it: form.watch("name_it"),
+            nl: form.watch("name_nl"),
+            pt: form.watch("name_pt"),
+            ru: form.watch("name_ru"),
+            ar: form.watch("name_ar"),
+            zh: form.watch("name_zh")
           }}
           onChange={handleNameChange}
           error={form.formState.errors.name?.message}
@@ -119,7 +159,15 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Cate
           values={{
             fr: form.watch("description_fr"),
             en: form.watch("description_en"),
-            tr: form.watch("description_tr")
+            tr: form.watch("description_tr"),
+            de: form.watch("description_de"),
+            es: form.watch("description_es"),
+            it: form.watch("description_it"),
+            nl: form.watch("description_nl"),
+            pt: form.watch("description_pt"),
+            ru: form.watch("description_ru"),
+            ar: form.watch("description_ar"),
+            zh: form.watch("description_zh")
           }}
           onChange={handleDescriptionChange}
           languages={availableLanguages}

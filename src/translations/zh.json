@@ -1,0 +1,59 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "add": "添加",
+    "remove": "移除",
+    "confirm": "确认",
+    "back": "返回",
+    "next": "下一步",
+    "search": "搜索",
+    "clear": "清除",
+    "select": "选择",
+    "close": "关闭",
+    "open": "打开",
+    "yes": "是",
+    "no": "否"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "登出",
+    "email": "邮箱",
+    "password": "密码",
+    "signin": "登录",
+    "signup": "注册",
+    "forgotPassword": "忘记密码？",
+    "resetPassword": "重置密码"
+  },
+  "menu": {
+    "categories": "分类",
+    "items": "商品",
+    "price": "价格",
+    "description": "描述",
+    "addToCart": "添加到购物车",
+    "outOfStock": "缺货"
+  },
+  "cart": {
+    "cart": "购物车",
+    "empty": "您的购物车是空的",
+    "total": "总计",
+    "checkout": "结账",
+    "quantity": "数量",
+    "remove": "移除"
+  },
+  "order": {
+    "order": "订单",
+    "orders": "订单",
+    "orderNumber": "订单号",
+    "status": "状态",
+    "pending": "待处理",
+    "confirmed": "已确认",
+    "completed": "已完成",
+    "cancelled": "已取消"
+  }
+}

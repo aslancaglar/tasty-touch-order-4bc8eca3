@@ -1,0 +1,59 @@
+{
+  "common": {
+    "loading": "Laden...",
+    "error": "Fout",
+    "success": "Succesvol",
+    "cancel": "Annuleren",
+    "save": "Opslaan",
+    "delete": "Verwijderen",
+    "edit": "Bewerken",
+    "add": "Toevoegen",
+    "remove": "Verwijderen",
+    "confirm": "Bevestigen",
+    "back": "Terug",
+    "next": "Volgende",
+    "search": "Zoeken",
+    "clear": "Wissen",
+    "select": "Selecteren",
+    "close": "Sluiten",
+    "open": "Openen",
+    "yes": "Ja",
+    "no": "Nee"
+  },
+  "auth": {
+    "login": "Inloggen",
+    "logout": "Uitloggen",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "signin": "Aanmelden",
+    "signup": "Registreren",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "resetPassword": "Wachtwoord resetten"
+  },
+  "menu": {
+    "categories": "Categorieën",
+    "items": "Items",
+    "price": "Prijs",
+    "description": "Beschrijving",
+    "addToCart": "Toevoegen aan winkelwagen",
+    "outOfStock": "Niet op voorraad"
+  },
+  "cart": {
+    "cart": "Winkelwagen",
+    "empty": "Je winkelwagen is leeg",
+    "total": "Totaal",
+    "checkout": "Afrekenen",
+    "quantity": "Hoeveelheid",
+    "remove": "Verwijderen"
+  },
+  "order": {
+    "order": "Bestelling",
+    "orders": "Bestellingen",
+    "orderNumber": "Bestelnummer",
+    "status": "Status",
+    "pending": "In behandeling",
+    "confirmed": "Bevestigd",
+    "completed": "Voltooid",
+    "cancelled": "Geannuleerd"
+  }
+}

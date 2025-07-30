@@ -29,7 +29,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
   const [language, setLanguageState] = React.useState<SupportedLanguage>(() => {
     // Prioritize user's saved language preference first
     const savedLanguage = localStorage.getItem('kiosk-language') as SupportedLanguage;
-    if (savedLanguage && ['fr', 'en', 'tr'].includes(savedLanguage)) {
+    if (savedLanguage && ['fr', 'en', 'tr', 'de', 'es', 'it', 'nl', 'pt', 'ru', 'ar', 'zh'].includes(savedLanguage)) {
       console.log('[LanguageContext] Using saved user language:', savedLanguage);
       return savedLanguage;
     }

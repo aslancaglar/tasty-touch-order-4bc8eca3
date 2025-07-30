@@ -1,0 +1,59 @@
+{
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "add": "Добавить",
+    "remove": "Удалить",
+    "confirm": "Подтвердить",
+    "back": "Назад",
+    "next": "Далее",
+    "search": "Поиск",
+    "clear": "Очистить",
+    "select": "Выбрать",
+    "close": "Закрыть",
+    "open": "Открыть",
+    "yes": "Да",
+    "no": "Нет"
+  },
+  "auth": {
+    "login": "Войти",
+    "logout": "Выйти",
+    "email": "Электронная почта",
+    "password": "Пароль",
+    "signin": "Вход",
+    "signup": "Регистрация",
+    "forgotPassword": "Забыли пароль?",
+    "resetPassword": "Сбросить пароль"
+  },
+  "menu": {
+    "categories": "Категории",
+    "items": "Товары",
+    "price": "Цена",
+    "description": "Описание",
+    "addToCart": "Добавить в корзину",
+    "outOfStock": "Нет в наличии"
+  },
+  "cart": {
+    "cart": "Корзина",
+    "empty": "Ваша корзина пуста",
+    "total": "Итого",
+    "checkout": "Оформить заказ",
+    "quantity": "Количество",
+    "remove": "Удалить"
+  },
+  "order": {
+    "order": "Заказ",
+    "orders": "Заказы",
+    "orderNumber": "Номер заказа",
+    "status": "Статус",
+    "pending": "Ожидает",
+    "confirmed": "Подтвержден",
+    "completed": "Завершен",
+    "cancelled": "Отменен"
+  }
+}

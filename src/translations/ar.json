@@ -1,0 +1,59 @@
+{
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "success": "نجح",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "delete": "حذف",
+    "edit": "تحرير",
+    "add": "إضافة",
+    "remove": "إزالة",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "search": "بحث",
+    "clear": "مسح",
+    "select": "اختيار",
+    "close": "إغلاق",
+    "open": "فتح",
+    "yes": "نعم",
+    "no": "لا"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "signin": "دخول",
+    "signup": "إنشاء حساب",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "resetPassword": "إعادة تعيين كلمة المرور"
+  },
+  "menu": {
+    "categories": "الفئات",
+    "items": "العناصر",
+    "price": "السعر",
+    "description": "الوصف",
+    "addToCart": "أضف إلى السلة",
+    "outOfStock": "غير متوفر"
+  },
+  "cart": {
+    "cart": "السلة",
+    "empty": "سلتك فارغة",
+    "total": "المجموع",
+    "checkout": "الدفع",
+    "quantity": "الكمية",
+    "remove": "إزالة"
+  },
+  "order": {
+    "order": "الطلب",
+    "orders": "الطلبات",
+    "orderNumber": "رقم الطلب",
+    "status": "الحالة",
+    "pending": "قيد الانتظار",
+    "confirmed": "مؤكد",
+    "completed": "مكتمل",
+    "cancelled": "ملغى"
+  }
+}

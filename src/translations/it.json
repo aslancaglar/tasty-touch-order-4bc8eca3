@@ -1,0 +1,59 @@
+{
+  "common": {
+    "loading": "Caricamento...",
+    "error": "Errore",
+    "success": "Successo",
+    "cancel": "Annulla",
+    "save": "Salva",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "add": "Aggiungi",
+    "remove": "Rimuovi",
+    "confirm": "Conferma",
+    "back": "Indietro",
+    "next": "Avanti",
+    "search": "Cerca",
+    "clear": "Cancella",
+    "select": "Seleziona",
+    "close": "Chiudi",
+    "open": "Apri",
+    "yes": "Sì",
+    "no": "No"
+  },
+  "auth": {
+    "login": "Accedi",
+    "logout": "Esci",
+    "email": "Email",
+    "password": "Password",
+    "signin": "Entra",
+    "signup": "Registrati",
+    "forgotPassword": "Password dimenticata?",
+    "resetPassword": "Reimposta password"
+  },
+  "menu": {
+    "categories": "Categorie",
+    "items": "Articoli",
+    "price": "Prezzo",
+    "description": "Descrizione",
+    "addToCart": "Aggiungi al carrello",
+    "outOfStock": "Esaurito"
+  },
+  "cart": {
+    "cart": "Carrello",
+    "empty": "Il tuo carrello è vuoto",
+    "total": "Totale",
+    "checkout": "Procedi al checkout",
+    "quantity": "Quantità",
+    "remove": "Rimuovi"
+  },
+  "order": {
+    "order": "Ordine",
+    "orders": "Ordini",
+    "orderNumber": "Numero ordine",
+    "status": "Stato",
+    "pending": "In attesa",
+    "confirmed": "Confermato",
+    "completed": "Completato",
+    "cancelled": "Cancellato"
+  }
+}

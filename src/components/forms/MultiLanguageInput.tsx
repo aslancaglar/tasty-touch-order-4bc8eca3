@@ -18,6 +18,14 @@ interface MultiLanguageInputProps {
     fr?: string;
     en?: string;
     tr?: string;
+    de?: string;
+    es?: string;
+    it?: string;
+    nl?: string;
+    pt?: string;
+    ru?: string;
+    ar?: string;
+    zh?: string;
   };
   onChange: (language: SupportedLanguage, value: string) => void;
   error?: string;

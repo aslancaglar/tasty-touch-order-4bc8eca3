@@ -16,6 +16,14 @@ const toppingSchema = z.object({
   name_fr: z.string().optional(),
   name_en: z.string().optional(),
   name_tr: z.string().optional(),
+  name_de: z.string().optional(),
+  name_es: z.string().optional(),
+  name_it: z.string().optional(),
+  name_nl: z.string().optional(),
+  name_pt: z.string().optional(),
+  name_ru: z.string().optional(),
+  name_ar: z.string().optional(),
+  name_zh: z.string().optional(),
   price: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
     message: "Le prix doit être un nombre valide supérieur ou égal à 0",
   }),
@@ -37,6 +45,14 @@ interface ToppingFormProps {
     name_fr?: string;
     name_en?: string;
     name_tr?: string;
+    name_de?: string;
+    name_es?: string;
+    name_it?: string;
+    name_nl?: string;
+    name_pt?: string;
+    name_ru?: string;
+    name_ar?: string;
+    name_zh?: string;
     price: string;
     tax_percentage?: string;
     display_order?: string;
@@ -63,7 +79,15 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
   const [nameValues, setNameValues] = useState({
     fr: initialValues?.name_fr || initialValues?.name || "",
     en: initialValues?.name_en || "",
-    tr: initialValues?.name_tr || ""
+    tr: initialValues?.name_tr || "",
+    de: initialValues?.name_de || "",
+    es: initialValues?.name_es || "",
+    it: initialValues?.name_it || "",
+    nl: initialValues?.name_nl || "",
+    pt: initialValues?.name_pt || "",
+    ru: initialValues?.name_ru || "",
+    ar: initialValues?.name_ar || "",
+    zh: initialValues?.name_zh || ""
   });
 
   const form = useForm<ToppingFormValues>({
@@ -73,6 +97,14 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
       name_fr: initialValues?.name_fr || initialValues?.name || "",
       name_en: initialValues?.name_en || "",
       name_tr: initialValues?.name_tr || "",
+      name_de: initialValues?.name_de || "",
+      name_es: initialValues?.name_es || "",
+      name_it: initialValues?.name_it || "",
+      name_nl: initialValues?.name_nl || "",
+      name_pt: initialValues?.name_pt || "",
+      name_ru: initialValues?.name_ru || "",
+      name_ar: initialValues?.name_ar || "",
+      name_zh: initialValues?.name_zh || "",
       price: initialValues?.price || "0",
       tax_percentage: initialValues?.tax_percentage || "10",
       display_order: initialValues?.display_order || "0",

@@ -40,10 +40,26 @@ const formSchema = z.object({
   name_fr: z.string().optional(),
   name_en: z.string().optional(),
   name_tr: z.string().optional(),
+  name_de: z.string().optional(),
+  name_es: z.string().optional(),
+  name_it: z.string().optional(),
+  name_nl: z.string().optional(),
+  name_pt: z.string().optional(),
+  name_ru: z.string().optional(),
+  name_ar: z.string().optional(),
+  name_zh: z.string().optional(),
   description: z.string().optional(),
   description_fr: z.string().optional(),
   description_en: z.string().optional(),
   description_tr: z.string().optional(),
+  description_de: z.string().optional(),
+  description_es: z.string().optional(),
+  description_it: z.string().optional(),
+  description_nl: z.string().optional(),
+  description_pt: z.string().optional(),
+  description_ru: z.string().optional(),
+  description_ar: z.string().optional(),
+  description_zh: z.string().optional(),
   price: z.string().min(1, "Price is required").refine(
     (value) => !isNaN(Number(value)) && Number(value) >= 0,
     { message: "Price must be a non-negative number" }
@@ -288,7 +304,15 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
           values={{
             fr: form.watch("name_fr"),
             en: form.watch("name_en"),
-            tr: form.watch("name_tr")
+            tr: form.watch("name_tr"),
+            de: form.watch("name_de"),
+            es: form.watch("name_es"),
+            it: form.watch("name_it"),
+            nl: form.watch("name_nl"),
+            pt: form.watch("name_pt"),
+            ru: form.watch("name_ru"),
+            ar: form.watch("name_ar"),
+            zh: form.watch("name_zh")
           }}
           onChange={handleNameChange}
           error={form.formState.errors.name?.message}
@@ -303,7 +327,15 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
           values={{
             fr: form.watch("description_fr"),
             en: form.watch("description_en"),
-            tr: form.watch("description_tr")
+            tr: form.watch("description_tr"),
+            de: form.watch("description_de"),
+            es: form.watch("description_es"),
+            it: form.watch("description_it"),
+            nl: form.watch("description_nl"),
+            pt: form.watch("description_pt"),
+            ru: form.watch("description_ru"),
+            ar: form.watch("description_ar"),
+            zh: form.watch("description_zh")
           }}
           onChange={handleDescriptionChange}
           languages={availableLanguages}

@@ -2,8 +2,16 @@
 import fr from '../translations/fr.json';
 import en from '../translations/en.json';
 import tr from '../translations/tr.json';
+import de from '../translations/de.json';
+import es from '../translations/es.json';
+import it from '../translations/it.json';
+import nl from '../translations/nl.json';
+import pt from '../translations/pt.json';
+import ru from '../translations/ru.json';
+import ar from '../translations/ar.json';
+import zh from '../translations/zh.json';
 
-export type SupportedLanguage = 'fr' | 'en' | 'tr';
+export type SupportedLanguage = 'fr' | 'en' | 'tr' | 'de' | 'es' | 'it' | 'nl' | 'pt' | 'ru' | 'ar' | 'zh';
 
 // Default language is French
 export const DEFAULT_LANGUAGE: SupportedLanguage = 'fr';
@@ -12,7 +20,15 @@ export const DEFAULT_LANGUAGE: SupportedLanguage = 'fr';
 export const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
   fr: 'Français',
   en: 'English',
-  tr: 'Türkçe'
+  tr: 'Türkçe',
+  de: 'Deutsch',
+  es: 'Español',
+  it: 'Italiano',
+  nl: 'Nederlands',
+  pt: 'Português',
+  ru: 'Русский',
+  ar: 'العربية',
+  zh: '中文'
 };
 
 // Get translated field from database object
@@ -49,7 +65,15 @@ export function getTranslatedField(
 const translations = {
   fr,
   en,
-  tr
+  tr,
+  de,
+  es,
+  it,
+  nl,
+  pt,
+  ru,
+  ar,
+  zh
 };
 
 // Get translation for a specific key
