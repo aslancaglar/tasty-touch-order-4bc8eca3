@@ -1,68 +1,39 @@
-import { Restaurant } from "@/types/database-types";
-import { Button } from "@/components/ui/button";
-import { useTranslation, SupportedLanguage, LANGUAGE_NAMES } from "@/utils/language-utils";
-import { useState, useEffect } from "react";
-import { Globe } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
-interface LanguageSetting {
-  id: string;
-  restaurant_id: string;
-  language: SupportedLanguage;
-  flag_url: string | null;
-}
+import React, { useState } from 'react';
+import { Restaurant } from '@/types/database-types';
+import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getTranslation } from '@/utils/language-utils';
+import { Globe } from 'lucide-react';
+import { useRestaurantLanguages } from '@/hooks/useRestaurantLanguages';
 
 interface WelcomePageProps {
   restaurant: Restaurant;
   onStart: () => void;
   isDataLoading?: boolean;
 }
-const WelcomePage = ({
-  restaurant,
-  onStart,
-  isDataLoading = false
-}: WelcomePageProps) => {
-  const { language: currentLanguage, setLanguage } = useLanguage();
-  const { t } = useTranslation(currentLanguage);
+
+const WelcomePage: React.FC<WelcomePageProps> = ({ restaurant, onStart, isDataLoading = false }) => {
   const [isStarting, setIsStarting] = useState(false);
-  const [languageSettings, setLanguageSettings] = useState<LanguageSetting[]>([]);
+  const { language: currentLanguage, setLanguage } = useLanguage();
+  const { restaurantLanguages, loading } = useRestaurantLanguages(restaurant.id);
   
-  const availableLanguages: SupportedLanguage[] = ['fr', 'en', 'tr'];
-
-  useEffect(() => {
-    fetchLanguageSettings();
-  }, [restaurant.id]);
-
-  const fetchLanguageSettings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('language_settings')
-        .select('*')
-        .eq('restaurant_id', restaurant.id);
-
-      if (error) {
-        console.error('Error fetching language settings:', error);
-        return;
-      }
-
-      setLanguageSettings((data || []) as LanguageSetting[]);
-    } catch (error) {
-      console.error('Error fetching language settings:', error);
-    }
-  };
-
+  const t = (key: string) => getTranslation(key, currentLanguage);
+  
+  // Filter only active languages for this restaurant
+  const availableLanguages = restaurantLanguages.filter(rl => rl.language);
+  
   const handleStart = () => {
     setIsStarting(true);
     onStart();
   };
 
-  const getFlagForLanguage = (language: SupportedLanguage) => {
-    const setting = languageSettings.find(s => s.language === language);
-    return setting?.flag_url;
-  };
-  return <div className="fixed inset-0 flex flex-col bg-cover bg-center" style={{
-    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url(${restaurant.image_url || "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"})`
-  }}>
+  // Don't show language selection if loading or only one language
+  const showLanguageSelection = !loading && availableLanguages.length > 1;
+
+  return (
+    <div className="fixed inset-0 flex flex-col bg-cover bg-center" style={{
+      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url(${restaurant.image_url || "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"})`
+    }}>
       {/* Main content centered */}
       <div className="flex-1 flex flex-col items-center justify-center px-4">
         {/* Restaurant name and welcome text */}
@@ -77,49 +48,58 @@ const WelcomePage = ({
         
         {/* Start button */}
         <div className="mb-8">
-          <Button onClick={handleStart} disabled={isStarting || isDataLoading} className={`shadow-lg ${!isStarting ? 'animate-pulse' : ''} bg-violet-700 hover:bg-violet-600 text-slate-50 md:text-6xl lg:text-7xl px-12 md:px-[40px] md:py-[70px] lg:px-[60px] lg:py-[90px] font-bebas tracking-wide py-[91px] rounded-full text-xl text-center`}>
-            {isStarting || isDataLoading ? <span className="flex items-center">
+          <Button 
+            onClick={handleStart} 
+            disabled={isStarting || isDataLoading} 
+            className={`shadow-lg ${!isStarting ? 'animate-pulse' : ''} bg-violet-700 hover:bg-violet-600 text-slate-50 md:text-6xl lg:text-7xl px-12 md:px-[40px] md:py-[70px] lg:px-[60px] lg:py-[90px] font-bebas tracking-wide py-[91px] rounded-full text-xl text-center`}
+          >
+            {isStarting || isDataLoading ? (
+              <span className="flex items-center">
                 <svg className="animate-spin -ml-1 mr-3 h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 {t("loading")}
-              </span> : t("welcome.start")}
+              </span>
+            ) : (
+              t("welcome.start")
+            )}
           </Button>
         </div>
       </div>
 
       {/* Language selection at bottom of screen */}
-      <div className="pb-8 px-4">
-        <div className="flex justify-center gap-4">
-          {availableLanguages.map(lang => {
-            const flagUrl = getFlagForLanguage(lang);
-            return (
+      {showLanguageSelection && (
+        <div className="pb-8 px-4">
+          <div className="flex justify-center gap-4">
+            {availableLanguages.map(restLang => (
               <Button 
-                key={lang} 
-                variant={currentLanguage === lang ? "default" : "outline"} 
+                key={restLang.language_code} 
+                variant={currentLanguage === restLang.language_code ? "default" : "outline"} 
                 size="lg" 
-                onClick={() => setLanguage(lang)} 
+                onClick={() => setLanguage(restLang.language_code as any)} 
                 className={`
-                  ${currentLanguage === lang ? 'bg-violet-700 text-white hover:bg-violet-600 border-violet-700' : 'bg-white/10 text-white hover:bg-white/20 border-white/30'}
+                  ${currentLanguage === restLang.language_code ? 'bg-violet-700 text-white hover:bg-violet-600 border-violet-700' : 'bg-white/10 text-white hover:bg-white/20 border-white/30'}
                   px-8 py-4 text-lg font-medium backdrop-blur-sm
                 `}
               >
-                {flagUrl ? (
+                {restLang.language?.flag_url ? (
                   <img 
-                    src={flagUrl} 
-                    alt={`${LANGUAGE_NAMES[lang]} flag`}
+                    src={restLang.language.flag_url} 
+                    alt={`${restLang.language.name} flag`}
                     className="h-5 w-8 mr-2 object-cover rounded-sm"
                   />
                 ) : (
                   <Globe className="h-5 w-5 mr-2" />
                 )}
-                {LANGUAGE_NAMES[lang]}
+                {restLang.language?.name}
               </Button>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
-    </div>;
+      )}
+    </div>
+  );
 };
+
 export default WelcomePage;
