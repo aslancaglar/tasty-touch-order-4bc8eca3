@@ -33,18 +33,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import currencyCodes from "currency-codes";
 import { duplicateRestaurant } from "@/services/kiosk-service";
 import { clearMenuCache } from "@/services/cache-service";
+import { useRestaurantLanguages } from "@/hooks/useRestaurantLanguages";
 
 interface SettingsTabProps {
   restaurant: Restaurant;
   onRestaurantUpdated?: (updatedRestaurant: Restaurant) => void;
 }
 
-// Re-add the language options that were previously removed
-const languageOptions = [
-  { value: "fr", label: "Français" },
-  { value: "en", label: "English" },
-  { value: "tr", label: "Türkçe" },
-];
 
 // Fix: properly access currency codes and add error handling
 const currencyOptions = (() => {
@@ -110,6 +105,9 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
   const [isOffline, setIsOffline] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Get restaurant languages for the language selector
+  const { restaurantLanguages } = useRestaurantLanguages(restaurant.id);
 
   const testTotal = 10.00;
   const testSubtotal = calculatePriceWithoutTax(testTotal);
@@ -584,9 +582,9 @@ const SettingsTab = ({ restaurant, onRestaurantUpdated }: SettingsTabProps) => {
                   }}
                   className="w-full px-3 py-2 border rounded-md bg-white"
                 >
-                  {languageOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                  {restaurantLanguages.map(restLang => (
+                    <option key={restLang.language_code} value={restLang.language_code}>
+                      {restLang.language?.name || restLang.language_code}
                     </option>
                   ))}
                 </select>
