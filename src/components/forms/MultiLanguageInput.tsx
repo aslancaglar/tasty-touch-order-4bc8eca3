@@ -60,24 +60,37 @@ export const MultiLanguageInput: React.FC<MultiLanguageInputProps> = ({
           ))}
         </TabsList>
         
-        {languages.map((lang) => (
-          <TabsContent key={lang.code} value={lang.code} className="mt-2">
-            {type === "textarea" ? (
-              <Textarea
-                placeholder={`${placeholder || label} (${lang.name})`}
-                value={values[lang.code] || ""}
-                onChange={(e) => onChange(lang.code, e.target.value)}
-                className="min-h-[80px]"
-              />
-            ) : (
-              <Input
-                placeholder={`${placeholder || label} (${lang.name})`}
-                value={values[lang.code] || ""}
-                onChange={(e) => onChange(lang.code, e.target.value)}
-              />
-            )}
-          </TabsContent>
-        ))}
+        {languages.map((lang) => {
+          // Add transitions for newly added languages (not Turkish, French, English)
+          const isNewLanguage = !['fr', 'en', 'tr'].includes(lang.code);
+          const transitionClass = isNewLanguage 
+            ? "animate-fade-in transition-all duration-300 ease-in-out" 
+            : "";
+          
+          return (
+            <TabsContent 
+              key={lang.code} 
+              value={lang.code} 
+              className={`mt-2 ${transitionClass}`}
+            >
+              {type === "textarea" ? (
+                <Textarea
+                  placeholder={`${placeholder || label} (${lang.name})`}
+                  value={values[lang.code] || ""}
+                  onChange={(e) => onChange(lang.code, e.target.value)}
+                  className={`min-h-[80px] ${isNewLanguage ? 'transition-all duration-200 hover:scale-[1.01]' : ''}`}
+                />
+              ) : (
+                <Input
+                  placeholder={`${placeholder || label} (${lang.name})`}
+                  value={values[lang.code] || ""}
+                  onChange={(e) => onChange(lang.code, e.target.value)}
+                  className={isNewLanguage ? 'transition-all duration-200 hover:scale-[1.01]' : ''}
+                />
+              )}
+            </TabsContent>
+          );
+        })}
       </Tabs>
       
       {error && <p className="text-sm text-red-500">{error}</p>}
