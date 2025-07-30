@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getTranslatedField } from "@/utils/language-utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 interface CartProps {
   cart: CartItem[];
   isOpen: boolean;
@@ -30,7 +31,6 @@ interface CartProps {
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
   showOrderSummaryOnly?: boolean;
-  uiLanguage?: "fr" | "en" | "tr";
   t: (key: string) => string;
 }
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -101,9 +101,9 @@ const Cart: React.FC<CartProps> = ({
   orderType = null,
   tableNumber = null,
   showOrderSummaryOnly = false,
-  uiLanguage = "fr",
   t
 }) => {
+  const { language: uiLanguage } = useLanguage();
   const [showOrderSummary, setShowOrderSummary] = useState(false);
   const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartRef = useRef<HTMLDivElement>(null);
@@ -234,7 +234,7 @@ const Cart: React.FC<CartProps> = ({
         </div>
       </div>
 
-      <OrderSummary isOpen={showOrderSummary} onClose={handleCloseOrderSummary} cart={cart} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} uiLanguage={uiLanguage} />
+      <OrderSummary isOpen={showOrderSummary} onClose={handleCloseOrderSummary} cart={cart} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} />
     </>;
 };
 export default Cart;

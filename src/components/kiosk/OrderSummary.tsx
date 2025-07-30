@@ -9,6 +9,7 @@ import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
 import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
@@ -45,7 +46,6 @@ interface OrderSummaryProps {
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
-  uiLanguage?: SupportedLanguage;
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -58,9 +58,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   getFormattedToppings,
   restaurant = {
     name: "Restaurant"
-  },
-  uiLanguage = "fr"
+  }
 }) => {
+  const { language: uiLanguage } = useLanguage();
   const {
     t
   } = useTranslation(uiLanguage);

@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag } from "lucide-react";
-import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { useTranslation } from "@/utils/language-utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
