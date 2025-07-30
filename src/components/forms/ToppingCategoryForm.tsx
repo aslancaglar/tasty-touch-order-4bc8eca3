@@ -244,7 +244,7 @@ const ToppingCategoryForm = ({
   };
   
   return <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 px-0">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <MultiLanguageInput
           label="Category Name"
           placeholder="e.g., Cheese, Vegetables, Sauces"

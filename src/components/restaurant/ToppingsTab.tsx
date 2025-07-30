@@ -943,48 +943,45 @@ const ToppingsTab = ({
       </Dialog>
 
       <Dialog open={showUpdateCategoryDialog} onOpenChange={setShowUpdateCategoryDialog}>
-        <DialogContent className="max-h-[90vh]">
-          <ScrollArea className="max-h-[80vh] pr-4">
-            <DialogHeader>
-              <DialogTitle>Edit Category</DialogTitle>
-              <DialogDescription>Modify this category's details</DialogDescription>
-            </DialogHeader>
-            {selectedCategory && <ToppingCategoryForm 
-              restaurantId={restaurant.id} 
-              initialValues={{
-                name: selectedCategory.name,
-                name_fr: selectedCategory.name_fr,
-                name_en: selectedCategory.name_en,
-                name_tr: selectedCategory.name_tr,
-                name_de: selectedCategory.name_de,
-                name_es: selectedCategory.name_es,
-                name_it: selectedCategory.name_it,
-                name_nl: selectedCategory.name_nl,
-                name_pt: selectedCategory.name_pt,
-                name_ru: selectedCategory.name_ru,
-                name_ar: selectedCategory.name_ar,
-                name_zh: selectedCategory.name_zh,
-                description: selectedCategory.description || "",
-                description_fr: selectedCategory.description_fr,
-                description_en: selectedCategory.description_en,
-                description_tr: selectedCategory.description_tr,
-                description_de: selectedCategory.description_de,
-                description_es: selectedCategory.description_es,
-                description_it: selectedCategory.description_it,
-                description_nl: selectedCategory.description_nl,
-                description_pt: selectedCategory.description_pt,
-                description_ru: selectedCategory.description_ru,
-                description_ar: selectedCategory.description_ar,
-                description_zh: selectedCategory.description_zh,
-                min_selections: selectedCategory.min_selections || 0,
-                max_selections: selectedCategory.max_selections || 0,
-                show_if_selection_id: selectedCategory.show_if_selection_id || [],
-                allow_multiple_same_topping: selectedCategory.allow_multiple_same_topping || false
-              }}
-              onSubmit={handleUpdateCategory} 
-              isLoading={isUpdatingCategory} 
-            />}
-          </ScrollArea>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+          </DialogHeader>
+          {selectedCategory && <ToppingCategoryForm 
+            restaurantId={restaurant.id} 
+            initialValues={{
+              name: selectedCategory.name,
+              name_fr: selectedCategory.name_fr,
+              name_en: selectedCategory.name_en,
+              name_tr: selectedCategory.name_tr,
+              name_de: selectedCategory.name_de,
+              name_es: selectedCategory.name_es,
+              name_it: selectedCategory.name_it,
+              name_nl: selectedCategory.name_nl,
+              name_pt: selectedCategory.name_pt,
+              name_ru: selectedCategory.name_ru,
+              name_ar: selectedCategory.name_ar,
+              name_zh: selectedCategory.name_zh,
+              description: selectedCategory.description || "",
+              description_fr: selectedCategory.description_fr,
+              description_en: selectedCategory.description_en,
+              description_tr: selectedCategory.description_tr,
+              description_de: selectedCategory.description_de,
+              description_es: selectedCategory.description_es,
+              description_it: selectedCategory.description_it,
+              description_nl: selectedCategory.description_nl,
+              description_pt: selectedCategory.description_pt,
+              description_ru: selectedCategory.description_ru,
+              description_ar: selectedCategory.description_ar,
+              description_zh: selectedCategory.description_zh,
+              min_selections: selectedCategory.min_selections || 0,
+              max_selections: selectedCategory.max_selections || 0,
+              show_if_selection_id: selectedCategory.show_if_selection_id || [],
+              allow_multiple_same_topping: selectedCategory.allow_multiple_same_topping || false
+            }}
+            onSubmit={handleUpdateCategory} 
+            isLoading={isUpdatingCategory} 
+          />}
         </DialogContent>
       </Dialog>
 
