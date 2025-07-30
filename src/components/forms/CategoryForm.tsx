@@ -18,6 +18,7 @@ import { Loader2 } from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
 import { MultiLanguageInput } from "./MultiLanguageInput";
 import { SupportedLanguage } from "@/utils/language-utils";
+import { useRestaurantLanguages } from "@/hooks/useRestaurantLanguages";
 
 // Define the form schema with validation
 const formSchema = z.object({
@@ -40,10 +41,17 @@ interface CategoryFormProps {
   onSubmit: (values: z.infer<typeof formSchema>) => void;
   initialValues?: Partial<z.infer<typeof formSchema>>;
   isLoading?: boolean;
+  restaurantId?: string;
 }
 
-const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps) => {
+const CategoryForm = ({ onSubmit, initialValues, isLoading, restaurantId }: CategoryFormProps) => {
   const [iconUrl, setIconUrl] = useState<string | undefined>(initialValues?.icon || undefined);
+  const { restaurantLanguages } = useRestaurantLanguages(restaurantId);
+  
+  const availableLanguages = restaurantLanguages.map(rl => ({
+    code: rl.language_code as SupportedLanguage,
+    name: rl.language?.name || rl.language_code
+  }));
 
   // Initialize the form with default values
   const form = useForm<z.infer<typeof formSchema>>({
@@ -100,6 +108,7 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
           }}
           onChange={handleNameChange}
           error={form.formState.errors.name?.message}
+          languages={availableLanguages}
         />
 
         {/* Multi-language description input */}
@@ -113,6 +122,7 @@ const CategoryForm = ({ onSubmit, initialValues, isLoading }: CategoryFormProps)
             tr: form.watch("description_tr")
           }}
           onChange={handleDescriptionChange}
+          languages={availableLanguages}
         />
 
         <FormField

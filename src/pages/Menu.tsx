@@ -260,6 +260,7 @@ const MenuPage = () => {
               <CategoryForm 
                 onSubmit={handleAddCategory}
                 isLoading={savingCategory}
+                restaurantId={selectedRestaurant}
               />
             </DialogContent>
           </Dialog>
@@ -320,6 +321,7 @@ const MenuPage = () => {
                     <CategoryForm 
                       onSubmit={handleAddCategory}
                       isLoading={savingCategory}
+                      restaurantId={selectedRestaurant}
                     />
                   </DialogContent>
                 </Dialog>

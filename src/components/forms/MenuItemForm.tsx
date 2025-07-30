@@ -32,6 +32,7 @@ import { ToppingCategory } from "@/types/database-types";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MultiLanguageInput } from "@/components/forms/MultiLanguageInput";
 import { SupportedLanguage } from "@/utils/language-utils";
+import { useRestaurantLanguages } from "@/hooks/useRestaurantLanguages";
 
 // Define the form schema with Zod for validation
 const formSchema = z.object({
@@ -86,6 +87,13 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
   );
   // Track the order of selected categories
   const [toppingCategoryOrder, setToppingCategoryOrder] = useState<Record<string, number>>({});
+  
+  const { restaurantLanguages } = useRestaurantLanguages(restaurantId);
+  
+  const availableLanguages = restaurantLanguages.map(rl => ({
+    code: rl.language_code as SupportedLanguage,
+    name: rl.language?.name || rl.language_code
+  }));
   
   // Determine initial availability type based on initialValues
   const initialAvailabilityType = initialValues?.available_from && initialValues?.available_until
@@ -284,6 +292,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
           }}
           onChange={handleNameChange}
           error={form.formState.errors.name?.message}
+          languages={availableLanguages}
         />
 
         {/* Multi-language description input */}
@@ -297,6 +306,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
             tr: form.watch("description_tr")
           }}
           onChange={handleDescriptionChange}
+          languages={availableLanguages}
         />
 
         <div className="grid grid-cols-2 gap-4">

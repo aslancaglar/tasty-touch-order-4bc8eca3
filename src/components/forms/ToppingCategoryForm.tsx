@@ -15,6 +15,7 @@ import { Topping } from "@/types/database-types";
 import { toast } from "@/hooks/use-toast";
 import { MultiLanguageInput } from "@/components/forms/MultiLanguageInput";
 import { SupportedLanguage } from "@/utils/language-utils";
+import { useRestaurantLanguages } from "@/hooks/useRestaurantLanguages";
 
 const toppingCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -54,6 +55,13 @@ const ToppingCategoryForm = ({
   const [toppings, setToppings] = useState<Topping[]>([]);
   const [selectedToppings, setSelectedToppings] = useState<string[]>(Array.isArray(initialValues?.show_if_selection_id) ? initialValues.show_if_selection_id : []);
   const [loadingToppings, setLoadingToppings] = useState(false);
+  
+  const { restaurantLanguages } = useRestaurantLanguages(restaurantId);
+  
+  const availableLanguages = restaurantLanguages.map(rl => ({
+    code: rl.language_code as SupportedLanguage,
+    name: rl.language?.name || rl.language_code
+  }));
 
   // Debug logs
   console.log("ToppingCategoryForm initialValues:", initialValues);
@@ -195,6 +203,7 @@ const ToppingCategoryForm = ({
           values={nameValues}
           onChange={handleNameChange}
           required
+          languages={availableLanguages}
         />
         
         <MultiLanguageInput
@@ -203,6 +212,7 @@ const ToppingCategoryForm = ({
           type="textarea"
           values={descriptionValues}
           onChange={handleDescriptionChange}
+          languages={availableLanguages}
         />
         
         <div className="grid grid-cols-2 gap-4">

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MultiLanguageInput } from "@/components/forms/MultiLanguageInput";
 import { SupportedLanguage } from "@/utils/language-utils";
+import { useRestaurantLanguages } from "@/hooks/useRestaurantLanguages";
 
 const toppingSchema = z.object({
   name: z.string().min(1, "Nom du complément requis"),
@@ -43,13 +44,21 @@ interface ToppingFormProps {
   };
   isLoading?: boolean;
   currency?: string;
+  restaurantId?: string;
 }
 
-const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "EUR" }: ToppingFormProps) => {
+const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "EUR", restaurantId }: ToppingFormProps) => {
   const currencySymbol = currency === "EUR" ? "€" : 
                         currency === "USD" ? "$" : 
                         currency === "GBP" ? "£" : 
                         currency;
+  
+  const { restaurantLanguages } = useRestaurantLanguages(restaurantId);
+  
+  const availableLanguages = restaurantLanguages.map(rl => ({
+    code: rl.language_code as SupportedLanguage,
+    name: rl.language?.name || rl.language_code
+  }));
 
   const [nameValues, setNameValues] = useState({
     fr: initialValues?.name_fr || initialValues?.name || "",
@@ -92,6 +101,7 @@ const ToppingForm = ({ onSubmit, initialValues, isLoading = false, currency = "E
           values={nameValues}
           onChange={handleNameChange}
           required
+          languages={availableLanguages}
         />
         
         <FormField

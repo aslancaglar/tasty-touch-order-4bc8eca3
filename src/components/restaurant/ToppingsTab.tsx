@@ -947,7 +947,7 @@ const ToppingsTab = ({
           <DialogHeader>
             <DialogTitle>Create Topping</DialogTitle>
           </DialogHeader>
-          <ToppingForm onSubmit={handleCreateTopping} isLoading={isCreatingTopping} currency={restaurant.currency} />
+          <ToppingForm onSubmit={handleCreateTopping} isLoading={isCreatingTopping} currency={restaurant.currency} restaurantId={restaurant.id} />
         </DialogContent>
       </Dialog>
 
@@ -956,7 +956,7 @@ const ToppingsTab = ({
           <DialogHeader>
             <DialogTitle>Edit Topping</DialogTitle>
           </DialogHeader>
-          {selectedTopping && <ToppingForm onSubmit={values => handleUpdateTopping(selectedTopping.id, values)} initialValues={{
+          {selectedTopping && <ToppingForm onSubmit={values => handleUpdateTopping(selectedTopping.id, values)} restaurantId={restaurant.id} initialValues={{
           name: selectedTopping.name,
           name_fr: selectedTopping.name_fr,
           name_en: selectedTopping.name_en,

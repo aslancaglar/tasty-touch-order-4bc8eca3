@@ -598,6 +598,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
           <CategoryForm 
             onSubmit={handleAddCategory}
             isLoading={isCreatingCategory}
+            restaurantId={restaurant.id}
             initialValues={{ display_order: "0" }}
           />
         </DialogContent>
@@ -611,6 +612,7 @@ const MenuTab = ({ restaurant }: MenuTabProps) => {
           {selectedCategory && (
             <CategoryForm
               onSubmit={(values) => handleEditCategory(selectedCategory.id, values)}
+              restaurantId={restaurant.id}
               initialValues={{
                 name: selectedCategory.name,
                 name_fr: selectedCategory.name_fr || "",
