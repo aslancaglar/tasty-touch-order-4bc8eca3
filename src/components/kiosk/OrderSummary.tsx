@@ -7,7 +7,7 @@ import { ArrowLeft, Check } from "lucide-react";
 import { CartItem } from "@/types/database-types";
 import { calculateCartTotals } from "@/utils/price-utils";
 import { getGroupedToppings, ToppingWithQuantity } from "@/utils/receipt-templates";
-import { useTranslation, SupportedLanguage } from "@/utils/language-utils";
+import { useTranslation, SupportedLanguage, getTranslatedField } from "@/utils/language-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -148,7 +148,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <div className="flex justify-between">
                   <div className="flex items-center">
                     <span className="font-medium mr-2">{item.quantity}x</span>
-                    <span className="font-medium">{item.menuItem.name}</span>
+                    <span className="font-medium">{getTranslatedField(item.menuItem, 'name', uiLanguage)}</span>
                   </div>
                   <span className="font-medium">{parseFloat(item.itemPrice.toString()).toFixed(2)} {currencySymbol}</span>
                 </div>
