@@ -55,5 +55,11 @@
     "confirmed": "Confirmado",
     "completed": "Concluído",
     "cancelled": "Cancelado"
+  },
+  "welcome": {
+    "title": "Bem-vindo ao nosso quiosque de pedidos",
+    "start": "TOQUE PARA PEDIR"
+  },
+  "loading": "Carregando..."
   }
 }
