@@ -35,16 +35,23 @@
     "items": "Itens",
     "price": "Preço",
     "description": "Descrição",
-    "addToCart": "Adicionar ao carrinho",
-    "outOfStock": "Fora de estoque"
+    "addToCart": "ADICIONAR AO CARRINHO",
+    "outOfStock": "Fora de estoque",
+    "customize": "Personalizar",
+    "selectOptions": "Selecione as opções"
   },
   "cart": {
     "cart": "Carrinho",
     "empty": "Seu carrinho está vazio",
     "total": "Total",
-    "checkout": "Finalizar compra",
+    "checkout": "Finalizar Pedido",
     "quantity": "Quantidade",
-    "remove": "Remover"
+    "remove": "Remover",
+    "addMore": "Adicionar Mais",
+    "orderSummary": "Resumo do Pedido",
+    "subtotal": "Subtotal",
+    "tax": "Taxa",
+    "finalTotal": "Total Final"
   },
   "order": {
     "order": "Pedido",
@@ -54,7 +61,19 @@
     "pending": "Pendente",
     "confirmed": "Confirmado",
     "completed": "Concluído",
-    "cancelled": "Cancelado"
+    "cancelled": "Cancelado",
+    "orderType": "Tipo de Pedido",
+    "dineIn": "Comer no Local",
+    "takeaway": "Para Levar",
+    "delivery": "Entrega",
+    "table": "Mesa",
+    "selectTable": "Selecionar Mesa",
+    "confirmOrder": "Confirmar Pedido",
+    "orderPlaced": "Pedido Realizado",
+    "thankYou": "Obrigado pelo seu pedido!",
+    "orderReceived": "Seu pedido foi recebido",
+    "estimatedTime": "Tempo estimado",
+    "minutes": "minutos"
   },
   "welcome": {
     "title": "Bem-vindo ao nosso quiosque de pedidos",
