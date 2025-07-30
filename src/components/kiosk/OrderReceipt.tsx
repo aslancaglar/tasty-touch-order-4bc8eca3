@@ -38,6 +38,7 @@ interface OrderReceiptProps {
     name: string;
     location?: string;
     currency?: string;
+    ui_language?: string;
   };
   cart: CartItem[];
   orderNumber: string;

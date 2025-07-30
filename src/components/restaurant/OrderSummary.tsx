@@ -62,6 +62,7 @@ interface OrderSummaryProps {
     id?: string;
     name: string;
     location?: string;
+    ui_language?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
@@ -83,6 +84,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   tableNumber = null,
   uiLanguage = "fr",
 }) => {
+  // Use restaurant's default language for receipts
+  const restaurantLanguage = (restaurant?.ui_language as "fr" | "en" | "tr") || uiLanguage;
   const [orderNumber, setOrderNumber] = useState<string>("0");
   const isMobile = useIsMobile();
   const { toast } = useToast();
@@ -272,7 +275,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     getFormattedOptions: (item: CartItem) => string;
     getFormattedToppings: (item: CartItem) => string;
   }): string => {
-    // Use the plain text receipt generator
+    // Use the plain text receipt generator with restaurant's default language
     return generatePlainTextReceipt(
       orderData.cart,
       orderData.restaurant,
@@ -285,18 +288,18 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       orderData.tax,
       10, // Tax rate
       (key) => {
-        // Simple translation function for the receipt
+        // Simple translation function for the receipt using restaurant language
         const translations: Record<string, string> = {
-          'receipt.orderNumber': uiLanguage === 'fr' ? 'Commande No' : uiLanguage === 'tr' ? 'Sipariş No' : 'Order No',
-          'receipt.orderType': uiLanguage === 'fr' ? 'Type de commande' : uiLanguage === 'tr' ? 'Sipariş Tipi' : 'Order Type',
-          'receipt.dineIn': uiLanguage === 'fr' ? 'Sur place' : uiLanguage === 'tr' ? 'Masa Servisi' : 'Dine In',
-          'receipt.takeaway': uiLanguage === 'fr' ? 'À emporter' : uiLanguage === 'tr' ? 'Paket Servisi' : 'Takeaway',
-          'receipt.tableNumber': uiLanguage === 'fr' ? 'Table No' : uiLanguage === 'tr' ? 'Masa No' : 'Table No',
-          'receipt.subtotal': uiLanguage === 'fr' ? 'Sous-total' : uiLanguage === 'tr' ? 'Ara Toplam' : 'Subtotal',
-          'receipt.vat': uiLanguage === 'fr' ? 'TVA' : uiLanguage === 'tr' ? 'KDV' : 'VAT',
-          'receipt.total': uiLanguage === 'fr' ? 'Total' : uiLanguage === 'tr' ? 'Toplam' : 'Total',
-          'receipt.thankYou': uiLanguage === 'fr' ? 'Merci pour votre visite!' : uiLanguage === 'tr' ? 'Ziyaretiniz için teşekkürler!' : 'Thank you for your visit!',
-          'receipt.specialInstructions': uiLanguage === 'fr' ? 'Instructions spéciales' : uiLanguage === 'tr' ? 'Özel Talimatlar' : 'Special Instructions'
+          'receipt.orderNumber': restaurantLanguage === 'fr' ? 'Commande No' : restaurantLanguage === 'tr' ? 'Sipariş No' : 'Order No',
+          'receipt.orderType': restaurantLanguage === 'fr' ? 'Type de commande' : restaurantLanguage === 'tr' ? 'Sipariş Tipi' : 'Order Type',
+          'receipt.dineIn': restaurantLanguage === 'fr' ? 'Sur place' : restaurantLanguage === 'tr' ? 'Masa Servisi' : 'Dine In',
+          'receipt.takeaway': restaurantLanguage === 'fr' ? 'À emporter' : restaurantLanguage === 'tr' ? 'Paket Servisi' : 'Takeaway',
+          'receipt.tableNumber': restaurantLanguage === 'fr' ? 'Table No' : restaurantLanguage === 'tr' ? 'Masa No' : 'Table No',
+          'receipt.subtotal': restaurantLanguage === 'fr' ? 'Sous-total' : restaurantLanguage === 'tr' ? 'Ara Toplam' : 'Subtotal',
+          'receipt.vat': restaurantLanguage === 'fr' ? 'TVA' : restaurantLanguage === 'tr' ? 'KDV' : 'VAT',
+          'receipt.total': restaurantLanguage === 'fr' ? 'Total' : restaurantLanguage === 'tr' ? 'Toplam' : 'Total',
+          'receipt.thankYou': restaurantLanguage === 'fr' ? 'Merci pour votre visite!' : restaurantLanguage === 'tr' ? 'Ziyaretiniz için teşekkürler!' : 'Thank you for your visit!',
+          'receipt.specialInstructions': restaurantLanguage === 'fr' ? 'Instructions spéciales' : restaurantLanguage === 'tr' ? 'Özel Talimatlar' : 'Special Instructions'
         };
         return translations[key] || key;
       }
@@ -340,8 +343,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                         <span>0.00 €</span>
                       </div>
                     ))}
-                    {/* Grouped toppings by category, show price if > 0 */}
-                    {getGroupedToppings(item, uiLanguage).map((group, groupIdx) => (
+                     {/* Grouped toppings by category, show price if > 0 */}
+                    {getGroupedToppings(item, restaurantLanguage).map((group, groupIdx) => (
                       <div key={`${item.id}-cat-summary-${groupIdx}`}>
                         <div style={{ fontWeight: 500, paddingLeft: 0 }}>{group.category}:</div>
                         {group.toppings.map((toppingObj, topIdx) => {
@@ -414,7 +417,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         orderType={orderType}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
-        uiLanguage={uiLanguage}
+        uiLanguage={restaurantLanguage}
       />
     </Dialog>
   );

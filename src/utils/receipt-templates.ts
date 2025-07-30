@@ -85,14 +85,15 @@ export function generateReceiptHTML(
   subtotal: number,
   tax: number,
   taxRate: number = 10,
-  t: (key: string) => string
+  t: (key: string) => string,
+  uiLanguage: SupportedLanguage = 'fr'
 ): string {
   const date = new Date();
   const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   
   // Function to format each item in the cart
   const formatCartItem = (item: CartItem) => {
-    const itemToppings = getGroupedToppings(item, 'fr');
+    const itemToppings = getGroupedToppings(item, uiLanguage);
     const selectedOptions = item.selectedOptions.flatMap(option => {
       const optionDef = item.menuItem.options?.find(o => o.id === option.optionId);
       if (!optionDef) return [];
@@ -263,7 +264,8 @@ export function generatePlainTextReceipt(
   subtotal: number,
   tax: number,
   taxRate: number = 10,
-  t: (key: string) => string
+  t: (key: string) => string,
+  uiLanguage: SupportedLanguage = 'fr'
 ): string {
   const date = new Date();
   const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
@@ -335,7 +337,7 @@ export function generatePlainTextReceipt(
     
     // Add toppings with toppings price in parentheses next to topping name (not right-aligned)
     if (item.selectedToppings && item.selectedToppings.length > 0) {
-      const itemToppings = getGroupedToppings(item, 'fr');
+      const itemToppings = getGroupedToppings(item, uiLanguage);
       
       // Process all toppings, flattening the structure
       itemToppings.forEach(group => {

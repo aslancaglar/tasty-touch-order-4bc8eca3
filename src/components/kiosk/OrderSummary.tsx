@@ -43,9 +43,11 @@ interface OrderSummaryProps {
     name: string;
     location?: string;
     currency?: string;
+    ui_language?: string;
   } | null;
   orderType?: "dine-in" | "takeaway" | null;
   tableNumber?: string | null;
+  uiLanguage?: SupportedLanguage;
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -58,9 +60,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   getFormattedToppings,
   restaurant = {
     name: "Restaurant"
-  }
+  },
+  uiLanguage: propUiLanguage
 }) => {
-  const { language: uiLanguage } = useLanguage();
+  const { language: contextLanguage } = useLanguage();
+  const uiLanguage = propUiLanguage || contextLanguage;
   const {
     t
   } = useTranslation(uiLanguage);

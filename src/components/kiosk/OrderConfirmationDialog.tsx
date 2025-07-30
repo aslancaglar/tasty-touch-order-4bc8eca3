@@ -24,6 +24,7 @@ interface OrderConfirmationDialogProps {
     name: string;
     location?: string;
     currency?: string;
+    ui_language?: string;
   } | null;
   orderType: "dine-in" | "takeaway" | null;
   tableNumber: string | null;
@@ -44,6 +45,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
   getFormattedToppings
 }) => {
   const { language: uiLanguage } = useLanguage();
+  const restaurantLanguage = (restaurant?.ui_language as SupportedLanguage) || 'fr';
   const { t } = useTranslation(uiLanguage);
   const {
     toast
@@ -165,7 +167,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
             total,
             getFormattedOptions,
             getFormattedToppings,
-            uiLanguage
+            uiLanguage: restaurantLanguage
           });
         }
         setIsPrinting(false);
@@ -196,7 +198,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
     uiLanguage?: SupportedLanguage;
   }) => {
     try {
-      // Generate receipt content
+      // Generate receipt content using restaurant's default language
       const receiptContent = generatePlainTextReceipt(
         orderData.cart,
         orderData.restaurant,
@@ -208,7 +210,23 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
         orderData.subtotal,
         orderData.tax,
         10,
-        (key) => t(key)
+        (key) => {
+          // Simple translation function for the receipt using restaurant language
+          const translations: Record<string, string> = {
+            'receipt.orderNumber': restaurantLanguage === 'fr' ? 'Commande No' : restaurantLanguage === 'tr' ? 'Sipariş No' : 'Order No',
+            'receipt.orderType': restaurantLanguage === 'fr' ? 'Type de commande' : restaurantLanguage === 'tr' ? 'Sipariş Tipi' : 'Order Type',
+            'receipt.dineIn': restaurantLanguage === 'fr' ? 'Sur place' : restaurantLanguage === 'tr' ? 'Masa Servisi' : 'Dine In',
+            'receipt.takeaway': restaurantLanguage === 'fr' ? 'À emporter' : restaurantLanguage === 'tr' ? 'Paket Servisi' : 'Takeaway',
+            'receipt.tableNumber': restaurantLanguage === 'fr' ? 'Table No' : restaurantLanguage === 'tr' ? 'Masa No' : 'Table No',
+            'receipt.subtotal': restaurantLanguage === 'fr' ? 'Sous-total' : restaurantLanguage === 'tr' ? 'Ara Toplam' : 'Subtotal',
+            'receipt.vat': restaurantLanguage === 'fr' ? 'TVA' : restaurantLanguage === 'tr' ? 'KDV' : 'VAT',
+            'receipt.total': restaurantLanguage === 'fr' ? 'Total' : restaurantLanguage === 'tr' ? 'Toplam' : 'Total',
+            'receipt.thankYou': restaurantLanguage === 'fr' ? 'Merci pour votre visite!' : restaurantLanguage === 'tr' ? 'Ziyaretiniz için teşekkürler!' : 'Thank you for your visit!',
+            'receipt.specialInstructions': restaurantLanguage === 'fr' ? 'Instructions spéciales' : restaurantLanguage === 'tr' ? 'Özel Talimatlar' : 'Special Instructions'
+          };
+          return translations[key] || key;
+        },
+        restaurantLanguage
       );
 
       // Encode content for sending
@@ -311,7 +329,7 @@ const OrderConfirmationDialog: React.FC<OrderConfirmationDialogProps> = ({
       </DialogContent>
 
       {/* Hidden Receipt Component for Printing */}
-      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={uiLanguage} />
+      <OrderReceipt restaurant={restaurant} cart={cart} orderNumber={orderNumber} tableNumber={tableNumber} orderType={orderType} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} uiLanguage={restaurantLanguage} />
     </Dialog>;
 };
 
