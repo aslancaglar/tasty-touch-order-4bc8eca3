@@ -7,28 +7,23 @@ import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
 import { getTranslatedField, SupportedLanguage } from "@/utils/language-utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useMenuItemDetails } from "@/hooks/useMenuItemDetails";
+import { useOptimizedItemCustomization } from "@/hooks/useOptimizedItemCustomization";
+import { LoadingDialog } from "./LoadingDialog";
 
 interface ItemCustomizationDialogProps {
-  item: MenuItemWithOptions | null;
+  itemId: string | null;
+  restaurantId: string;
   isOpen: boolean;
   onClose: () => void;
-  onAddToCart: () => void;
-  selectedOptions: {
-    optionId: string;
-    choiceIds: string[];
-  }[];
-  selectedToppings: {
-    categoryId: string;
-    toppingIds: string[];
-    toppingQuantities?: { [toppingId: string]: number }; // Added map for topping quantities
-  }[];
-  onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
-  onToggleTopping: (categoryId: string, toppingId: string, quantity?: number) => void; // Added quantity parameter
-  quantity: number;
-  onQuantityChange: (quantity: number) => void;
-  specialInstructions: string;
-  onSpecialInstructionsChange: (instructions: string) => void;
-  shouldShowToppingCategory: (category: any) => boolean;
+  onAddToCart: (cartItem: {
+    menuItem: MenuItemWithOptions;
+    quantity: number;
+    selectedOptions: any[];
+    selectedToppings: any[];
+    specialInstructions: string;
+    itemPrice: number;
+  }) => void;
   t: (key: string) => string;
   currencySymbol: string;
 }
@@ -259,144 +254,124 @@ const ToppingCategory = memo(({
 });
 ToppingCategory.displayName = 'ToppingCategory';
 
-// Main component with heavy use of memoization
+// Optimized main component
 const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
-  item,
+  itemId,
+  restaurantId,
   isOpen,
   onClose,
   onAddToCart,
-  selectedOptions,
-  selectedToppings,
-  onToggleChoice,
-  onToggleTopping,
-  quantity,
-  onQuantityChange,
-  specialInstructions,
-  onSpecialInstructionsChange,
-  shouldShowToppingCategory,
   t,
   currencySymbol
 }) => {
   const { language: uiLanguage } = useLanguage();
-  if (!item) return null;
+  
+  // Use optimized hooks for data fetching and state management
+  const { itemDetails, loading, error } = useMenuItemDetails(itemId, restaurantId);
+  const {
+    selectedOptions,
+    selectedToppings,
+    quantity,
+    specialInstructions,
+    visibleToppingCategories,
+    handleToggleChoice,
+    handleToggleTopping,
+    handleQuantityChange,
+    handleSpecialInstructionsChange,
+    resetCustomization,
+    calculatePrice
+  } = useOptimizedItemCustomization(itemDetails, currencySymbol);
 
-  // State to track which topping categories are visible (for staggered animation)
+  // Show loading dialog while fetching item details
+  if (loading || !itemDetails) {
+    return <LoadingDialog isOpen={isOpen && !!itemId} t={t} />;
+  }
+
+  // Show error or handle null item
+  if (error || !itemDetails) {
+    return null;
+  }
+
+  // State to track which topping categories are visible (for simplified animation)
   const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
 
   // Reset visibility state when dialog opens/closes or item changes
   useEffect(() => {
-    if (isOpen && item) {
-      // Reset all categories to invisible initially
-      if (item.toppingCategories) {
-        const initialVisibility: { [key: string]: boolean } = {};
-        item.toppingCategories.forEach(category => {
-          initialVisibility[category.id] = false;
-        });
-        setVisibleCategories(initialVisibility);
-        
-        // Stagger the appearance of each category with Firefox-compatible approach
-        const sortedCategories = [...(item.toppingCategories || [])].sort((a, b) => {
-          const orderA = a.display_order ?? 1000;
-          const orderB = b.display_order ?? 1000;
-          return orderA - orderB;
-        });
-        
-        // Use separate timeouts for each category to ensure Firefox compatibility
-        sortedCategories.forEach((category, index) => {
-          const timer = setTimeout(() => {
-            setVisibleCategories(prev => ({
-              ...prev,
-              [category.id]: true
-            }));
-          }, 150 * index + 100); // 100ms initial delay, then 150ms per category
-          
-          // Clear timeout on component unmount
-          return () => clearTimeout(timer);
-        });
-      }
+    if (isOpen && itemDetails) {
+      // Reset and show all categories immediately for better performance
+      const initialVisibility: { [key: string]: boolean } = {};
+      visibleToppingCategories.forEach(category => {
+        initialVisibility[category.id] = true;
+      });
+      setVisibleCategories(initialVisibility);
     } else {
-      // Reset visibility when dialog closes
       setVisibleCategories({});
     }
-  }, [isOpen, item]);
+  }, [isOpen, itemDetails, visibleToppingCategories]);
 
-  // Memoized price calculation to prevent recalculation on every render
-  const calculateItemPrice = useCallback(() => {
-    if (!item) return 0;
-    let price = parseFloat(item.price.toString());
-    if (item.options) {
-      item.options.forEach(option => {
-        const selected = selectedOptions.find(o => o.optionId === option.id);
-        if (selected) {
-          selected.choiceIds.forEach(choiceId => {
-            const choice = option.choices.find(c => c.id === choiceId);
-            if (choice && choice.price) {
-              price += parseFloat(choice.price.toString());
-            }
-          });
-        }
-      });
+  // Reset customization when dialog closes or item changes
+  useEffect(() => {
+    if (!isOpen || !itemDetails) {
+      resetCustomization();
     }
-    if (item.toppingCategories) {
-      item.toppingCategories.forEach(category => {
-        const selected = selectedToppings.find(t => t.categoryId === category.id);
-        if (selected) {
-          selected.toppingIds.forEach(toppingId => {
-            const topping = category.toppings.find(t => t.id === toppingId);
-            if (topping && topping.price) {
-              // Get quantity from toppingQuantities or default to 1
-              const toppingQty = selected.toppingQuantities?.[toppingId] || 1;
-              price += parseFloat(topping.price.toString()) * toppingQty;
-            }
-          });
-        }
-      });
-    }
-    return price * quantity;
-  }, [item, selectedOptions, selectedToppings, quantity]);
+  }, [isOpen, itemDetails, resetCustomization]);
+
+  // Optimized add to cart handler
+  const handleAddToCart = useCallback(() => {
+    if (!itemDetails) return;
+    
+    const cartItem = {
+      menuItem: itemDetails,
+      quantity,
+      selectedOptions,
+      selectedToppings,
+      specialInstructions,
+      itemPrice: calculatePrice()
+    };
+    
+    onAddToCart(cartItem);
+    onClose();
+  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose]);
   
   const handleQuantityDecrease = useCallback(() => {
-    if (quantity > 1) onQuantityChange(quantity - 1);
-  }, [quantity, onQuantityChange]);
+    handleQuantityChange(quantity - 1);
+  }, [quantity, handleQuantityChange]);
   
   const handleQuantityIncrease = useCallback(() => {
-    onQuantityChange(quantity + 1);
-  }, [quantity, onQuantityChange]);
-
-  // Sort topping categories by display_order if they exist
-  const sortedToppingCategories = item.toppingCategories ? [...item.toppingCategories].sort((a, b) => {
-    const orderA = a.display_order ?? 1000; // Default to a high number if undefined
-    const orderB = b.display_order ?? 1000;
-    return orderA - orderB;
-  }) : [];
-  
-  const hasCustomizations = item.options && item.options.length > 0 || item.toppingCategories && item.toppingCategories.length > 0;
+    handleQuantityChange(quantity + 1);
+  }, [quantity, handleQuantityChange]);
   
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="w-[85vw] max-w-[85vw] max-h-[80vh] p-4 flex flex-col select-none">
         <DialogHeader className="pb-2">
-          <DialogTitle className="font-bold text-3xl mx-0 my-0 leading-relaxed">{getTranslatedField(item, 'name', uiLanguage)}</DialogTitle>
-          {item.description && <DialogDescription className="text-xl text-gray-800">{getTranslatedField(item, 'description', uiLanguage)}</DialogDescription>}
+          <DialogTitle className="font-bold text-3xl mx-0 my-0 leading-relaxed">{getTranslatedField(itemDetails, 'name', uiLanguage)}</DialogTitle>
+          {itemDetails.description && <DialogDescription className="text-xl text-gray-800">{getTranslatedField(itemDetails, 'description', uiLanguage)}</DialogDescription>}
         </DialogHeader>
         
         <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
           {/* Options section - only show if there are options */}
-          {item.options && item.options.length > 0 && item.options.map(option => <div key={option.id} className="space-y-1">
+          {itemDetails.options && itemDetails.options.length > 0 && itemDetails.options.map(option => <div key={option.id} className="space-y-1">
               <Label className="font-medium">
                 {getTranslatedField(option, 'name', uiLanguage)}
                 {option.required && <span className="text-red-500 ml-1">*</span>}
                 {option.multiple && <span className="text-sm text-gray-500 ml-2">({t("multipleSelection")})</span>}
               </Label>
-              <Option option={option} selectedOption={selectedOptions.find(o => o.optionId === option.id)} onToggleChoice={onToggleChoice} currencySymbol={currencySymbol} uiLanguage={uiLanguage} />
+              <Option 
+                option={option} 
+                selectedOption={selectedOptions.find(o => o.optionId === option.id)} 
+                onToggleChoice={handleToggleChoice} 
+                currencySymbol={currencySymbol} 
+                uiLanguage={uiLanguage} 
+              />
             </div>)}
 
-          {/* Toppings section - with staggered animation */}
-          {sortedToppingCategories.filter(category => shouldShowToppingCategory(category)).map((category, index) => (
+          {/* Toppings section - simplified animation */}
+          {visibleToppingCategories.map((category, index) => (
             <ToppingCategory 
               key={category.id} 
               category={category} 
               selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
-              onToggleTopping={onToggleTopping} 
+              onToggleTopping={handleToggleTopping} 
               t={t} 
               currencySymbol={currencySymbol} 
               bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
@@ -417,8 +392,8 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                 <Plus className="h-6 w-6" />
               </Button>
             </div>
-            <Button onClick={onAddToCart} className="flex-1 bg-kiosk-primary py-[34px] text-3xl">
-              {t("addToCart")} - {calculateItemPrice().toFixed(2)} {currencySymbol}
+            <Button onClick={handleAddToCart} className="flex-1 bg-kiosk-primary py-[34px] text-3xl">
+              {t("addToCart")} - {calculatePrice().toFixed(2)} {currencySymbol}
             </Button>
           </div>
         </DialogFooter>

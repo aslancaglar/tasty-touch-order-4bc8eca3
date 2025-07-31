@@ -736,51 +736,28 @@ const KioskViewInner = () => {
       });
     }).filter(Boolean).join(", ");
   };
-  const handleAddToCart = () => {
-    if (!selectedItem) return;
-    
-    // Validate options as before - no change needed here
-    const isOptionsValid = selectedItem.options?.every(option => {
-      if (!option.required) return true;
-      const selected = selectedOptions.find(o => o.optionId === option.id);
-      return selected && selected.choiceIds.length > 0;
-    }) ?? true;
-    
-    // Updated validation for topping categories - only validate visible categories
-    const isToppingsValid = selectedItem.toppingCategories?.every(category => {
-      // Skip validation for categories that are not visible
-      if (!shouldShowToppingCategory(category)) return true;
-      
-      // Only validate min_selections for visible categories
-      if (!category.min_selections || category.min_selections <= 0) return true;
-      const selected = selectedToppings.find(t => t.categoryId === category.id);
-      return selected && selected.toppingIds.length >= category.min_selections;
-    }) ?? true;
-    
-    if (!isOptionsValid || !isToppingsValid) {
-      toast({
-        title: t("selectionsRequired"),
-        description: t("pleaseSelectRequired"),
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const itemPrice = calculateItemPrice(selectedItem, selectedOptions, selectedToppings);
+  const handleAddToCart = (cartItem: {
+    menuItem: MenuItemWithOptions;
+    quantity: number;
+    selectedOptions: any[];
+    selectedToppings: any[];
+    specialInstructions: string;
+    itemPrice: number;
+  }) => {
     const newItem: CartItem = {
       id: Date.now().toString(),
-      menuItem: selectedItem,
-      quantity,
-      selectedOptions,
-      selectedToppings,
-      specialInstructions: specialInstructions.trim() || undefined,
-      itemPrice
+      menuItem: cartItem.menuItem,
+      quantity: cartItem.quantity,
+      selectedOptions: cartItem.selectedOptions,
+      selectedToppings: cartItem.selectedToppings,
+      specialInstructions: cartItem.specialInstructions.trim() || undefined,
+      itemPrice: cartItem.itemPrice
     };
     setCart(prev => [newItem, ...prev]);
     setSelectedItem(null);
     toast({
       title: t("addedToCart"),
-      description: `${quantity}x ${selectedItem.name} ${t("added")}`
+      description: `${cartItem.quantity}x ${cartItem.menuItem.name} ${t("added")}`
     });
   };
   const handleUpdateCartItemQuantity = (itemId: string, newQuantity: number) => {
@@ -1199,7 +1176,15 @@ const KioskViewInner = () => {
         <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} />
       </div>
 
-      {selectedItem && <ItemCustomizationDialog item={selectedItem} isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} selectedOptions={selectedOptions} onToggleChoice={handleToggleChoice} selectedToppings={selectedToppings} onToggleTopping={handleToggleTopping} quantity={quantity} onQuantityChange={setQuantity} specialInstructions={specialInstructions} onSpecialInstructionsChange={setSpecialInstructions} shouldShowToppingCategory={shouldShowToppingCategory} t={t} currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} />}
+      {selectedItem && <ItemCustomizationDialog 
+        itemId={selectedItem.id} 
+        restaurantId={restaurant.id}
+        isOpen={!!selectedItem} 
+        onClose={() => setSelectedItem(null)} 
+        onAddToCart={handleAddToCart} 
+        t={t} 
+        currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} 
+      />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       

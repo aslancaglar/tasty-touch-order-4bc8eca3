@@ -11,7 +11,8 @@ import {
   OrderStatus,
   OrderType,
   ToppingCategory,
-  Topping
+  Topping,
+  MenuItemWithOptions
 } from "@/types/database-types";
 
 // Restaurant services
@@ -597,6 +598,199 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
     options: optionsWithChoices,
     toppingCategories: sortedCategories
   };
+};
+
+// Optimized batch menu service for fetching multiple items with details
+export const getMenuItemsWithOptionsBatch = async (itemIds: string[]): Promise<{ [itemId: string]: MenuItemWithOptions }> => {
+  console.log(`Batch fetching menu items with options for ${itemIds.length} items`);
+
+  if (itemIds.length === 0) {
+    return {};
+  }
+
+  try {
+    // Fetch all items, options, and topping categories in parallel
+    const [menuItemsResult, optionsResult, toppingCategoriesResult] = await Promise.all([
+      // Get menu items
+      supabase
+        .from("menu_items")
+        .select("*")
+        .in("id", itemIds),
+      
+      // Get all options and choices for these items
+      supabase
+        .from("menu_item_options")
+        .select(`
+          id,
+          menu_item_id,
+          name,
+          required,
+          multiple,
+          option_choices!inner (
+            id,
+            name,
+            price
+          )
+        `)
+        .in("menu_item_id", itemIds),
+      
+      // Get all topping categories for these items
+      supabase
+        .from("menu_item_topping_categories")
+        .select(`
+          menu_item_id,
+          topping_category_id,
+          display_order,
+          topping_categories!inner (
+            id,
+            name,
+            min_selections,
+            max_selections,
+            display_order,
+            show_if_selection_type,
+            show_if_selection_id,
+            allow_multiple_same_topping,
+            name_fr,
+            name_en,
+            name_tr,
+            name_de,
+            name_es,
+            name_it,
+            name_nl,
+            name_pt,
+            name_ru,
+            name_ar,
+            name_zh,
+            toppings!inner (
+              id,
+              name,
+              price,
+              tax_percentage,
+              display_order,
+              name_fr,
+              name_en,
+              name_tr,
+              name_de,
+              name_es,
+              name_it,
+              name_nl,
+              name_pt,
+              name_ru,
+              name_ar,
+              name_zh
+            )
+          )
+        `)
+        .in("menu_item_id", itemIds)
+        .order("display_order", { ascending: true })
+    ]);
+
+    if (menuItemsResult.error) throw menuItemsResult.error;
+    if (optionsResult.error) throw optionsResult.error;
+    if (toppingCategoriesResult.error) throw toppingCategoriesResult.error;
+
+    // Create lookup maps
+    const optionsByItemId = new Map<string, any[]>();
+    const toppingCategoriesByItemId = new Map<string, any[]>();
+
+    // Process options
+    optionsResult.data.forEach(option => {
+      const existing = optionsByItemId.get(option.menu_item_id) || [];
+      existing.push({
+        id: option.id,
+        name: option.name,
+        required: option.required,
+        multiple: option.multiple,
+        choices: (option.option_choices || []).map((choice: any) => ({
+          id: choice.id,
+          name: choice.name,
+          price: choice.price || 0
+        }))
+      });
+      optionsByItemId.set(option.menu_item_id, existing);
+    });
+
+    // Process topping categories
+    toppingCategoriesResult.data.forEach(relation => {
+      const category = relation.topping_categories;
+      if (!category) return;
+      
+      const sortedToppings = [...(category.toppings || [])].sort((a: any, b: any) => {
+        const orderA = a.display_order ?? 1000;
+        const orderB = b.display_order ?? 1000;
+        return orderA - orderB;
+      });
+      
+      const existing = toppingCategoriesByItemId.get(relation.menu_item_id) || [];
+      existing.push({
+        id: category.id,
+        name: category.name,
+        min_selections: category.min_selections || 0,
+        max_selections: category.max_selections || 0,
+        required: (category.min_selections && category.min_selections > 0) || false,
+        display_order: relation.display_order || category.display_order,
+        show_if_selection_type: category.show_if_selection_type,
+        show_if_selection_id: category.show_if_selection_id,
+        allow_multiple_same_topping: category.allow_multiple_same_topping || false,
+        name_fr: category.name_fr,
+        name_en: category.name_en,
+        name_tr: category.name_tr,
+        name_de: category.name_de,
+        name_es: category.name_es,
+        name_it: category.name_it,
+        name_nl: category.name_nl,
+        name_pt: category.name_pt,
+        name_ru: category.name_ru,
+        name_ar: category.name_ar,
+        name_zh: category.name_zh,
+        toppings: sortedToppings.map((topping: any) => ({
+          id: topping.id,
+          name: topping.name,
+          price: topping.price || 0,
+          tax_percentage: topping.tax_percentage || 10,
+          display_order: topping.display_order,
+          name_fr: topping.name_fr,
+          name_en: topping.name_en,
+          name_tr: topping.name_tr,
+          name_de: topping.name_de,
+          name_es: topping.name_es,
+          name_it: topping.name_it,
+          name_nl: topping.name_nl,
+          name_pt: topping.name_pt,
+          name_ru: topping.name_ru,
+          name_ar: topping.name_ar,
+          name_zh: topping.name_zh
+        }))
+      });
+      toppingCategoriesByItemId.set(relation.menu_item_id, existing);
+    });
+
+    // Build result map
+    const result: { [itemId: string]: MenuItemWithOptions } = {};
+    
+    menuItemsResult.data.forEach(menuItem => {
+      const options = optionsByItemId.get(menuItem.id) || [];
+      const toppingCategories = (toppingCategoriesByItemId.get(menuItem.id) || [])
+        .sort((a: any, b: any) => {
+          const orderA = a.display_order ?? 1000;
+          const orderB = b.display_order ?? 1000;
+          return orderA - orderB;
+        });
+
+      result[menuItem.id] = {
+        ...menuItem,
+        options,
+        toppingCategories
+      };
+    });
+
+    console.log(`Successfully batch fetched ${Object.keys(result).length} menu items with details`);
+    return result;
+
+  } catch (error) {
+    console.error("Error in getMenuItemsWithOptionsBatch:", error);
+    throw error;
+  }
 };
 
 // Helper function to get all menu items for a restaurant with their categories
