@@ -155,74 +155,79 @@ export const deleteCategory = async (id: string): Promise<void> => {
   }
 };
 
-// Menu Item services
+// Menu Item services (optimized with reduced sequential calls)
 export const getMenuItemsByCategory = async (categoryId: string): Promise<MenuItem[]> => {
+  console.log(`[KioskService] Fetching menu items for category ${categoryId}`);
+  
+  // Single optimized query using joins instead of multiple sequential calls
   const { data: menuItems, error } = await supabase
     .from("menu_items")
-    .select("*")
-    .eq("category_id", categoryId);
+    .select(`
+      *,
+      menu_item_topping_categories!inner (
+        topping_category_id,
+        display_order
+      )
+    `)
+    .eq("category_id", categoryId)
+    .order("display_order", { ascending: true });
 
   if (error) {
     console.error("Error fetching menu items:", error);
     throw error;
   }
 
-  const menuItemsWithToppingCategories = await Promise.all(
-    menuItems.map(async (item) => {
-      const { data: toppingCategoryRelations, error: relationsError } = await supabase
-        .from("menu_item_topping_categories")
-        .select("topping_category_id")
-        .eq("menu_item_id", item.id)
-        .order("display_order", { ascending: true }); // Order by display_order
+  // Transform the data to match expected format
+  const processedItems = menuItems.map(item => {
+    const toppingCategories = (item as any).menu_item_topping_categories || [];
+    return {
+      ...item,
+      topping_categories: toppingCategories
+        .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
+        .map((tc: any) => tc.topping_category_id)
+    };
+  });
 
-      if (relationsError) {
-        console.error("Error fetching menu item topping category relations:", relationsError);
-        return { ...item, topping_categories: [] };
-      }
-
-      return {
-        ...item,
-        topping_categories: toppingCategoryRelations.map(tc => tc.topping_category_id)
-      };
-    })
-  );
-
-  return menuItemsWithToppingCategories;
+  console.log(`[KioskService] Fetched ${processedItems.length} menu items for category`);
+  return processedItems;
 };
 
 export const getMenuItemById = async (id: string): Promise<MenuItem | null> => {
+  console.log(`[KioskService] Fetching menu item by ID ${id}`);
+  
+  // Optimized single query with join
   const { data, error } = await supabase
     .from("menu_items")
-    .select("*")
+    .select(`
+      *,
+      menu_item_topping_categories (
+        topping_category_id,
+        display_order
+      )
+    `)
     .eq("id", id)
     .single();
 
   if (error) {
     if (error.code === 'PGRST116') {
+      console.log(`[KioskService] Menu item not found: ${id}`);
       return null;
     }
     console.error("Error fetching menu item by id:", error);
     throw error;
   }
 
-  const { data: toppingCategoryRelations, error: relationsError } = await supabase
-    .from("menu_item_topping_categories")
-    .select("topping_category_id")
-    .eq("menu_item_id", id)
-    .order("display_order", { ascending: true }); // Order by display_order
-
-  if (relationsError) {
-    console.error("Error fetching menu item topping category relations:", relationsError);
-    return {
-      ...data,
-      topping_categories: []
-    };
-  }
-
-  return {
+  // Transform the data
+  const toppingCategoryRelations = (data as any).menu_item_topping_categories || [];
+  const result = {
     ...data,
-    topping_categories: toppingCategoryRelations.map(tc => tc.topping_category_id)
+    topping_categories: toppingCategoryRelations
+      .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
+      .map((tc: any) => tc.topping_category_id)
   };
+
+  console.log(`[KioskService] Successfully fetched menu item ${id}`);
+  return result;
 };
 
 export const createMenuItem = async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<MenuItem> => {
