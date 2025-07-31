@@ -2,17 +2,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthMonitor } from "@/hooks/useAuthMonitor";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
-import DOMPurify from 'dompurify';
-import { rateLimiter } from '@/utils/error-handler';
-import { useEnhancedInputValidation } from '@/components/security/EnhancedInputSanitizer';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Eye, EyeOff, LogIn, Mail, AlertTriangle } from "lucide-react";
+import { SecureAuthService } from "@/services/secure-auth-service";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -23,20 +21,10 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [loginAttempts, setLoginAttempts] = useState(0);
-  const [lastLoginAttempt, setLastLoginAttempt] = useState(0);
+  const [securityError, setSecurityError] = useState<string | null>(null);
 
   // Monitor auth state changes for debugging
   useAuthMonitor('Auth');
-  
-  // Enhanced input validation
-  const { validateAndSanitize } = useEnhancedInputValidation((threats) => {
-    toast({
-      title: "Security Alert",
-      description: `Suspicious input detected: ${threats.join(', ')}`,
-      variant: "destructive",
-    });
-  });
 
   // Redirect authenticated users to their appropriate dashboard
   useEffect(() => {
@@ -55,60 +43,35 @@ const Auth = () => {
     e.preventDefault();
     
     // Prevent multiple rapid clicks
-    const now = Date.now();
-    if (loginLoading || (now - lastLoginAttempt < 1000)) {
-      console.log("Login attempt blocked - too soon or already in progress");
+    if (loginLoading) {
+      console.log("Login attempt blocked - already in progress");
       return;
     }
     
-    // Enhanced rate limiting using utility
-    const clientIp = 'login-attempt'; // Use a generic key for client-side rate limiting
-    if (!rateLimiter.isAllowed(clientIp, 5, 60000)) { // 5 attempts per minute
-      toast({
-        title: "Too many login attempts",
-        description: "Please wait a minute before trying again for security",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setLastLoginAttempt(now);
-    setLoginAttempts(prev => prev + 1);
     setLoginLoading(true);
+    setSecurityError(null);
     
     try {
-      // Enhanced input validation
-      const emailValidation = validateAndSanitize(email, 'text', 'login-email');
-      const passwordValidation = validateAndSanitize(password, 'text', 'login-password');
+      console.log("Attempting secure login for:", email);
       
-      if (!emailValidation.isValid || !passwordValidation.isValid) {
+      // Use secure authentication service
+      const result = await SecureAuthService.secureLogin(email, password);
+      
+      if (!result.success) {
+        if (result.rateLimited) {
+          setSecurityError("Too many login attempts. Please wait before trying again.");
+        }
+        
         toast({
-          title: "Invalid input",
-          description: "Please check your input and try again",
+          title: "Login failed",
+          description: result.error || "An error occurred during login",
           variant: "destructive"
         });
         setLoginLoading(false);
         return;
       }
       
-      const sanitizedEmail = DOMPurify.sanitize(emailValidation.sanitized.trim().toLowerCase());
-      
-      console.log("Attempting login for:", sanitizedEmail);
-      
-      const { error } = await supabase.auth.signInWithPassword({
-        email: sanitizedEmail,
-        password: password
-      });
-      
-      if (error) {
-        console.error("Login error:", error);
-        throw error;
-      }
-      
       console.log("Login successful - auth state will handle redirect");
-      
-      // Reset attempts on successful login
-      setLoginAttempts(0);
       
       toast({
         title: "Login successful",
@@ -169,6 +132,12 @@ const Auth = () => {
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4 pt-4">
+            {securityError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{securityError}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
