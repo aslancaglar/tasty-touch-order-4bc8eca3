@@ -129,6 +129,64 @@ Thank you!
       const result = await printnodeResponse.json()
       response = { success: true, jobId: result }
       
+    } else if (action === 'print-receipt') {
+      const { printerIds, receiptData } = await req.json()
+      
+      // Generate receipt content (simplified for now)
+      const receiptContent = `
+${receiptData.restaurant.name}
+${receiptData.restaurant.location || ''}
+=====================
+
+Order #${receiptData.orderNumber}
+Date: ${new Date().toLocaleString()}
+${receiptData.orderType === 'dine-in' ? 'Dine In' : 'Takeaway'}
+${receiptData.tableNumber ? `Table: ${receiptData.tableNumber}` : ''}
+
+ITEMS:
+${receiptData.cart.map((item: any) => 
+  `${item.quantity}x ${item.menuItem.name} - €${item.itemPrice.toFixed(2)}`
+).join('\n')}
+
+=====================
+Subtotal: €${receiptData.subtotal.toFixed(2)}
+Tax: €${receiptData.tax.toFixed(2)}
+TOTAL: €${receiptData.total.toFixed(2)}
+=====================
+
+Thank you for your visit!
+`
+
+      // Send to each printer
+      const results = []
+      for (const printerId of printerIds) {
+        const printJob = {
+          printerId: parseInt(printerId),
+          title: `Order #${receiptData.orderNumber}`,
+          contentType: "raw_base64",
+          content: btoa(receiptContent),
+          source: "Restaurant Kiosk"
+        }
+
+        const printnodeResponse = await fetch('https://api.printnode.com/printjobs', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${btoa(printnodeApiKey + ':')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(printJob)
+        })
+
+        if (printnodeResponse.ok) {
+          const result = await printnodeResponse.json()
+          results.push({ printerId, success: true, jobId: result })
+        } else {
+          results.push({ printerId, success: false, error: printnodeResponse.status })
+        }
+      }
+
+      response = { success: true, results }
+      
     } else {
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),

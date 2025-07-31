@@ -65,7 +65,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       // Call the secure edge function
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/printnode-proxy`, {
+      const response = await fetch(`https://yifimiqeybttmbhuplaq.supabase.co/functions/v1/printnode-proxy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -165,7 +165,7 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/printnode-proxy`, {
+      const response = await fetch(`https://yifimiqeybttmbhuplaq.supabase.co/functions/v1/printnode-proxy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
