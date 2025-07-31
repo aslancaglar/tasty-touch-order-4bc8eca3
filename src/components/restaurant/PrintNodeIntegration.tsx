@@ -169,10 +169,11 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         description: `${printerData.length} printers retrieved`,
       });
     } catch (error) {
-      console.error("Error fetching printer data");
+      console.error("Error fetching printer data:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       toast({
         title: "Error",
-        description: "Error fetching printers",
+        description: `Failed to fetch printers: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
@@ -207,7 +208,12 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
         selected: false
       }));
     } catch (error) {
-      console.error("Error calling API");
+      console.error("PrintNode API error:", error);
+      
+      // Check if it's a network/CSP error
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error("Network error - check CSP configuration or API connectivity");
+      }
       
       // Fallback to mock data during development or when API fails
       if (process.env.NODE_ENV === 'development') {

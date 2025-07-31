@@ -39,7 +39,7 @@ export const SECURITY_CONFIG = {
     STYLE_SRC: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     IMG_SRC: ["'self'", "data:", "https:", "blob:"],
     FONT_SRC: ["'self'", "https://fonts.gstatic.com"],
-    CONNECT_SRC: ["'self'", "https://*.supabase.co"],
+    CONNECT_SRC: ["'self'", "https://*.supabase.co", "https://api.printnode.com"],
   }
 } as const;
 
