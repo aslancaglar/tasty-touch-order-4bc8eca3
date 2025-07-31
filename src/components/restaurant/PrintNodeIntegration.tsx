@@ -1,15 +1,12 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, Printer, Check, XCircle, RefreshCw, LockKeyhole } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Printer, TestTube, Settings, Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+// Updated interfaces
 interface Printer {
   id: string;
   name: string;
@@ -25,126 +22,69 @@ interface PrintNodeIntegrationProps {
 interface PrintConfig {
   id?: string;
   restaurant_id: string;
-  api_key?: string | null;
-  configured_printers?: string[];
+  configured_printers: string[];
 }
 
 const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
-  const [apiKey, setApiKey] = useState("");
-  const [isConfigured, setIsConfigured] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
-  const [isTesting, setIsTesting] = useState<Record<string, boolean>>({});
   const [printers, setPrinters] = useState<Printer[]>([]);
-  const [maskedKey, setMaskedKey] = useState<string>("");
-  
-  const { toast } = useToast();
+  const [isFetching, setIsFetching] = useState(false);
+  const [isTesting, setIsTesting] = useState<string | null>(null);
+  const [isConfigured, setIsConfigured] = useState(false);
 
-  // Mask API key for display (show only last 4 characters)
-  const maskApiKey = (key: string): string => {
-    if (!key) return "";
-    if (key.length <= 4) return "••••";
-    return "•".repeat(key.length - 4) + key.slice(-4);
-  };
-
+  // Load configured printers on mount
   useEffect(() => {
-    const fetchApiConfig = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('restaurant_print_config')
-          .select('*')
-          .eq('restaurant_id', restaurantId)
-          .single();
-        
-        if (error) {
-          if (error.code !== 'PGRST116') { // Not found error
-            console.error("Error fetching print config");
-          }
-          return;
-        }
-        
-        if (data) {
-          if (data.api_key) {
-            setApiKey(data.api_key);
-            setMaskedKey(maskApiKey(data.api_key));
-            setIsConfigured(true);
-            fetchPrinters(data.api_key);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching print configuration");
-      }
-    };
-    
-    fetchApiConfig();
+    loadConfiguredPrinters();
   }, [restaurantId]);
 
-  const saveApiKey = async () => {
-    if (!apiKey.trim()) {
-      toast({
-        title: "Error",
-        description: "API key cannot be empty",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const loadConfiguredPrinters = async () => {
     try {
-      setIsFetching(true);
-      
-      const printerData = await fetchPrintersFromAPI(apiKey);
-      
-      if (printerData.length === 0) {
-        toast({
-          title: "API Key Invalid",
-          description: "Unable to retrieve printers with this API key",
-          variant: "destructive"
-        });
-        setIsFetching(false);
-        return;
-      }
-      
-      const printConfig: PrintConfig = {
-        restaurant_id: restaurantId,
-        api_key: apiKey,
-        configured_printers: []
-      };
-
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('restaurant_print_config')
-        .upsert(printConfig, {
-          onConflict: 'restaurant_id'
-        });
+        .select('configured_printers')
+        .eq('restaurant_id', restaurantId)
+        .single();
       
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         throw error;
       }
       
-      setIsConfigured(true);
-      setPrinters(printerData);
-      setMaskedKey(maskApiKey(apiKey));
-      
-      toast({
-        title: "API Key Saved",
-        description: "PrintNode API key saved securely",
-      });
+      if (data?.configured_printers) {
+        setIsConfigured(true);
+        // Auto-fetch printers if configuration exists
+        fetchPrinters();
+      }
     } catch (error) {
-      console.error("Error saving configuration");
-      toast({
-        title: "Error",
-        description: "Error saving API key",
-        variant: "destructive"
-      });
-    } finally {
-      setIsFetching(false);
+      console.error("Error loading print configuration:", error);
     }
   };
 
-  const fetchPrinters = async (key = apiKey) => {
+  const fetchPrinters = async () => {
     try {
       setIsFetching(true);
       
-      const printerData = await fetchPrintersFromAPI(key);
+      // Call the secure edge function
+      const { data: { session } } = await supabase.auth.getSession();
       
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/printnode-proxy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          action: 'fetch-printers',
+          restaurantId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch printers');
+      }
+
+      const { printers: printerData } = await response.json();
+      
+      // Get configured printers from database
       const { data: configData, error: configError } = await supabase
         .from('restaurant_print_config')
         .select('configured_printers')
@@ -157,12 +97,13 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
       
       const selectedPrinterIds = (configData?.configured_printers || []) as string[];
       
-      const printersWithSelection = printerData.map(printer => ({
+      const printersWithSelection = printerData.map((printer: Printer) => ({
         ...printer,
         selected: selectedPrinterIds.includes(printer.id)
       }));
       
       setPrinters(printersWithSelection);
+      setIsConfigured(true);
       
       toast({
         title: "Printers Fetched",
@@ -181,321 +122,182 @@ const PrintNodeIntegration = ({ restaurantId }: PrintNodeIntegrationProps) => {
     }
   };
 
-  const fetchPrintersFromAPI = async (key: string): Promise<Printer[]> => {
-    if (!key || key.length < 10) {
-      return [];
-    }
-    
-    try {
-      // Make secure API call to PrintNode
-      const response = await fetch('https://api.printnode.com/printers', {
-        headers: {
-          'Authorization': `Basic ${btoa(key + ':')}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      return data.map((printer: any) => ({
-        id: printer.id.toString(),
-        name: printer.name,
-        description: printer.description || (printer.computer ? printer.computer.name : undefined),
-        state: printer.state === "online" ? "online" : "offline",
-        selected: false
-      }));
-    } catch (error) {
-      console.error("PrintNode API error:", error);
-      
-      // Check if it's a network/CSP error
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error("Network error - check CSP configuration or API connectivity");
-      }
-      
-      // Fallback to mock data during development or when API fails
-      if (process.env.NODE_ENV === 'development') {
-        console.log("Using mock printer data in development");
-        return [
-          {
-            id: "printer1",
-            name: "Printer 1",
-            description: "Front Counter",
-            state: "online",
-            selected: false
-          },
-          {
-            id: "printer2",
-            name: "Printer 2",
-            description: "Kitchen",
-            state: "online",
-            selected: false
-          },
-          {
-            id: "printer3",
-            name: "Printer 3",
-            description: "Bar",
-            state: "offline",
-            selected: false
-          }
-        ];
-      }
-      
-      return [];
-    }
-  };
-
   const togglePrinterSelection = async (printerId: string) => {
-    const updatedPrinters = printers.map(printer => {
-      if (printer.id === printerId) {
-        return { ...printer, selected: !printer.selected };
-      }
-      return printer;
-    });
-    
-    setPrinters(updatedPrinters);
-    
     try {
+      const updatedPrinters = printers.map(printer =>
+        printer.id === printerId 
+          ? { ...printer, selected: !printer.selected }
+          : printer
+      );
+      
+      setPrinters(updatedPrinters);
+      
       const selectedPrinterIds = updatedPrinters
-        .filter(p => p.selected)
-        .map(p => p.id);
+        .filter(printer => printer.selected)
+        .map(printer => printer.id);
       
       const { error } = await supabase
         .from('restaurant_print_config')
-        .update({
+        .upsert({
+          restaurant_id: restaurantId,
           configured_printers: selectedPrinterIds
-        })
-        .eq('restaurant_id', restaurantId);
-      
-      if (error) {
-        throw error;
-      }
+        });
+
+      if (error) throw error;
       
       toast({
-        title: "Printers Updated",
-        description: "Printer configuration updated",
+        title: "Configuration Updated",
+        description: "Printer selection saved",
       });
     } catch (error) {
-      console.error("Error saving printer selection");
+      console.error("Error updating printer selection:", error);
       toast({
         title: "Error",
-        description: "Error saving printer selection",
+        description: "Failed to update printer selection",
         variant: "destructive"
       });
     }
   };
 
   const testPrinter = async (printerId: string) => {
-    setIsTesting({ ...isTesting, [printerId]: true });
-    
     try {
-      const printer = printers.find(p => p.id === printerId);
+      setIsTesting(printerId);
       
-      if (!printer) {
-        throw new Error("Printer not found");
-      }
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (printer.state === "offline") {
-        throw new Error("Cannot print to offline printer");
-      }
-      
-      // Create a test receipt in plain text format for thermal printer
-      const testReceipt = 
-`
-==================================
-        TEST RECEIPT
-==================================
-${new Date().toLocaleString()}
-
-This is a test receipt from your
-restaurant's kiosk system.
-
-If you can read this, printing
-is working correctly!
-
-==================================
-        PRINT TEST PASSED
-==================================
-
-`;
-
-      // Properly encode for PrintNode - fix for non-Latin1 characters
-      const encodedContent = btoa(unescape(encodeURIComponent(testReceipt)));
-      
-      // Make secure API call
-      const response = await fetch('https://api.printnode.com/printjobs', {
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/printnode-proxy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${btoa(apiKey + ':')}`
+          'Authorization': `Bearer ${session?.access_token}`
         },
         body: JSON.stringify({
-          printer: parseInt(printerId, 10) || printerId,
-          title: "Test Print",
-          contentType: "raw_base64",
-          content: encodedContent,
-          source: "Restaurant Kiosk"
+          action: 'test-printer',
+          restaurantId,
+          printerId
         })
       });
-      
+
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error sending print job: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to test printer');
       }
-      
+
       toast({
         title: "Test Print Sent",
-        description: `Test print sent to ${printer.name}`,
+        description: "Check your printer for the test receipt",
       });
     } catch (error) {
-      console.error("Error testing printer");
+      console.error("Error testing printer:", error);
       toast({
         title: "Error",
-        description: "Error sending test print: " + (error instanceof Error ? error.message : "Unknown error"),
+        description: "Failed to send test print",
         variant: "destructive"
       });
     } finally {
-      setIsTesting({ ...isTesting, [printerId]: false });
+      setIsTesting(null);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">PrintNode Integration</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-4">
-          <Label htmlFor="api-key">PrintNode API Key</Label>
-          
-          {isConfigured ? (
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-gray-100 border border-gray-300 rounded py-2 px-3 text-gray-600 font-mono flex items-center">
-                <LockKeyhole className="h-4 w-4 mr-2 text-gray-500" />
-                {maskedKey}
-              </div>
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  setIsConfigured(false);
-                  setApiKey("");
-                }}
-              >
-                Change
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            PrintNode Integration
+          </CardTitle>
+          <CardDescription>
+            Configure your thermal printers using PrintNode API (securely managed)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!isConfigured ? (
+            <div className="text-center py-6">
+              <p className="text-muted-foreground mb-4">
+                PrintNode API key is configured securely. Click below to fetch your printers.
+              </p>
+              <Button onClick={fetchPrinters} disabled={isFetching}>
+                {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+                Fetch Printers
               </Button>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <Input 
-                id="api-key" 
-                type="password"
-                value={apiKey} 
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your PrintNode API key"
-                disabled={isFetching}
-                className="flex-1"
-              />
-              <Button 
-                onClick={saveApiKey}
-                disabled={isFetching || !apiKey}
-                className="bg-kiosk-primary"
-              >
-                {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-              </Button>
-            </div>
-          )}
-          
-          <p className="text-sm text-muted-foreground">
-            Get an API key by creating an account on 
-            <a href="https://www.printnode.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
-              PrintNode.com
-            </a>
-          </p>
-        </div>
-        
-        {isConfigured && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-md font-medium">Available Printers</h3>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => fetchPrinters()}
-                disabled={isFetching}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            </div>
-            
-            {isFetching ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Available Printers</h3>
+                <Button 
+                  variant="outline" 
+                  onClick={fetchPrinters} 
+                  disabled={isFetching}
+                  size="sm"
+                >
+                  {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+                  Refresh
+                </Button>
               </div>
-            ) : printers.length > 0 ? (
-              <div className="space-y-3">
-                {printers.map((printer) => (
-                  <div key={printer.id} className="flex items-center justify-between p-3 border rounded-md">
-                    <div className="flex items-center space-x-3">
-                      <Checkbox 
-                        id={`printer-${printer.id}`}
-                        checked={printer.selected}
-                        onCheckedChange={() => togglePrinterSelection(printer.id)}
-                      />
-                      <div>
-                        <label 
-                          htmlFor={`printer-${printer.id}`} 
-                          className="font-medium cursor-pointer"
+              
+              {printers.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  No printers found. Make sure your PrintNode client is running.
+                </p>
+              ) : (
+                <div className="grid gap-4">
+                  {printers.map((printer) => (
+                    <div
+                      key={printer.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Printer className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{printer.name}</div>
+                          {printer.description && (
+                            <div className="text-sm text-muted-foreground">
+                              {printer.description}
+                            </div>
+                          )}
+                        </div>
+                        <Badge 
+                          variant={printer.state === "online" ? "default" : "secondary"}
                         >
-                          {printer.name}
-                        </label>
-                        {printer.description && (
-                          <p className="text-sm text-muted-foreground">{printer.description}</p>
+                          {printer.state}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant={printer.selected ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => togglePrinterSelection(printer.id)}
+                        >
+                          {printer.selected ? "Selected" : "Select"}
+                        </Button>
+                        
+                        {printer.selected && printer.state === "online" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => testPrinter(printer.id)}
+                            disabled={isTesting === printer.id}
+                          >
+                            {isTesting === printer.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <TestTube className="h-4 w-4" />
+                            )}
+                          </Button>
                         )}
                       </div>
-                      <Badge 
-                        variant="outline" 
-                        className={`
-                          ${printer.state === 'online' 
-                            ? 'bg-green-100 text-green-800 border-green-200' 
-                            : 'bg-red-100 text-red-800 border-red-200'}
-                        `}
-                      >
-                        {printer.state === 'online' ? (
-                          <Check className="h-3 w-3 mr-1" />
-                        ) : (
-                          <XCircle className="h-3 w-3 mr-1" />
-                        )}
-                        {printer.state === 'online' ? 'Online' : 'Offline'}
-                      </Badge>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => testPrinter(printer.id)}
-                      disabled={isTesting[printer.id] || printer.state === 'offline'}
-                    >
-                      {isTesting[printer.id] ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Printer className="h-4 w-4 mr-2" />
-                      )}
-                      Test
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6 border rounded-md">
-                <p className="text-muted-foreground">No printers found</p>
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
