@@ -158,8 +158,51 @@ const SecurityMonitor = () => {
     setThreats(prev => prev.filter(t => t.timestamp !== timestamp));
   };
 
-  // Hide all security alerts - return null to not render anything
-  return null;
+  // Render security threats if any exist
+  if (threats.length === 0 && isOnline) {
+    return null; // No threats and online - don't show anything
+  }
+
+  return (
+    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-md">
+      {/* Show offline status */}
+      {!isOnline && (
+        <Alert className="border-orange-500 bg-orange-50">
+          <WifiOff className="h-4 w-4" />
+          <AlertTitle>Network Offline</AlertTitle>
+          <AlertDescription>
+            Application is running in offline mode. Some features may be limited.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {/* Show security threats */}
+      {threats.map((threat) => (
+        <Alert 
+          key={threat.timestamp} 
+          className={`${
+            threat.severity === 'high' 
+              ? 'border-red-500 bg-red-50' 
+              : threat.severity === 'medium'
+              ? 'border-yellow-500 bg-yellow-50'
+              : 'border-blue-500 bg-blue-50'
+          }`}
+        >
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="flex justify-between items-center">
+            <span>Security Alert - {threat.severity.toUpperCase()}</span>
+            <button
+              onClick={() => dismissThreat(threat.timestamp)}
+              className="text-xs hover:font-bold"
+            >
+              ×
+            </button>
+          </AlertTitle>
+          <AlertDescription>{threat.message}</AlertDescription>
+        </Alert>
+      ))}
+    </div>
+  );
 };
 
 export default SecurityMonitor;

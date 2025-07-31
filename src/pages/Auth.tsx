@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, LogIn, Mail } from "lucide-react";
 import DOMPurify from 'dompurify';
+import { rateLimiter } from '@/utils/error-handler';
+import { useEnhancedInputValidation } from '@/components/security/EnhancedInputSanitizer';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -26,6 +28,15 @@ const Auth = () => {
 
   // Monitor auth state changes for debugging
   useAuthMonitor('Auth');
+  
+  // Enhanced input validation
+  const { validateAndSanitize } = useEnhancedInputValidation((threats) => {
+    toast({
+      title: "Security Alert",
+      description: `Suspicious input detected: ${threats.join(', ')}`,
+      variant: "destructive",
+    });
+  });
 
   // Redirect authenticated users to their appropriate dashboard
   useEffect(() => {
@@ -50,11 +61,12 @@ const Auth = () => {
       return;
     }
     
-    // Rate limiting - max 3 attempts per minute
-    if (loginAttempts >= 3 && now - lastLoginAttempt < 60000) {
+    // Enhanced rate limiting using utility
+    const clientIp = 'login-attempt'; // Use a generic key for client-side rate limiting
+    if (!rateLimiter.isAllowed(clientIp, 5, 60000)) { // 5 attempts per minute
       toast({
-        title: "Too many attempts",
-        description: "Please wait a minute before trying again",
+        title: "Too many login attempts",
+        description: "Please wait a minute before trying again for security",
         variant: "destructive"
       });
       return;
@@ -65,7 +77,21 @@ const Auth = () => {
     setLoginLoading(true);
     
     try {
-      const sanitizedEmail = DOMPurify.sanitize(email.trim().toLowerCase());
+      // Enhanced input validation
+      const emailValidation = validateAndSanitize(email, 'text', 'login-email');
+      const passwordValidation = validateAndSanitize(password, 'text', 'login-password');
+      
+      if (!emailValidation.isValid || !passwordValidation.isValid) {
+        toast({
+          title: "Invalid input",
+          description: "Please check your input and try again",
+          variant: "destructive"
+        });
+        setLoginLoading(false);
+        return;
+      }
+      
+      const sanitizedEmail = DOMPurify.sanitize(emailValidation.sanitized.trim().toLowerCase());
       
       console.log("Attempting login for:", sanitizedEmail);
       
