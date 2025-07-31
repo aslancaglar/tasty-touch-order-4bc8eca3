@@ -92,8 +92,8 @@ const SecurityMonitor = () => {
       
       requestCount++;
       
-      // Check for suspicious request patterns
-      if (requestCount > 100) { // More than 100 requests per minute
+      // Check for suspicious request patterns - increased threshold for kiosk apps
+      if (requestCount > 250) { // More than 250 requests per minute (increased from 100)
         addThreat({
           type: 'rate_limit',
           severity: 'medium',

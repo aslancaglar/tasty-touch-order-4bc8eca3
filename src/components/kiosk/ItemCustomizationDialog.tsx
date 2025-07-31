@@ -266,7 +266,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   currencySymbol,
   itemDetails: providedItemDetails
 }) => {
-  console.log('ItemCustomizationDialog render:', { itemId, restaurantId, isOpen, hasProvidedDetails: !!providedItemDetails });
+  
   
   const { language: uiLanguage } = useLanguage();
   

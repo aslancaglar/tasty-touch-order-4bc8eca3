@@ -506,12 +506,9 @@ export const createOrderItemToppings = async (toppings: Array<{order_item_id: st
 
 // Helper function to get a complete menu item with its options and choices
 export const getMenuItemWithOptions = async (menuItemId: string) => {
-  console.log('getMenuItemWithOptions called for itemId:', menuItemId);
-  
   try {
     const menuItem = await getMenuItemById(menuItemId);
     if (!menuItem) {
-      console.log('Menu item not found for id:', menuItemId);
       return null;
     }
 
