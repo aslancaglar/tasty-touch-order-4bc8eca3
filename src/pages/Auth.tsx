@@ -21,6 +21,8 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [lastLoginAttempt, setLastLoginAttempt] = useState(0);
 
   // Monitor auth state changes for debugging
   useAuthMonitor('Auth');
@@ -40,6 +42,26 @@ const Auth = () => {
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent multiple rapid clicks
+    const now = Date.now();
+    if (loginLoading || (now - lastLoginAttempt < 1000)) {
+      console.log("Login attempt blocked - too soon or already in progress");
+      return;
+    }
+    
+    // Rate limiting - max 3 attempts per minute
+    if (loginAttempts >= 3 && now - lastLoginAttempt < 60000) {
+      toast({
+        title: "Too many attempts",
+        description: "Please wait a minute before trying again",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setLastLoginAttempt(now);
+    setLoginAttempts(prev => prev + 1);
     setLoginLoading(true);
     
     try {
@@ -58,6 +80,9 @@ const Auth = () => {
       }
       
       console.log("Login successful - auth state will handle redirect");
+      
+      // Reset attempts on successful login
+      setLoginAttempts(0);
       
       toast({
         title: "Login successful",
