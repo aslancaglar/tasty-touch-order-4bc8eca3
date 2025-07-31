@@ -38,18 +38,44 @@ serve(async (req) => {
     
     console.log('PrintNode proxy request:', { action, restaurantId, userId: user.id })
 
-    // Verify user has access to this restaurant
-    const { data: ownershipData, error: ownershipError } = await supabaseClient
-      .from('restaurant_owners')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('user_id', user.id)
-      .single()
+    // Check if user is admin first, then check restaurant ownership
+    const { data: adminStatus, error: adminError } = await supabaseClient
+      .rpc('get_current_user_admin_status')
 
-    if (ownershipError || !ownershipData) {
+    let hasAccess = false
+    
+    if (adminStatus === true) {
+      console.log('User has admin access to all restaurants')
+      hasAccess = true
+    } else {
+      // Check restaurant ownership for non-admin users
+      const { data: ownershipData, error: ownershipError } = await supabaseClient
+        .from('restaurant_owners')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (ownershipData && !ownershipError) {
+        console.log('User has owner access to restaurant')
+        hasAccess = true
+      }
+    }
+
+    if (!hasAccess) {
+      console.error('Access denied - user is not admin or owner of restaurant:', {
+        userId: user.id,
+        restaurantId,
+        isAdmin: adminStatus
+      })
       return new Response(
-        JSON.stringify({ error: 'Access denied to restaurant' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'Access denied. You do not have permission to access this restaurant.' 
+        }),
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
