@@ -16,6 +16,8 @@ export const useMenuItemDetails = (
   itemId: string | null,
   restaurantId: string
 ): UseMenuItemDetailsResult => {
+  console.log('useMenuItemDetails called:', { itemId, restaurantId });
+  
   const [itemDetails, setItemDetails] = useState<MenuItemWithOptions | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

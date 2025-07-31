@@ -26,6 +26,7 @@ interface ItemCustomizationDialogProps {
   }) => void;
   t: (key: string) => string;
   currencySymbol: string;
+  itemDetails?: MenuItemWithOptions | null; // Optional pre-fetched item details
 }
 
 // Define alternating background colors for topping categories
@@ -262,12 +263,21 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   onClose,
   onAddToCart,
   t,
-  currencySymbol
+  currencySymbol,
+  itemDetails: providedItemDetails
 }) => {
+  console.log('ItemCustomizationDialog render:', { itemId, restaurantId, isOpen, hasProvidedDetails: !!providedItemDetails });
+  
   const { language: uiLanguage } = useLanguage();
   
-  // Use optimized hooks for data fetching and state management
-  const { itemDetails, loading, error } = useMenuItemDetails(itemId, restaurantId);
+  // Use optimized hooks for data fetching and state management - only fetch if no details provided
+  const { itemDetails: fetchedItemDetails, loading, error } = useMenuItemDetails(
+    providedItemDetails ? null : itemId, 
+    restaurantId
+  );
+  
+  // Use provided details if available, otherwise use fetched details
+  const itemDetails = providedItemDetails || fetchedItemDetails;
   const {
     selectedOptions,
     selectedToppings,

@@ -506,8 +506,14 @@ export const createOrderItemToppings = async (toppings: Array<{order_item_id: st
 
 // Helper function to get a complete menu item with its options and choices
 export const getMenuItemWithOptions = async (menuItemId: string) => {
-  const menuItem = await getMenuItemById(menuItemId);
-  if (!menuItem) return null;
+  console.log('getMenuItemWithOptions called for itemId:', menuItemId);
+  
+  try {
+    const menuItem = await getMenuItemById(menuItemId);
+    if (!menuItem) {
+      console.log('Menu item not found for id:', menuItemId);
+      return null;
+    }
 
   const options = await getMenuItemOptions(menuItemId);
   
@@ -593,11 +599,15 @@ export const getMenuItemWithOptions = async (menuItemId: string) => {
     return orderA - orderB;
   });
 
-  return {
-    ...menuItem,
-    options: optionsWithChoices,
-    toppingCategories: sortedCategories
-  };
+    return {
+      ...menuItem,
+      options: optionsWithChoices,
+      toppingCategories: sortedCategories
+    };
+  } catch (error) {
+    console.error('Error in getMenuItemWithOptions:', error);
+    throw error;
+  }
 };
 
 // Optimized batch menu service for fetching multiple items with details

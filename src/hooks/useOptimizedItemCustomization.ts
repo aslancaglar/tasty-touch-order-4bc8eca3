@@ -31,6 +31,8 @@ export const useOptimizedItemCustomization = (
   item: MenuItemWithOptions | null,
   currencySymbol: string
 ): UseOptimizedItemCustomizationResult => {
+  console.log('useOptimizedItemCustomization called:', { item: !!item, currencySymbol });
+  
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
   const [selectedToppings, setSelectedToppings] = useState<SelectedTopping[]>([]);
   const [quantity, setQuantity] = useState(1);

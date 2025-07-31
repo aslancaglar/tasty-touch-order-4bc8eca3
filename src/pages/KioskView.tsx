@@ -1183,7 +1183,8 @@ const KioskViewInner = () => {
         onClose={() => setSelectedItem(null)} 
         onAddToCart={handleAddToCart} 
         t={t} 
-        currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")} 
+        currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
+        itemDetails={selectedItem} 
       />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
