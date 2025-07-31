@@ -133,7 +133,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         console.log("Device info - Width:", window.innerWidth, "isMobile:", isMobile, "userAgent:", navigator.userAgent);
         const { data: printConfig, error } = await supabase
           .from('restaurant_print_config')
-          .select('configured_printers, browser_printing_enabled')
+          .select('api_key, configured_printers, browser_printing_enabled')
           .eq('restaurant_id', restaurant.id)
           .single();
         if (error) {
@@ -170,50 +170,28 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             console.log("Browser printing disabled in restaurant settings");
           }
         }
-        if (printConfig?.configured_printers) {
+        if (printConfig?.api_key && printConfig?.configured_printers) {
           const printerArray = Array.isArray(printConfig.configured_printers) 
             ? printConfig.configured_printers 
             : [];
           const printerIds = printerArray.map(id => String(id));
           if (printerIds.length > 0) {
-            // Use the secure edge function for printing
-            try {
-              const { data: { session } } = await supabase.auth.getSession();
-              
-              const response = await fetch(`https://yifimiqeybttmbhuplaq.supabase.co/functions/v1/printnode-proxy`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${session?.access_token}`
-                },
-                body: JSON.stringify({
-                  action: 'print-receipt',
-                  restaurantId: restaurant?.id,
-                  printerIds,
-                  receiptData: {
-                    restaurant,
-                    cart,
-                    orderNumber,
-                    tableNumber,
-                    orderType,
-                    subtotal,
-                    tax,
-                    total,
-                    getFormattedOptions,
-                    getFormattedToppings,
-                    uiLanguage: "fr"
-                  }
-                })
-              });
-
-              if (response.ok) {
-                console.log("Receipt sent to PrintNode printers");
-              } else {
-                console.error("Failed to send receipt to PrintNode");
+            await sendReceiptToPrintNode(
+              printConfig.api_key,
+              printerIds,
+              {
+                restaurant,
+                cart,
+                orderNumber,
+                tableNumber,
+                orderType,
+                subtotal,
+                tax,
+                total,
+                getFormattedOptions,
+                getFormattedToppings
               }
-            } catch (error) {
-              console.error("Error sending receipt to PrintNode:", error);
-            }
+            );
           }
         }
       } catch (error) {

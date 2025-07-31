@@ -9,7 +9,6 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NetworkStatus } from "@/components/ui/network-status";
 import SecurityMonitor from "@/components/security/SecurityMonitor";
 import { initializeCacheConfig } from "@/utils/cache-config";
-import { setCSPMetaTag } from "@/utils/csp-headers";
 
 // Create a more sophisticated QueryClient with route-aware settings
 const queryClient = new QueryClient({
@@ -39,15 +38,9 @@ import Security from "./pages/Security";
 import GeneralSettings from "./pages/GeneralSettings";
 
 const App = () => {
-  // Initialize security and cache config when the app starts
+  // Initialize cache config when the app starts
   React.useEffect(() => {
     initializeCacheConfig();
-    
-    // Set Content Security Policy headers
-    setCSPMetaTag();
-    
-    // Log application start for security monitoring
-    console.log('[Security] Application initialized with enhanced security monitoring');
   }, []);
 
   return (

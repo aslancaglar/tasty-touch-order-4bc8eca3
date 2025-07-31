@@ -1062,9 +1062,9 @@ const KioskViewInner = () => {
   };
 
   useEffect(() => {
-    // Add a style tag to prevent selection throughout the kiosk view using textContent for security
+    // Add a style tag to prevent selection throughout the kiosk view
     const styleTag = document.createElement('style');
-    styleTag.textContent = `
+    styleTag.innerHTML = `
       .kiosk-view {
         user-select: none;
         -webkit-user-select: none;

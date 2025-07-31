@@ -34,27 +34,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const adminCheckTimeoutRef = useRef<NodeJS.Timeout>();
   const emergencyTimeoutRef = useRef<NodeJS.Timeout>();
   const backgroundRefreshRef = useRef<NodeJS.Timeout>();
-  const activeAdminCheckPromise = useRef<Promise<boolean> | null>(null);
   
   // Initialize cache cleanup
   useEffect(() => {
     initializeAuthCacheCleanup();
   }, []);
 
-  // Enhanced admin status check with graceful degradation and race condition prevention
+  // Enhanced admin status check with graceful degradation
   const checkAdminStatus = async (userId: string, sessionId?: string, isBackground = false): Promise<boolean> => {
     if (!userId) return false;
     
-    // For non-background checks, use shared promise to prevent race conditions
-    if (!isBackground && activeAdminCheckPromise.current) {
-      console.log("[AuthContext] Admin check already in progress, waiting for result");
-      try {
-        return await activeAdminCheckPromise.current;
-      } catch (error) {
-        console.warn("[AuthContext] Shared admin check failed, falling back to cache");
-        const cached = getCachedAdminStatus(userId, sessionId);
-        return cached !== null ? cached : false;
-      }
+    // Prevent concurrent checks for the same user (unless it's background)
+    if (!isBackground && isCheckingAdmin.current && lastAdminCheckUserId.current === userId) {
+      console.log("[AuthContext] Admin check already in progress, using cache");
+      const cached = getCachedAdminStatus(userId, sessionId);
+      return cached !== null ? cached : false;
     }
     
     // Check cache first - now with 24h duration
@@ -70,88 +64,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return cachedStatus;
     }
     
-    // Create the actual admin check promise
-    const adminCheckWork = async (): Promise<boolean> => {
-      try {
-        if (!isBackground) {
-          isCheckingAdmin.current = true;
-          lastAdminCheckUserId.current = userId;
-        }
-        
-        console.log(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} checking admin status for user:`, userId);
-        
-        // Shorter timeout for background checks
-        const timeoutDuration = isBackground ? 5000 : 10000;
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          const timeoutRef = setTimeout(() => {
-            reject(new Error(`Admin check timeout (${timeoutDuration}ms)`));
-          }, timeoutDuration);
-          
-          if (!isBackground) {
-            adminCheckTimeoutRef.current = timeoutRef;
-          }
-        });
-        
-        const adminCheckPromise = supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', userId)
-          .single();
-        
-        const { data, error } = await Promise.race([adminCheckPromise, timeoutPromise]);
-        
-        if (!isBackground && adminCheckTimeoutRef.current) {
-          clearTimeout(adminCheckTimeoutRef.current);
-        }
-        
-        if (error) {
-          console.warn(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} admin check failed:`, error.message);
-          
-          // For background checks, don't update cache on failure
-          if (!isBackground) {
-            // Use cached value if available, otherwise default to false
-            const fallbackStatus = getCachedAdminStatus(userId, sessionId) ?? false;
-            setCachedAdminStatus(userId, fallbackStatus, sessionId);
-            return fallbackStatus;
-          }
-          return false;
-        }
-        
-        const adminStatus = data?.is_admin || false;
-        console.log(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} admin status retrieved:`, adminStatus);
-        
-        // Cache the result
-        setCachedAdminStatus(userId, adminStatus, sessionId);
-        
-        return adminStatus;
-      } catch (error) {
-        console.error(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} admin check exception:`, error);
+    try {
+      if (!isBackground) {
+        isCheckingAdmin.current = true;
+        lastAdminCheckUserId.current = userId;
+      }
+      
+      console.log(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} checking admin status for user:`, userId);
+      
+      // Shorter timeout for background checks
+      const timeoutDuration = isBackground ? 5000 : 10000;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const timeoutRef = setTimeout(() => {
+          reject(new Error(`Admin check timeout (${timeoutDuration}ms)`));
+        }, timeoutDuration);
         
         if (!isBackground) {
-          // Graceful degradation: use cached value if available
+          adminCheckTimeoutRef.current = timeoutRef;
+        }
+      });
+      
+      const adminCheckPromise = supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
+      
+      const { data, error } = await Promise.race([adminCheckPromise, timeoutPromise]);
+      
+      if (!isBackground && adminCheckTimeoutRef.current) {
+        clearTimeout(adminCheckTimeoutRef.current);
+      }
+      
+      if (error) {
+        console.warn(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} admin check failed:`, error.message);
+        
+        // For background checks, don't update cache on failure
+        if (!isBackground) {
+          // Use cached value if available, otherwise default to false
           const fallbackStatus = getCachedAdminStatus(userId, sessionId) ?? false;
           setCachedAdminStatus(userId, fallbackStatus, sessionId);
           return fallbackStatus;
         }
         return false;
-      } finally {
-        if (!isBackground) {
-          isCheckingAdmin.current = false;
-          lastAdminCheckUserId.current = null;
-          activeAdminCheckPromise.current = null;
-          if (adminCheckTimeoutRef.current) {
-            clearTimeout(adminCheckTimeoutRef.current);
-          }
+      }
+      
+      const adminStatus = data?.is_admin || false;
+      console.log(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} admin status retrieved:`, adminStatus);
+      
+      // Cache the result
+      setCachedAdminStatus(userId, adminStatus, sessionId);
+      
+      return adminStatus;
+    } catch (error) {
+      console.error(`[AuthContext] ${isBackground ? 'Background' : 'Foreground'} admin check exception:`, error);
+      
+      if (!isBackground) {
+        // Graceful degradation: use cached value if available
+        const fallbackStatus = getCachedAdminStatus(userId, sessionId) ?? false;
+        setCachedAdminStatus(userId, fallbackStatus, sessionId);
+        return fallbackStatus;
+      }
+      return false;
+    } finally {
+      if (!isBackground) {
+        isCheckingAdmin.current = false;
+        lastAdminCheckUserId.current = null;
+        if (adminCheckTimeoutRef.current) {
+          clearTimeout(adminCheckTimeoutRef.current);
         }
       }
-    };
-
-    // For non-background checks, store the promise to prevent race conditions
-    if (!isBackground) {
-      activeAdminCheckPromise.current = adminCheckWork();
-      return await activeAdminCheckPromise.current;
-    } else {
-      return await adminCheckWork();
     }
   };
 
