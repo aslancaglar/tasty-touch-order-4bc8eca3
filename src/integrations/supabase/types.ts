@@ -740,6 +740,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          action: string
+          count: number | null
+          created_at: string | null
+          id: string
+          identifier: string
+          window_start: string | null
+        }
+        Insert: {
+          action: string
+          count?: number | null
+          created_at?: string | null
+          id?: string
+          identifier: string
+          window_start?: string | null
+        }
+        Update: {
+          action?: string
+          count?: number | null
+          created_at?: string | null
+          id?: string
+          identifier?: string
+          window_start?: string | null
+        }
+        Relationships: []
+      }
       restaurant_languages: {
         Row: {
           created_at: string
@@ -1247,6 +1274,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          _identifier: string
+          _action: string
+          _max_requests?: number
+          _window_minutes?: number
+        }
+        Returns: boolean
+      }
+      cleanup_rate_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      detect_admin_anomalies: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       duplicate_restaurant: {
         Args: { source_restaurant_id: string }
         Returns: string
