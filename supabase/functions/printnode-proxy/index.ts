@@ -33,7 +33,10 @@ serve(async (req) => {
       )
     }
 
-    const { action, restaurantId } = await req.json()
+    const requestData = await req.json()
+    const { action, restaurantId } = requestData
+    
+    console.log('PrintNode proxy request:', { action, restaurantId, userId: user.id })
 
     // Verify user has access to this restaurant
     const { data: ownershipData, error: ownershipError } = await supabaseClient
@@ -62,18 +65,22 @@ serve(async (req) => {
     let response
     
     if (action === 'fetch-printers') {
+      console.log('Fetching printers from PrintNode API...')
       // Fetch printers from PrintNode API
       const printnodeResponse = await fetch('https://api.printnode.com/printers', {
         headers: {
           'Authorization': `Basic ${btoa(printnodeApiKey + ':')}`
         }
       })
+      
+      console.log('PrintNode API response status:', printnodeResponse.status)
 
       if (!printnodeResponse.ok) {
         throw new Error(`PrintNode API error: ${printnodeResponse.status}`)
       }
 
       const printers = await printnodeResponse.json()
+      console.log('Raw printers from PrintNode:', printers.length, 'printers found')
       
       // Transform printer data
       const transformedPrinters = printers.map((printer: any) => ({
@@ -87,7 +94,7 @@ serve(async (req) => {
       response = { printers: transformedPrinters }
       
     } else if (action === 'test-printer') {
-      const { printerId } = await req.json()
+      const { printerId } = requestData
       
       // Send test print to PrintNode
       const testPrintData = {
@@ -130,7 +137,7 @@ Thank you!
       response = { success: true, jobId: result }
       
     } else if (action === 'print-receipt') {
-      const { printerIds, receiptData } = await req.json()
+      const { printerIds, receiptData } = requestData
       
       // Generate receipt content (simplified for now)
       const receiptContent = `
