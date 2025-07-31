@@ -6,6 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Utility function to properly encode UTF-8 strings to Base64
+function encodeToBase64(str: string): string {
+  try {
+    // Convert string to UTF-8 bytes, then to Base64
+    const encoder = new TextEncoder()
+    const data = encoder.encode(str)
+    const base64 = btoa(String.fromCharCode(...data))
+    return base64
+  } catch (error) {
+    console.error('Error encoding to Base64:', error)
+    // Fallback: remove non-ASCII characters and encode
+    const asciiStr = str.replace(/[^\x00-\x7F]/g, "")
+    return btoa(asciiStr)
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -127,7 +143,7 @@ serve(async (req) => {
         printerId: parseInt(printerId),
         title: "Test Print",
         contentType: "raw_base64",
-        content: btoa(`
+        content: encodeToBase64(`
 Test Print Receipt
 ==================
 Date: ${new Date().toLocaleString()}
@@ -165,7 +181,7 @@ Thank you!
     } else if (action === 'print-receipt') {
       const { printerIds, receiptData } = requestData
       
-      // Generate receipt content (simplified for now)
+      // Generate receipt content with proper encoding support
       const receiptContent = `
 ${receiptData.restaurant.name}
 ${receiptData.restaurant.location || ''}
@@ -190,31 +206,44 @@ TOTAL: €${receiptData.total.toFixed(2)}
 Thank you for your visit!
 `
 
+      console.log('Generated receipt content length:', receiptContent.length)
+      console.log('Receipt contains non-ASCII chars:', /[^\x00-\x7F]/.test(receiptContent))
+
       // Send to each printer
       const results = []
       for (const printerId of printerIds) {
-        const printJob = {
-          printerId: parseInt(printerId),
-          title: `Order #${receiptData.orderNumber}`,
-          contentType: "raw_base64",
-          content: btoa(receiptContent),
-          source: "Restaurant Kiosk"
-        }
+        try {
+          const printJob = {
+            printerId: parseInt(printerId),
+            title: `Order #${receiptData.orderNumber}`,
+            contentType: "raw_base64",
+            content: encodeToBase64(receiptContent),
+            source: "Restaurant Kiosk"
+          }
 
-        const printnodeResponse = await fetch('https://api.printnode.com/printjobs', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${btoa(printnodeApiKey + ':')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(printJob)
-        })
+          console.log(`Sending print job to printer ${printerId}`)
 
-        if (printnodeResponse.ok) {
-          const result = await printnodeResponse.json()
-          results.push({ printerId, success: true, jobId: result })
-        } else {
-          results.push({ printerId, success: false, error: printnodeResponse.status })
+          const printnodeResponse = await fetch('https://api.printnode.com/printjobs', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Basic ${btoa(printnodeApiKey + ':')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(printJob)
+          })
+
+          if (printnodeResponse.ok) {
+            const result = await printnodeResponse.json()
+            console.log(`Print job successful for printer ${printerId}:`, result)
+            results.push({ printerId, success: true, jobId: result })
+          } else {
+            const errorText = await printnodeResponse.text()
+            console.error(`Print job failed for printer ${printerId}:`, printnodeResponse.status, errorText)
+            results.push({ printerId, success: false, error: printnodeResponse.status, details: errorText })
+          }
+        } catch (printerError) {
+          console.error(`Error sending to printer ${printerId}:`, printerError)
+          results.push({ printerId, success: false, error: 'encoding_error', details: printerError.message })
         }
       }
 
