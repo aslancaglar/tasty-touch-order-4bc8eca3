@@ -35,6 +35,7 @@ import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
 import OwnerLogin from "./pages/OwnerLogin";
 import Index from "./pages/Index";
 import Security from "./pages/Security";
+import Performance from "./pages/Performance";
 import GeneralSettings from "./pages/GeneralSettings";
 
 const App = () => {
@@ -78,6 +79,11 @@ const App = () => {
               <Route path="/security" element={
                 <ProtectedRoute requireAdmin={true}>
                   <Security />
+                </ProtectedRoute>
+              } />
+              <Route path="/performance" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <Performance />
                 </ProtectedRoute>
               } />
               <Route path="/general-settings" element={
