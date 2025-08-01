@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getCacheDiagnostics } from '@/services/cache-coordinator';
-import { Activity, Database, Zap, Clock, HardDrive, Wifi } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { getCacheDiagnostics, cacheCoordinator } from '@/services/cache-coordinator';
+import { Activity, Database, Zap, Clock, HardDrive, Wifi, Trash2 } from 'lucide-react';
 
 interface PerformanceMetrics {
   cacheHitRate: number;
@@ -16,6 +17,7 @@ interface PerformanceMetrics {
 export const PerformanceMetrics: React.FC = () => {
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   const fetchMetrics = async () => {
     try {
@@ -33,6 +35,18 @@ export const PerformanceMetrics: React.FC = () => {
       console.error('Failed to fetch performance metrics:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleQuickCleanup = async () => {
+    setIsOptimizing(true);
+    try {
+      await cacheCoordinator.performMemoryOptimization();
+      await fetchMetrics();
+    } catch (error) {
+      console.error('Quick cleanup failed:', error);
+    } finally {
+      setIsOptimizing(false);
     }
   };
 
@@ -115,27 +129,42 @@ export const PerformanceMetrics: React.FC = () => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {metricCards.map((metric, index) => (
-        <Card key={index}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {metric.title}
-            </CardTitle>
-            <div className={`p-2 rounded-full ${metric.bgColor}`}>
-              <metric.icon className={`h-4 w-4 ${metric.color}`} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${metric.color}`}>
-              {metric.value}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {metric.description}
-            </p>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">System Performance Overview</h2>
+        <Button
+          onClick={handleQuickCleanup}
+          disabled={isOptimizing}
+          variant="outline"
+          size="sm"
+        >
+          <Trash2 className={`h-4 w-4 mr-2 ${isOptimizing ? 'animate-spin' : ''}`} />
+          {isOptimizing ? 'Optimizing...' : 'Quick Cleanup'}
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {metricCards.map((metric, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {metric.title}
+              </CardTitle>
+              <div className={`p-2 rounded-full ${metric.bgColor}`}>
+                <metric.icon className={`h-4 w-4 ${metric.color}`} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${metric.color}`}>
+                {metric.value}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {metric.description}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };

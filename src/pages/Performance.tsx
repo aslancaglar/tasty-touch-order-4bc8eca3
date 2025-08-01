@@ -1,10 +1,24 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PerformanceMetrics } from "@/components/performance/PerformanceMetrics";
+import { CacheMonitor } from "@/components/cache/CacheMonitor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, Zap, Database, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useCacheOptimizer } from "@/hooks/useCacheOptimizer";
+import { Activity, Zap, Database, BarChart3, Trash2, RefreshCw } from "lucide-react";
 
 export default function Performance() {
+  const {
+    performCleanup,
+    invalidateAll,
+    isOptimizing,
+    memoryUsage,
+    recommendedActions
+  } = useCacheOptimizer({
+    restaurantId: 'default', // Use a default ID for admin context
+    enableBackgroundCleanup: false, // Disable automatic cleanup
+  });
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -93,52 +107,74 @@ export default function Performance() {
           </TabsContent>
 
           <TabsContent value="cache">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cache Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground">
-                    Cache management tools and diagnostics will be available here.
-                    Use the performance metrics above to monitor current cache performance.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-medium mb-2">Menu Cache</h4>
-                      <p className="text-sm text-muted-foreground">High priority cache for menu data</p>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    Manual Cache Management
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={performCleanup}
+                        disabled={isOptimizing}
+                        variant="outline"
+                      >
+                        <Trash2 className={`h-4 w-4 mr-2 ${isOptimizing ? 'animate-spin' : ''}`} />
+                        {isOptimizing ? 'Cleaning...' : 'Clean Cache'}
+                      </Button>
+                      <Button
+                        onClick={invalidateAll}
+                        disabled={isOptimizing}
+                        variant="destructive"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Clear All Cache
+                      </Button>
                     </div>
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-medium mb-2">Image Cache</h4>
-                      <p className="text-sm text-muted-foreground">Optimized image storage and delivery</p>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span>Memory Usage</span>
+                      <span className="font-medium">{memoryUsage}%</span>
                     </div>
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-medium mb-2">Auth Cache</h4>
-                      <p className="text-sm text-muted-foreground">Secure authentication data cache</p>
-                    </div>
+                    {recommendedActions.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-2">Recommended Actions</h4>
+                        <ul className="space-y-1">
+                          {recommendedActions.map((action, index) => (
+                            <li key={index} className="text-sm text-muted-foreground">
+                              • {action}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+              
+              <CacheMonitor />
+            </div>
           </TabsContent>
 
           <TabsContent value="optimization">
             <Card>
               <CardHeader>
-                <CardTitle>Performance Optimization</CardTitle>
+                <CardTitle>Performance Optimization Status</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <p className="text-muted-foreground">
-                    Optimization recommendations and automated performance improvements.
+                    Manual cache management is now active. Use the Cache Management tab for cleanup operations.
                   </p>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
                         <h4 className="font-medium">Automatic Cache Cleanup</h4>
-                        <p className="text-sm text-muted-foreground">Runs every 10 minutes</p>
+                        <p className="text-sm text-muted-foreground">Manual cleanup only from dashboard</p>
                       </div>
-                      <span className="text-green-600 font-medium">Active</span>
+                      <span className="text-red-600 font-medium">Disabled</span>
                     </div>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
@@ -153,6 +189,13 @@ export default function Performance() {
                         <p className="text-sm text-muted-foreground">Compresses and caches images</p>
                       </div>
                       <span className="text-green-600 font-medium">Running</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <h4 className="font-medium">Cache Monitoring</h4>
+                        <p className="text-sm text-muted-foreground">Real-time cache performance tracking</p>
+                      </div>
+                      <span className="text-green-600 font-medium">Active</span>
                     </div>
                   </div>
                 </div>

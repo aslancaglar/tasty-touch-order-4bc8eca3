@@ -207,7 +207,7 @@ export const CacheMonitor = ({ className, restaurantId }: CacheMonitorProps) => 
                   <div className="flex justify-between">
                     <span>Last Cleanup:</span>
                     <span className="font-mono">
-                      {new Date(metrics.lastCleanup).toLocaleTimeString()}
+                      {new Date(metrics.lastCleanup).toLocaleTimeString()} (Manual)
                     </span>
                   </div>
                 </div>

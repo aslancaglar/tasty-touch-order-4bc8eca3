@@ -196,10 +196,8 @@ class CacheCoordinator {
 
   // Cleanup and maintenance
   private initializeCleanupScheduler(): void {
-    // Run cleanup every 10 minutes
-    this.cleanupInterval = window.setInterval(() => {
-      this.performMemoryOptimization();
-    }, 10 * 60 * 1000);
+    // Automatic cleanup is disabled - manual cleanup only
+    console.log('[CacheCoordinator] Automatic cleanup disabled - use manual cleanup from performance dashboard');
   }
 
   private async cleanupExpiredEntries(): Promise<void> {
