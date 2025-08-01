@@ -65,7 +65,7 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
         variant="outline"
         className="fixed bottom-4 right-4 z-50 opacity-50 hover:opacity-100"
       >
-        📊 Performance
+        Performance
       </Button>
     );
   }
