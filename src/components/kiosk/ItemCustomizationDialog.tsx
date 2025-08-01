@@ -302,14 +302,12 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   
   const { language: uiLanguage } = useLanguage();
   
-  // Use optimized hooks for data fetching and state management - only fetch if no details provided
-  const { itemDetails: fetchedItemDetails, loading, error } = useOptimizedMenuItemDetails(
-    providedItemDetails ? null : itemId, 
-    restaurantId
+  // Always call the hook with consistent parameters to avoid hooks rule violations
+  const { itemDetails, loading, error } = useOptimizedMenuItemDetails(
+    itemId, 
+    restaurantId,
+    providedItemDetails
   );
-  
-  // Use provided details if available, otherwise use fetched details
-  const itemDetails = providedItemDetails || fetchedItemDetails;
   const {
     selectedOptions,
     selectedToppings,
