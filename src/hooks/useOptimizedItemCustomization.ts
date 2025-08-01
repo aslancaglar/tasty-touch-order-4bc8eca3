@@ -43,13 +43,13 @@ export const useOptimizedItemCustomization = (
     if (!item?.toppingCategories) return [];
     
     return item.toppingCategories
-      .filter(category => shouldShowToppingCategoryUtil(item, category.id))
+      .filter(category => shouldShowToppingCategoryUtil(item, category.id, selectedToppings))
       .sort((a, b) => {
         const orderA = a.display_order ?? 1000;
         const orderB = b.display_order ?? 1000;
         return orderA - orderB;
       });
-  }, [item]);
+  }, [item, selectedToppings]);
 
   // Optimized choice toggle handler
   const handleToggleChoice = useCallback((optionId: string, choiceId: string, multiple: boolean) => {

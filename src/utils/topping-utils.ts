@@ -4,7 +4,11 @@ import { CartItem, MenuItemWithOptions } from '@/types/database-types';
 /**
  * Validates if a topping category should be displayed based on conditional display rules.
  */
-export function shouldShowToppingCategory(item: MenuItemWithOptions, categoryId: string): boolean {
+export function shouldShowToppingCategory(
+  item: MenuItemWithOptions, 
+  categoryId: string,
+  selectedToppings?: { categoryId: string; toppingIds: string[] }[]
+): boolean {
   // If no topping categories, nothing to show
   if (!item.toppingCategories) return false;
 
@@ -13,54 +17,19 @@ export function shouldShowToppingCategory(item: MenuItemWithOptions, categoryId:
   if (!category) return false;
 
   // If no conditional display rules, always show
-  if (!category.show_if_selection_type || !category.show_if_selection_id || 
-      category.show_if_selection_type.length === 0 || 
-      category.show_if_selection_id.length === 0) {
+  if (!category.show_if_selection_id || category.show_if_selection_id.length === 0) {
     return true;
   }
 
-  // Check if any of the required options are selected
-  let shouldShow = false;
-  
-  for (let i = 0; i < category.show_if_selection_type.length; i++) {
-    const type = category.show_if_selection_type[i];
-    const id = category.show_if_selection_id[i];
-    
-    if (type === 'option') {
-      // Option condition - check if the option with this ID has any selection
-      shouldShow = checkOptionSelection(item, id);
-      if (shouldShow) break;
-    } else if (type === 'topping') {
-      // Topping condition - check if the topping with this ID is selected
-      shouldShow = checkToppingSelection(item, id);
-      if (shouldShow) break;
-    }
-  }
-  
-  return shouldShow;
+  // If no selectedToppings provided, default to not showing
+  if (!selectedToppings) return false;
+
+  // Check if any of the required toppings are selected
+  return category.show_if_selection_id.some(toppingId => 
+    selectedToppings.some(catSelection => catSelection.toppingIds.includes(toppingId))
+  );
 }
 
-/**
- * Checks if a specific option has any selection in the item.
- */
-function checkOptionSelection(item: MenuItemWithOptions, optionId: string): boolean {
-  if (!item.options) return false;
-  
-  const option = item.options.find(o => o.id === optionId);
-  if (!option) return false;
-  
-  // The option exists, now check if any choice is selected
-  // Note: Actual selections would typically be tracked separately
-  return true; // Simplified for this example
-}
-
-/**
- * Checks if a specific topping is selected in the item.
- */
-function checkToppingSelection(item: MenuItemWithOptions, toppingId: string): boolean {
-  // This is a placeholder - actual implementation would check against a selection state
-  return false;
-}
 
 /**
  * Calculate a menu item's price based on selected options and toppings.
