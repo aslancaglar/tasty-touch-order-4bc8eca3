@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { isOnline as checkIsOnline, retryNetworkRequest } from '@/utils/service-worker';
-import { getCacheItem, setCacheItem } from '@/services/cache-service';
+import { getCachedData, setCachedData } from '@/services/cache-coordinator';
 
 // Define the options type directly with all required properties
 interface NetworkAwareFetchOptions<TData, TError> {
@@ -101,7 +101,7 @@ export function useNetworkAwareFetch<TData, TError = Error>({
     console.log(`[NetworkAware] Fetching data for ${cacheKey} - Online: ${isOnline}`);
     
     // First check if we have cached data
-    const cachedData = getCacheItem<TData>(cacheKey, restaurantId);
+    const cachedData = await getCachedData<TData>(cacheKey, restaurantId);
     
     // If we're offline and have cached data, use it immediately
     if (!isOnline && cachedData && !forceNetwork) {
@@ -126,7 +126,7 @@ export function useNetworkAwareFetch<TData, TError = Error>({
         console.log(`[NetworkAware] Network fetch successful for ${cacheKey}`);
         
         // Update the cache with fresh data
-        setCacheItem(cacheKey, freshData, restaurantId);
+        await setCachedData(cacheKey, freshData, restaurantId);
         setLastUpdated(new Date());
         setIsFromCache(false);
         setIsNetworkError(false);
@@ -168,7 +168,7 @@ export function useNetworkAwareFetch<TData, TError = Error>({
     staleTime: isFromCache ? 0 : 1000 * 60 * 5, // 5 minutes for fresh data, 0 for cached data
     retry: (failureCount, error) => {
       // Don't retry if we're offline and don't have cache
-      if (!isOnline && !getCacheItem(cacheKey, restaurantId)) {
+      if (!isOnline && !getCachedData(cacheKey, restaurantId)) {
         return false;
       }
       // Don't retry more than 3 times

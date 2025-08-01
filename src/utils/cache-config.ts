@@ -1,6 +1,7 @@
 
 import { setCachingEnabled, setCachingEnabledForAdmin } from "@/services/cache-service";
 import { isOnline, registerServiceWorker } from "@/utils/service-worker";
+import { cacheCoordinator } from "@/services/cache-coordinator";
 
 // Configure cache behavior globally
 export const initializeCacheConfig = () => {
@@ -23,6 +24,9 @@ export const initializeCacheConfig = () => {
   } catch (error) {
     console.error("[CacheConfig] Failed to register service worker:", error);
   }
+  
+  // Initialize enhanced cache coordinator
+  console.log("[CacheConfig] Cache coordinator initialized");
   
   console.log("[CacheConfig] Initialized: Kiosk caching ENABLED, Admin caching DISABLED");
   
