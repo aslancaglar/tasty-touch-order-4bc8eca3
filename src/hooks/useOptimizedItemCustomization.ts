@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { MenuItemWithOptions } from '@/types/database-types';
-import { shouldShowToppingCategory as shouldShowToppingCategoryUtil } from '@/utils/topping-utils';
+import { shouldShowToppingCategory as shouldShowToppingCategoryUtil, canSelectTopping } from '@/utils/topping-utils';
 
 export interface SelectedOption {
   optionId: string;
@@ -86,9 +86,14 @@ export const useOptimizedItemCustomization = (
     });
   }, []);
 
-  // Optimized topping toggle handler
+  // Optimized topping toggle handler with max_selections validation
   const handleToggleTopping = useCallback((categoryId: string, toppingId: string, quantity?: number) => {
     setSelectedToppings(prev => {
+      // Validate if topping can be selected
+      if (!canSelectTopping(categoryId, toppingId, prev, item?.toppingCategories || [])) {
+        return prev; // Don't allow selection if limit is reached
+      }
+
       const existingIndex = prev.findIndex(top => top.categoryId === categoryId);
       
       if (existingIndex === -1) {
@@ -153,7 +158,7 @@ export const useOptimizedItemCustomization = (
       };
       return newToppings;
     });
-  }, []);
+  }, [item?.toppingCategories]);
 
   // Memoized price calculation
   const calculatePrice = useCallback(() => {

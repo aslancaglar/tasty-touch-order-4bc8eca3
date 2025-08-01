@@ -9,6 +9,7 @@ import { getTranslatedField, SupportedLanguage } from "@/utils/language-utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useMenuItemDetails } from "@/hooks/useMenuItemDetails";
 import { useOptimizedItemCustomization } from "@/hooks/useOptimizedItemCustomization";
+import { canSelectTopping } from "@/utils/topping-utils";
 import { LoadingDialog } from "./LoadingDialog";
 
 interface ItemCustomizationDialogProps {
@@ -84,6 +85,8 @@ Option.displayName = 'Option';
 const ToppingCategory = memo(({
   category,
   selectedCategory,
+  selectedToppings,
+  toppingCategories,
   onToggleTopping,
   t,
   currencySymbol,
@@ -93,6 +96,8 @@ const ToppingCategory = memo(({
 }: {
   category: any;
   selectedCategory: any;
+  selectedToppings: any[];
+  toppingCategories: any[];
   onToggleTopping: (categoryId: string, toppingId: string, quantity?: number) => void;
   t: (key: string) => string;
   currencySymbol: string;
@@ -152,16 +157,24 @@ const ToppingCategory = memo(({
           const quantity = toppingQuantities[topping.id] || 0;
           const buttonSize = "h-10 w-10"; // Same size for both states
           
+          // Check if this topping can be selected (considering max_selections limit)
+          const canSelect = canSelectTopping(category.id, topping.id, selectedToppings, toppingCategories);
+          const isDisabled = !isSelected && !canSelect;
+          
           // Decide what to render based on whether multiple quantities are allowed
           const allowMultiple = category.allow_multiple_same_topping;
           
           return <div 
             key={topping.id} 
-            className="flex items-center justify-between border p-2 hover:border-gray-300 cursor-pointer select-none px-[8px] mx-0 my-0 rounded-lg bg-white"
+            className={`flex items-center justify-between border p-2 select-none px-[8px] mx-0 my-0 rounded-lg ${
+              isDisabled 
+                ? 'bg-gray-100 opacity-50 cursor-not-allowed' 
+                : 'bg-white hover:border-gray-300 cursor-pointer'
+            }`}
             onClick={(e) => {
               // Handle click on the entire topping item (except when clicking on the +/- buttons)
               // This makes the entire row clickable, not just the + icon
-              if (!(e.target as HTMLElement).closest('button')) {
+              if (!(e.target as HTMLElement).closest('button') && !isDisabled) {
                 if (!isSelected) {
                   // If not selected, add it with quantity 1
                   onToggleTopping(category.id, topping.id, allowMultiple ? 1 : undefined);
@@ -215,11 +228,18 @@ const ToppingCategory = memo(({
                     <Button 
                       variant="outline" 
                       size="icon" 
-                      className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2 hover:bg-violet-600`} 
+                      disabled={isDisabled}
+                      className={`${buttonSize} text-white cursor-pointer rounded-full p-2 ${
+                        isDisabled 
+                          ? 'bg-gray-400 cursor-not-allowed' 
+                          : 'bg-violet-700 hover:bg-violet-600'
+                      }`} 
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Add with quantity 1
-                        onToggleTopping(category.id, topping.id, 1);
+                        if (!isDisabled) {
+                          // Add with quantity 1
+                          onToggleTopping(category.id, topping.id, 1);
+                        }
                       }}
                     >
                       <Plus className="h-4 w-4" />
@@ -228,13 +248,21 @@ const ToppingCategory = memo(({
                 ) : (
                   // Original toggle UI for single selection
                   !isSelected ? 
-                  <Plus 
+                  <div 
                     onClick={e => {
                       e.stopPropagation();
-                      onToggleTopping(category.id, topping.id);
+                      if (!isDisabled) {
+                        onToggleTopping(category.id, topping.id);
+                      }
                     }} 
-                    className={`${buttonSize} text-white cursor-pointer rounded-full bg-violet-700 p-2`} 
-                  /> : 
+                    className={`${buttonSize} text-white rounded-full p-2 ${
+                      isDisabled 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-violet-700 cursor-pointer hover:bg-violet-600'
+                    }`} 
+                  >
+                    <Plus className="h-4 w-4" />
+                  </div> : 
                   <Button 
                     variant="outline" 
                     size="icon" 
@@ -381,6 +409,8 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               key={category.id} 
               category={category} 
               selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
+              selectedToppings={selectedToppings}
+              toppingCategories={itemDetails.toppingCategories || []}
               onToggleTopping={handleToggleTopping} 
               t={t} 
               currencySymbol={currencySymbol} 

@@ -119,6 +119,33 @@ export function calculateItemPrice(item: MenuItemWithOptions, selectedOptions: {
 }
 
 /**
+ * Validates if a topping can be selected based on category limits.
+ */
+export function canSelectTopping(
+  categoryId: string,
+  toppingId: string,
+  currentSelections: { categoryId: string; toppingIds: string[] }[],
+  toppingCategories: any[]
+): boolean {
+  const category = toppingCategories.find(cat => cat.id === categoryId);
+  if (!category) return false;
+
+  const currentSelection = currentSelections.find(sel => sel.categoryId === categoryId);
+  const currentCount = currentSelection?.toppingIds.length || 0;
+  const isCurrentlySelected = currentSelection?.toppingIds.includes(toppingId) || false;
+
+  // If already selected, allow deselection
+  if (isCurrentlySelected) return true;
+
+  // Check if we can add more selections
+  if (category.max_selections && currentCount >= category.max_selections) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Calculates the tax amount for a menu item with selected options and toppings.
  * Now includes support for topping quantities.
  */
