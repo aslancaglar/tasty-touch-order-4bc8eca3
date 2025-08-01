@@ -1,6 +1,8 @@
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowUpRight, BadgeDollarSign, ChefHat, Pizza, ShoppingBag, Store, Activity, BarChart3 } from "lucide-react";
+import { PerformanceMetrics } from "@/components/performance/PerformanceMetrics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -304,10 +306,40 @@ const Dashboard = () => {
       }} />
       </div>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <PopularItems items={popularItems} isLoading={isItemsLoading} title={t("dashboard.popularItems")} description={t("dashboard.popularItemsDesc")} />
-        <PopularRestaurants data={popularRestaurants} isLoading={isRestaurantsLoading} title={t("dashboard.popularRestaurants")} description={t("dashboard.popularRestaurantsDesc")} />
-      </div>
+      <Tabs defaultValue="overview" className="mt-6 space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview" className="flex items-center space-x-2">
+            <BarChart3 className="h-4 w-4" />
+            <span>Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="performance" className="flex items-center space-x-2">
+            <Activity className="h-4 w-4" />
+            <span>Performance Monitor</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <PopularItems items={popularItems} isLoading={isItemsLoading} title={t("dashboard.popularItems")} description={t("dashboard.popularItemsDesc")} />
+            <PopularRestaurants data={popularRestaurants} isLoading={isRestaurantsLoading} title={t("dashboard.popularRestaurants")} description={t("dashboard.popularRestaurantsDesc")} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="performance">
+          <div className="space-y-6">
+            <div className="flex items-center space-x-2">
+              <Activity className="h-6 w-6 text-primary" />
+              <div>
+                <h2 className="text-xl font-semibold">Performance Dashboard</h2>
+                <p className="text-muted-foreground">
+                  Monitor system performance and cache efficiency
+                </p>
+              </div>
+            </div>
+            <PerformanceMetrics />
+          </div>
+        </TabsContent>
+      </Tabs>
     </AdminLayout>;
 };
 export default Dashboard;
