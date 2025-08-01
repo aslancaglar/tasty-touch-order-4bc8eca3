@@ -137,7 +137,7 @@ const MenuItemCard = memo(({
     </Card>;
 });
 MenuItemCard.displayName = 'MenuItemCard';
-const MenuItemGrid: React.FC<MenuItemGridProps> = ({
+  const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   items,
   handleSelectItem,
   currencySymbol,

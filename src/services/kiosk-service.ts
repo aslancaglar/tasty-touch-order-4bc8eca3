@@ -505,102 +505,12 @@ export const createOrderItemToppings = async (toppings: Array<{order_item_id: st
 };
 
 // Helper function to get a complete menu item with its options and choices
+// Now optimized to use the batch service for single items
 export const getMenuItemWithOptions = async (menuItemId: string) => {
   try {
-    const menuItem = await getMenuItemById(menuItemId);
-    if (!menuItem) {
-      return null;
-    }
-
-  const options = await getMenuItemOptions(menuItemId);
-  
-  const optionsWithChoices = await Promise.all(
-    options.map(async (option) => {
-      const choices = await getOptionChoices(option.id);
-      return {
-        ...option,
-        choices
-      };
-    })
-  );
-
-  // Fetch topping categories linked to this menu item
-  const { data: toppingCategoryRelations, error: relError } = await supabase
-    .from("menu_item_topping_categories")
-    .select("topping_category_id, display_order")
-    .eq("menu_item_id", menuItemId)
-    .order("display_order", { ascending: true });
-
-  if (relError) {
-    console.error("Error fetching menu item topping category relations:", relError);
-    return {
-      ...menuItem,
-      options: optionsWithChoices,
-      toppingCategories: []
-    };
-  }
-
-  // Get the ids of the topping categories
-  const toppingCategoryIds = toppingCategoryRelations.map(rel => rel.topping_category_id);
-  
-  // Create a map of id to display_order for sorting later
-  const displayOrderMap = toppingCategoryRelations.reduce((map, rel) => {
-    map[rel.topping_category_id] = rel.display_order ?? 1000; // Default to high number if null
-    return map;
-  }, {} as Record<string, number>);
-
-  if (toppingCategoryIds.length === 0) {
-    return {
-      ...menuItem,
-      options: optionsWithChoices,
-      toppingCategories: []
-    };
-  }
-
-  // Fetch the actual topping categories with explicit multilingual fields
-  const { data: toppingCategories, error: tcError } = await supabase
-    .from("topping_categories")
-    .select("*, name_fr, name_en, name_tr, description_fr, description_en, description_tr")
-    .in("id", toppingCategoryIds);
-
-  if (tcError) {
-    console.error("Error fetching topping categories:", tcError);
-    return {
-      ...menuItem,
-      options: optionsWithChoices,
-      toppingCategories: []
-    };
-  }
-
-  // Now fetch toppings for each category and create the full structure
-  const toppingCategoriesWithToppings = await Promise.all(
-    toppingCategories.map(async (category) => {
-      const toppings = await getToppingsByCategory(category.id);
-      
-      // Use the display_order from the relation table
-      const relationDisplayOrder = displayOrderMap[category.id];
-      
-      return {
-        ...category,
-        display_order: relationDisplayOrder,  // Use relation display_order for category sorting
-        required: category.min_selections ? category.min_selections > 0 : false, // Add required property
-        toppings
-      };
-    })
-  );
-
-  // Sort the topping categories based on display_order from the relation table
-  const sortedCategories = toppingCategoriesWithToppings.sort((a, b) => {
-    const orderA = a.display_order ?? 1000;
-    const orderB = b.display_order ?? 1000;
-    return orderA - orderB;
-  });
-
-    return {
-      ...menuItem,
-      options: optionsWithChoices,
-      toppingCategories: sortedCategories
-    };
+    console.log(`[getMenuItemWithOptions] Using optimized batch service for item ${menuItemId}`);
+    const batchResult = await getMenuItemsWithOptionsBatch([menuItemId]);
+    return batchResult[menuItemId] || null;
   } catch (error) {
     console.error('Error in getMenuItemWithOptions:', error);
     throw error;

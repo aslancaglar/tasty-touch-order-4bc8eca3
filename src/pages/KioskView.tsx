@@ -14,6 +14,7 @@ import KioskHeader from "@/components/kiosk/KioskHeader";
 import MenuCategoryList from "@/components/kiosk/MenuCategoryList";
 import MenuItemGrid from "@/components/kiosk/MenuItemGrid";
 import ItemCustomizationDialog from "@/components/kiosk/ItemCustomizationDialog";
+import { PerformanceMonitor } from "@/components/kiosk/PerformanceMonitor";
 import NetworkErrorBoundary from "@/components/error/NetworkErrorBoundary";
 import { setCacheItem, getCacheItem, clearMenuCache, forceFlushMenuCache, isCacheNeedsRefresh } from "@/services/cache-service";
 import { useInactivityTimer } from "@/hooks/useInactivityTimer";
@@ -83,6 +84,7 @@ const KioskViewInner = () => {
   });
   const [dataPreloaded, setDataPreloaded] = useState(false);
   const [networkHealthy, setNetworkHealthy] = useState(true);
+  const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
 
   // Get connection status for offline awareness
   const connectionStatus = useConnectionStatus();
@@ -1200,6 +1202,13 @@ const KioskViewInner = () => {
         tableNumber={tableNumber}
         getFormattedOptions={getFormattedOptions}
         getFormattedToppings={getFormattedToppings}
+      />
+
+      {/* Performance Monitor for development */}
+      <PerformanceMonitor 
+        restaurantId={restaurant.id}
+        isVisible={showPerformanceMonitor}
+        onToggle={() => setShowPerformanceMonitor(!showPerformanceMonitor)}
       />
     </div>
   </NetworkErrorBoundary>;

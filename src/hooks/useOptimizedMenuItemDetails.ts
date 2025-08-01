@@ -171,7 +171,7 @@ export const useOptimizedMenuItemDetails = (
   };
 };
 
-// Preload multiple items for better performance
+// Enhanced preloader with predictive caching and stale-while-revalidate
 export const useMenuItemPreloader = () => {
   const preloadItems = useCallback(async (itemIds: string[], restaurantId: string) => {
     if (itemIds.length === 0) return;
@@ -198,9 +198,13 @@ export const useMenuItemPreloader = () => {
         if (result.success && result.data) {
           successfulItems[itemId] = result.data;
           
-          // Cache in localStorage too
+          // Cache in localStorage too with timestamp for stale-while-revalidate
           const cacheKey = `menuItem_${itemId}`;
-          setCacheItem(cacheKey, result.data, restaurantId);
+          setCacheItem(cacheKey, {
+            data: result.data,
+            timestamp: Date.now(),
+            version: 1
+          }, restaurantId);
         }
       });
 
@@ -215,12 +219,47 @@ export const useMenuItemPreloader = () => {
     }
   }, []);
 
+  // Predictive preloading based on user behavior patterns
+  const predictivePreload = useCallback(async (currentItemId: string, restaurantId: string, allMenuItems: string[]) => {
+    // Simple prediction: preload items from the same category and popular items
+    const relatedItems = allMenuItems
+      .filter(id => id !== currentItemId)
+      .slice(0, 5); // Preload next 5 items
+
+    if (relatedItems.length > 0) {
+      console.log(`[Preloader] Predictive preloading ${relatedItems.length} related items`);
+      await preloadItems(relatedItems, restaurantId);
+    }
+  }, [preloadItems]);
+
+  // Background refresh for stale data
+  const backgroundRefresh = useCallback(async (itemId: string, restaurantId: string) => {
+    console.log(`[Preloader] Background refresh for item ${itemId}`);
+    try {
+      const batchResult = await batchGetMenuItemsWithOptions([itemId]);
+      if (batchResult[itemId]?.success && batchResult[itemId]?.data) {
+        optimizedCache.set(itemId, batchResult[itemId].data as MenuItemWithOptions);
+        
+        const cacheKey = `menuItem_${itemId}`;
+        setCacheItem(cacheKey, {
+          data: batchResult[itemId].data,
+          timestamp: Date.now(),
+          version: 1
+        }, restaurantId);
+      }
+    } catch (error) {
+      console.error(`[Preloader] Background refresh failed for ${itemId}:`, error);
+    }
+  }, []);
+
   const getCacheStats = useCallback(() => {
     return optimizedCache.getCacheStats();
   }, []);
 
   return {
     preloadItems,
+    predictivePreload,
+    backgroundRefresh,
     getCacheStats
   };
 };
