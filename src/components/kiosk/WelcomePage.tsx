@@ -69,7 +69,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({
           <div className="flex justify-center gap-4 my-[30px]">
             {availableLanguages.map(restLang => <Button key={restLang.language_code} variant={currentLanguage === restLang.language_code ? "default" : "outline"} size="lg" onClick={() => setLanguage(restLang.language_code as any)} className={`
                   ${currentLanguage === restLang.language_code ? 'bg-violet-700 text-white hover:bg-violet-600 border-violet-700' : 'bg-white/10 text-white hover:bg-white/20 border-white/30'}
-                  px-12 py-6 text-xl font-medium backdrop-blur-sm
+                  px-16 py-8 text-3xl font-medium backdrop-blur-sm
                 `}>
                 {restLang.language?.flag_url ? <img src={restLang.language.flag_url} alt={`${restLang.language.name} flag`} className="h-5 w-8 mr-2 object-cover rounded-sm" /> : <Globe className="h-5 w-5 mr-2" />}
                 {restLang.language?.name}
