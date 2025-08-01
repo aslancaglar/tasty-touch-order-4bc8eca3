@@ -178,6 +178,9 @@ const ToppingCategory = memo(({
                 if (!isSelected) {
                   // If not selected, add it with quantity 1
                   onToggleTopping(category.id, topping.id, allowMultiple ? 1 : undefined);
+                } else if (!allowMultiple) {
+                  // If selected and single selection mode, deselect it
+                  onToggleTopping(category.id, topping.id);
                 }
               }
             }}
