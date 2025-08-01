@@ -255,14 +255,14 @@ const ToppingCategory = memo(({
                         onToggleTopping(category.id, topping.id);
                       }
                     }} 
-                    className={`${buttonSize} text-white rounded-full p-2 ${
+                    className={`${buttonSize} text-white rounded-full flex items-center justify-center ${
                       isDisabled 
                         ? 'bg-gray-400 cursor-not-allowed' 
                         : 'bg-violet-700 cursor-pointer hover:bg-violet-600'
                     }`} 
                   >
                     <Plus className="h-4 w-4" />
-                  </div> : 
+                  </div> :
                   <Button 
                     variant="outline" 
                     size="icon" 
