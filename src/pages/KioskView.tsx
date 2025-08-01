@@ -1204,12 +1204,6 @@ const KioskViewInner = () => {
         getFormattedToppings={getFormattedToppings}
       />
 
-      {/* Performance Monitor for development */}
-      <PerformanceMonitor 
-        restaurantId={restaurant.id}
-        isVisible={showPerformanceMonitor}
-        onToggle={() => setShowPerformanceMonitor(!showPerformanceMonitor)}
-      />
     </div>
   </NetworkErrorBoundary>;
 };
