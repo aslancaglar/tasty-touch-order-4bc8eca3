@@ -1135,8 +1135,8 @@ const KioskViewInner = () => {
         <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} />
       </div>
 
-      {selectedItem && <ItemCustomizationDialog 
-        itemId={selectedItem.id} 
+      <ItemCustomizationDialog 
+        itemId={selectedItem?.id || ""} 
         restaurantId={restaurant.id}
         isOpen={!!selectedItem} 
         onClose={() => setSelectedItem(null)} 
@@ -1144,7 +1144,7 @@ const KioskViewInner = () => {
         t={t} 
         currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
         // Don't pass itemDetails to let the dialog fetch optimized data
-      />}
+      />
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       
