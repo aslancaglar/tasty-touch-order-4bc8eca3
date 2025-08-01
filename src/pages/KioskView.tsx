@@ -26,7 +26,6 @@ import { useConnectionStatus, useNetworkAwareFetch } from "@/hooks/use-network-a
 import { getTranslation, SupportedLanguage, getTranslatedField } from "@/utils/language-utils";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import { testNetworkConnectivity } from "@/utils/service-worker";
-import { useCachePerformanceMonitor } from "@/hooks/useCachePerformanceMonitor";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -89,9 +88,6 @@ const KioskViewInner = () => {
 
   // Get connection status for offline awareness
   const connectionStatus = useConnectionStatus();
-  
-  // Cache performance monitoring
-  const { metrics: cacheMetrics, startMonitoring, stopMonitoring } = useCachePerformanceMonitor(15000);
 
   const CURRENCY_SYMBOLS: Record<string, string> = {
     EUR: "€",
@@ -306,9 +302,6 @@ const KioskViewInner = () => {
       
       setLoading(true);
       
-      // Start cache performance monitoring
-      startMonitoring();
-      
       // First check if we have a cached restaurant
       const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
       
@@ -347,12 +340,7 @@ const KioskViewInner = () => {
     };
     
     fetchRestaurantAndMenu();
-    
-    // Cleanup monitoring on unmount
-    return () => {
-      stopMonitoring();
-    };
-  }, [restaurantSlug, navigate, connectionStatus, startMonitoring, stopMonitoring]);
+  }, [restaurantSlug, navigate, connectionStatus]);
 
   useEffect(() => {
     if (showWelcome) {
@@ -518,9 +506,64 @@ const KioskViewInner = () => {
       return [];
     }
   };
-  const handleSelectItem = (item: MenuItem) => {
-    // Directly open the customization dialog - data will be fetched/cached inside
-    setSelectedItem({ ...item } as MenuItemWithOptions);
+  const handleSelectItem = async (item: MenuItem) => {
+    try {
+      setLoading(true);
+      const itemWithOptions = await getMenuItemWithOptions(item.id);
+      if (!itemWithOptions) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les détails de l'article. Veuillez réessayer.",
+          variant: "destructive"
+        });
+        return;
+      }
+      const toppingCategories = await fetchToppingCategories(item.id);
+
+      // Always show customization dialog, removing the direct add-to-cart path for items without options/toppings
+      const itemWithToppings: MenuItemWithOptions = {
+        ...(itemWithOptions as MenuItemWithOptions),
+        toppingCategories: toppingCategories || []
+      };
+      setSelectedItem(itemWithToppings);
+      setQuantity(1);
+      setSpecialInstructions("");
+      if (itemWithOptions.options && itemWithOptions.options.length > 0) {
+        const initialOptions = itemWithOptions.options.map(option => {
+          if (option.required && !option.multiple) {
+            return {
+              optionId: option.id,
+              choiceIds: option.choices.length > 0 ? [option.choices[0].id] : []
+            };
+          }
+          return {
+            optionId: option.id,
+            choiceIds: []
+          };
+        });
+        setSelectedOptions(initialOptions);
+      } else {
+        setSelectedOptions([]);
+      }
+      if (toppingCategories && toppingCategories.length > 0) {
+        const initialToppings = toppingCategories.map(category => ({
+          categoryId: category.id,
+          toppingIds: []
+        }));
+        setSelectedToppings(initialToppings);
+      } else {
+        setSelectedToppings([]);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Erreur lors du chargement des détails de l'article:", error);
+      toast({
+        title: "Erreur",
+        description: "Un problème est survenu lors du chargement des détails de l'article. Veuillez réessayer.",
+        variant: "destructive"
+      });
+      setLoading(false);
+    }
   };
   const handleToggleChoice = (optionId: string, choiceId: string, multiple: boolean) => {
     setSelectedOptions(prev => {
@@ -1135,16 +1178,16 @@ const KioskViewInner = () => {
         <Cart cart={cart} isOpen={isCartOpen} onToggleOpen={toggleCart} onUpdateQuantity={handleUpdateCartItemQuantity} onRemoveItem={handleRemoveCartItem} onClearCart={() => setCart([])} onPlaceOrder={handlePlaceOrder} placingOrder={placingOrder} orderPlaced={orderPlaced} calculateSubtotal={calculateSubtotal} calculateTax={calculateTax} getFormattedOptions={getFormattedOptions} getFormattedToppings={getFormattedToppings} restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} />
       </div>
 
-      <ItemCustomizationDialog 
-        itemId={selectedItem?.id || ""} 
+      {selectedItem && <ItemCustomizationDialog 
+        itemId={selectedItem.id} 
         restaurantId={restaurant.id}
         isOpen={!!selectedItem} 
         onClose={() => setSelectedItem(null)} 
         onAddToCart={handleAddToCart} 
         t={t} 
         currencySymbol={getCurrencySymbol(restaurant?.currency || "EUR")}
-        // Don't pass itemDetails to let the dialog fetch optimized data
-      />
+        itemDetails={selectedItem} 
+      />}
 
       <InactivityDialog isOpen={showDialog} onContinue={handleContinue} onCancel={handleCancel} t={t} />
       

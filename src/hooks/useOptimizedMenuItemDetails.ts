@@ -89,10 +89,9 @@ const optimizedCache = new OptimizedMenuItemCache();
 
 export const useOptimizedMenuItemDetails = (
   itemId: string | null,
-  restaurantId: string,
-  providedData?: MenuItemWithOptions | null
+  restaurantId: string
 ): UseOptimizedMenuItemDetailsResult => {
-  const [itemDetails, setItemDetails] = useState<MenuItemWithOptions | null>(providedData || null);
+  const [itemDetails, setItemDetails] = useState<MenuItemWithOptions | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -155,15 +154,6 @@ export const useOptimizedMenuItemDetails = (
   }, [itemId, fetchItemDetails]);
 
   useEffect(() => {
-    // If provided data exists, use it and skip fetching
-    if (providedData) {
-      setItemDetails(providedData);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    // Otherwise, fetch if itemId exists
     if (itemId) {
       fetchItemDetails(itemId);
     } else {
@@ -171,16 +161,7 @@ export const useOptimizedMenuItemDetails = (
       setLoading(false);
       setError(null);
     }
-  }, [itemId, fetchItemDetails, providedData]);
-
-  // Update itemDetails when providedData changes
-  useEffect(() => {
-    if (providedData) {
-      setItemDetails(providedData);
-      setLoading(false);
-      setError(null);
-    }
-  }, [providedData]);
+  }, [itemId, fetchItemDetails]);
 
   return {
     itemDetails,

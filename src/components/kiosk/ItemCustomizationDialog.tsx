@@ -298,18 +298,18 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   currencySymbol,
   itemDetails: providedItemDetails
 }) => {
+  
+  
   const { language: uiLanguage } = useLanguage();
   
-  // State to track which topping categories are visible (for simplified animation)
-  const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
-  
-  // Always call the hook with consistent parameters to avoid hooks rule violations
-  const { itemDetails, loading, error } = useOptimizedMenuItemDetails(
-    itemId, 
-    restaurantId,
-    providedItemDetails
+  // Use optimized hooks for data fetching and state management - only fetch if no details provided
+  const { itemDetails: fetchedItemDetails, loading, error } = useOptimizedMenuItemDetails(
+    providedItemDetails ? null : itemId, 
+    restaurantId
   );
   
+  // Use provided details if available, otherwise use fetched details
+  const itemDetails = providedItemDetails || fetchedItemDetails;
   const {
     selectedOptions,
     selectedToppings,
@@ -333,6 +333,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   if (error || !itemDetails) {
     return null;
   }
+
+  // State to track which topping categories are visible (for simplified animation)
+  const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
 
   // Reset visibility state when dialog opens/closes or item changes
   useEffect(() => {

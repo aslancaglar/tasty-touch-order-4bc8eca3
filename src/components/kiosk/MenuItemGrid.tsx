@@ -9,7 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MenuItemPreloader } from './MenuItemPreloader';
-import { useCacheOptimizedMenuItems } from '@/hooks/useCacheOptimizedMenuItems';
 
 interface MenuItemGridProps {
   items: MenuItem[];
@@ -149,17 +148,9 @@ MenuItemCard.displayName = 'MenuItemCard';
   activeCategory
 }) => {
   const { language: uiLanguage } = useLanguage();
-  const { toast } = useToast();
-  
-  // Filter items that are in stock for preloading
-  const inStockItems = useMemo(() => items.filter(item => item.in_stock), [items]);
-  
-  // Cache optimization hook
-  const { metrics, predictivePreload, trackCacheAccess } = useCacheOptimizedMenuItems({
-    menuItems: inStockItems,
-    restaurantId: restaurantId || '',
-    enabled: !!restaurantId
-  });
+  const {
+    toast
+  } = useToast();
   const [cachedImages, setCachedImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<boolean>(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -505,20 +496,12 @@ MenuItemCard.displayName = 'MenuItemCard';
   }, []);
   return (
     <>
-      {/* Progressive Menu Item Preloader */}
+      {/* Add menu item preloader */}
       <MenuItemPreloader 
-        menuItems={inStockItems}
+        menuItems={items}
         restaurantId={restaurantId || ''}
         enabled={Boolean(restaurantId)}
       />
-      
-      {/* Cache Performance Metrics (development only) */}
-      {process.env.NODE_ENV === 'development' && metrics.totalRequests > 0 && (
-        <div className="fixed top-4 right-4 bg-black/80 text-white p-2 rounded text-xs z-50">
-          <div>Cache Hit: {metrics.hitRate.toFixed(1)}%</div>
-          <div>Cached: {metrics.cachedItems} items</div>
-        </div>
-      )}
       
       <div className="space-y-8 pb-20">
         {sortedCategories.map(category => (
@@ -529,20 +512,16 @@ MenuItemCard.displayName = 'MenuItemCard';
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none px-4">
               {itemsByCategory[category.id]?.map(item => (
                 <div key={item.id} data-item-id={item.id}>
-                   <MenuItemCard 
-                     item={item} 
-                     handleSelectItem={(selectedItem) => {
-                       // Track cache access and trigger predictive preload
-                       predictivePreload(selectedItem.id);
-                       handleSelectItem(selectedItem);
-                     }}
-                     t={t} 
-                     currencySymbol={currencySymbol} 
-                     cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} 
-                     hasImageFailed={failedImages.has(item.id)} 
-                     uiLanguage={uiLanguage} 
-                     currentAvailabilityStatus={itemAvailability[item.id] ?? isItemAvailable(item)} 
-                   />
+                  <MenuItemCard 
+                    item={item} 
+                    handleSelectItem={handleSelectItem} 
+                    t={t} 
+                    currencySymbol={currencySymbol} 
+                    cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} 
+                    hasImageFailed={failedImages.has(item.id)} 
+                    uiLanguage={uiLanguage} 
+                    currentAvailabilityStatus={itemAvailability[item.id] ?? isItemAvailable(item)} 
+                  />
                 </div>
               ))}
               {itemsByCategory[category.id]?.length === 0 && (
