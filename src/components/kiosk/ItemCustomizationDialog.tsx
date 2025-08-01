@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { MenuItemWithOptions } from "@/types/database-types";
 import { getTranslatedField, SupportedLanguage } from "@/utils/language-utils";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useMenuItemDetails } from "@/hooks/useMenuItemDetails";
+import { useOptimizedMenuItemDetails } from "@/hooks/useOptimizedMenuItemDetails";
 import { useOptimizedItemCustomization } from "@/hooks/useOptimizedItemCustomization";
 import { canSelectTopping } from "@/utils/topping-utils";
-import { LoadingDialog } from "./LoadingDialog";
+import { OptimizedLoadingDialog } from "./OptimizedLoadingDialog";
+import { trackDialogOpen, trackDialogDataLoaded, trackDialogRender } from "@/utils/performance-monitor";
 
 interface ItemCustomizationDialogProps {
   itemId: string | null;
@@ -302,7 +303,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   const { language: uiLanguage } = useLanguage();
   
   // Use optimized hooks for data fetching and state management - only fetch if no details provided
-  const { itemDetails: fetchedItemDetails, loading, error } = useMenuItemDetails(
+  const { itemDetails: fetchedItemDetails, loading, error } = useOptimizedMenuItemDetails(
     providedItemDetails ? null : itemId, 
     restaurantId
   );
@@ -323,9 +324,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     calculatePrice
   } = useOptimizedItemCustomization(itemDetails, currencySymbol);
 
-  // Show loading dialog while fetching item details
+  // Show optimized loading dialog while fetching item details
   if (loading || !itemDetails) {
-    return <LoadingDialog isOpen={isOpen && !!itemId} t={t} />;
+    return <OptimizedLoadingDialog isOpen={isOpen && !!itemId} t={t} showSkeleton={true} />;
   }
 
   // Show error or handle null item
@@ -338,7 +339,25 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
   // Reset visibility state when dialog opens/closes or item changes
   useEffect(() => {
+    if (isOpen && itemId) {
+      // Track dialog opening performance
+      trackDialogOpen(itemId);
+    }
+  }, [isOpen, itemId]);
+
+  useEffect(() => {
     if (isOpen && itemDetails) {
+      // Track when data is loaded and from where
+      const dataSource = providedItemDetails ? 'cache' : 'api';
+      if (itemId) {
+        trackDialogDataLoaded(itemId, dataSource);
+        
+        // Track rendering complexity
+        const optionsCount = itemDetails.options?.length || 0;
+        const toppingsCount = itemDetails.toppingCategories?.reduce((sum, cat) => sum + (cat.toppings?.length || 0), 0) || 0;
+        trackDialogRender(itemId, optionsCount, toppingsCount);
+      }
+
       // Reset and show all categories immediately for better performance
       const initialVisibility: { [key: string]: boolean } = {};
       visibleToppingCategories.forEach(category => {
@@ -348,7 +367,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     } else {
       setVisibleCategories({});
     }
-  }, [isOpen, itemDetails, visibleToppingCategories]);
+  }, [isOpen, itemDetails, visibleToppingCategories, itemId, providedItemDetails]);
 
   // Reset customization when dialog closes or item changes
   useEffect(() => {

@@ -8,6 +8,7 @@ import { getTranslation, SupportedLanguage, getTranslatedField } from "@/utils/l
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from '@/contexts/LanguageContext';
+import { MenuItemPreloader } from './MenuItemPreloader';
 
 interface MenuItemGridProps {
   items: MenuItem[];
@@ -493,20 +494,46 @@ const MenuItemGrid: React.FC<MenuItemGridProps> = ({
   const handleImageError = useCallback((itemId: string) => {
     setFailedImages(prev => new Set([...prev, itemId]));
   }, []);
-  return <div className="space-y-8 pb-20">
-      {sortedCategories.map(category => <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20 pt-0 py-0">
-          <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide pl-4">
-            {getTranslatedField(category, 'name', uiLanguage)}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none px-4">
-            {itemsByCategory[category.id]?.map(item => <div key={item.id} data-item-id={item.id}>
-                <MenuItemCard item={item} handleSelectItem={handleSelectItem} t={t} currencySymbol={currencySymbol} cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} hasImageFailed={failedImages.has(item.id)} uiLanguage={uiLanguage} currentAvailabilityStatus={itemAvailability[item.id] ?? isItemAvailable(item)} />
-              </div>)}
-            {itemsByCategory[category.id]?.length === 0 && <div className="col-span-3 py-8 text-center text-gray-500 font-inter">
-                No items in this category
-              </div>}
+  return (
+    <>
+      {/* Add menu item preloader */}
+      <MenuItemPreloader 
+        menuItems={items}
+        restaurantId={restaurantId || ''}
+        enabled={Boolean(restaurantId)}
+      />
+      
+      <div className="space-y-8 pb-20">
+        {sortedCategories.map(category => (
+          <div key={category.id} id={`category-${category.id}`} className="scroll-mt-20 pt-0 py-0">
+            <h2 className="text-2xl font-bebas mb-4 border-b pb-2 tracking-wide pl-4">
+              {getTranslatedField(category, 'name', uiLanguage)}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 select-none px-4">
+              {itemsByCategory[category.id]?.map(item => (
+                <div key={item.id} data-item-id={item.id}>
+                  <MenuItemCard 
+                    item={item} 
+                    handleSelectItem={handleSelectItem} 
+                    t={t} 
+                    currencySymbol={currencySymbol} 
+                    cachedImageUrl={cachedImages[item.id] || item.image || 'https://via.placeholder.com/400x300'} 
+                    hasImageFailed={failedImages.has(item.id)} 
+                    uiLanguage={uiLanguage} 
+                    currentAvailabilityStatus={itemAvailability[item.id] ?? isItemAvailable(item)} 
+                  />
+                </div>
+              ))}
+              {itemsByCategory[category.id]?.length === 0 && (
+                <div className="col-span-3 py-8 text-center text-gray-500 font-inter">
+                  No items in this category
+                </div>
+              )}
+            </div>
           </div>
-        </div>)}
-    </div>;
+        ))}
+      </div>
+    </>
+  );
 };
 export default memo(MenuItemGrid);
