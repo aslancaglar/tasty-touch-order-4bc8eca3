@@ -287,25 +287,37 @@ MenuItemCard.displayName = 'MenuItemCard';
     }
   }, [restaurantId, categories, toast]);
 
-  // Pre-cache only visible items with intersection observer
+  // Pre-cache only visible items with intersection observer (debounced)
   const setupIntersectionObserver = useCallback(() => {
     if (typeof IntersectionObserver === 'undefined') return;
+    
+    let debounceTimer: NodeJS.Timeout;
+    const debouncedProcessImage = (item: MenuItem) => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (item?.image && !item.image.startsWith('data:') && !cachedImages[item.id]) {
+          // Add to preload queue if not already cached
+          if (!imagePreloadQueue.current.includes(item.image)) {
+            imagePreloadQueue.current.push(item.image);
+            processImageQueue();
+          }
+        }
+      }, 150); // Debounce for 150ms
+    };
+
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         const itemId = entry.target.getAttribute('data-item-id');
         if (!itemId) return;
+        
         if (entry.isIntersecting) {
           // Item is visible, add to visible items set
           visibleItemsRef.current.add(itemId);
 
-          // Get the image URL for this item
+          // Get the image URL for this item (debounced)
           const item = items.find(i => i.id === itemId);
-          if (item?.image && !item.image.startsWith('data:') && !cachedImages[itemId]) {
-            // Add to preload queue if not already cached
-            if (!imagePreloadQueue.current.includes(item.image)) {
-              imagePreloadQueue.current.push(item.image);
-              processImageQueue();
-            }
+          if (item) {
+            debouncedProcessImage(item);
           }
         } else {
           // Item is no longer visible
@@ -313,9 +325,8 @@ MenuItemCard.displayName = 'MenuItemCard';
         }
       });
     }, {
-      rootMargin: '100px',
-      // Start loading when item is 100px from viewport
-      threshold: 0.1 // Trigger when at least 10% of the item is visible
+      rootMargin: '50px', // Reduced from 100px to be less aggressive
+      threshold: 0.25 // Increased threshold to be less sensitive
     });
 
     // Observe all menu item elements

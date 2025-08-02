@@ -104,7 +104,7 @@ export const useOptimizedMenuItemDetails = (
       // Check optimized memory cache first
       const cachedItem = optimizedCache.get(id);
       if (cachedItem) {
-        console.log(`[OptimizedHook] Memory cache HIT for item ${id}`);
+        if (import.meta.env.DEV) console.log(`[OptimizedHook] Memory cache HIT for item ${id}`);
         setItemDetails(cachedItem);
         setLoading(false);
         return;
@@ -115,7 +115,7 @@ export const useOptimizedMenuItemDetails = (
       const localCachedItem = getCacheItem<MenuItemWithOptions>(cacheKey, restaurantId);
       
       if (localCachedItem && !isCacheStale(cacheKey, restaurantId)) {
-        console.log(`[OptimizedHook] Local cache HIT for item ${id}`);
+        if (import.meta.env.DEV) console.log(`[OptimizedHook] Local cache HIT for item ${id}`);
         optimizedCache.set(id, localCachedItem);
         setItemDetails(localCachedItem);
         setLoading(false);

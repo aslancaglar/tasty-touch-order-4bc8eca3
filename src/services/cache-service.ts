@@ -21,7 +21,8 @@ const CACHE_CONFIG = {
 };
 
 const debugCache = (action: string, key: string, hit?: boolean, age?: number) => {
-  if (!CACHE_CONFIG.debugLogs) return;
+  // Only show cache logs in development mode to reduce console noise
+  if (!CACHE_CONFIG.debugLogs || !import.meta.env.DEV) return;
   const ageStr = age ? ` (age: ${Math.round(age / 60000)}min)` : '';
   console.log(`Cache ${action}: ${key}${hit !== undefined ? ` (Cache ${hit ? 'HIT' : 'MISS'})` : ''}${ageStr}`);
 };

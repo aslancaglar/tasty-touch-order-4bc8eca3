@@ -291,7 +291,7 @@ export const getCachedImageUrl = async (url: string): Promise<string> => {
 export const precacheImages = async (urls: string[]): Promise<void> => {
   if (!urls || urls.length === 0) return;
   
-  console.log(`Pre-caching ${urls.length} images`);
+  if (import.meta.env.DEV) console.log(`Pre-caching ${urls.length} images`);
   const validUrls = urls.filter(url => url && typeof url === 'string' && !url.startsWith('data:'));
   
   // Process in smaller batches to avoid overloading the browser
@@ -310,7 +310,7 @@ export const precacheImages = async (urls: string[]): Promise<void> => {
     }
   }
   
-  console.log(`Pre-caching complete for ${validUrls.length} images`);
+  if (import.meta.env.DEV) console.log(`Pre-caching complete for ${validUrls.length} images`);
 };
 
 // Clear expired cache entries
