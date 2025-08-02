@@ -126,7 +126,9 @@ const MenuItemCard = memo(({
               </> : <p className="font-bebas whitespace-nowrap text-xl">{formattedPrice} {currencySymbol}</p>}
           </div>
         </div>
-        <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{getTranslatedField(item, 'description', uiLanguage)}</p>
+        {getTranslatedField(item, 'description', uiLanguage) && (
+          <p className="text-sm text-gray-500 mt-1 line-clamp-2 font-inter">{getTranslatedField(item, 'description', uiLanguage)}</p>
+        )}
         {currentAvailabilityStatus ? <Button className="w-full mt-4 bg-kiosk-primary text-xl py-[25px] px-0 font-bebas tracking-wide">
             {t("addToCart")}
             <ChevronRight className="h-4 w-4 ml-2" />
