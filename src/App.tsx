@@ -3,13 +3,12 @@ import React from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NetworkStatus } from "@/components/ui/network-status";
 import SecurityMonitor from "@/components/security/SecurityMonitor";
 import { initializeCacheConfig } from "@/utils/cache-config";
-import AppPreloader from "@/components/app/AppPreloader";
 
 // Create a more sophisticated QueryClient with route-aware settings
 const queryClient = new QueryClient({
@@ -24,8 +23,20 @@ const queryClient = new QueryClient({
   },
 });
 
-// Import the content component
-import AppWithPreloader from "@/components/app/AppContent";
+// Lazy load pages for better initial load performance
+import Dashboard from "./pages/Dashboard";
+import Restaurants from "./pages/Restaurants";
+import RestaurantManage from "./pages/RestaurantManage";
+import KioskView from "./pages/KioskView";
+import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import OwnerDashboard from "./pages/OwnerDashboard";
+import OwnerRestaurantManage from "./pages/OwnerRestaurantManage";
+import OwnerLogin from "./pages/OwnerLogin";
+import Index from "./pages/Index";
+import Security from "./pages/Security";
+import Performance from "./pages/Performance";
+import GeneralSettings from "./pages/GeneralSettings";
 
 const App = () => {
   // Initialize cache config when the app starts
@@ -48,7 +59,57 @@ const App = () => {
               <NetworkStatus showLabel={true} />
             </div>
             
-            <AppWithPreloader />
+            <Routes>
+              {/* Auth Routes */}
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/owner/login" element={<OwnerLogin />} />
+              
+              {/* Admin Routes - Protected and require admin role */}
+              <Route path="/" element={<ProtectedRoute requireAdmin={true}><Index /></ProtectedRoute>} />
+              <Route path="/restaurants" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <Restaurants />
+                </ProtectedRoute>
+              } />
+              <Route path="/restaurant/:id" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <RestaurantManage />
+                </ProtectedRoute>
+              } />
+              <Route path="/security" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <Security />
+                </ProtectedRoute>
+              } />
+              <Route path="/performance" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <Performance />
+                </ProtectedRoute>
+              } />
+              <Route path="/general-settings" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <GeneralSettings />
+                </ProtectedRoute>
+              } />
+              
+              {/* Restaurant Owner Routes - Protected but don't require admin role */}
+              <Route path="/owner" element={
+                <ProtectedRoute>
+                  <OwnerDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/restaurant/:id" element={
+                <ProtectedRoute>
+                  <OwnerRestaurantManage />
+                </ProtectedRoute>
+              } />
+              
+              {/* Public Kiosk Routes */}
+              <Route path="/r/:restaurantSlug" element={<KioskView />} />
+              
+              {/* Catch-all Route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </TooltipProvider>
         </AuthProvider>
       </BrowserRouter>
