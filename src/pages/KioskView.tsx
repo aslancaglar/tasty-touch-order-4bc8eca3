@@ -38,7 +38,7 @@ type SelectedToppingCategory = {
   toppingQuantities?: { [toppingId: string]: number }; // Added toppingQuantities map
 };
 
-const KioskViewInner = () => {
+const KioskViewInner = ({ restaurant: initialRestaurant }: { restaurant: Restaurant }) => {
   const {
     restaurantSlug
   } = useParams<{
@@ -49,7 +49,7 @@ const KioskViewInner = () => {
   const [showOrderTypeSelection, setShowOrderTypeSelection] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>(null);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [restaurant] = useState<Restaurant>(initialRestaurant);
   const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -215,7 +215,7 @@ const KioskViewInner = () => {
       );
 
         if (restaurant) {
-        setRestaurant(restaurant);
+        // Restaurant already loaded from props
         
         // Get cached categories
         const menuCacheKey = `categories_${restaurant.id}`;
@@ -259,7 +259,7 @@ const KioskViewInner = () => {
       // Enhanced error handling with cache fallback
       const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
       if (cachedRestaurant) {
-        setRestaurant(cachedRestaurant);
+        // Restaurant already loaded from props
         
         // Get cached categories for this restaurant
         const menuCacheKey = `categories_${cachedRestaurant.id}`;
@@ -294,55 +294,55 @@ const KioskViewInner = () => {
     }
   };
 
-  // Enhanced initial data loading
+  // Simplified initial data loading
   useEffect(() => {
-    const fetchRestaurantAndMenu = async () => {
-      if (!restaurantSlug) {
-        navigate('/');
-        return;
-      }
+    const loadMenuData = async () => {
+      if (!restaurant) return;
       
-      setLoading(true);
-      
-      // First check if we have a cached restaurant
-      const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
-      
-      if (cachedRestaurant) {
-        console.log(`[KioskView] Found cached restaurant, loading immediately`);
-        setRestaurant(cachedRestaurant);
+      try {
+        console.log('[KioskViewInner] Loading menu for restaurant:', restaurant.id);
         
-        // Get cached categories
-        const menuCacheKey = `categories_${cachedRestaurant.id}`;
-        const cachedCategories = getCacheItem<CategoryWithItems[]>(menuCacheKey, cachedRestaurant.id);
+        // Try cache first
+        const menuCacheKey = `categories_${restaurant.id}`;
+        let cachedCategories = getCacheItem<CategoryWithItems[]>(menuCacheKey, restaurant.id);
         
         if (cachedCategories && cachedCategories.length > 0) {
+          console.log('[KioskViewInner] Using cached menu');
           setCategories(cachedCategories);
           if (cachedCategories.length > 0) {
             setActiveCategory(cachedCategories[0].id);
           }
           setLoading(false);
-          setDataPreloaded(true);
-          
-          // If we're online and data is stale, refresh in background
-          if (connectionStatus === 'online' && isCacheNeedsRefresh(menuCacheKey, cachedRestaurant.id)) {
-            console.log(`[KioskView] Cache is stale, refreshing in background`);
-            preloadAllData(true);
-          }
-        } else {
-          // No cached categories, need to load them
-          await preloadAllData(connectionStatus === 'online');
-          setDataPreloaded(true);
+          return;
         }
-      } else {
-        // No cached restaurant, need to fetch everything
-        console.log(`[KioskView] No cached restaurant, fetching fresh data`);
-        await preloadAllData(true);
-        setDataPreloaded(true);
+        
+        // No cache, load from API
+        console.log('[KioskViewInner] No cache, loading menu from API');
+        const menuData = await getMenuForRestaurant(restaurant.id);
+        
+        if (menuData && menuData.length > 0) {
+          setCategories(menuData);
+          setCacheItem(menuCacheKey, menuData, restaurant.id);
+          if (menuData.length > 0) {
+            setActiveCategory(menuData[0].id);
+          }
+        }
+        
+        setLoading(false);
+        
+      } catch (error) {
+        console.error('[KioskViewInner] Error loading menu:', error);
+        setLoading(false);
+        toast({
+          title: "Menu Loading Error",
+          description: "Failed to load menu. Using cached data if available.",
+          variant: "destructive"
+        });
       }
     };
     
-    fetchRestaurantAndMenu();
-  }, [restaurantSlug, navigate, connectionStatus]);
+    loadMenuData();
+  }, [restaurant, toast]);
 
   useEffect(() => {
     if (showWelcome) {
@@ -1213,54 +1213,85 @@ const KioskViewInner = () => {
 const KioskView = () => {
   const { restaurantSlug } = useParams<{ restaurantSlug: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
-  // Initial restaurant data loading to determine language
-  const [initialRestaurant, setInitialRestaurant] = useState<Restaurant | null>(null);
+  // Simple loading state
+  const [loading, setLoading] = useState(true);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   
   useEffect(() => {
-    const loadInitialData = async () => {
+    const loadData = async () => {
       if (!restaurantSlug) {
         navigate('/');
         return;
       }
       
-      // Check cache for restaurant first
-      const cachedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
-      if (cachedRestaurant) {
-        setInitialRestaurant(cachedRestaurant);
-      } else {
-        // If no cache, load from service - startup preloader will handle this
-        try {
-          const restaurant = await getRestaurantBySlug(restaurantSlug);
-          if (restaurant) {
-            setInitialRestaurant(restaurant);
-          } else {
-            navigate('/');
+      try {
+        console.log('[KioskView] Loading restaurant:', restaurantSlug);
+        
+        // Try cache first
+        let loadedRestaurant = getCacheItem<Restaurant>(`restaurant_${restaurantSlug}`, 'global');
+        
+        if (!loadedRestaurant) {
+          console.log('[KioskView] No cache, fetching from API');
+          loadedRestaurant = await getRestaurantBySlug(restaurantSlug);
+          if (loadedRestaurant) {
+            setCacheItem(`restaurant_${restaurantSlug}`, loadedRestaurant, 'global');
           }
-        } catch (error) {
-          console.error('Error loading initial restaurant:', error);
-          navigate('/');
+        } else {
+          console.log('[KioskView] Using cached restaurant');
         }
+        
+        if (!loadedRestaurant) {
+          throw new Error('Restaurant not found');
+        }
+        
+        setRestaurant(loadedRestaurant);
+        setLoading(false);
+        
+      } catch (error) {
+        console.error('[KioskView] Error loading restaurant:', error);
+        toast({
+          title: "Restaurant Not Found",
+          description: "The requested restaurant could not be loaded.",
+          variant: "destructive"
+        });
+        navigate('/');
       }
     };
     
-    loadInitialData();
-  }, [restaurantSlug, navigate]);
+    loadData();
+  }, [restaurantSlug, navigate, toast]);
   
-  if (!initialRestaurant) {
-    return <div className="flex items-center justify-center h-screen">
-      <Loader2 className="h-12 w-12 animate-spin text-purple-700" />
-    </div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Loading restaurant...</p>
+        </div>
+      </div>
+    );
   }
   
-  const restaurantLanguage: SupportedLanguage = initialRestaurant.ui_language === "en" ? "en" : initialRestaurant.ui_language === "tr" ? "tr" : "fr";
+  if (!restaurant) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center space-y-4">
+          <p className="text-destructive">Restaurant not found</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const restaurantLanguage: SupportedLanguage = 
+    restaurant.ui_language === "en" ? "en" : 
+    restaurant.ui_language === "tr" ? "tr" : "fr";
   
   return (
-    <AppPreloader restaurantId={initialRestaurant.id} skipPreloadingRoutes={[]}>
-      <LanguageProvider initialLanguage={restaurantLanguage}>
-        <KioskViewInner />
-      </LanguageProvider>
-    </AppPreloader>
+    <LanguageProvider initialLanguage={restaurantLanguage}>
+      <KioskViewInner restaurant={restaurant} />
+    </LanguageProvider>
   );
 };
 
