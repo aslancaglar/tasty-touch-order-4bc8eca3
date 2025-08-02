@@ -12,8 +12,6 @@ import { useOptimizedItemCustomization } from "@/hooks/useOptimizedItemCustomiza
 import { canSelectTopping } from "@/utils/topping-utils";
 import { OptimizedLoadingDialog } from "./OptimizedLoadingDialog";
 import { trackDialogOpen, trackDialogDataLoaded, trackDialogRender } from "@/utils/performance-monitor";
-import { validateItemCustomization } from "@/utils/validation-utils";
-import { useToast } from "@/hooks/use-toast";
 
 interface ItemCustomizationDialogProps {
   itemId: string | null;
@@ -53,23 +51,20 @@ const Option = memo(({
   selectedOption,
   onToggleChoice,
   currencySymbol,
-  uiLanguage,
-  isHighlighted = false
+  uiLanguage
 }: {
   option: any;
   selectedOption: any;
   onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
   currencySymbol: string;
   uiLanguage: SupportedLanguage;
-  isHighlighted?: boolean;
 }) => {
-  return <div className={`space-y-1 ${isHighlighted ? 'animate-pulse' : ''}`}>
+  return <div className="space-y-1">
       {option.choices.map(choice => {
       const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
       return <div key={choice.id} className={`
-              flex items-center justify-between p-2 border rounded-md cursor-pointer select-none transition-all duration-300
+              flex items-center justify-between p-2 border rounded-md cursor-pointer select-none
               ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
-              ${isHighlighted ? 'border-red-500 bg-red-50 shadow-md' : ''}
             `} onClick={() => onToggleChoice(option.id, choice.id, !!option.multiple)}>
             <div className="flex items-center">
               <div className={`
@@ -98,8 +93,7 @@ const ToppingCategory = memo(({
   currencySymbol,
   bgColorClass,
   isVisible,
-  uiLanguage,
-  isHighlighted = false
+  uiLanguage
 }: {
   category: any;
   selectedCategory: any;
@@ -111,7 +105,6 @@ const ToppingCategory = memo(({
   bgColorClass: string;
   isVisible: boolean;
   uiLanguage: SupportedLanguage;
-  isHighlighted?: boolean;
 }) => {
   // Sort toppings by display_order
   const sortedToppings = [...category.toppings].sort((a, b) => {
@@ -139,7 +132,7 @@ const ToppingCategory = memo(({
   const toppingQuantities = selectedCategory?.toppingQuantities || {};
   
   return <div 
-    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative transition-all duration-300 ${isHighlighted ? 'ring-2 ring-red-500 shadow-lg animate-pulse' : ''}`}
+    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}
     style={{
       opacity: isVisible ? 1 : 0,
       transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
@@ -308,7 +301,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   
   
   const { language: uiLanguage } = useLanguage();
-  const { toast } = useToast();
   
   // Use optimized hooks for data fetching and state management - only fetch if no details provided
   const { itemDetails: fetchedItemDetails, loading, error } = useOptimizedMenuItemDetails(
@@ -344,10 +336,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
   // State to track which topping categories are visible (for simplified animation)
   const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
-  
-  // State for validation highlighting
-  const [highlightedOptions, setHighlightedOptions] = useState<string[]>([]);
-  const [highlightedToppings, setHighlightedToppings] = useState<string[]>([]);
 
   // Reset visibility state when dialog opens/closes or item changes
   useEffect(() => {
@@ -388,59 +376,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
   }, [isOpen, itemDetails, resetCustomization]);
 
-  // Optimized add to cart handler with validation
+  // Optimized add to cart handler
   const handleAddToCart = useCallback(() => {
     if (!itemDetails) return;
-    
-    // Validate required selections
-    const validation = validateItemCustomization(itemDetails, selectedOptions, selectedToppings);
-    
-    if (!validation.isValid) {
-      // Clear any previous highlights first
-      setHighlightedOptions([]);
-      setHighlightedToppings([]);
-      
-      // Set new highlights
-      setHighlightedOptions(validation.missingOptions);
-      setHighlightedToppings(validation.missingToppings);
-      
-      // Show toast notification with specific missing items
-      const missingItems: string[] = [];
-      
-      // Add missing option names
-      validation.missingOptions.forEach(optionId => {
-        const option = itemDetails.options?.find(o => o.id === optionId);
-        if (option) {
-          missingItems.push(getTranslatedField(option, 'name', uiLanguage));
-        }
-      });
-      
-      // Add missing topping category names
-      validation.missingToppings.forEach(categoryId => {
-        const category = itemDetails.toppingCategories?.find(c => c.id === categoryId);
-        if (category) {
-          missingItems.push(getTranslatedField(category, 'name', uiLanguage));
-        }
-      });
-      
-      toast({
-        title: t("requiredSelections") || "Required Selections Missing",
-        description: `${t("pleaseMakeSelection") || "Please make a selection for"}: ${missingItems.join(', ')}`,
-        variant: "destructive",
-      });
-      
-      // Clear highlights after 3 seconds
-      setTimeout(() => {
-        setHighlightedOptions([]);
-        setHighlightedToppings([]);
-      }, 3000);
-      
-      return;
-    }
-    
-    // Clear any highlights
-    setHighlightedOptions([]);
-    setHighlightedToppings([]);
     
     const cartItem = {
       menuItem: itemDetails,
@@ -453,7 +391,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     
     onAddToCart(cartItem);
     onClose();
-  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose, uiLanguage, t, toast]);
+  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose]);
   
   const handleQuantityDecrease = useCallback(() => {
     handleQuantityChange(quantity - 1);
@@ -483,8 +421,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                 selectedOption={selectedOptions.find(o => o.optionId === option.id)} 
                 onToggleChoice={handleToggleChoice} 
                 currencySymbol={currencySymbol} 
-                uiLanguage={uiLanguage}
-                isHighlighted={highlightedOptions.includes(option.id)}
+                uiLanguage={uiLanguage} 
               />
             </div>)}
 
@@ -502,7 +439,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
               isVisible={visibleCategories[category.id] || false}
               uiLanguage={uiLanguage}
-              isHighlighted={highlightedToppings.includes(category.id)}
             />
           ))}
         </div>
