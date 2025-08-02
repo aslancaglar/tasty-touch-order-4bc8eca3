@@ -63,7 +63,7 @@ const Option = memo(({
   uiLanguage: SupportedLanguage;
   isHighlighted?: boolean;
 }) => {
-  return <div className={`space-y-1 ${isHighlighted ? 'animate-flash-red' : ''}`}>
+  return <div className={`space-y-1 ${isHighlighted ? 'animate-pulse' : ''}`}>
       {option.choices.map(choice => {
       const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
       return <div key={choice.id} className={`
@@ -139,7 +139,7 @@ const ToppingCategory = memo(({
   const toppingQuantities = selectedCategory?.toppingQuantities || {};
   
   return <div 
-    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative transition-all duration-300 ${isHighlighted ? 'border-2 border-red-500 shadow-lg animate-flash-red' : 'border-2 border-transparent'}`}
+    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative transition-all duration-300 ${isHighlighted ? 'border-2 border-red-500 shadow-lg animate-pulse' : 'border-2 border-transparent'}`}
     style={{
       opacity: isVisible ? 1 : 0,
       transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
@@ -419,18 +419,12 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
   // Optimized add to cart handler with validation
   const handleAddToCart = useCallback(() => {
-    console.log('Add to cart button clicked');
-    if (!itemDetails) {
-      console.log('No item details available');
-      return;
-    }
+    if (!itemDetails) return;
     
     // Validate required selections
     const validation = validateItemCustomization(itemDetails, selectedOptions, selectedToppings);
-    console.log('Validation result:', validation);
     
     if (!validation.isValid) {
-      console.log('Validation failed, missing items:', validation.missingOptions, validation.missingToppings);
       // Clear any previous highlights first
       setHighlightedOptions([]);
       setHighlightedToppings([]);
@@ -478,7 +472,6 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       return;
     }
     
-    console.log('Validation passed, adding to cart');
     // Clear any highlights
     setHighlightedOptions([]);
     setHighlightedToppings([]);
