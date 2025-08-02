@@ -26,6 +26,8 @@ import { useConnectionStatus, useNetworkAwareFetch } from "@/hooks/use-network-a
 import { getTranslation, SupportedLanguage, getTranslatedField } from "@/utils/language-utils";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import { testNetworkConnectivity } from "@/utils/service-worker";
+import { startupPreloader } from "@/services/startup-preloader";
+import AppPreloader from "@/components/app/AppPreloader";
 
 type CategoryWithItems = MenuCategory & {
   items: MenuItem[];
@@ -1227,7 +1229,7 @@ const KioskView = () => {
       if (cachedRestaurant) {
         setInitialRestaurant(cachedRestaurant);
       } else {
-        // If no cache, load from service
+        // If no cache, load from service - startup preloader will handle this
         try {
           const restaurant = await getRestaurantBySlug(restaurantSlug);
           if (restaurant) {
@@ -1254,9 +1256,11 @@ const KioskView = () => {
   const restaurantLanguage: SupportedLanguage = initialRestaurant.ui_language === "en" ? "en" : initialRestaurant.ui_language === "tr" ? "tr" : "fr";
   
   return (
-    <LanguageProvider initialLanguage={restaurantLanguage}>
-      <KioskViewInner />
-    </LanguageProvider>
+    <AppPreloader restaurantId={initialRestaurant.id} skipPreloadingRoutes={[]}>
+      <LanguageProvider initialLanguage={restaurantLanguage}>
+        <KioskViewInner />
+      </LanguageProvider>
+    </AppPreloader>
   );
 };
 
