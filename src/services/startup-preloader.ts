@@ -148,7 +148,9 @@ class StartupPreloader {
     
     if (this.connectionQuality.type === 'offline') {
       this.isPreloading = false;
-      throw new Error('Cannot preload data while offline');
+      // Don't throw error for offline - let app continue with cached data
+      console.warn('[StartupPreloader] Offline detected, skipping preload');
+      return;
     }
 
     const adaptedConfig = this.getPreloadConfig(config);

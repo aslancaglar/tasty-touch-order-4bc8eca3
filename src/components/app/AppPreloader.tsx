@@ -100,8 +100,22 @@ export const AppPreloader: React.FC<AppPreloaderProps> = ({
         setHasPreloaded(true);
       } catch (error) {
         console.error('[AppPreloader] Initial preload failed:', error);
-        // Don't block the app, just log the error
-        setHasPreloaded(true); // Allow app to continue
+        // Don't block the app - allow it to continue with cached data
+        setHasPreloaded(true);
+        
+        // Only show error toast if it's a critical error, not network issues
+        const isNetworkError = error instanceof Error && 
+          (error.message.includes('Network request failed') || 
+           error.message.includes('offline') ||
+           error.message.includes('503'));
+        
+        if (!isNetworkError) {
+          toast({
+            title: "Loading Warning",
+            description: "Some data may not be up to date. App will continue with cached data.",
+            variant: "default"
+          });
+        }
       }
     };
 
