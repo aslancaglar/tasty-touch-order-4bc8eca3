@@ -348,11 +348,16 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   // State for validation highlighting
   const [highlightedOptions, setHighlightedOptions] = useState<string[]>([]);
   const [highlightedToppings, setHighlightedToppings] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Refs to scroll to elements
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const toppingRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  
+  // Timeout refs for cleanup
+  const timeoutRefs = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const lastClickTime = useRef<number>(0);
 
   // Reset visibility state when dialog opens/closes or item changes
   useEffect(() => {
@@ -390,6 +395,15 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   useEffect(() => {
     if (!isOpen || !itemDetails) {
       resetCustomization();
+      setIsSubmitting(false);
+      // Clear all timeouts
+      Object.values(timeoutRefs.current).forEach(timeout => {
+        clearTimeout(timeout);
+      });
+      timeoutRefs.current = {};
+      // Clear highlights
+      setHighlightedOptions([]);
+      setHighlightedToppings([]);
     }
   }, [isOpen, itemDetails, resetCustomization]);
 
@@ -417,23 +431,59 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
   }, []);
 
-  // Optimized add to cart handler with validation
+  // Clear all validation timeouts
+  const clearValidationTimeouts = useCallback(() => {
+    Object.values(timeoutRefs.current).forEach(timeout => {
+      clearTimeout(timeout);
+    });
+    timeoutRefs.current = {};
+  }, []);
+
+  // Optimized add to cart handler with validation, debouncing, and timeout cleanup
   const handleAddToCart = useCallback(() => {
-    if (!itemDetails) return;
+    console.log('Add to cart clicked, checking conditions...');
+    
+    if (!itemDetails) {
+      console.log('No item details available');
+      return;
+    }
+
+    // Debouncing - prevent rapid clicks
+    const now = Date.now();
+    if (now - lastClickTime.current < 500) {
+      console.log('Click debounced, too soon');
+      return;
+    }
+    lastClickTime.current = now;
+
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      console.log('Already submitting, ignoring click');
+      return;
+    }
+
+    console.log('Validating customization...');
     
     // Validate required selections
     const validation = validateItemCustomization(itemDetails, selectedOptions, selectedToppings);
+    console.log('Validation result:', validation);
     
     if (!validation.isValid) {
-      // Clear any previous highlights first
+      console.log('Validation failed, showing highlights and toast');
+      
+      // Clear any existing timeouts to prevent conflicts
+      clearValidationTimeouts();
+      
+      // Reset highlighting states immediately
       setHighlightedOptions([]);
       setHighlightedToppings([]);
       
       // Scroll to the first missing item first
       scrollToMissingItem(validation.missingOptions, validation.missingToppings);
       
-      // Wait a bit for scrolling, then apply highlights
-      setTimeout(() => {
+      // Apply highlights after scroll with timeout cleanup
+      timeoutRefs.current.highlight = setTimeout(() => {
+        console.log('Applying validation highlights');
         setHighlightedOptions(validation.missingOptions);
         setHighlightedToppings(validation.missingToppings);
       }, 300);
@@ -463,8 +513,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         variant: "destructive",
       });
       
-      // Clear highlights after 2 seconds
-      setTimeout(() => {
+      // Clear highlights after delay with timeout cleanup
+      timeoutRefs.current.clearHighlight = setTimeout(() => {
+        console.log('Clearing validation highlights');
         setHighlightedOptions([]);
         setHighlightedToppings([]);
       }, 2000);
@@ -472,7 +523,13 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       return;
     }
     
-    // Clear any highlights
+    console.log('Validation passed, proceeding to add to cart');
+    
+    // Set submitting state to prevent double submission
+    setIsSubmitting(true);
+    
+    // Clear any validation highlights and timeouts
+    clearValidationTimeouts();
     setHighlightedOptions([]);
     setHighlightedToppings([]);
     
@@ -485,9 +542,16 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       itemPrice: calculatePrice()
     };
     
-    onAddToCart(cartItem);
-    onClose();
-  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose, uiLanguage, t, toast, scrollToMissingItem]);
+    console.log('Adding item to cart:', cartItem);
+    
+    try {
+      onAddToCart(cartItem);
+      onClose();
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      setIsSubmitting(false);
+    }
+  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose, uiLanguage, t, toast, scrollToMissingItem, isSubmitting, clearValidationTimeouts]);
   
   const handleQuantityDecrease = useCallback(() => {
     handleQuantityChange(quantity - 1);
@@ -557,8 +621,12 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                 <Plus className="h-6 w-6" />
               </Button>
             </div>
-            <Button onClick={handleAddToCart} className="flex-1 bg-kiosk-primary py-[34px] text-3xl">
-              {t("addToCart")} - {calculatePrice().toFixed(2)} {currencySymbol}
+            <Button 
+              onClick={handleAddToCart} 
+              disabled={isSubmitting}
+              className="flex-1 bg-kiosk-primary py-[34px] text-3xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? t("addingToCart") || "Adding..." : `${t("addToCart")} - ${calculatePrice().toFixed(2)} ${currencySymbol}`}
             </Button>
           </div>
         </DialogFooter>
