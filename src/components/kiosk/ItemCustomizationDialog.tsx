@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useEffect, useState, useRef } from "react";
 import { Check, Plus, Minus, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -348,6 +348,11 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   // State for validation highlighting
   const [highlightedOptions, setHighlightedOptions] = useState<string[]>([]);
   const [highlightedToppings, setHighlightedToppings] = useState<string[]>([]);
+  
+  // Refs to scroll to elements
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const toppingRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Reset visibility state when dialog opens/closes or item changes
   useEffect(() => {
@@ -388,6 +393,30 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     }
   }, [isOpen, itemDetails, resetCustomization]);
 
+  // Function to scroll to the first missing required item
+  const scrollToMissingItem = useCallback((missingOptions: string[], missingToppings: string[]) => {
+    if (!scrollContainerRef.current) return;
+
+    // Find the first missing item (prioritize options, then toppings)
+    let targetElement: HTMLElement | null = null;
+
+    if (missingOptions.length > 0) {
+      const firstMissingOption = missingOptions[0];
+      targetElement = optionRefs.current[firstMissingOption];
+    } else if (missingToppings.length > 0) {
+      const firstMissingTopping = missingToppings[0];
+      targetElement = toppingRefs.current[firstMissingTopping];
+    }
+
+    if (targetElement && scrollContainerRef.current) {
+      targetElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+      });
+    }
+  }, []);
+
   // Optimized add to cart handler with validation
   const handleAddToCart = useCallback(() => {
     if (!itemDetails) return;
@@ -400,9 +429,14 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       setHighlightedOptions([]);
       setHighlightedToppings([]);
       
-      // Set new highlights
-      setHighlightedOptions(validation.missingOptions);
-      setHighlightedToppings(validation.missingToppings);
+      // Scroll to the first missing item first
+      scrollToMissingItem(validation.missingOptions, validation.missingToppings);
+      
+      // Wait a bit for scrolling, then apply highlights
+      setTimeout(() => {
+        setHighlightedOptions(validation.missingOptions);
+        setHighlightedToppings(validation.missingToppings);
+      }, 300);
       
       // Show toast notification with specific missing items
       const missingItems: string[] = [];
@@ -453,7 +487,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     
     onAddToCart(cartItem);
     onClose();
-  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose, uiLanguage, t, toast]);
+  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose, uiLanguage, t, toast, scrollToMissingItem]);
   
   const handleQuantityDecrease = useCallback(() => {
     handleQuantityChange(quantity - 1);
@@ -470,9 +504,13 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           {itemDetails.description && <DialogDescription className="text-xl text-gray-800">{getTranslatedField(itemDetails, 'description', uiLanguage)}</DialogDescription>}
         </DialogHeader>
         
-        <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
+        <div ref={scrollContainerRef} className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
           {/* Options section - only show if there are options */}
-          {itemDetails.options && itemDetails.options.length > 0 && itemDetails.options.map(option => <div key={option.id} className="space-y-1">
+          {itemDetails.options && itemDetails.options.length > 0 && itemDetails.options.map(option => <div 
+              key={option.id} 
+              className="space-y-1"
+              ref={el => optionRefs.current[option.id] = el}
+            >
               <Label className="font-medium">
                 {getTranslatedField(option, 'name', uiLanguage)}
                 {option.required && <span className="text-red-500 ml-1">*</span>}
@@ -490,20 +528,21 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
           {/* Toppings section - simplified animation */}
           {visibleToppingCategories.map((category, index) => (
-            <ToppingCategory 
-              key={category.id} 
-              category={category} 
-              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
-              selectedToppings={selectedToppings}
-              toppingCategories={itemDetails.toppingCategories || []}
-              onToggleTopping={handleToggleTopping} 
-              t={t} 
-              currencySymbol={currencySymbol} 
-              bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
-              isVisible={visibleCategories[category.id] || false}
-              uiLanguage={uiLanguage}
-              isHighlighted={highlightedToppings.includes(category.id)}
-            />
+            <div key={category.id} ref={el => toppingRefs.current[category.id] = el}>
+              <ToppingCategory 
+                category={category} 
+                selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
+                selectedToppings={selectedToppings}
+                toppingCategories={itemDetails.toppingCategories || []}
+                onToggleTopping={handleToggleTopping} 
+                t={t} 
+                currencySymbol={currencySymbol} 
+                bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
+                isVisible={visibleCategories[category.id] || false}
+                uiLanguage={uiLanguage}
+                isHighlighted={highlightedToppings.includes(category.id)}
+              />
+            </div>
           ))}
         </div>
         
