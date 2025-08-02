@@ -9,7 +9,7 @@ import { getTranslatedField, SupportedLanguage } from "@/utils/language-utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useOptimizedMenuItemDetails } from "@/hooks/useOptimizedMenuItemDetails";
 import { useOptimizedItemCustomization } from "@/hooks/useOptimizedItemCustomization";
-import { canSelectTopping } from "@/utils/topping-utils";
+import { canSelectTopping, shouldShowToppingCategory } from "@/utils/topping-utils";
 import { OptimizedLoadingDialog } from "./OptimizedLoadingDialog";
 import { trackDialogOpen, trackDialogDataLoaded, trackDialogRender } from "@/utils/performance-monitor";
 import { toast } from "sonner";
@@ -447,6 +447,15 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         console.log(`Allow multiple same topping: ${category.allow_multiple_same_topping}`);
         
         if (category.required) {
+          // Only validate categories that should actually be shown based on current selections
+          const shouldShow = shouldShowToppingCategory(itemDetails, category.id, selectedToppings);
+          console.log(`Should show category "${category.name}": ${shouldShow}`);
+          
+          if (!shouldShow) {
+            console.log(`Category "${category.name}" is required but not shown based on current selections - skipping validation`);
+            return; // Skip validation for this category
+          }
+          
           const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
           const minRequired = category.min_selections > 0 ? category.min_selections : 1;
           
