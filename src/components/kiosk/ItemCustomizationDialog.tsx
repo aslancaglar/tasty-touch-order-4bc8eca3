@@ -63,7 +63,7 @@ const Option = memo(({
   uiLanguage: SupportedLanguage;
   isHighlighted?: boolean;
 }) => {
-  return <div className={`space-y-1 ${isHighlighted ? 'animate-pulse' : ''}`}>
+  return <div className={`space-y-1 ${isHighlighted ? 'animate-flash-red' : ''}`}>
       {option.choices.map(choice => {
       const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
       return <div key={choice.id} className={`
@@ -139,7 +139,7 @@ const ToppingCategory = memo(({
   const toppingQuantities = selectedCategory?.toppingQuantities || {};
   
   return <div 
-    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative transition-all duration-300 ${isHighlighted ? 'ring-2 ring-red-500 shadow-lg animate-pulse' : ''}`}
+    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative transition-all duration-300 ${isHighlighted ? 'border-2 border-red-500 shadow-lg animate-flash-red' : 'border-2 border-transparent'}`}
     style={{
       opacity: isVisible ? 1 : 0,
       transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
@@ -463,11 +463,11 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         variant: "destructive",
       });
       
-      // Clear highlights after 3 seconds
+      // Clear highlights after 2 seconds
       setTimeout(() => {
         setHighlightedOptions([]);
         setHighlightedToppings([]);
-      }, 3000);
+      }, 2000);
       
       return;
     }
