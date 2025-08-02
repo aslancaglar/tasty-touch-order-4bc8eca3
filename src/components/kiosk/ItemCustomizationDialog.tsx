@@ -12,7 +12,7 @@ import { useOptimizedItemCustomization } from "@/hooks/useOptimizedItemCustomiza
 import { canSelectTopping } from "@/utils/topping-utils";
 import { OptimizedLoadingDialog } from "./OptimizedLoadingDialog";
 import { trackDialogOpen, trackDialogDataLoaded, trackDialogRender } from "@/utils/performance-monitor";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface ItemCustomizationDialogProps {
   itemId: string | null;
@@ -127,9 +127,22 @@ const ToppingCategory = memo(({
   }
 
   // Check if this category needs a warning icon (required but not enough selections)
-  const selectedToppingsCount = selectedCategory?.toppingIds.length || 0;
   const minRequired = category.required ? category.min_selections > 0 ? category.min_selections : 1 : 0;
-  const showWarning = category.required && selectedToppingsCount < minRequired;
+  
+  // For categories that allow multiple same topping, count total quantity
+  let selectedCount = 0;
+  if (selectedCategory) {
+    if (category.allow_multiple_same_topping && selectedCategory.toppingQuantities) {
+      // Sum up all quantities for categories that allow multiple of same topping
+      const quantities = Object.values(selectedCategory.toppingQuantities) as number[];
+      selectedCount = quantities.reduce((sum: number, qty: number) => sum + qty, 0);
+    } else {
+      // For regular categories, count unique toppings
+      selectedCount = selectedCategory.toppingIds.length;
+    }
+  }
+  
+  const showWarning = category.required && selectedCount < minRequired;
   
   // Get topping quantities from the selected category
   const toppingQuantities = selectedCategory?.toppingQuantities || {};
@@ -417,7 +430,19 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
         if (category.required) {
           const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
           const minRequired = category.min_selections > 0 ? category.min_selections : 1;
-          const selectedCount = selectedCategory?.toppingIds.length || 0;
+          
+          // For categories that allow multiple same topping, count total quantity
+          let selectedCount = 0;
+          if (selectedCategory) {
+            if (category.allow_multiple_same_topping && selectedCategory.toppingQuantities) {
+              // Sum up all quantities for categories that allow multiple of same topping
+              const quantities = Object.values(selectedCategory.toppingQuantities) as number[];
+              selectedCount = quantities.reduce((sum: number, qty: number) => sum + qty, 0);
+            } else {
+              // For regular categories, count unique toppings
+              selectedCount = selectedCategory.toppingIds.length;
+            }
+          }
           
           if (selectedCount < minRequired) {
             missingToppings.push(category.id);
@@ -465,11 +490,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     const validation = validateRequiredSelections();
     
     if (!validation.isValid) {
-      // Show toast notification
-      toast({
-        title: t("selectionsRequired"),
+      // Show toast notification using Sonner
+      toast.error(t("selectionsRequired"), {
         description: t("pleaseSelectRequired"),
-        variant: "destructive",
         duration: 4000,
       });
 
