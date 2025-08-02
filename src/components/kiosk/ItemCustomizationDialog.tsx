@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useEffect, useState, useRef } from "react";
 import { Check, Plus, Minus, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { useOptimizedItemCustomization } from "@/hooks/useOptimizedItemCustomiza
 import { canSelectTopping } from "@/utils/topping-utils";
 import { OptimizedLoadingDialog } from "./OptimizedLoadingDialog";
 import { trackDialogOpen, trackDialogDataLoaded, trackDialogRender } from "@/utils/performance-monitor";
+import { validateItemCustomization } from "@/utils/validation-utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface ItemCustomizationDialogProps {
   itemId: string | null;
@@ -51,20 +53,23 @@ const Option = memo(({
   selectedOption,
   onToggleChoice,
   currencySymbol,
-  uiLanguage
+  uiLanguage,
+  isHighlighted = false
 }: {
   option: any;
   selectedOption: any;
   onToggleChoice: (optionId: string, choiceId: string, multiple: boolean) => void;
   currencySymbol: string;
   uiLanguage: SupportedLanguage;
+  isHighlighted?: boolean;
 }) => {
-  return <div className="space-y-1">
+  return <div className={`space-y-1 ${isHighlighted ? 'animate-pulse' : ''}`}>
       {option.choices.map(choice => {
       const isSelected = selectedOption?.choiceIds.includes(choice.id) || false;
       return <div key={choice.id} className={`
-              flex items-center justify-between p-2 border rounded-md cursor-pointer select-none
+              flex items-center justify-between p-2 border rounded-md cursor-pointer select-none transition-all duration-300
               ${isSelected ? 'border-kiosk-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'}
+              ${isHighlighted ? 'border-red-500 bg-red-50 shadow-md' : ''}
             `} onClick={() => onToggleChoice(option.id, choice.id, !!option.multiple)}>
             <div className="flex items-center">
               <div className={`
@@ -93,7 +98,8 @@ const ToppingCategory = memo(({
   currencySymbol,
   bgColorClass,
   isVisible,
-  uiLanguage
+  uiLanguage,
+  isHighlighted = false
 }: {
   category: any;
   selectedCategory: any;
@@ -105,6 +111,7 @@ const ToppingCategory = memo(({
   bgColorClass: string;
   isVisible: boolean;
   uiLanguage: SupportedLanguage;
+  isHighlighted?: boolean;
 }) => {
   // Sort toppings by display_order
   const sortedToppings = [...category.toppings].sort((a, b) => {
@@ -132,7 +139,7 @@ const ToppingCategory = memo(({
   const toppingQuantities = selectedCategory?.toppingQuantities || {};
   
   return <div 
-    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}
+    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative transition-all duration-300 ${isHighlighted ? 'border-2 border-red-500 shadow-lg animate-pulse' : 'border-2 border-transparent'}`}
     style={{
       opacity: isVisible ? 1 : 0,
       transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
@@ -301,6 +308,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   
   
   const { language: uiLanguage } = useLanguage();
+  const { toast } = useToast();
   
   // Use optimized hooks for data fetching and state management - only fetch if no details provided
   const { itemDetails: fetchedItemDetails, loading, error } = useOptimizedMenuItemDetails(
@@ -336,6 +344,20 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
   // State to track which topping categories are visible (for simplified animation)
   const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
+  
+  // State for validation highlighting
+  const [highlightedOptions, setHighlightedOptions] = useState<string[]>([]);
+  const [highlightedToppings, setHighlightedToppings] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Refs to scroll to elements
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const toppingRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  
+  // Timeout refs for cleanup
+  const timeoutRefs = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const lastClickTime = useRef<number>(0);
 
   // Reset visibility state when dialog opens/closes or item changes
   useEffect(() => {
@@ -373,12 +395,143 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   useEffect(() => {
     if (!isOpen || !itemDetails) {
       resetCustomization();
+      setIsSubmitting(false);
+      // Clear all timeouts
+      Object.values(timeoutRefs.current).forEach(timeout => {
+        clearTimeout(timeout);
+      });
+      timeoutRefs.current = {};
+      // Clear highlights
+      setHighlightedOptions([]);
+      setHighlightedToppings([]);
     }
   }, [isOpen, itemDetails, resetCustomization]);
 
-  // Optimized add to cart handler
+  // Function to scroll to the first missing required item
+  const scrollToMissingItem = useCallback((missingOptions: string[], missingToppings: string[]) => {
+    if (!scrollContainerRef.current) return;
+
+    // Find the first missing item (prioritize options, then toppings)
+    let targetElement: HTMLElement | null = null;
+
+    if (missingOptions.length > 0) {
+      const firstMissingOption = missingOptions[0];
+      targetElement = optionRefs.current[firstMissingOption];
+    } else if (missingToppings.length > 0) {
+      const firstMissingTopping = missingToppings[0];
+      targetElement = toppingRefs.current[firstMissingTopping];
+    }
+
+    if (targetElement && scrollContainerRef.current) {
+      targetElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+      });
+    }
+  }, []);
+
+  // Clear all validation timeouts
+  const clearValidationTimeouts = useCallback(() => {
+    Object.values(timeoutRefs.current).forEach(timeout => {
+      clearTimeout(timeout);
+    });
+    timeoutRefs.current = {};
+  }, []);
+
+  // Optimized add to cart handler with validation, debouncing, and timeout cleanup
   const handleAddToCart = useCallback(() => {
-    if (!itemDetails) return;
+    console.log('Add to cart clicked, checking conditions...');
+    
+    if (!itemDetails) {
+      console.log('No item details available');
+      return;
+    }
+
+    // Debouncing - prevent rapid clicks
+    const now = Date.now();
+    if (now - lastClickTime.current < 500) {
+      console.log('Click debounced, too soon');
+      return;
+    }
+    lastClickTime.current = now;
+
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      console.log('Already submitting, ignoring click');
+      return;
+    }
+
+    console.log('Validating customization...');
+    
+    // Validate required selections
+    const validation = validateItemCustomization(itemDetails, selectedOptions, selectedToppings);
+    console.log('Validation result:', validation);
+    
+    if (!validation.isValid) {
+      console.log('Validation failed, showing highlights and toast');
+      
+      // Clear any existing timeouts to prevent conflicts
+      clearValidationTimeouts();
+      
+      // Reset highlighting states immediately
+      setHighlightedOptions([]);
+      setHighlightedToppings([]);
+      
+      // Scroll to the first missing item first
+      scrollToMissingItem(validation.missingOptions, validation.missingToppings);
+      
+      // Apply highlights after scroll with timeout cleanup
+      timeoutRefs.current.highlight = setTimeout(() => {
+        console.log('Applying validation highlights');
+        setHighlightedOptions(validation.missingOptions);
+        setHighlightedToppings(validation.missingToppings);
+      }, 300);
+      
+      // Show toast notification with specific missing items
+      const missingItems: string[] = [];
+      
+      // Add missing option names
+      validation.missingOptions.forEach(optionId => {
+        const option = itemDetails.options?.find(o => o.id === optionId);
+        if (option) {
+          missingItems.push(getTranslatedField(option, 'name', uiLanguage));
+        }
+      });
+      
+      // Add missing topping category names
+      validation.missingToppings.forEach(categoryId => {
+        const category = itemDetails.toppingCategories?.find(c => c.id === categoryId);
+        if (category) {
+          missingItems.push(getTranslatedField(category, 'name', uiLanguage));
+        }
+      });
+      
+      toast({
+        title: t("requiredSelections") || "Required Selections Missing",
+        description: `${t("pleaseMakeSelection") || "Please make a selection for"}: ${missingItems.join(', ')}`,
+        variant: "destructive",
+      });
+      
+      // Clear highlights after delay with timeout cleanup
+      timeoutRefs.current.clearHighlight = setTimeout(() => {
+        console.log('Clearing validation highlights');
+        setHighlightedOptions([]);
+        setHighlightedToppings([]);
+      }, 2000);
+      
+      return;
+    }
+    
+    console.log('Validation passed, proceeding to add to cart');
+    
+    // Set submitting state to prevent double submission
+    setIsSubmitting(true);
+    
+    // Clear any validation highlights and timeouts
+    clearValidationTimeouts();
+    setHighlightedOptions([]);
+    setHighlightedToppings([]);
     
     const cartItem = {
       menuItem: itemDetails,
@@ -389,9 +542,16 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       itemPrice: calculatePrice()
     };
     
-    onAddToCart(cartItem);
-    onClose();
-  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose]);
+    console.log('Adding item to cart:', cartItem);
+    
+    try {
+      onAddToCart(cartItem);
+      onClose();
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      setIsSubmitting(false);
+    }
+  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose, uiLanguage, t, toast, scrollToMissingItem, isSubmitting, clearValidationTimeouts]);
   
   const handleQuantityDecrease = useCallback(() => {
     handleQuantityChange(quantity - 1);
@@ -408,9 +568,13 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           {itemDetails.description && <DialogDescription className="text-xl text-gray-800">{getTranslatedField(itemDetails, 'description', uiLanguage)}</DialogDescription>}
         </DialogHeader>
         
-        <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
+        <div ref={scrollContainerRef} className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
           {/* Options section - only show if there are options */}
-          {itemDetails.options && itemDetails.options.length > 0 && itemDetails.options.map(option => <div key={option.id} className="space-y-1">
+          {itemDetails.options && itemDetails.options.length > 0 && itemDetails.options.map(option => <div 
+              key={option.id} 
+              className="space-y-1"
+              ref={el => optionRefs.current[option.id] = el}
+            >
               <Label className="font-medium">
                 {getTranslatedField(option, 'name', uiLanguage)}
                 {option.required && <span className="text-red-500 ml-1">*</span>}
@@ -421,25 +585,28 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                 selectedOption={selectedOptions.find(o => o.optionId === option.id)} 
                 onToggleChoice={handleToggleChoice} 
                 currencySymbol={currencySymbol} 
-                uiLanguage={uiLanguage} 
+                uiLanguage={uiLanguage}
+                isHighlighted={highlightedOptions.includes(option.id)}
               />
             </div>)}
 
           {/* Toppings section - simplified animation */}
           {visibleToppingCategories.map((category, index) => (
-            <ToppingCategory 
-              key={category.id} 
-              category={category} 
-              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
-              selectedToppings={selectedToppings}
-              toppingCategories={itemDetails.toppingCategories || []}
-              onToggleTopping={handleToggleTopping} 
-              t={t} 
-              currencySymbol={currencySymbol} 
-              bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
-              isVisible={visibleCategories[category.id] || false}
-              uiLanguage={uiLanguage}
-            />
+            <div key={category.id} ref={el => toppingRefs.current[category.id] = el}>
+              <ToppingCategory 
+                category={category} 
+                selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
+                selectedToppings={selectedToppings}
+                toppingCategories={itemDetails.toppingCategories || []}
+                onToggleTopping={handleToggleTopping} 
+                t={t} 
+                currencySymbol={currencySymbol} 
+                bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
+                isVisible={visibleCategories[category.id] || false}
+                uiLanguage={uiLanguage}
+                isHighlighted={highlightedToppings.includes(category.id)}
+              />
+            </div>
           ))}
         </div>
         
@@ -454,8 +621,12 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
                 <Plus className="h-6 w-6" />
               </Button>
             </div>
-            <Button onClick={handleAddToCart} className="flex-1 bg-kiosk-primary py-[34px] text-3xl">
-              {t("addToCart")} - {calculatePrice().toFixed(2)} {currencySymbol}
+            <Button 
+              onClick={handleAddToCart} 
+              disabled={isSubmitting}
+              className="flex-1 bg-kiosk-primary py-[34px] text-3xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? t("addingToCart") || "Adding..." : `${t("addToCart")} - ${calculatePrice().toFixed(2)} ${currencySymbol}`}
             </Button>
           </div>
         </DialogFooter>
