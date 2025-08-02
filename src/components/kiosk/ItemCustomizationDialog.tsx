@@ -412,12 +412,22 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     const missingOptions: string[] = [];
     const missingToppings: string[] = [];
 
+    // Debug logging
+    console.log('=== VALIDATION DEBUG ===');
+    console.log('Item:', itemDetails.name);
+    console.log('Selected Options:', selectedOptions);
+    console.log('Selected Toppings:', selectedToppings);
+
     // Check required options
     if (itemDetails.options) {
+      console.log('Checking options:', itemDetails.options);
       itemDetails.options.forEach(option => {
+        console.log(`Option ${option.name}: required=${option.required}`);
         if (option.required) {
           const selectedOption = selectedOptions.find(o => o.optionId === option.id);
+          console.log(`Selected for ${option.name}:`, selectedOption);
           if (!selectedOption || selectedOption.choiceIds.length === 0) {
+            console.log(`Missing required option: ${option.name}`);
             missingOptions.push(option.id);
           }
         }
@@ -426,7 +436,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
     // Check required topping categories
     if (itemDetails.toppingCategories) {
+      console.log('Checking topping categories:', itemDetails.toppingCategories);
       itemDetails.toppingCategories.forEach(category => {
+        console.log(`Category ${category.name}: required=${category.required}, min_selections=${category.min_selections}`);
         if (category.required) {
           const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
           const minRequired = category.min_selections > 0 ? category.min_selections : 1;
@@ -444,18 +456,25 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
             }
           }
           
+          console.log(`Category ${category.name}: selectedCount=${selectedCount}, minRequired=${minRequired}`);
           if (selectedCount < minRequired) {
+            console.log(`Missing required topping category: ${category.name}`);
             missingToppings.push(category.id);
           }
         }
       });
     }
 
-    return {
+    const result = {
       isValid: missingOptions.length === 0 && missingToppings.length === 0,
       missingOptions,
       missingToppings
     };
+
+    console.log('Validation result:', result);
+    console.log('=== END VALIDATION DEBUG ===');
+    
+    return result;
   }, [itemDetails, selectedOptions, selectedToppings]);
 
   // Scroll to the first missing section
