@@ -162,8 +162,6 @@
   "selectUpTo": "Select up to",
   "maxSelectionsReached": "Maximum selections reached",
   "maxSelectionsMessage": "You can only select {max} items in this category.",
-  "requiredSelections": "Required Selections Missing",
-  "pleaseMakeSelection": "Please make a selection for",
   "inactivityTitle": "Are you still there?",
   "inactivityMessage": "Do you want to continue your order?",
   "yes": "Yes",
