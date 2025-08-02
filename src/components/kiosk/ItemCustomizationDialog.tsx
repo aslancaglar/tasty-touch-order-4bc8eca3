@@ -441,6 +441,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
   // Optimized add to cart handler with validation, debouncing, and timeout cleanup
   const handleAddToCart = useCallback(() => {
+    console.log('[DEBUG] handleAddToCart function called!');
     console.log('[AddToCart] Button clicked - starting validation process');
     console.log('[AddToCart] Current state:', {
       itemId: itemDetails?.id,
@@ -660,7 +661,17 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               </Button>
             </div>
             <Button 
-              onClick={handleAddToCart} 
+              onClick={(e) => {
+                console.log('[DEBUG] Add to cart button clicked! Event:', e);
+                console.log('[DEBUG] Button disabled state:', isSubmitting);
+                console.log('[DEBUG] Current item details exists:', !!itemDetails);
+                console.log('[DEBUG] Dialog isOpen:', isOpen);
+                console.log('[DEBUG] Selected options:', selectedOptions);
+                console.log('[DEBUG] Selected toppings:', selectedToppings);
+                e.preventDefault();
+                e.stopPropagation();
+                handleAddToCart();
+              }}
               disabled={isSubmitting}
               className="flex-1 bg-kiosk-primary py-[34px] text-3xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
