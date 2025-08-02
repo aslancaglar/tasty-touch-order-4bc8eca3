@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useEffect, useState, useRef } from "react";
 import { Check, Plus, Minus, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { useOptimizedItemCustomization } from "@/hooks/useOptimizedItemCustomiza
 import { canSelectTopping } from "@/utils/topping-utils";
 import { OptimizedLoadingDialog } from "./OptimizedLoadingDialog";
 import { trackDialogOpen, trackDialogDataLoaded, trackDialogRender } from "@/utils/performance-monitor";
+import { toast } from "@/hooks/use-toast";
 
 interface ItemCustomizationDialogProps {
   itemId: string | null;
@@ -93,7 +94,8 @@ const ToppingCategory = memo(({
   currencySymbol,
   bgColorClass,
   isVisible,
-  uiLanguage
+  uiLanguage,
+  isMissing = false
 }: {
   category: any;
   selectedCategory: any;
@@ -105,6 +107,7 @@ const ToppingCategory = memo(({
   bgColorClass: string;
   isVisible: boolean;
   uiLanguage: SupportedLanguage;
+  isMissing?: boolean;
 }) => {
   // Sort toppings by display_order
   const sortedToppings = [...category.toppings].sort((a, b) => {
@@ -132,7 +135,10 @@ const ToppingCategory = memo(({
   const toppingQuantities = selectedCategory?.toppingQuantities || {};
   
   return <div 
-    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative`}
+    data-topping-category-id={category.id}
+    className={`space-y-2 p-4 rounded-xl mb-4 ${bgColorClass} relative transition-all duration-300 ${
+      isMissing ? 'border-2 border-red-500 bg-red-50 animate-pulse' : 'border-2 border-transparent'
+    }`}
     style={{
       opacity: isVisible ? 1 : 0,
       transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
@@ -336,6 +342,15 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
   // State to track which topping categories are visible (for simplified animation)
   const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
+  
+  // State to track missing required selections for highlighting
+  const [missingRequiredSections, setMissingRequiredSections] = useState<{
+    options: string[];
+    toppingCategories: string[];
+  }>({ options: [], toppingCategories: [] });
+  
+  // Ref for scrolling to missing sections
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Reset visibility state when dialog opens/closes or item changes
   useEffect(() => {
@@ -373,12 +388,110 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
   useEffect(() => {
     if (!isOpen || !itemDetails) {
       resetCustomization();
+      setMissingRequiredSections({ options: [], toppingCategories: [] });
     }
   }, [isOpen, itemDetails, resetCustomization]);
 
-  // Optimized add to cart handler
+  // Validation function for required selections
+  const validateRequiredSelections = useCallback(() => {
+    if (!itemDetails) return { isValid: true, missingOptions: [], missingToppings: [] };
+
+    const missingOptions: string[] = [];
+    const missingToppings: string[] = [];
+
+    // Check required options
+    if (itemDetails.options) {
+      itemDetails.options.forEach(option => {
+        if (option.required) {
+          const selectedOption = selectedOptions.find(o => o.optionId === option.id);
+          if (!selectedOption || selectedOption.choiceIds.length === 0) {
+            missingOptions.push(option.id);
+          }
+        }
+      });
+    }
+
+    // Check required topping categories
+    if (itemDetails.toppingCategories) {
+      itemDetails.toppingCategories.forEach(category => {
+        if (category.required) {
+          const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
+          const minRequired = category.min_selections > 0 ? category.min_selections : 1;
+          const selectedCount = selectedCategory?.toppingIds.length || 0;
+          
+          if (selectedCount < minRequired) {
+            missingToppings.push(category.id);
+          }
+        }
+      });
+    }
+
+    return {
+      isValid: missingOptions.length === 0 && missingToppings.length === 0,
+      missingOptions,
+      missingToppings
+    };
+  }, [itemDetails, selectedOptions, selectedToppings]);
+
+  // Scroll to the first missing section
+  const scrollToMissingSection = useCallback((missingOptions: string[], missingToppings: string[]) => {
+    if (!scrollContainerRef.current) return;
+
+    // Find the first missing element (option or topping category)
+    let targetElement: HTMLElement | null = null;
+
+    // Check for missing options first
+    if (missingOptions.length > 0) {
+      targetElement = scrollContainerRef.current.querySelector(`[data-option-id="${missingOptions[0]}"]`);
+    }
+    // If no missing options, check for missing topping categories
+    else if (missingToppings.length > 0) {
+      targetElement = scrollContainerRef.current.querySelector(`[data-topping-category-id="${missingToppings[0]}"]`);
+    }
+
+    if (targetElement) {
+      targetElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+    }
+  }, []);
+
+  // Optimized add to cart handler with validation
   const handleAddToCart = useCallback(() => {
     if (!itemDetails) return;
+
+    // Validate required selections
+    const validation = validateRequiredSelections();
+    
+    if (!validation.isValid) {
+      // Show toast notification
+      toast({
+        title: t("selectionsRequired"),
+        description: t("pleaseSelectRequired"),
+        variant: "destructive",
+        duration: 4000,
+      });
+
+      // Update missing sections state for visual highlighting
+      setMissingRequiredSections({
+        options: validation.missingOptions,
+        toppingCategories: validation.missingToppings
+      });
+
+      // Scroll to first missing section
+      scrollToMissingSection(validation.missingOptions, validation.missingToppings);
+
+      // Clear highlighting after 3 seconds
+      setTimeout(() => {
+        setMissingRequiredSections({ options: [], toppingCategories: [] });
+      }, 3000);
+
+      return;
+    }
+
+    // Clear any existing highlighting
+    setMissingRequiredSections({ options: [], toppingCategories: [] });
     
     const cartItem = {
       menuItem: itemDetails,
@@ -391,7 +504,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     
     onAddToCart(cartItem);
     onClose();
-  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose]);
+  }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose, validateRequiredSelections, t, scrollToMissingSection]);
   
   const handleQuantityDecrease = useCallback(() => {
     handleQuantityChange(quantity - 1);
@@ -408,39 +521,54 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
           {itemDetails.description && <DialogDescription className="text-xl text-gray-800">{getTranslatedField(itemDetails, 'description', uiLanguage)}</DialogDescription>}
         </DialogHeader>
         
-        <div className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
+        <div ref={scrollContainerRef} className="space-y-4 overflow-y-auto pr-2 flex-grow select-none custom-scrollbar">
           {/* Options section - only show if there are options */}
-          {itemDetails.options && itemDetails.options.length > 0 && itemDetails.options.map(option => <div key={option.id} className="space-y-1">
-              <Label className="font-medium">
-                {getTranslatedField(option, 'name', uiLanguage)}
-                {option.required && <span className="text-red-500 ml-1">*</span>}
-                {option.multiple && <span className="text-sm text-gray-500 ml-2">({t("multipleSelection")})</span>}
-              </Label>
-              <Option 
-                option={option} 
-                selectedOption={selectedOptions.find(o => o.optionId === option.id)} 
-                onToggleChoice={handleToggleChoice} 
-                currencySymbol={currencySymbol} 
-                uiLanguage={uiLanguage} 
-              />
-            </div>)}
+          {itemDetails.options && itemDetails.options.length > 0 && itemDetails.options.map(option => {
+            const isMissing = missingRequiredSections.options.includes(option.id);
+            return (
+              <div 
+                key={option.id} 
+                data-option-id={option.id}
+                className={`space-y-1 p-3 rounded-lg transition-all duration-300 ${
+                  isMissing ? 'border-2 border-red-500 bg-red-50 animate-pulse' : 'border-2 border-transparent'
+                }`}
+              >
+                <Label className="font-medium">
+                  {getTranslatedField(option, 'name', uiLanguage)}
+                  {option.required && <span className="text-red-500 ml-1">*</span>}
+                  {option.multiple && <span className="text-sm text-gray-500 ml-2">({t("multipleSelection")})</span>}
+                </Label>
+                <Option 
+                  option={option} 
+                  selectedOption={selectedOptions.find(o => o.optionId === option.id)} 
+                  onToggleChoice={handleToggleChoice} 
+                  currencySymbol={currencySymbol} 
+                  uiLanguage={uiLanguage} 
+                />
+              </div>
+            );
+          })}
 
           {/* Toppings section - simplified animation */}
-          {visibleToppingCategories.map((category, index) => (
-            <ToppingCategory 
-              key={category.id} 
-              category={category} 
-              selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
-              selectedToppings={selectedToppings}
-              toppingCategories={itemDetails.toppingCategories || []}
-              onToggleTopping={handleToggleTopping} 
-              t={t} 
-              currencySymbol={currencySymbol} 
-              bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
-              isVisible={visibleCategories[category.id] || false}
-              uiLanguage={uiLanguage}
-            />
-          ))}
+          {visibleToppingCategories.map((category, index) => {
+            const isMissing = missingRequiredSections.toppingCategories.includes(category.id);
+            return (
+              <ToppingCategory 
+                key={category.id} 
+                category={category} 
+                selectedCategory={selectedToppings.find(t => t.categoryId === category.id)} 
+                selectedToppings={selectedToppings}
+                toppingCategories={itemDetails.toppingCategories || []}
+                onToggleTopping={handleToggleTopping} 
+                t={t} 
+                currencySymbol={currencySymbol} 
+                bgColorClass={CATEGORY_BACKGROUNDS[index % CATEGORY_BACKGROUNDS.length]}
+                isVisible={visibleCategories[category.id] || false}
+                uiLanguage={uiLanguage}
+                isMissing={isMissing}
+              />
+            );
+          })}
         </div>
         
         <DialogFooter className="mt-3 pt-2">
