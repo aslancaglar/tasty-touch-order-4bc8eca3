@@ -419,12 +419,18 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
   // Optimized add to cart handler with validation
   const handleAddToCart = useCallback(() => {
-    if (!itemDetails) return;
+    console.log('Add to cart button clicked');
+    if (!itemDetails) {
+      console.log('No item details available');
+      return;
+    }
     
     // Validate required selections
     const validation = validateItemCustomization(itemDetails, selectedOptions, selectedToppings);
+    console.log('Validation result:', validation);
     
     if (!validation.isValid) {
+      console.log('Validation failed, missing items:', validation.missingOptions, validation.missingToppings);
       // Clear any previous highlights first
       setHighlightedOptions([]);
       setHighlightedToppings([]);
@@ -472,6 +478,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       return;
     }
     
+    console.log('Validation passed, adding to cart');
     // Clear any highlights
     setHighlightedOptions([]);
     setHighlightedToppings([]);
