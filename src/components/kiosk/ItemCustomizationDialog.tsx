@@ -438,10 +438,19 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
     if (itemDetails.toppingCategories) {
       console.log('Checking topping categories:', itemDetails.toppingCategories);
       itemDetails.toppingCategories.forEach(category => {
-        console.log(`Category ${category.name}: required=${category.required}, min_selections=${category.min_selections}`);
+        console.log(`\n--- Category Details ---`);
+        console.log(`ID: ${category.id}`);
+        console.log(`Name: ${category.name}`);
+        console.log(`Required: ${category.required}`);
+        console.log(`Min selections: ${category.min_selections}`);
+        console.log(`Max selections: ${category.max_selections}`);
+        console.log(`Allow multiple same topping: ${category.allow_multiple_same_topping}`);
+        
         if (category.required) {
           const selectedCategory = selectedToppings.find(t => t.categoryId === category.id);
           const minRequired = category.min_selections > 0 ? category.min_selections : 1;
+          
+          console.log(`Selected category object:`, selectedCategory);
           
           // For categories that allow multiple same topping, count total quantity
           let selectedCount = 0;
@@ -450,18 +459,30 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               // Sum up all quantities for categories that allow multiple of same topping
               const quantities = Object.values(selectedCategory.toppingQuantities) as number[];
               selectedCount = quantities.reduce((sum: number, qty: number) => sum + qty, 0);
+              console.log(`Quantity-based counting. Quantities:`, selectedCategory.toppingQuantities);
+              console.log(`Total quantity sum: ${selectedCount}`);
             } else {
               // For regular categories, count unique toppings
               selectedCount = selectedCategory.toppingIds.length;
+              console.log(`Count-based selection. Selected topping IDs:`, selectedCategory.toppingIds);
+              console.log(`Unique topping count: ${selectedCount}`);
             }
+          } else {
+            console.log(`❌ No selection found for this required category`);
           }
           
-          console.log(`Category ${category.name}: selectedCount=${selectedCount}, minRequired=${minRequired}`);
+          console.log(`Selected count: ${selectedCount}, Min required: ${minRequired}`);
+          
           if (selectedCount < minRequired) {
-            console.log(`Missing required topping category: ${category.name}`);
+            console.log(`❌ VALIDATION FAILED: Category "${category.name}" needs ${minRequired} but has ${selectedCount}`);
             missingToppings.push(category.id);
+          } else {
+            console.log(`✅ VALIDATION PASSED: Category "${category.name}" has enough selections`);
           }
+        } else {
+          console.log(`Category is not required, skipping validation`);
         }
+        console.log(`--- End Category ---\n`);
       });
     }
 
