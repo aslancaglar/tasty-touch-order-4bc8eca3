@@ -441,35 +441,52 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
 
   // Optimized add to cart handler with validation, debouncing, and timeout cleanup
   const handleAddToCart = useCallback(() => {
-    console.log('Add to cart clicked, checking conditions...');
+    console.log('[AddToCart] Button clicked - starting validation process');
+    console.log('[AddToCart] Current state:', {
+      itemId: itemDetails?.id,
+      hasItemDetails: !!itemDetails,
+      selectedOptionsCount: selectedOptions.length,
+      selectedToppingsCount: selectedToppings.length,
+      quantity,
+      isSubmitting,
+      specialInstructions: specialInstructions.length
+    });
     
     if (!itemDetails) {
-      console.log('No item details available');
+      console.error('[AddToCart] No item details available, aborting');
       return;
     }
 
     // Debouncing - prevent rapid clicks
     const now = Date.now();
     if (now - lastClickTime.current < 500) {
-      console.log('Click debounced, too soon');
+      console.log('[AddToCart] Click debounced, too soon since last click');
       return;
     }
     lastClickTime.current = now;
 
     // Prevent multiple submissions
     if (isSubmitting) {
-      console.log('Already submitting, ignoring click');
+      console.log('[AddToCart] Already submitting, ignoring click');
       return;
     }
 
-    console.log('Validating customization...');
+    console.log('[AddToCart] Starting validation...');
+    console.log('[AddToCart] Selected options:', selectedOptions);
+    console.log('[AddToCart] Selected toppings:', selectedToppings);
     
-    // Validate required selections
+    // Validate required selections with detailed logging
     const validation = validateItemCustomization(itemDetails, selectedOptions, selectedToppings);
-    console.log('Validation result:', validation);
+    console.log('[AddToCart] Validation result:', {
+      isValid: validation.isValid,
+      missingOptions: validation.missingOptions,
+      missingToppings: validation.missingToppings,
+      totalOptionsRequired: itemDetails.options?.filter(o => o.required).length || 0,
+      totalToppingsRequired: itemDetails.toppingCategories?.filter(c => c.required).length || 0
+    });
     
     if (!validation.isValid) {
-      console.log('Validation failed, showing highlights and toast');
+      console.log('[AddToCart] Validation failed - showing user feedback');
       
       // Clear any existing timeouts to prevent conflicts
       clearValidationTimeouts();
@@ -483,7 +500,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       
       // Apply highlights after scroll with timeout cleanup
       timeoutRefs.current.highlight = setTimeout(() => {
-        console.log('Applying validation highlights');
+        console.log('[AddToCart] Applying validation highlights');
         setHighlightedOptions(validation.missingOptions);
         setHighlightedToppings(validation.missingToppings);
       }, 300);
@@ -495,7 +512,9 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       validation.missingOptions.forEach(optionId => {
         const option = itemDetails.options?.find(o => o.id === optionId);
         if (option) {
-          missingItems.push(getTranslatedField(option, 'name', uiLanguage));
+          const optionName = getTranslatedField(option, 'name', uiLanguage);
+          missingItems.push(optionName);
+          console.log('[AddToCart] Missing required option:', optionName);
         }
       });
       
@@ -503,10 +522,13 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       validation.missingToppings.forEach(categoryId => {
         const category = itemDetails.toppingCategories?.find(c => c.id === categoryId);
         if (category) {
-          missingItems.push(getTranslatedField(category, 'name', uiLanguage));
+          const categoryName = getTranslatedField(category, 'name', uiLanguage);
+          missingItems.push(categoryName);
+          console.log('[AddToCart] Missing required topping category:', categoryName);
         }
       });
       
+      console.log('[AddToCart] Showing toast with missing items:', missingItems);
       toast({
         title: t("requiredSelections") || "Required Selections Missing",
         description: `${t("pleaseMakeSelection") || "Please make a selection for"}: ${missingItems.join(', ')}`,
@@ -515,7 +537,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       
       // Clear highlights after delay with timeout cleanup
       timeoutRefs.current.clearHighlight = setTimeout(() => {
-        console.log('Clearing validation highlights');
+        console.log('[AddToCart] Clearing validation highlights');
         setHighlightedOptions([]);
         setHighlightedToppings([]);
       }, 2000);
@@ -523,33 +545,49 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
       return;
     }
     
-    console.log('Validation passed, proceeding to add to cart');
+    console.log('[AddToCart] Validation passed - proceeding to add to cart');
     
     // Set submitting state to prevent double submission
     setIsSubmitting(true);
+    console.log('[AddToCart] Set submitting state to true');
     
     // Clear any validation highlights and timeouts
     clearValidationTimeouts();
     setHighlightedOptions([]);
     setHighlightedToppings([]);
     
+    const finalPrice = calculatePrice();
     const cartItem = {
       menuItem: itemDetails,
       quantity,
       selectedOptions,
       selectedToppings,
       specialInstructions,
-      itemPrice: calculatePrice()
+      itemPrice: finalPrice
     };
     
-    console.log('Adding item to cart:', cartItem);
+    console.log('[AddToCart] Built cart item:', {
+      itemName: getTranslatedField(itemDetails, 'name', uiLanguage),
+      quantity,
+      finalPrice,
+      selectedOptionsCount: selectedOptions.length,
+      selectedToppingsCount: selectedToppings.length,
+      hasSpecialInstructions: !!specialInstructions
+    });
     
     try {
+      console.log('[AddToCart] Calling onAddToCart callback');
       onAddToCart(cartItem);
+      console.log('[AddToCart] Successfully added to cart, closing dialog');
       onClose();
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      console.error('[AddToCart] Error adding to cart:', error);
       setIsSubmitting(false);
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart. Please try again.",
+        variant: "destructive",
+      });
     }
   }, [itemDetails, quantity, selectedOptions, selectedToppings, specialInstructions, calculatePrice, onAddToCart, onClose, uiLanguage, t, toast, scrollToMissingItem, isSubmitting, clearValidationTimeouts]);
   

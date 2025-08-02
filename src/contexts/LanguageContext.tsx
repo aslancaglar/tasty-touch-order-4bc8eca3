@@ -12,7 +12,13 @@ const LanguageContext = React.createContext<LanguageContextType | undefined>(und
 export const useLanguage = () => {
   const context = React.useContext(LanguageContext);
   if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    console.error('useLanguage called before LanguageProvider is ready, falling back to default');
+    // Return a fallback object to prevent errors
+    return {
+      language: DEFAULT_LANGUAGE,
+      setLanguage: () => console.warn('setLanguage called before LanguageProvider is ready'),
+      resetToDefault: () => console.warn('resetToDefault called before LanguageProvider is ready')
+    };
   }
   return context;
 };
