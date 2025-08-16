@@ -45,50 +45,60 @@ export const calculateCartTotals = (cart: CartItem[]) => {
   let totalTax = 0;
 
   cart.forEach(item => {
-    // Base menu item price with its VAT
-    const baseItemTotal = item.quantity * (item.menuItem.price || 0);
     const vatPercentage = item.menuItem.tax_percentage ?? 10;
     
-    let itemToppingsTotal = 0;
-    let itemToppingsTax = 0;
-    
-    // Calculate toppings price and tax separately
-    if (item.selectedToppings && item.menuItem.toppingCategories) {
-      item.selectedToppings.forEach(toppingCategory => {
-        const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingCategory.categoryId);
-        if (category) {
-          toppingCategory.toppingIds.forEach(toppingId => {
-            const topping = category.toppings.find(t => t.id === toppingId);
-            if (topping) {
-              // Get the topping quantity from toppingQuantities or default to 1
-              const toppingQuantity = 
-                toppingCategory.toppingQuantities && 
-                toppingCategory.toppingQuantities[toppingId] 
-                  ? toppingCategory.toppingQuantities[toppingId] 
-                  : 1;
-              
-              // Calculate the total price for this topping considering BOTH item quantity and topping quantity
-              const toppingPrice = topping.price 
-                ? parseFloat(topping.price.toString()) * item.quantity * toppingQuantity 
-                : 0;
-              
-              itemToppingsTotal += toppingPrice;
-              
-              // Use topping specific tax rate if available
-              const toppingVatPercentage = topping.tax_percentage ?? vatPercentage; 
-              itemToppingsTax += calculateTaxAmount(toppingPrice, toppingVatPercentage);
-            }
-          });
-        }
-      });
+    // Use pre-calculated itemPrice if available (from customization dialog)
+    if (item.itemPrice !== undefined && item.itemPrice !== null) {
+      // For items with pre-calculated price, multiply by quantity
+      const itemTotal = item.quantity * item.itemPrice;
+      const itemTax = calculateTaxAmount(itemTotal, vatPercentage);
+      
+      total += itemTotal;
+      totalTax += itemTax;
+    } else {
+      // Fallback to calculation for items without pre-calculated price
+      const baseItemTotal = item.quantity * (item.menuItem.price || 0);
+      let itemToppingsTotal = 0;
+      let itemToppingsTax = 0;
+      
+      // Calculate toppings price and tax separately
+      if (item.selectedToppings && item.menuItem.toppingCategories) {
+        item.selectedToppings.forEach(toppingCategory => {
+          const category = item.menuItem.toppingCategories?.find(cat => cat.id === toppingCategory.categoryId);
+          if (category) {
+            toppingCategory.toppingIds.forEach(toppingId => {
+              const topping = category.toppings.find(t => t.id === toppingId);
+              if (topping) {
+                // Get the topping quantity from toppingQuantities or default to 1
+                const toppingQuantity = 
+                  toppingCategory.toppingQuantities && 
+                  toppingCategory.toppingQuantities[toppingId] 
+                    ? toppingCategory.toppingQuantities[toppingId] 
+                    : 1;
+                
+                // Calculate the total price for this topping considering BOTH item quantity and topping quantity
+                const toppingPrice = topping.price 
+                  ? parseFloat(topping.price.toString()) * item.quantity * toppingQuantity 
+                  : 0;
+                
+                itemToppingsTotal += toppingPrice;
+                
+                // Use topping specific tax rate if available
+                const toppingVatPercentage = topping.tax_percentage ?? vatPercentage; 
+                itemToppingsTax += calculateTaxAmount(toppingPrice, toppingVatPercentage);
+              }
+            });
+          }
+        });
+      }
+      
+      // Calculate base item tax
+      const baseItemTax = calculateTaxAmount(baseItemTotal, vatPercentage);
+      
+      // Add to totals
+      total += baseItemTotal + itemToppingsTotal;
+      totalTax += baseItemTax + itemToppingsTax;
     }
-    
-    // Calculate base item tax
-    const baseItemTax = calculateTaxAmount(baseItemTotal, vatPercentage);
-    
-    // Add to totals
-    total += baseItemTotal + itemToppingsTotal;
-    totalTax += baseItemTax + itemToppingsTax;
   });
 
   const subtotal = total - totalTax;
