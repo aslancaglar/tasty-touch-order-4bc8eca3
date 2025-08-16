@@ -160,7 +160,7 @@ export const useOptimizedItemCustomization = (
     });
   }, [item?.toppingCategories]);
 
-  // Memoized price calculation
+  // Memoized price calculation - returns per-unit price without quantity multiplication
   const calculatePrice = useCallback(() => {
     if (!item) return 0;
     
@@ -193,8 +193,9 @@ export const useOptimizedItemCustomization = (
       }
     });
     
-    return price * quantity;
-  }, [item, selectedOptions, selectedToppings, quantity]);
+    // Return per-unit price (without quantity multiplication)
+    return price;
+  }, [item, selectedOptions, selectedToppings]);
 
   const handleQuantityChange = useCallback((newQuantity: number) => {
     setQuantity(Math.max(1, newQuantity));

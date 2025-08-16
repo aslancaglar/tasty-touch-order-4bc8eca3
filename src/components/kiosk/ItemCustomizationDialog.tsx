@@ -655,7 +655,7 @@ const ItemCustomizationDialog: React.FC<ItemCustomizationDialogProps> = ({
               </Button>
             </div>
             <Button onClick={handleAddToCart} className="flex-1 bg-kiosk-primary py-[34px] text-3xl">
-              {t("addToCart")} - {calculatePrice().toFixed(2)} {currencySymbol}
+              {t("addToCart")} - {(calculatePrice() * quantity).toFixed(2)} {currencySymbol}
             </Button>
           </div>
         </DialogFooter>
