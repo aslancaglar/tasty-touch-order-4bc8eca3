@@ -116,10 +116,46 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
     ? "time_restricted"
     : "always";
 
+  // Get the base name from language-specific initial values
+  const getInitialBaseName = () => {
+    if (initialValues?.name) return initialValues.name;
+    return [
+      initialValues?.name_fr,
+      initialValues?.name_en,
+      initialValues?.name_tr,
+      initialValues?.name_de,
+      initialValues?.name_es,
+      initialValues?.name_it,
+      initialValues?.name_nl,
+      initialValues?.name_pt,
+      initialValues?.name_ru,
+      initialValues?.name_ar,
+      initialValues?.name_zh
+    ].filter(Boolean)[0] || "";
+  };
+
+  // Get the base description from language-specific initial values  
+  const getInitialBaseDescription = () => {
+    if (initialValues?.description) return initialValues.description;
+    return [
+      initialValues?.description_fr,
+      initialValues?.description_en,
+      initialValues?.description_tr,
+      initialValues?.description_de,
+      initialValues?.description_es,
+      initialValues?.description_it,
+      initialValues?.description_nl,
+      initialValues?.description_pt,
+      initialValues?.description_ru,
+      initialValues?.description_ar,
+      initialValues?.description_zh
+    ].filter(Boolean)[0] || "";
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: initialValues?.name || "",
+      name: getInitialBaseName(),
       name_fr: initialValues?.name_fr || "",
       name_en: initialValues?.name_en || "",
       name_tr: initialValues?.name_tr || "",
@@ -131,7 +167,7 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
       name_ru: initialValues?.name_ru || "",
       name_ar: initialValues?.name_ar || "",
       name_zh: initialValues?.name_zh || "",
-      description: initialValues?.description || "",
+      description: getInitialBaseDescription(),
       description_fr: initialValues?.description_fr || "",
       description_en: initialValues?.description_en || "",
       description_tr: initialValues?.description_tr || "",
@@ -298,10 +334,56 @@ const MenuItemForm = ({ onSubmit, initialValues, isLoading, restaurantId }: Menu
   // Handle multi-language field changes
   const handleNameChange = (language: SupportedLanguage, value: string) => {
     form.setValue(`name_${language}`, value);
+    // Also update the base name field for validation - use the first non-empty language value
+    const currentValues = form.getValues();
+    const allNameValues = [
+      value, // Current input value
+      currentValues.name_fr,
+      currentValues.name_en,
+      currentValues.name_tr,
+      currentValues.name_de,
+      currentValues.name_es,
+      currentValues.name_it,
+      currentValues.name_nl,
+      currentValues.name_pt,
+      currentValues.name_ru,
+      currentValues.name_ar,
+      currentValues.name_zh
+    ].filter(Boolean);
+    
+    // Set the base name field to the first available value
+    if (allNameValues.length > 0) {
+      form.setValue('name', allNameValues[0]);
+    } else {
+      form.setValue('name', '');
+    }
   };
 
   const handleDescriptionChange = (language: SupportedLanguage, value: string) => {
     form.setValue(`description_${language}`, value);
+    // Also update the base description field - use the first non-empty language value
+    const currentValues = form.getValues();
+    const allDescriptionValues = [
+      value, // Current input value
+      currentValues.description_fr,
+      currentValues.description_en,
+      currentValues.description_tr,
+      currentValues.description_de,
+      currentValues.description_es,
+      currentValues.description_it,
+      currentValues.description_nl,
+      currentValues.description_pt,
+      currentValues.description_ru,
+      currentValues.description_ar,
+      currentValues.description_zh
+    ].filter(Boolean);
+    
+    // Set the base description field to the first available value
+    if (allDescriptionValues.length > 0) {
+      form.setValue('description', allDescriptionValues[0]);
+    } else {
+      form.setValue('description', '');
+    }
   };
 
   // Sort the categories by their assigned order for display
