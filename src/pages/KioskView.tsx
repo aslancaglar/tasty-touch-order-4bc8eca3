@@ -381,6 +381,12 @@ const KioskViewInner = () => {
     setShowOrderTypeSelection(false);
   };
 
+  const handleBackToOrderTypeSelection = () => {
+    setOrderType(null);
+    setTableNumber(null);
+    setShowOrderTypeSelection(true);
+  };
+
   // Add isCacheStale function
   const isCacheStale = (key: string, restaurantId: string): boolean => {
     const timestamp = getCacheTimestamp(key, restaurantId);
@@ -1144,7 +1150,7 @@ const KioskViewInner = () => {
     <div className="h-screen flex flex-col overflow-hidden kiosk-view">
       {/* Fixed height header - 12vh */}
       <div className="h-[12vh] min-h-[120px] flex-shrink-0">
-        <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} />
+        <KioskHeader restaurant={restaurant} orderType={orderType} tableNumber={tableNumber} t={t} onRefresh={handleRefreshMenu} onBack={handleBackToOrderTypeSelection} />
       </div>
 
       {/* Content area with fixed sidebar and scrollable menu grid */}

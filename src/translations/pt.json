@@ -1,4 +1,7 @@
 {
+  "common": {
+    "back": "Voltar"
+  },
   "orderType": {
     "title": "Como deseja fazer o seu pedido?",
     "dineIn": "Comer no Local",

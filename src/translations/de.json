@@ -1,4 +1,7 @@
 {
+  "common": {
+    "back": "Zurück"
+  },
   "orderType": {
     "title": "Wie möchten Sie bestellen?",
     "dineIn": "Vor Ort",

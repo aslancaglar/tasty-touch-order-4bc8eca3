@@ -1,4 +1,7 @@
 {
+  "common": {
+    "back": "Back"
+  },
   "orderType": {
     "title": "How would you like to order?",
     "dineIn": "Dine-In",

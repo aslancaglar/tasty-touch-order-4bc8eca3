@@ -1,4 +1,7 @@
 {
+  "common": {
+    "back": "Geri"
+  },
   "orderType": {
     "title": "Nasıl sipariş vermek istersiniz?",
     "dineIn": "Masaya Servis",

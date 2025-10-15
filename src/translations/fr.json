@@ -1,5 +1,8 @@
 
 {
+  "common": {
+    "back": "Retour"
+  },
   "orderType": {
     "title": "Comment souhaitez-vous commander ?",
     "dineIn": "Sur Place",

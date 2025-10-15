@@ -1,4 +1,7 @@
 {
+  "common": {
+    "back": "Volver"
+  },
   "orderType": {
     "title": "¿Cómo desea realizar su pedido?",
     "dineIn": "Para Comer Aquí",

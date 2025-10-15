@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Clock, Database } from "lucide-react";
+import { Clock, Database, ArrowLeft } from "lucide-react";
 import { Restaurant, OrderType } from "@/types/database-types";
 import { Button } from "@/components/ui/button";
 import { LanguageSelector } from "./LanguageSelector";
@@ -11,6 +11,7 @@ interface KioskHeaderProps {
   tableNumber: string | null;
   t: (key: string) => string;
   onRefresh?: () => void;
+  onBack?: () => void;
 }
 
 const KioskHeader: React.FC<KioskHeaderProps> = ({
@@ -18,13 +19,30 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
   orderType,
   tableNumber,
   t,
-  onRefresh
+  onRefresh,
+  onBack
 }) => {
   return (
     <div className="h-full w-full bg-cover bg-center relative" style={{
       backgroundImage: `url(${restaurant.image_url || 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80'})`
     }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+      
+      {/* Back button in top left corner */}
+      {onBack && (
+        <div className="absolute top-4 left-4 z-10">
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            className="bg-white/20 text-white hover:bg-white/30 border-white/30" 
+            onClick={onBack}
+            aria-label={t("back") || "Back"}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {t("back") || "Back"}
+          </Button>
+        </div>
+      )}
       
       {/* Controls in top right corner */}
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
