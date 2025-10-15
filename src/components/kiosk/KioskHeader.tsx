@@ -28,9 +28,9 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
     }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       
-      {/* Back button in top left corner */}
+      {/* Back button in left side, vertically centered */}
       {onBack && (
-        <div className="absolute top-4 left-4 z-10">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
           <Button 
             size="sm" 
             variant="ghost" 

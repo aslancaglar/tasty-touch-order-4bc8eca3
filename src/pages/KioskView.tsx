@@ -382,9 +382,7 @@ const KioskViewInner = () => {
   };
 
   const handleBackToOrderTypeSelection = () => {
-    setOrderType(null);
-    setTableNumber(null);
-    setShowOrderTypeSelection(true);
+    resetToWelcome();
   };
 
   // Add isCacheStale function
