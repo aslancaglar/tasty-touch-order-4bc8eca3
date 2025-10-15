@@ -60,7 +60,7 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
         )}
       </div>
       
-      <div className="absolute inset-0 flex items-center p-6">
+      <div className="absolute inset-0 flex items-center p-6 pl-32">
         <div className="flex items-center">
           {restaurant.logo_url ? (
             <img 
