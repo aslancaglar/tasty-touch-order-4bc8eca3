@@ -36,10 +36,10 @@ const KioskHeader: React.FC<KioskHeaderProps> = ({
             variant="ghost" 
             className="bg-white/20 text-white hover:bg-white/30 border-white/30" 
             onClick={onBack}
-            aria-label={t("back") || "Back"}
+            aria-label={t("common.back") || "Back"}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("back") || "Back"}
+            {t("common.back") || "Back"}
           </Button>
         </div>
       )}
