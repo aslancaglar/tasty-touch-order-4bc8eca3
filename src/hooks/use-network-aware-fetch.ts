@@ -208,21 +208,41 @@ export function useNetworkAwareFetch<TData, TError = Error>({
 
 // Helper hook to get the connection status only
 export function useConnectionStatus(): 'online' | 'offline' {
-  const [isOnline, setIsOnline] = useState<boolean>(checkIsOnline());
+  const [isOnline, setIsOnline] = useState<boolean>(true); // Default to online
 
   useEffect(() => {
-    const handleOnlineStatus = () => setIsOnline(true);
+    // Test actual connectivity on mount
+    const testConnectivity = async () => {
+      try {
+        const response = await fetch('/favicon.ico', {
+          method: 'HEAD',
+          cache: 'no-cache',
+          signal: AbortSignal.timeout(3000)
+        });
+        setIsOnline(response.ok);
+      } catch (error) {
+        // If fetch fails, check navigator.onLine as fallback
+        setIsOnline(checkIsOnline());
+      }
+    };
+    
+    testConnectivity();
+    
+    const handleOnlineStatus = () => {
+      testConnectivity(); // Test connectivity when browser says online
+    };
     const handleOfflineStatus = () => setIsOnline(false);
     
     window.addEventListener('online', handleOnlineStatus);
     window.addEventListener('offline', handleOfflineStatus);
     
-    // Set initial state
-    setIsOnline(checkIsOnline());
+    // Periodic connectivity check every 30 seconds
+    const interval = setInterval(testConnectivity, 30000);
     
     return () => {
       window.removeEventListener('online', handleOnlineStatus);
       window.removeEventListener('offline', handleOfflineStatus);
+      clearInterval(interval);
     };
   }, []);
 
