@@ -1,10 +1,11 @@
 import { useConnectionStatus } from "@/hooks/use-network-aware-fetch";
-import { Wifi, WifiOff, Database } from "lucide-react";
+import { Wifi, WifiOff, Database, X } from "lucide-react";
 import { Badge } from "./badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "./alert";
 import { useEffect, useState } from "react";
+import { Button } from "./button";
 interface NetworkStatusProps {
   isFromCache?: boolean;
   lastUpdated?: Date | null;
@@ -65,6 +66,14 @@ export function NetworkStatus({
           <AlertDescription>
             Using cached data. Some features may be limited.
           </AlertDescription>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-2 right-2 h-6 w-6"
+            onClick={() => setShowBanner(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </Alert>}
       
       <TooltipProvider>
