@@ -1251,20 +1251,11 @@ export type Database = {
         Args: { source_restaurant_id: string }
         Returns: string
       }
-      get_current_user_admin_status: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      get_daily_order_count: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      get_monthly_order_count: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      get_current_user_admin_status: { Args: never; Returns: boolean }
+      get_daily_order_count: { Args: never; Returns: number }
+      get_monthly_order_count: { Args: never; Returns: number }
       get_owned_restaurants: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           card_payment_enabled: boolean | null
           cash_payment_enabled: boolean | null
@@ -1279,19 +1270,16 @@ export type Database = {
           ui_language: string
           updated_at: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "restaurants"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      get_popular_items: {
-        Args: { limit_count: number }
-        Returns: Json
-      }
-      get_popular_restaurants: {
-        Args: { limit_count: number }
-        Returns: Json
-      }
-      get_user_restaurant_ids: {
-        Args: Record<PropertyKey, never>
-        Returns: string[]
-      }
+      get_popular_items: { Args: { limit_count: number }; Returns: Json }
+      get_popular_restaurants: { Args: { limit_count: number }; Returns: Json }
+      get_user_restaurant_ids: { Args: never; Returns: string[] }
       is_menu_item_available_now: {
         Args: { item_id: string }
         Returns: boolean
@@ -1321,10 +1309,7 @@ export type Database = {
         }
         Returns: string
       }
-      translate_topping_names: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      translate_topping_names: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
