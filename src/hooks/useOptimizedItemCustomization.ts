@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { MenuItemWithOptions } from '@/types/database-types';
 import { shouldShowToppingCategory as shouldShowToppingCategoryUtil, canSelectTopping } from '@/utils/topping-utils';
 
@@ -50,6 +50,23 @@ export const useOptimizedItemCustomization = (
         return orderA - orderB;
       });
   }, [item, selectedToppings]);
+
+  // Cleanup effect: Remove selected toppings from hidden categories
+  useEffect(() => {
+    const visibleCategoryIds = new Set(visibleToppingCategories.map(c => c.id));
+    
+    setSelectedToppings(prev => {
+      const filtered = prev.filter(selection => 
+        visibleCategoryIds.has(selection.categoryId)
+      );
+      
+      // Only update if something was actually removed
+      if (filtered.length !== prev.length) {
+        return filtered;
+      }
+      return prev;
+    });
+  }, [visibleToppingCategories]);
 
   // Optimized choice toggle handler
   const handleToggleChoice = useCallback((optionId: string, choiceId: string, multiple: boolean) => {
